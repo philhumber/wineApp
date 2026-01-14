@@ -1,0 +1,179 @@
+<form id="editWineForm" action="javascript:void(0);" autocomplete="off">    
+    <div class="formLayout">  
+        
+        <div id="wineToEdit" class="final" style="display:none;"></div>
+        <div class="tab" id="bottleTab" style="display: grid;">
+            <div class="searchCell">
+                <h5>Which bottle <span id="wineNameInline"></span> do you want to edit?</h5>
+            </div>
+            <div id="newBottle" class="formFields">
+                <div class="ui-bottombar"></div>
+                <h4>Bottle Information:</h4>
+                <!-- Type -->
+                <div class="form__group field" style="margin-top: 15px;">
+                    <!-- <label for="bottleID" class="form__label" style="top: 0;">Which Bottle?</label> -->
+                    <select name="bottleID" id="bottleID" class="form__field" onchange="populateEditBottle(this.value);">  
+                        
+                    </select>
+                </div>
+                <div id="bottleExtraDetails" style="display: none;">                
+                    <div class="form__group field" style="margin-top: 15px;">
+                        <label for="bottleSizeDropdown" class="form__label" style="top: 0;">Bottle Size</label>
+                        <select name="bottleSize" id="bottleSizeDropdown" class="form__field">                        
+                            <optgroup label="Standard Sizes"></optgroup>                        
+                                <option value="Piccolo">Piccolo (187.5ml)</option>
+                                <option value="Quarter">Quarter (200ml)</option>                        
+                                <option value="Demi">Demi (375ml)</option>                        
+                                <option value="Standard" selected>Standard (750ml)</option>                            
+                                <option value="Magnum">Magnum (1.5L)</option>
+                                <option value="Jeroboam">Jeroboam (3L)</option>
+                            </optgroup>
+                            <optgroup label="Rare Sizes"></optgroup>  
+                                <option value="Chopine">Chopine (250ml)</option>
+                                <option value="Tenth">Tenth (378ml)</option>
+                                <option value="Clavelin">Clavelin (620ml)</option>
+                                <option value="Fifth">Fifth (757ml)</option>
+                                <option value="Litre">Litre (1L)</option>
+                                <option value="Marie Jeanne">Marie Jeanne (2.25L)</option>                     
+                                <option value="Jeroboam">Jeroboam (4.5L)</option>
+                                <option value="Rehoboam">Rehoboam (4.5L)</option>
+                                <option value="McKenzie">McKenzie (5L)</option>
+                                <option value="Imperial">Imperial (6L)</option>
+                                <option value="Methuselah">Methuselah (6L)</option>
+                                <option value="Salmanazar">Salmanazar (9L)</option>
+                                <option value="Balthazar">Balthazar (12L)</option>
+                                <option value="Nebuchadnezzar">Nebuchadnezzar (15L)</option>
+                                <option value="Melchior">Melchior (18L)</option>
+                                <option value="Solomon">Solomon (20L)</option>
+                                <option value="Sovereign">Sovereign (26.25L)</option>
+                                <option value="Primat">Primat (27L)</option>
+                                <option value="Melchizedek">Melchizedek (30L)</option>
+                            </optgroup>                         
+                        </select>
+                    </div>
+                    <div class="form__group field" style="margin-top: 15px;">
+                        <label for="storageLocationDropDown" class="form__label" style="top: 0;">Stoarge Location</label>
+                        <select name="location" id="storageLocationDropDown" class="form__field">
+                            <option value="Wine Fridge">Wine Fridge</option>
+                            <option value="Wine Cellar">Wine Cellar</option>
+                            <option value="Spirit Cupboard">Spirit Cupboard</option>
+                        </select>
+                    </div>
+                    <div class="form__group field">
+                        <input type="input" name="bottleSource" id= "bottleSource" class="form__field" data-validatetype="text">
+                        <label for="bottleSource" class="form__label" style="top: 0;">Bottle Source</label>
+                    </div>
+                
+                    <div class="form__group field">
+                        <input type="input" name="bottlePrice" id= "bottlePrice" class="form__field" data-validatetype="text">
+                        <label for="bottlePrice" class="form__label" style="top: 0;">Bottle Price</label>
+                    </div>
+                    <div class="form__group field" style="margin-top: 15px;">
+                        <label for="bottleCurrency" class="form__label" style="top: 0;">Currency</label>
+                        <select name="bottleCurrency" id="currencyDropdown" class="form__field">
+                            <option value="EUR" selected="selected" label="EUR">EUR</option>                       
+                            <option disabled>──────────</option>
+                            <option value="AED" label="AED">AED</option>                        
+                            <option value="AUD" label="AUD">AUD</option>
+                            <option value="CHF" label="CHF">CHF</option>
+                            <option value="DKK" label="DKK">DKK</option>
+                            <option value="EUR" label="EUR">EUR</option>
+                            <option value="GBP" label="GBP">GBP</option>
+                            <option value="HKD" label="HKD">HKD</option>
+                            <option value="ISK" label="ISK">ISK</option>
+                            <option value="JPY" label="JPY">JPY</option>
+                            <option value="NOK" label="NKK">NOK</option>
+                            <option value="NZD" label="NZD">NZD</option>
+                            <option value="SEK" label="SEK">SEK</option>
+                            <option value="USD" label="USD">USD</option>
+                        </select>
+                    </div>
+                </div>           
+                <p></p>
+                <p></p>
+            </div>
+        </div>
+
+        <div class="tab" id="wineTab" style="display: none;">
+            <div class="searchCell">
+                <h4>Wine Information:<span id="producerNameInline"></span></h4>                
+            </div>
+
+            <div id="newwine" class="formFields">
+                <div class="ui-bottombar"></div>
+                
+                <!-- Type -->
+                 <div class="form__group field" margin-top: 15px;>
+                    <input type="input" name="wineName" id= "wineName" class="form__field" data-validatetype="text">
+                    <label for="wineName" class="form__label">Wine Name</label>
+                </div>
+                <div class="form__group field" margin-top: 15px;>
+                    <input type="input" name="wineYear" id= "wineYear" class="form__field" data-validatetype="year">
+                    <label for="wineYear" class="form__label">Wine Year</label>
+                </div>
+
+                <div class="form__group field" style="margin-top: 15px;">
+                    <label for="wineType" class="form__label" style="top: 0;">Wine Type</label>
+                    <select name="wineType" id="wineTypeDropDown" class="form__field">
+                        <option value=""></option>
+                        <option value="Red">Red</option>
+                        <option value="White">White</option>
+                        <option value="Rosé">Rosé</option>
+                        <option value="Orange">Orange</option>
+                        <option value="Sparkling">Sparkling</option>
+                        <option value="Dessert">Dessert</option>
+                        <option value="Rice">Rice</option>
+                        <option value="Fruit">Fruit</option>
+                        <option value="Honey">Honey</option>
+                        <option value="Cider">Cider</option>
+                    </select>
+                </div>               
+                
+                
+                <button type="button" class="button-30" id="genWineData">Update Information About This Wine...</button>
+               <div id="wineExtraDetails">
+                    <div class="form__group field" style="margin-top: 15px;">
+                        <textarea type="input" name="wineDescription" id= "wineDescription" class="form__field" data-validatetype="text" rows="4" cols="50" style="overflow:hidden; transition: height 0.2s ease-out;" onkeyup="if (this.scrollHeight > this.clientHeight) this.style.height = this.scrollHeight + 'px';"></textarea>
+                        <label for="wineDescription" class="form__label" style="top: 0;">Wine Description</label>
+                    </div>
+                    <div class="form__group field" style="margin-top: 15px;">
+                        <textarea type="input" name="wineTasting" id= "wineTasting" class="form__field" data-validatetype="text" rows="4" cols="50" style="overflow:hidden; transition: height 0.2s ease-out;" onkeyup="if (this.scrollHeight > this.clientHeight) this.style.height = this.scrollHeight + 'px';"></textarea>
+                        <label for="wineTasting" class="form__label" style="top: 0;">Tasting Notes</label>
+                    </div>
+                    <div class="form__group field" style="margin-top: 15px;">
+                        <textarea type="input" name="winePairing" id= "winePairing" class="form__field" data-validatetype="text" rows="4" cols="50" style="overflow:hidden; transition: height 0.2s ease-out;" onkeyup="if (this.scrollHeight > this.clientHeight) this.style.height = this.scrollHeight + 'px';"></textarea>
+                        <label for="winePairing" class="form__label" style="top: 0;">Pairing Notes</label>
+                    </div>
+                    <div class="form__group field" style="margin-top: 15px;">
+                        <input type="input" name="winePicture" id= "winePicture" class="form__field" data-validatetype="date">
+                        <label for="winePicture" class="form__label">Wine Picture URL</label>
+                    </div>
+                    <div class="form__group field" style="margin-top: 15px;">
+                        <label for="fileToUpload" class="form__label">Select image to upload:</label>
+                            <input type="file" class="button-30" name="fileToUpload" id="fileToUpload">
+                            <input type="button" class="button-30" value="Upload Image" name="submit" id="submit">
+                        
+                        <div class="form__label" id="uploadStatus" style="position:static;"></div>
+                    </div>
+                </div>
+                <p></p>
+                <p></p>
+            </div>
+        </div>
+
+        <!-- Circles which indicates the steps of the form: -->
+        <div class="progressCell" id="steps">
+            <span class="step active"></span>
+            <span class="step"></span>
+        </div>
+
+        <div class="navigationCell" style="align-items: right;">
+            <button type="button" class="button-30" id="prevBtn" onclick="nextPrev(-1)" style="display: none;">Previous</button>
+            <button type="button"  class="button-30" id="nextBtn" onclick="nextPrev(1)">Next</button>
+        </div>
+
+    
+    </div>
+</form>
+
+<img id= "loadTag" onload="loadEditWinePage()" src="data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==">

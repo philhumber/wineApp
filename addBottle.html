@@ -1,0 +1,88 @@
+
+  <div id="starOverlay" class="starOverlay" role="dialog" aria-modal="true" aria-labelledby="ratingTitle" style="display:none;">
+    <div class="card" role="document">
+<form id="addBottleForm" action="addBottle" autocomplete="off"> 
+      <h2 id="ratingTitle">Add a new bottle</h2>
+
+      <div class="ui-bottombar"></div>
+                <h4>Bottle Information:</h4>
+                <!-- Type -->
+                <div class="form__group field" style="margin-top: 15px;">
+                    <label for="bottleType" class="form__label" style="top: 0;">Bottle Type</label>
+                    <select name="bottleType" id="bottleTypeDropDown" class="form__field">
+                        <optgroup label="Standard Sizes"></optgroup>
+                            <option value="Standard">Standard (750ml)</option>
+                            <option value="Piccolo">Piccolo (187.5ml)</option>
+                            <option value="Quarter">Quarter (200ml)</option>
+                            <option value="Demi">Demi (375ml)</option>
+                            <option value="Magnum">Magnum (1.5L)</option>
+                            <option value="Jeroboam">Jeroboam (3L)</option>
+                        </optgroup>
+                        <optgroup label="Rare Sizes"></optgroup>
+                            <option value="Chopine">Chopine (250ml)</option>
+                            <option value="Tenth">Tenth (378ml)</option>
+                            <option value="Clavelin">Clavelin (620ml)</option>
+                            <option value="Fifth">Fifth (757ml)</option>
+                            <option value="Litre">Litre (1L)</option>
+                            <option value="Marie Jeanne">Marie Jeanne (2.25L)</option>
+                            <option value="Jeroboam">Jeroboam (4.5L)</option>
+                            <option value="Rehoboam">Rehoboam (4.5L)</option>
+                            <option value="McKenzie">McKenzie (5L)</option>
+                            <option value="Imperial">Imperial (6L)</option>
+                            <option value="Methuselah">Methuselah (6L)</option>
+                            <option value="Salmanazar">Salmanazar (9L)</option>
+                            <option value="Balthazar">Balthazar (12L)</option>
+                            <option value="Nebuchadnezzar">Nebuchadnezzar (15L)</option>
+                            <option value="Melchior">Melchior (18L)</option>
+                            <option value="Solomon">Solomon (20L)</option>
+                            <option value="Sovereign">Sovereign (26.25L)</option>
+                            <option value="Primat">Primat (27L)</option>
+                            <option value="Melchizedek">Melchizedek (30L)</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="form__group field" style="margin-top: 15px;">
+                    <label for="storageLocation" class="form__label" style="top: 0;">Stoarge Location</label>
+                    <select name="storageLocation" id="storageLocationDropDown" class="form__field">
+                        <option value="Wine Fridge">Wine Fridge</option>
+                        <option value="Wine Cellar">Wine Cellar</option>
+                        <option value="Spirit Cupboard">Spirit Cupboard</option>
+                    </select>
+                </div>
+                <div class="form__group field">
+                    <input type="input" name="bottleSource" id= "bottleSource" class="form__field" data-validatetype="text">
+                    <label for="bottleSource" class="form__label" style="top: 0;">Bottle Source</label>
+                </div>
+                <div class="form__group field">
+                    <input type="number" step="0.01" name="bottlePrice" id= "bottlePrice" class="form__field" data-validatetype="number">
+                    <label for="bottlePrice" class="form__label" style="top: 0;">Bottle Price</label>
+                </div>
+                <div class="form__group field" style="margin-top: 15px;">
+                    <label for="bottleCurrency" class="form__label" style="top: 0;">Currency</label>
+                    <select name="bottleCurrency" id="currencyDropdown" class="form__field">
+                        <option value="EUR" selected="selected" label="EUR">EUR</option>                       
+                        <option disabled>──────────</option>
+                        <option value="AED" label="AED">AED</option>                        
+                        <option value="AUD" label="AUD">AUD</option>
+                        <option value="CHF" label="CHF">CHF</option>
+                        <option value="DKK" label="DKK">DKK</option>
+                        <option value="EUR" label="EUR">EUR</option>
+                        <option value="GBP" label="GBP">GBP</option>
+                        <option value="HKD" label="HKD">HKD</option>
+                        <option value="ISK" label="ISK">ISK</option>
+                        <option value="JPY" label="JPY">JPY</option>
+                        <option value="NOK" label="NKK">NOK</option>
+                        <option value="NZD" label="NZD">NZD</option>
+                        <option value="SEK" label="SEK">SEK</option>
+                        <option value="USD" label="USD">USD</option>
+                    </select>
+                </div>
+
+      <div class="controls">
+        <button id="addBtn" class="lockBtn" type="button" >Add!</button>
+      </div>
+
+      <div id="wineToAdd" class="final" aria-live="polite" style="display:none;"></div>
+      </form>
+    </div>
+  </div>

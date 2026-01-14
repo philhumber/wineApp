@@ -1,0 +1,314 @@
+<form id="addWineForm" action="addWine" autocomplete="off">    
+    <div class="formLayout">  
+        
+        <div class="tab" id="regionTab" style="display: grid;">
+            <div class="searchCell">
+                <h4>Region Information...</h4>
+                <div class="searchBox">
+                    <input type="search" name="findRegion" id="findRegion" onclick="showList('regionList'); filterList('findRegion', 'regionList');" onkeyup="filterList('findRegion', 'regionList');unselectList('findRegion', 'regionList');" onfocusout="hideList('regionList', event)" onsearch="filterList('findRegion', 'regionList'); hideList('regionList', event);"  placeholder="Search existing regions..." title="" class="" autocomplete="one-time-code">
+                </div>
+                <div class="searchResults">
+                    <ul id="regionList" class = "myUL">
+                        <!-- Producers Populated Here -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- TODO when selecting a producer from the dropdown the fields should default to blank?-->
+            <div id="newregion" class="formFields" style="display: none;">
+                <div class="ui-bottombar"></div>
+                <div class="form__group field"  style="margin-top: 15px;">
+                    <input type="input" name="regionName" id= "regionName" class="form__field" data-validatetype="text">
+                    <label for="regionName" class="form__label" style="top: 0;">Region Name</label>
+                </div>
+                
+                <div class="form__group field" style="margin-top: 15px;">
+                    <label for="regionCountry" class="form__label" style="top: 0;">Region Country</label>
+                    <select name="regionCountry" id="countryDropDown" class="form__field">
+                        <!--this list must have the same value as countryName-->
+                        <option value=""></option>
+                        <option value="Argentina">Argentina</option>
+                        <option value="Australia">Australia</option>
+                        <option value="Austria">Austria</option>
+                        <option value="Brazil">Brazil</option>
+                        <option value="Chile">Chile</option>
+                        <option value="China">China</option>
+                        <option value="France">France</option>
+                        <option value="Germany">Germany</option>
+                        <option value="Greece">Greece</option>
+                        <option value="Hungary">Hungary</option>
+                        <option value="Italy">Italy</option>
+                        <option value="Moldova">Moldova</option>
+                        <option value="New Zealand">New Zealand</option>
+                        <option value="Portugal">Portugal</option>
+                        <option value="Romania">Romania</option>
+                        <option value="Russia">Russia</option>
+                        <option value="South Africa">South Africa</option>
+                        <option value="Spain">Spain</option>
+                        <option value="Sweden">Spain</option>
+                        <option value="Turkey">Turkey</option>
+                        <option value="United States of America">United States of America</option>
+                    </select>                    
+                </div>
+                <div class="form__group field" style="margin-top: 15px;">
+                    <label for="drinkType" class="form__label" style="top: 0;">Drink Type</label>
+                    <select name="drinkType" id="drinkTypeDropDown" class="form__field">
+                        <option value=""></option>
+                        <option value="Wine" selected>Wine</option>
+                        <option value="Cider">Cider</option>
+                        <option value="Beer">Beer</option>
+                        <option value="Sprit">Sprit</option>
+                        <option value="Sake">Sake</option>
+                    </select>
+                </div>
+                
+                <button type="button" class="button-30" id="genRegionData">Get More Information About This Region...</button>
+                <div id="regionExtraDetails" style="display: none;">
+                    <div class="form__group field" style="margin-top: 15px;">
+                        <textarea name="regionDescription" id="regionDescription" class="form__field" data-validatetype="text" rows="4" cols="50"></textarea>
+                        <label for="regionDescription" class="form__label" style="top: 0;">Region Description</label>
+                    </div>
+                    <div class="form__group field" style="margin-top: 15px;">
+                        <textarea name="regionClimate" id="regionClimate" class="form__field" data-validatetype="text" rows="4" cols="50"></textarea>
+                        <label for="regionClimate" class="form__label" style="top: 0;">Region Climate</label>
+                    </div>
+                    <div class="form__group field" style="margin-top: 15px;">
+                        <textarea name="regionSoil" id= "regionSoil" class="form__field" data-validatetype="text" rows="4" cols="50"></textarea>
+                        <label for="regionSoil" class="form__label" style="top: 0;">Region Soil</label>
+                    </div>
+                    <div class="form__group field">
+                        <input type="input" name="regionMap" id= "regionMap" class="form__field" data-validatetype="text">
+                        <label for="regionMap" class="form__label">Region Map URL</label>
+                    </div>
+                </div>
+                <p></p>
+                <p></p>
+            </div>
+        </div>
+
+        
+        
+        <div class="tab" id="producerTab" style="display: none;">
+            <div class="searchCell">
+                <h4>Producer Information: From: <span id="regionNameInline"></span></h4>                
+                <div class="searchBox">
+                    <input type="search" name="findProducer" id="findProducer" onclick="showList('producerList'); filterList('findProducer', 'producerList');" onkeyup="filterList('findProducer', 'producerList');unselectList('findProducer', 'producerList');" onfocusout="hideList('producerList', event)" onsearch="filterList('findProducer', 'producerList'); hideList('producerList', event);"  placeholder="Search existing producers.." title="" class="">
+                </div>
+                <div class="searchResults">
+                    <ul id="producerList" class = "myUL">
+                        <!-- Producers Populated Here -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- TODO when selecting a producer from the dropdown the fields should default to blank?-->
+            <div id="newproducer" class="formFields"  style="display: none;">
+                <div class="ui-bottombar"></div>
+                <div class="form__group field">
+                    <input type="input" name="producerName" id= "producerName" class="form__field" data-validatetype="text">
+                    <label for="producerName" class="form__label" style="top: 0;">Name</label>
+                </div>
+                <button type="button" class="button-30" id="genProducerData">Get More Information About This Producer...</button>
+                <div id="producerExtraDetails" style="display: none;">
+                    <div class="form__group field">
+                        <input type="input" name="producerTown" id= "producerTown" class="form__field" data-validatetype="text">
+                        <label for="producerTown" class="form__label" style="top: 0;">Town</label>
+                    </div>
+                    <div class="form__group field">
+                        <input type="input" name="producerFounded" id= "producerFounded" class="form__field" data-validatetype="year">
+                        <label for="producerFounded" class="form__label" style="top: 0;">Founded</label>
+                    </div>
+                    <div class="form__group field">
+                        <input type="input" name="producerOwnership" id= "producerOwnership" class="form__field" data-validatetype="text">
+                        <label for="producerFounded" class="form__label" style="top: 0;">Ownership</label>
+                    </div>
+                    
+                    <div class="form__group field" style="margin-top: 15px;">
+                        <textarea name="producerDescription" id= "producerDescription" class="form__field" data-validatetype="text" rows="4" cols="50"></textarea>
+                        <label for="producerDescription" class="form__label" style="top: 0;">Description</label>
+                    </div>
+                </div>
+                <p></p>
+                <p></p>
+            </div>
+        </div>
+
+        <div class="tab" id="wineTab" style="display: none;">
+            <div class="searchCell">
+                <h4>Wine Information:<span id="producerNameInline"></span></h4>
+                <div class="searchBox">
+                    <input type="search" name="findWine" id="findWine" onclick="showList('wineList'); filterList('findWine', 'wineList');" onkeyup="filterList('findWine', 'wineList');unselectList('findWine', 'wineList');" onfocusout="hideList('wineList', event)" onchange="unselectList('findWine', 'wineList');" placeholder="Search for wines.." onsearch="filterList('findWine', 'wineList'); hideList('wineList', event);" title="" class="">
+                </div>
+                <div class="searchResults">
+                    <ul id="wineList" class = "myUL">
+                        <!-- Wines Populated Here -->
+                    </ul>
+                </div>
+            </div>
+
+            <div id="newwine" class="formFields"  style="display: none;">
+                <div class="ui-bottombar"></div>
+                
+                <!-- Type -->
+                 <div class="form__group field">
+                    <input type="input" name="wineName" id= "wineName" class="form__field" data-validatetype="text">
+                    <label for="wineName" class="form__label" style="top: 0;">Wine Name</label>
+                </div>
+                <div class="form__group field">
+                    <input type="input" name="wineYear" id= "wineYear" class="form__field" data-validatetype="year">
+                    <label for="wineYear" class="form__label" style="top: 0;">Wine Year</label>
+                </div>
+
+                <div class="form__group field" style="margin-top: 15px;">
+                    <label for="wineType" class="form__label" style="top: 0;">Wine Type</label>
+                    <select name="wineType" id="wineTypeDropDown" class="form__field">
+                        <option value=""></option>
+                        <option value="Red">Red</option>
+                        <option value="White">White</option>
+                        <option value="Rosé">Rosé</option>
+                        <option value="Orange">Orange</option>
+                        <option value="Sparkling">Sparkling</option>
+                        <option value="Dessert">Dessert</option>
+                        <option value="Rice">Rice</option>
+                        <option value="Fruit">Fruit</option>
+                        <option value="Honey">Honey</option>
+                        <option value="Cider">Cider</option>
+                    </select>
+                </div>               
+                
+                
+                <button type="button" class="button-30" id="genWineData">Get More Information About This Wine...</button>
+               <div id="wineExtraDetails" style="display: none;">
+                    <div class="form__group field" style="margin-top: 15px;">
+                        <textarea type="input" name="wineDescription" id= "wineDescription" class="form__field" data-validatetype="text" rows="4" cols="50" style="overflow:hidden; transition: height 0.2s ease-out;" onkeyup="if (this.scrollHeight > this.clientHeight) this.style.height = this.scrollHeight + 'px';"></textarea>
+                        <label for="wineDescription" class="form__label" style="top: 0;">Wine Description</label>
+                    </div>
+                    <div class="form__group field" style="margin-top: 15px;">
+                        <textarea type="input" name="wineTasting" id= "wineTasting" class="form__field" data-validatetype="text" rows="4" cols="50" style="overflow:hidden; transition: height 0.2s ease-out;" onkeyup="if (this.scrollHeight > this.clientHeight) this.style.height = this.scrollHeight + 'px';"></textarea>
+                        <label for="wineTasting" class="form__label" style="top: 0;">Tasting Notes</label>
+                    </div>
+                    <div class="form__group field" style="margin-top: 15px;">
+                        <textarea type="input" name="winePairing" id= "winePairing" class="form__field" data-validatetype="text" rows="4" cols="50" style="overflow:hidden; transition: height 0.2s ease-out;" onkeyup="if (this.scrollHeight > this.clientHeight) this.style.height = this.scrollHeight + 'px';"></textarea>
+                        <label for="winePairing" class="form__label" style="top: 0;">Pairing Notes</label>
+                    </div>
+                    <div class="form__group field" style="display: none;">
+                        <input type="input" name="winePicture" id= "winePicture" class="form__field" data-validatetype="date">
+                        <label for="winePicture" class="form__label" style="top: 0;">Wine Picture URL</label>
+                    </div>
+                    <div class="form__group field" style="margin-top: 15px;">
+                        <label for="fileToUpload" class="form__label" style="top: 0;">Select image to upload:</label>
+                        <form action="/resources/php/upload.php" method="post" enctype="multipart/form-data">
+                            <input type="file" class="button-30" name="fileToUpload" id="fileToUpload">
+                            <input type="submit" class="button-30" value="Upload Image" name="submit" id="submit">
+                        </form>
+                        <div class="form__label" id="uploadStatus" style="position:static;" style="top: 0;"></div>
+                    </div>
+                </div>
+                <p></p>
+                <p></p>
+            </div>
+        </div>
+
+        <div class="tab" id="bottleTab" style="display: none;">
+            <div class="searchCell">
+                <h5>Now add the details of the bottle of <span id="wineNameInline"></span></h5>
+            </div>
+            <div id="newBottle" class="formFields">
+                <div class="ui-bottombar"></div>
+                <h4>Bottle Information:</h4>
+                <!-- Type -->
+                <div class="form__group field" style="margin-top: 15px;">
+                    <label for="bottleType" class="form__label" style="top: 0;">Bottle Type</label>
+                    <select name="bottleType" id="bottleTypeDropDown" class="form__field">                        
+                        <optgroup label="Standard Sizes"></optgroup>                        
+                            <option value="Piccolo">Piccolo (187.5ml)</option>
+                            <option value="Quarter">Quarter (200ml)</option>                        
+                            <option value="Demi">Demi (375ml)</option>                        
+                            <option value="Standard" selected>Standard (750ml)</option>                            
+                            <option value="Magnum">Magnum (1.5L)</option>
+                            <option value="Jeroboam">Jeroboam (3L)</option>
+                        </optgroup>
+                        <optgroup label="Rare Sizes"></optgroup>  
+                            <option value="Chopine">Chopine (250ml)</option>
+                            <option value="Tenth">Tenth (378ml)</option>
+                            <option value="Clavelin">Clavelin (620ml)</option>
+                            <option value="Fifth">Fifth (757ml)</option>
+                            <option value="Litre">Litre (1L)</option>
+                            <option value="Marie Jeanne">Marie Jeanne (2.25L)</option>                     
+                            <option value="Jeroboam">Jeroboam (4.5L)</option>
+                            <option value="Rehoboam">Rehoboam (4.5L)</option>
+                            <option value="McKenzie">McKenzie (5L)</option>
+                            <option value="Imperial">Imperial (6L)</option>
+                            <option value="Methuselah">Methuselah (6L)</option>
+                            <option value="Salmanazar">Salmanazar (9L)</option>
+                            <option value="Balthazar">Balthazar (12L)</option>
+                            <option value="Nebuchadnezzar">Nebuchadnezzar (15L)</option>
+                            <option value="Melchior">Melchior (18L)</option>
+                            <option value="Solomon">Solomon (20L)</option>
+                            <option value="Sovereign">Sovereign (26.25L)</option>
+                            <option value="Primat">Primat (27L)</option>
+                            <option value="Melchizedek">Melchizedek (30L)</option>
+                        </optgroup>                         
+                    </select>
+                </div>
+                <div class="form__group field" style="margin-top: 15px;">
+                    <label for="storageLocation" class="form__label" style="top: 0;">Stoarge Location</label>
+                    <select name="storageLocation" id="storageLocationDropDown" class="form__field">
+                        <option value="Wine Fridge">Wine Fridge</option>
+                        <option value="Wine Cellar">Wine Cellar</option>
+                        <option value="Spirit Cupboard">Spirit Cupboard</option>
+                    </select>
+                </div>
+                <div class="form__group field">
+                    <input type="input" name="bottleSource" id= "bottleSource" class="form__field" data-validatetype="text">
+                    <label for="bottleSource" class="form__label" style="top: 0;">Bottle Source</label>
+                </div>               
+                <div class="form__group field">
+                    <input type="number" step="0.01" name="bottlePrice" id= "bottlePrice" class="form__field" data-validatetype="number">
+                    <label for="bottlePrice" class="form__label" style="top: 0;">Bottle Price</label>
+                </div>
+                <div class="form__group field" style="margin-top: 15px;">
+                    <label for="bottleCurrency" class="form__label" style="top: 0;">Currency</label>
+                    <select name="bottleCurrency" id="currencyDropdown" class="form__field">
+                        <option value="EUR" selected="selected" label="EUR">EUR</option>                       
+                        <option disabled>──────────</option>
+                        <option value="AED" label="AED">AED</option>                        
+                        <option value="AUD" label="AUD">AUD</option>
+                        <option value="CHF" label="CHF">CHF</option>
+                        <option value="DKK" label="DKK">DKK</option>
+                        <option value="EUR" label="EUR">EUR</option>
+                        <option value="GBP" label="GBP">GBP</option>
+                        <option value="HKD" label="HKD">HKD</option>
+                        <option value="ISK" label="ISK">ISK</option>
+                        <option value="JPY" label="JPY">JPY</option>
+                        <option value="NOK" label="NKK">NOK</option>
+                        <option value="NZD" label="NZD">NZD</option>
+                        <option value="SEK" label="SEK">SEK</option>
+                        <option value="USD" label="USD">USD</option>
+                    </select>
+                </div>
+                <p></p>
+                <p></p>
+            </div>
+        </div>
+        
+        <!-- TODO - New tab for adding a bottle. Where is it from etc? -->
+
+        <!-- Circles which indicates the steps of the form: -->
+        <div class="progressCell" id="steps">
+            <span class="step active"></span>
+            <span class="step"></span>
+            <span class="step"></span>
+            <span class="step"></span>
+        </div>
+
+        <div class="navigationCell" style="align-items: right;">
+            <button type="button" class="button-30" id="prevBtn" onclick="nextPrev(-1)" style="display: none;">Previous</button>
+            <button type="button"  class="button-30" id="nextBtn" onclick="nextPrev(1)">Next</button>
+        </div>
+
+    
+    </div>
+</form>
+
+<img id= "loadTag" onload="loadAddWinePage()" src="data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==">

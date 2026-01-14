@@ -1,0 +1,59 @@
+<template>
+	<div class="ui-third ui-container ui-margin-bottom" >
+		<a class="wineCard" onclick="" href="#" ontouchstart="touchStart(event)" ontouchend="touchEnd()" ontouchmove="touchMove()">		
+			<div class="wineImageCell">
+				<img src="" class="winePicture"/>
+			</div>
+			
+			<div class="wineNameCell">
+				<span class="wineName"></span>
+			</div>
+			
+			<div class="regionProducerCell">
+				<span class="regionProducer"></span>
+			</div> 
+			
+			<div class="bottleCountCell">
+				<span class = "bottleCount"></span>
+			</div>						
+			
+			<div class="countryCell">
+				<span class="wineCountry" style="display: flex; align-items: flex-end;"></span>						
+			</div>
+			
+			<div class="ratingCell">
+				<span class="wineRatingOLD" style="display: flex; align-items: flex-end;"></span>
+			</div>
+
+			<div class="yearCell">
+				<span class="wineYear" style="display: flex; align-items: flex-end;"></span>
+			</div>
+			<div class="contentCell" style="display: none;">
+				<div class="content">
+					<span class="descriptionText">
+						<b>Rating</b>
+						<p class="wineRating"></p>
+						<br>
+						<b>Notes</b>
+						<p class="wineNotes"></p>
+						<br>
+						<b>Description</b>
+						<p class="wineDescription"></p>
+						<br>
+						<b>Tasting Notes</b>
+						<p class = "wineTasting"></p>
+						<br>
+						<b>Pairing Notes</b>
+						<p class = "winePairing"></p>
+					</span>
+				</div>
+			</div>			
+		</a>
+		<div id="contextMenu" class="context-menu" style="display: none;">
+			<ul class="actionList">
+			  
+			</ul>
+		</div>	
+	</div>
+
+</template>
