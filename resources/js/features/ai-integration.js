@@ -10,8 +10,12 @@ import { modalManager, showOverlay, hideOverlay } from '../ui/modals.js';
  */
 export class AIIntegrationManager {
 	constructor() {
-		this.apiKey = "AIzaSyCCqxRUoQuCkTlLD4m1Rm4ky51Ct-ATh_8"; // Replace with your actual API key
+		this.apiKey = window.WINE_APP_CONFIG?.geminiApiKey || "";
 		this.model = "gemini-2.5-pro";
+
+		if (!this.apiKey) {
+			console.warn('Gemini API key not configured. See config.local.php.example for setup.');
+		}
 	}
 
 	/**

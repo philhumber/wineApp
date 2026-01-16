@@ -1,0 +1,4 @@
+# Deny access to config files (defense in depth)
+<FilesMatch "config\.local\.php$">
+    Require all denied
+</FilesMatch>

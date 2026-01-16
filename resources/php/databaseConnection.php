@@ -3,11 +3,12 @@
      * Database configuration and connection
      */
 
-    // Database credentials
-    define('DB_HOST', '10.0.0.16');
-    define('DB_NAME', 'winelist');
-    define('DB_USER', 'webuser');
-    define('DB_PASS', 'sqlserver');
+    // Load config from outside web root
+    $configPath = __DIR__ . '/../../wineapp-config/config.local.php';
+    if (!file_exists($configPath)) {
+        throw new Exception('Config file not found. See config.local.php.example for setup instructions.');
+    }
+    require_once $configPath;
 
     /**
      * Get a PDO database connection
