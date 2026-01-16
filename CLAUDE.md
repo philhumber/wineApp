@@ -24,15 +24,16 @@
 
 1. **✅ Phase 1 Complete** - 16 ES6 modules, old `wineapp.js` deprecated (DO NOT LOAD)
 2. **🟡 Sprint 3 Active** - 4 remaining issues before Qvé migration
-3. **📋 Qvé Plan Ready** - Full plan at `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
-4. **🎨 Design Complete** - Qvé mockup in `design/qve-rebrand/qve-mockup.html`
-5. **🔄 Backend Reusable** - Existing PHP API unchanged for new Svelte frontend
+3. **✅ GitHub Setup Complete** - Repo at `philhumber/wineApp` with 4-branch workflow
+4. **✅ Credentials Secured** - All credentials in `../wineapp-config/config.local.php` (outside web root)
+5. **📋 Qvé Plan Ready** - Full plan at `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
 
 ### Critical Warnings
 
 ⚠️ **DO NOT** load old `resources/wineapp.js` - causes conflicts with modular system
 ⚠️ **DO NOT** use `ratingManager.closeModal()` - use `modalManager.hideAll()` instead
 ⚠️ **ALWAYS** refresh dropdowns after mutations - `dropdownManager.refreshAllDropdowns()`
+⚠️ **CREDENTIALS** are in `../wineapp-config/config.local.php` (outside web root, not in repo)
 
 ---
 
@@ -42,19 +43,36 @@
 # Run local development server
 php -S localhost:8000
 
+# Git workflow (always work from develop)
+git checkout develop
+git pull origin develop
+git checkout -b feature/WINE-XX-description
+
 # View open JIRA issues
 curl -u "phil.humber@gmail.com:[TOKEN]" \
   "https://philhumber.atlassian.net/rest/api/3/search?jql=project=WIN+AND+status!=Done"
 
 # Database connection
 mysql -h 10.0.0.16 -u username -p winelist
-
-# Search for code
-grep -r "functionName" resources/js/
-
-# Count module lines
-wc -l resources/js/**/*.js
 ```
+
+---
+
+## GitHub & Branching
+
+**Repository**: https://github.com/philhumber/wineApp
+
+**Branch Structure**:
+```
+main (production) → staging (QA) → develop (active work)
+                              └→ svelte-rewrite (Qvé migration)
+```
+
+**Workflow**: Create feature branches from `develop`, open PRs, squash merge.
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/06-reference/GITHUB_QUICK_REFERENCE.md](docs/06-reference/GITHUB_QUICK_REFERENCE.md)
+
+**Credentials**: Stored in `../wineapp-config/config.local.php` (outside repo).
+See [resources/php/config.local.php.example](resources/php/config.local.php.example) for setup.
 
 ---
 
@@ -252,6 +270,7 @@ Run after each change:
 
 ## Resources
 
+**GitHub**: https://github.com/philhumber/wineApp
 **JIRA Board**: https://philhumber.atlassian.net/jira/software/projects/WIN
 **Database**: MySQL 8.0 on 10.0.0.16 (database: `winelist`)
 **Developer**: Phil Humber (phil.humber@gmail.com)
