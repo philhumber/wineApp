@@ -298,10 +298,79 @@ Run through the 10-point regression test checklist (see [Testing](#testing) belo
 
 1. **Pick a JIRA issue** from the current sprint
 2. **Read the code** - Never modify files you haven't read
-3. **Make changes** - Follow existing patterns
-4. **Test thoroughly** - Run regression tests
-5. **Update JIRA** - Mark issue as Done
-6. **Document** - Update relevant docs if needed
+3. **Clone Repo** - Set up the correct development repo based on the type of work
+4. **Make changes** - Follow existing patterns
+5. **Test thoroughly** - Run regression tests
+6. **Update JIRA** - Mark issue as Done
+7. **Document** - Update relevant docs if needed
+
+### Git Workflow Approach & Branching Strategy
+We use a **four-tier branching strategy** to support both ongoing development and a parallel Svelte rewrite:
+
+main (production)
+  │
+  └── staging (QA / integration testing)
+        │
+        ├── develop (ongoing fixes & features)
+        │     ├── feature/WINE-*
+        │     └── bugfix/WINE-*
+        │
+        └── svelte-rewrite (long-lived Qvé migration)
+              ├── rewrite/component-library
+              ├── rewrite/wine-list-page
+              └── rewrite/api-integration
+
+**For current app features/fixes:**
+```
+feature/WINE-42 → develop → staging → main
+```
+
+**For Svelte/Qvé rewrite:**
+```
+rewrite/wine-list-page → svelte-rewrite → staging → main
+```
+
+**For emergency hotfixes:**
+```
+hotfix/critical-bug → main (then backport to develop + svelte-rewrite)
+```
+
+**Workflow**
+1. Clone the Repository
+
+```bash
+git clone https://github.com/philhumber/wineApp.git
+cd wineApp
+```
+
+2. Start Development
+
+**For current app work:**
+```bash
+git checkout develop
+git pull origin develop
+git checkout -b feature/WINE-XX-description
+```
+
+**For rewrite work:**
+```bash
+git checkout svelte-rewrite
+git pull origin svelte-rewrite
+git checkout -b rewrite/component-name
+```
+
+3. Run Local Server
+
+```bash
+php -S localhost:8000
+```
+Open http://localhost:8000 in your browser.
+
+4. Make Changes & Open PR
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for complete workflow.
+
+---
 
 ### Design Patterns Used
 
@@ -501,9 +570,13 @@ docs/
 ### Key Documentation Files
 
 **Must-Read for All Developers**:
+- [CLAUDE.md](CLAUDE.md) - Main development guide (single source of truth)
+- [CONTRIBUTING.md](CONTRIBUTING.md) - PR workflow, code style, testing
+- [docs/README.md](docs/README.md) - Documentation navigation hub
 - [docs/01-overview/ARCHITECTURE.md](docs/01-overview/ARCHITECTURE.md) - Complete system architecture
 - [docs/02-development/MODULE_GUIDE.md](docs/02-development/MODULE_GUIDE.md) - Module API reference
 - [docs/03-testing/TESTING_GUIDE.md](docs/03-testing/TESTING_GUIDE.md) - Testing procedures
+
 
 **Sprint Work**:
 - [docs/04-sprints/README.md](docs/04-sprints/README.md) - Sprint index
@@ -518,6 +591,21 @@ docs/
 
 **Session Guide**:
 - [CLAUDE.md](CLAUDE.md) - Quick-start guide for new AI sessions
+
+**Architecture & Development**
+- [Architecture Overview](docs/01-overview/ARCHITECTURE.md)
+- [Module API Reference](docs/02-development/MODULE_GUIDE.md)
+- [Migration Guide](docs/02-development/MIGRATION_GUIDE.md)
+
+**Testing**
+- [Testing Guide](docs/03-testing/TESTING_GUIDE.md)
+- [Verification Guide](docs/03-testing/VERIFICATION_GUIDE.md)
+
+**GitHub & Contributing**
+- [GitHub Setup Plan](docs/06-reference/GITHUB_SETUP_PLAN.md) - Complete setup instructions
+- [GitHub Quick Reference](docs/06-reference/GITHUB_QUICK_REFERENCE.md) - Common commands and workflows
+- [Documentation Organization](docs/06-reference/DOCUMENTATION_ORGANIZATION_GUIDE.md)
+-  CONTRIBUTING.md](CONTRIBUTING.md - PR guidelines and code style
 
 ---
 
@@ -578,3 +666,4 @@ Private project - All rights reserved.
 
 *Last Updated: 2026-01-16*
 *This README serves as the comprehensive reference for the Wine Collection App project.*
+
