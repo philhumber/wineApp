@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qvé — Wine Collection</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <style>
+        /* ═══════════════════════════════════════════════════════════
+           QVÉ DESIGN SYSTEM
+           Quiet Luxury · Grower Champagne · Understated Excellence
+           ═══════════════════════════════════════════════════════════ */
+
+        :root {
+            /* ─────────────────────────────────────────────────────────
+               LIGHT MODE - Morning in the tasting room
+               Soft natural light, aged paper, cork, linen
+               ───────────────────────────────────────────────────────── */
+            --bg: #FAF9F7;
+            --bg-subtle: #F5F3F0;
+            --surface: #FFFFFF;
+            --surface-raised: #FFFFFF;
+
+            --text-primary: #2D2926;
+            --text-secondary: #5C5652;
+            --text-tertiary: #8A847D;
+
+            /* Quiet accent - aged cork, soft candlelight, not gold */
+            --accent: #A69B8A;
+            --accent-subtle: #C4BAA9;
+            --accent-muted: #D9D2C6;
+
+            --divider: #E8E4DE;
+            --divider-subtle: #F0EDE8;
+
+            /* Shadows - barely there */
+            --shadow-sm: 0 1px 2px rgba(45, 41, 38, 0.03);
+            --shadow-md: 0 2px 8px rgba(45, 41, 38, 0.04), 0 1px 2px rgba(45, 41, 38, 0.03);
+            --shadow-lg: 0 8px 24px rgba(45, 41, 38, 0.06), 0 2px 4px rgba(45, 41, 38, 0.03);
+
+            /* Typography */
+            --font-serif: 'Cormorant Garamond', 'Didot', 'Bodoni MT', Georgia, serif;
+            --font-sans: 'Outfit', 'Avenir Next', system-ui, sans-serif;
+
+            /* Spacing */
+            --space-1: 0.25rem;
+            --space-2: 0.5rem;
+            --space-3: 0.75rem;
+            --space-4: 1rem;
+            --space-5: 1.5rem;
+            --space-6: 2rem;
+            --space-8: 3rem;
+            --space-10: 4rem;
+            --space-12: 6rem;
+
+            /* Transitions */
+            --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+            --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+            /* Theme transition */
+            --theme-transition: background 0.5s var(--ease-out),
+                               color 0.3s var(--ease-out),
+                               border-color 0.3s var(--ease-out),
+                               box-shadow 0.3s var(--ease-out);
+        }
+
+        /* ─────────────────────────────────────────────────────────
+           DARK MODE - Penthouse, 60th floor, city lights below
+           Champagne flutes, soft jazz, floor-to-ceiling glass
+           ───────────────────────────────────────────────────────── */
+        [data-theme="dark"] {
+            --bg: #0C0B0A;
+            --bg-subtle: #141312;
+            --surface: #1A1918;
+            --surface-raised: #222120;
+
+            --text-primary: #F0EDE6;
+            --text-secondary: #A8A29A;
+            --text-tertiary: #6B665F;
+
+            /* In darkness, the accent becomes softer, like distant city lights */
+            --accent: #B8AFA0;
+            --accent-subtle: #7A756C;
+            --accent-muted: #4A4640;
+
+            --divider: #2A2826;
+            --divider-subtle: #1F1E1C;
+
+            /* Shadows in dark mode - subtle glows */
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 1px rgba(255, 255, 255, 0.03);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           BASE RESET & TYPOGRAPHY
+           ═══════════════════════════════════════════════════════════ */
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            font-weight: 400;
+            color: var(--text-primary);
+            background: var(--bg);
+            line-height: 1.5;
+            min-height: 100vh;
+            transition: var(--theme-transition);
+        }
+
+        /* Dark mode ambient glow - city lights through windows */
+        [data-theme="dark"] body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60vh;
+            background: radial-gradient(
+                ellipse 80% 50% at 50% 0%,
+                rgba(180, 165, 140, 0.03) 0%,
+                transparent 70%
+            );
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Subtle grain texture for that analog feel */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.015;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        [data-theme="dark"] body::after {
+            opacity: 0.03;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           HEADER
+           ═══════════════════════════════════════════════════════════ */
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: var(--bg);
+            transition: var(--theme-transition);
+        }
+
+        [data-theme="dark"] .header {
+            background: rgba(12, 11, 10, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .header.scrolled {
+            border-bottom: 1px solid var(--divider);
+        }
+
+        .header-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--space-5) var(--space-6);
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-5);
+        }
+
+        /* Logo - understated, not shouting */
+        .logo {
+            font-family: var(--font-serif);
+            font-size: 2rem;
+            font-weight: 400;
+            letter-spacing: 0.04em;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: color 0.2s var(--ease-out);
+        }
+
+        .logo:hover {
+            color: var(--accent);
+        }
+
+        /* Header Actions */
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .header-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--divider);
+            border-radius: 50%;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        .header-icon:hover {
+            border-color: var(--accent-subtle);
+            background: var(--surface);
+        }
+
+        .header-icon svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-tertiary);
+            stroke-width: 1.5;
+            fill: none;
+            transition: stroke 0.2s var(--ease-out);
+        }
+
+        .header-icon:hover svg {
+            stroke: var(--text-secondary);
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .theme-toggle .icon-sun,
+        .theme-toggle .icon-moon {
+            position: absolute;
+            transition: transform 0.3s var(--ease-out), opacity 0.3s var(--ease-out);
+        }
+
+        .theme-toggle .icon-sun {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .theme-toggle .icon-moon {
+            transform: translateY(100%);
+            opacity: 0;
+        }
+
+        [data-theme="dark"] .theme-toggle .icon-sun {
+            transform: translateY(-100%);
+            opacity: 0;
+        }
+
+        [data-theme="dark"] .theme-toggle .icon-moon {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Filter Bar */
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            overflow-x: auto;
+            padding-bottom: var(--space-1);
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .filter-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-pill {
+            flex-shrink: 0;
+            padding: var(--space-2) var(--space-4);
+            font-family: var(--font-sans);
+            font-size: 0.75rem;
+            font-weight: 400;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            background: transparent;
+            border: 1px solid var(--divider);
+            border-radius: 100px;
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out);
+            white-space: nowrap;
+        }
+
+        .filter-pill:hover {
+            border-color: var(--accent-subtle);
+            color: var(--text-secondary);
+        }
+
+        .filter-pill.active {
+            background: var(--text-primary);
+            border-color: var(--text-primary);
+            color: var(--bg);
+        }
+
+        [data-theme="dark"] .filter-pill.active {
+            background: var(--text-primary);
+            border-color: var(--text-primary);
+            color: var(--bg);
+        }
+
+        .filter-pill svg {
+            width: 10px;
+            height: 10px;
+            margin-left: var(--space-1);
+            vertical-align: middle;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           MAIN CONTENT
+           ═══════════════════════════════════════════════════════════ */
+
+        .main {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: calc(160px + var(--space-8)) var(--space-6) var(--space-12);
+        }
+
+        .collection-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            margin-bottom: var(--space-8);
+        }
+
+        .collection-title {
+            font-family: var(--font-serif);
+            font-size: 1.25rem;
+            font-weight: 400;
+            color: var(--text-secondary);
+            letter-spacing: 0.02em;
+        }
+
+        .collection-count {
+            font-family: var(--font-sans);
+            font-size: 0.8125rem;
+            color: var(--text-tertiary);
+            letter-spacing: 0.02em;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           WINE CARDS
+           ═══════════════════════════════════════════════════════════ */
+
+        .wine-grid {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-4);
+        }
+
+        .wine-card {
+            position: relative;
+            display: flex;
+            gap: var(--space-6);
+            padding: var(--space-6);
+            background: var(--surface);
+            border: 1px solid var(--divider-subtle);
+            border-radius: 8px;
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
+            transition: all 0.4s var(--ease-out);
+            opacity: 0;
+            transform: translateY(16px);
+            animation: fadeInUp 0.7s var(--ease-out) forwards;
+        }
+
+        .wine-card:nth-child(1) { animation-delay: 0.05s; }
+        .wine-card:nth-child(2) { animation-delay: 0.12s; }
+        .wine-card:nth-child(3) { animation-delay: 0.19s; }
+        .wine-card:nth-child(4) { animation-delay: 0.26s; }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .wine-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--divider);
+        }
+
+        [data-theme="dark"] .wine-card {
+            background: var(--surface);
+            border-color: var(--divider);
+        }
+
+        [data-theme="dark"] .wine-card:hover {
+            background: var(--surface-raised);
+            border-color: var(--accent-muted);
+        }
+
+        /* Wine Image */
+        .wine-image-container {
+            flex-shrink: 0;
+            width: 120px;
+            height: 160px;
+            border: 1px solid var(--divider);
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-subtle);
+            transition: var(--theme-transition);
+        }
+
+        .wine-image-placeholder {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                160deg,
+                var(--bg-subtle) 0%,
+                var(--divider-subtle) 100%
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .wine-image-placeholder svg {
+            width: 40px;
+            height: 40px;
+            stroke: var(--accent-muted);
+            stroke-width: 1;
+            fill: none;
+        }
+
+        /* Wine Details */
+        .wine-details {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .wine-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: var(--space-4);
+            margin-bottom: var(--space-1);
+        }
+
+        .wine-name {
+            font-family: var(--font-serif);
+            font-size: 1.5rem;
+            font-weight: 400;
+            color: var(--text-primary);
+            letter-spacing: 0;
+            line-height: 1.25;
+        }
+
+        .wine-year {
+            flex-shrink: 0;
+            font-family: var(--font-sans);
+            font-size: 0.875rem;
+            font-weight: 300;
+            color: var(--text-tertiary);
+            padding-top: 0.4rem;
+        }
+
+        /* Understated Divider - a whisper, not a statement */
+        .wine-divider {
+            width: 40px;
+            height: 1px;
+            background: var(--accent-subtle);
+            margin: var(--space-3) 0;
+            transition: width 0.4s var(--ease-out), background 0.3s var(--ease-out);
+        }
+
+        .wine-card:hover .wine-divider {
+            width: 56px;
+        }
+
+        /* Producer & Location */
+        .wine-producer {
+            font-family: var(--font-sans);
+            font-size: 0.9375rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-1);
+        }
+
+        .wine-location {
+            font-family: var(--font-sans);
+            font-size: 0.8125rem;
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .wine-flag {
+            font-size: 0.9rem;
+            line-height: 1;
+            opacity: 0.8;
+        }
+
+        /* Wine Meta (Bottles & Rating) */
+        .wine-meta {
+            display: flex;
+            align-items: center;
+            gap: var(--space-5);
+            margin-top: auto;
+            padding-top: var(--space-4);
+        }
+
+        /* Bottle Indicators - refined silhouettes */
+        .bottle-indicators {
+            display: flex;
+            align-items: flex-end;
+            gap: 3px;
+        }
+
+        .bottle-icon {
+            fill: var(--accent);
+            opacity: 0.7;
+            transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+        }
+
+        .bottle-icon:hover {
+            opacity: 1;
+            transform: translateY(-1px);
+        }
+
+        .bottle-icon.large { width: 9px; height: 30px; }
+        .bottle-icon.standard { width: 7px; height: 22px; }
+        .bottle-icon.small { width: 5px; height: 14px; }
+
+        /* Rating - subtle */
+        .wine-rating {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-family: var(--font-sans);
+            font-size: 0.8125rem;
+            color: var(--text-tertiary);
+        }
+
+        .rating-value {
+            font-weight: 400;
+            color: var(--text-secondary);
+        }
+
+        .rating-dot {
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+            background: var(--accent);
+            opacity: 0.6;
+        }
+
+        /* Wine Type Badge - almost invisible */
+        .wine-type {
+            position: absolute;
+            top: var(--space-4);
+            right: var(--space-4);
+            font-family: var(--font-sans);
+            font-size: 0.625rem;
+            font-weight: 400;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            padding: var(--space-1) var(--space-3);
+            border: 1px solid var(--divider);
+            border-radius: 100px;
+            background: var(--surface);
+            transition: var(--theme-transition);
+        }
+
+        /* Action Buttons */
+        .wine-actions {
+            position: absolute;
+            bottom: var(--space-4);
+            right: var(--space-4);
+            display: flex;
+            gap: var(--space-2);
+            opacity: 0;
+            transform: translateY(6px);
+            transition: all 0.25s var(--ease-out);
+        }
+
+        .wine-card:hover .wine-actions {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .action-btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--divider);
+            border-radius: 50%;
+            background: var(--surface);
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        .action-btn:hover {
+            border-color: var(--text-tertiary);
+            background: var(--text-primary);
+        }
+
+        .action-btn svg {
+            width: 14px;
+            height: 14px;
+            stroke: var(--text-tertiary);
+            stroke-width: 1.5;
+            fill: none;
+            transition: stroke 0.2s var(--ease-out);
+        }
+
+        .action-btn:hover svg {
+            stroke: var(--bg);
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           EXPANDED CONTENT
+           ═══════════════════════════════════════════════════════════ */
+
+        .wine-expanded {
+            display: none;
+            width: 100%;
+            padding-top: var(--space-5);
+            border-top: 1px solid var(--divider-subtle);
+            margin-top: var(--space-5);
+            animation: expandIn 0.35s var(--ease-out);
+        }
+
+        @keyframes expandIn {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .wine-card.expanded .wine-expanded {
+            display: block;
+        }
+
+        .wine-card.expanded {
+            flex-wrap: wrap;
+        }
+
+        .expanded-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-6);
+        }
+
+        .expanded-section h4 {
+            font-family: var(--font-sans);
+            font-size: 0.625rem;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-3);
+        }
+
+        .expanded-section p {
+            font-family: var(--font-serif);
+            font-size: 0.9375rem;
+            font-weight: 400;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           RESPONSIVE
+           ═══════════════════════════════════════════════════════════ */
+
+        @media (max-width: 768px) {
+            .header-inner {
+                padding: var(--space-4);
+            }
+
+            .main {
+                padding: calc(140px + var(--space-6)) var(--space-4) var(--space-8);
+            }
+
+            .wine-card {
+                flex-direction: column;
+                padding: var(--space-5);
+            }
+
+            .wine-image-container {
+                width: 100%;
+                height: 180px;
+            }
+
+            .wine-name {
+                font-size: 1.375rem;
+            }
+
+            .wine-actions {
+                opacity: 1;
+                transform: translateY(0);
+                position: static;
+                margin-top: var(--space-4);
+                justify-content: flex-start;
+            }
+
+            .expanded-grid {
+                grid-template-columns: 1fr;
+                gap: var(--space-4);
+            }
+
+            .wine-type {
+                position: static;
+                display: inline-block;
+                margin-bottom: var(--space-3);
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           VIEW TOGGLE
+           ═══════════════════════════════════════════════════════════ */
+
+        .view-toggle {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            padding: 3px;
+            background: var(--bg-subtle);
+            border-radius: 10px;
+            border: 1px solid var(--divider);
+        }
+
+        .view-btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        .view-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-tertiary);
+            stroke-width: 1.5;
+            fill: none;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        /* Grid icon uses fill instead of stroke */
+        .view-btn[data-view="compact"] svg {
+            stroke: none;
+            fill: var(--text-tertiary);
+        }
+
+        .view-btn:hover {
+            background: var(--surface);
+        }
+
+        .view-btn:hover svg {
+            stroke: var(--text-secondary);
+        }
+
+        .view-btn[data-view="compact"]:hover svg {
+            stroke: none;
+            fill: var(--text-secondary);
+        }
+
+        .view-btn.active {
+            background: var(--surface);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .view-btn.active svg {
+            stroke: var(--text-primary);
+        }
+
+        .view-btn[data-view="compact"].active svg {
+            stroke: none;
+            fill: var(--text-primary);
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           BOTTLE COUNT (for compact view)
+           ═══════════════════════════════════════════════════════════ */
+
+        .bottle-count {
+            display: none;
+            font-family: var(--font-sans);
+            font-size: 0.6875rem;
+            color: var(--text-tertiary);
+            letter-spacing: 0.02em;
+        }
+
+        .bottle-count::after {
+            content: " btl";
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           COMPACT/GRID VIEW
+           ═══════════════════════════════════════════════════════════ */
+
+        /* Medium view (default - current design) */
+        .wine-grid.view-medium {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-4);
+        }
+
+        /* Compact view - grid layout */
+        .wine-grid.view-compact {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: var(--space-4);
+        }
+
+        /* Compact card styling */
+        .view-compact .wine-card {
+            flex-direction: column;
+            padding: var(--space-3);
+            gap: var(--space-2);
+        }
+
+        /* Compact image - smaller, full width */
+        .view-compact .wine-image-container {
+            width: 100%;
+            height: 100px;
+        }
+
+        /* Hide elements in compact view */
+        .view-compact .wine-divider,
+        .view-compact .wine-producer,
+        .view-compact .wine-location,
+        .view-compact .wine-expanded,
+        .view-compact .wine-actions,
+        .view-compact .wine-type,
+        .view-compact .bottle-indicators {
+            display: none !important;
+        }
+
+        /* Show bottle count in compact view */
+        .view-compact .bottle-count {
+            display: inline;
+        }
+
+        /* Compact wine details */
+        .view-compact .wine-details {
+            gap: var(--space-1);
+        }
+
+        /* Compact header - stack vertically */
+        .view-compact .wine-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0;
+            margin-bottom: 0;
+        }
+
+        /* Compact wine name - smaller, truncated */
+        .view-compact .wine-name {
+            font-size: 0.875rem;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Compact year */
+        .view-compact .wine-year {
+            font-size: 0.6875rem;
+            padding-top: 0;
+        }
+
+        /* Compact meta */
+        .view-compact .wine-meta {
+            padding-top: var(--space-2);
+            gap: var(--space-3);
+        }
+
+        /* Compact rating */
+        .view-compact .wine-rating {
+            font-size: 0.6875rem;
+        }
+
+        .view-compact .rating-dot {
+            width: 2px;
+            height: 2px;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           COMPACT VIEW - RESPONSIVE
+           ═══════════════════════════════════════════════════════════ */
+
+        @media (min-width: 1200px) {
+            .wine-grid.view-compact {
+                grid-template-columns: repeat(6, 1fr);
+            }
+        }
+
+        @media (min-width: 992px) and (max-width: 1199px) {
+            .wine-grid.view-compact {
+                grid-template-columns: repeat(5, 1fr);
+            }
+        }
+
+        @media (min-width: 768px) and (max-width: 991px) {
+            .wine-grid.view-compact {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (min-width: 480px) and (max-width: 767px) {
+            .wine-grid.view-compact {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 479px) {
+            .wine-grid.view-compact {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .view-compact .wine-name {
+                font-size: 0.8125rem;
+            }
+
+            .view-compact .wine-image-container {
+                height: 80px;
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           EXPANDED CARD IN COMPACT VIEW
+           ═══════════════════════════════════════════════════════════ */
+
+        .view-compact .wine-card.expanded {
+            grid-column: 1 / -1;
+            flex-direction: row;
+            padding: var(--space-6);
+            gap: var(--space-6);
+        }
+
+        /* Show hidden elements when expanded in compact view */
+        .view-compact .wine-card.expanded .wine-divider {
+            display: block !important;
+        }
+
+        .view-compact .wine-card.expanded .wine-producer,
+        .view-compact .wine-card.expanded .wine-location {
+            display: flex !important;
+        }
+
+        .view-compact .wine-card.expanded .wine-expanded {
+            display: block !important;
+        }
+
+        .view-compact .wine-card.expanded .wine-actions {
+            display: flex !important;
+            opacity: 1;
+        }
+
+        .view-compact .wine-card.expanded .wine-type {
+            display: inline-block !important;
+        }
+
+        .view-compact .wine-card.expanded .bottle-indicators {
+            display: flex !important;
+        }
+
+        .view-compact .wine-card.expanded .bottle-count {
+            display: none !important;
+        }
+
+        /* Reset expanded card styles */
+        .view-compact .wine-card.expanded .wine-image-container {
+            width: 120px;
+            height: 160px;
+        }
+
+        .view-compact .wine-card.expanded .wine-name {
+            font-size: 1.5rem;
+            -webkit-line-clamp: unset;
+            overflow: visible;
+        }
+
+        .view-compact .wine-card.expanded .wine-header {
+            flex-direction: row;
+            align-items: flex-start;
+            gap: var(--space-4);
+            margin-bottom: var(--space-1);
+        }
+
+        .view-compact .wine-card.expanded .wine-year {
+            font-size: 0.875rem;
+            padding-top: 0.4rem;
+        }
+
+        .view-compact .wine-card.expanded .wine-meta {
+            padding-top: var(--space-4);
+            gap: var(--space-5);
+        }
+
+        .view-compact .wine-card.expanded .wine-rating {
+            font-size: 0.8125rem;
+        }
+
+        .view-compact .wine-card.expanded .rating-dot {
+            width: 3px;
+            height: 3px;
+        }
+
+        /* Expanded card on mobile in compact view */
+        @media (max-width: 768px) {
+            .view-compact .wine-card.expanded {
+                flex-direction: column;
+                padding: var(--space-5);
+            }
+
+            .view-compact .wine-card.expanded .wine-image-container {
+                width: 100%;
+                height: 180px;
+            }
+
+            .view-compact .wine-card.expanded .wine-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0;
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           VIEW TRANSITION ANIMATIONS
+           ═══════════════════════════════════════════════════════════ */
+
+        .wine-grid {
+            transition: gap 0.3s var(--ease-out);
+        }
+
+        .wine-card {
+            transition: all 0.3s var(--ease-out);
+        }
+
+        .wine-image-container {
+            transition: width 0.3s var(--ease-out), height 0.3s var(--ease-out);
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           SUBTLE DETAILS
+           ═══════════════════════════════════════════════════════════ */
+
+        ::selection {
+            background: var(--accent-muted);
+            color: var(--text-primary);
+        }
+
+        *:focus-visible {
+            outline: 1px solid var(--accent-subtle);
+            outline-offset: 2px;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body>
+    <!-- ═══════════════════════════════════════════════════════════
+         HEADER
+         ═══════════════════════════════════════════════════════════ -->
+    <header class="header" id="header">
+        <div class="header-inner">
+            <div class="header-top">
+                <a href="#" class="logo">Qvé</a>
+                <div class="header-actions">
+                    <button class="header-icon theme-toggle" id="themeToggle" title="Toggle theme">
+                        <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18">
+                            <circle cx="12" cy="12" r="5"/>
+                            <line x1="12" y1="1" x2="12" y2="3"/>
+                            <line x1="12" y1="21" x2="12" y2="23"/>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                            <line x1="1" y1="12" x2="3" y2="12"/>
+                            <line x1="21" y1="12" x2="23" y2="12"/>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                        </svg>
+                        <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        </svg>
+                    </button>
+                    <!-- View Toggle -->
+                    <div class="view-toggle" role="group" aria-label="View density">
+                        <button class="view-btn" data-view="compact" title="Grid view">
+                            <svg viewBox="0 0 24 24">
+                                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                                <rect x="14" y="14" width="7" height="7" rx="1"/>
+                            </svg>
+                        </button>
+                        <button class="view-btn active" data-view="medium" title="List view">
+                            <svg viewBox="0 0 24 24">
+                                <line x1="4" y1="6" x2="20" y2="6"/>
+                                <line x1="4" y1="12" x2="20" y2="12"/>
+                                <line x1="4" y1="18" x2="20" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <button class="header-icon" title="Search">
+                        <svg viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="7"/>
+                            <path d="M21 21l-4.35-4.35"/>
+                        </svg>
+                    </button>
+                    <button class="header-icon" title="Menu">
+                        <svg viewBox="0 0 24 24">
+                            <line x1="4" y1="6" x2="20" y2="6"/>
+                            <line x1="4" y1="12" x2="20" y2="12"/>
+                            <line x1="4" y1="18" x2="20" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="filter-bar">
+                <button class="filter-pill active">All</button>
+                <button class="filter-pill">Red</button>
+                <button class="filter-pill">White</button>
+                <button class="filter-pill">Sparkling</button>
+                <button class="filter-pill">Rosé</button>
+                <button class="filter-pill">
+                    Region
+                    <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <button class="filter-pill">
+                    Producer
+                    <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <button class="filter-pill">
+                    Vintage
+                    <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         MAIN CONTENT
+         ═══════════════════════════════════════════════════════════ -->
+    <main class="main">
+        <div class="collection-header">
+            <h1 class="collection-title">Collection</h1>
+            <span class="collection-count">4 wines · 11 bottles</span>
+        </div>
+
+        <div class="wine-grid view-medium">
+            <!-- Wine Card 1: Clos des Papes -->
+            <article class="wine-card" onclick="toggleExpand(this)">
+                <span class="wine-type">Red</span>
+                <div class="wine-image-container">
+                    <div class="wine-image-placeholder">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M8 2h8l1 8c0 3.5-2.5 6-5 6s-5-2.5-5-6l1-8z"/>
+                            <line x1="12" y1="16" x2="12" y2="22"/>
+                            <line x1="8" y1="22" x2="16" y2="22"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="wine-details">
+                    <div class="wine-header">
+                        <h2 class="wine-name">Clos des Papes</h2>
+                        <span class="wine-year">2019</span>
+                    </div>
+                    <div class="wine-divider"></div>
+                    <p class="wine-producer">Châteauneuf-du-Pape · Clos des Papes</p>
+                    <p class="wine-location">
+                        <span>Rhône, France</span>
+                        <span class="wine-flag">🇫🇷</span>
+                    </p>
+                    <div class="wine-meta">
+                        <div class="bottle-indicators" title="2 Standard, 1 Magnum">
+                            <svg class="bottle-icon large" viewBox="0 0 10 32">
+                                <path d="M3 0h4v3c2 1 3 3 3 6v20c0 2-1 3-3 3H3c-2 0-3-1-3-3V9c0-3 1-5 3-6V0z"/>
+                            </svg>
+                            <svg class="bottle-icon standard" viewBox="0 0 8 24">
+                                <path d="M2.5 0h3v2.5c1.5 0.8 2.5 2 2.5 4.5v14c0 1.5-1 3-2.5 3h-3c-1.5 0-2.5-1.5-2.5-3V7c0-2.5 1-3.7 2.5-4.5V0z"/>
+                            </svg>
+                            <svg class="bottle-icon standard" viewBox="0 0 8 24">
+                                <path d="M2.5 0h3v2.5c1.5 0.8 2.5 2 2.5 4.5v14c0 1.5-1 3-2.5 3h-3c-1.5 0-2.5-1.5-2.5-3V7c0-2.5 1-3.7 2.5-4.5V0z"/>
+                            </svg>
+                        </div>
+                        <span class="bottle-count">3</span>
+                        <div class="wine-rating">
+                            <span class="rating-dot"></span>
+                            <span class="rating-value">8.5</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="wine-actions">
+                    <button class="action-btn" title="Drink">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M8 2h8l1 5c.5 4-2 7-5 7s-5.5-3-5-7l1-5z"/>
+                            <line x1="12" y1="14" x2="12" y2="22"/>
+                            <circle cx="12" cy="18" r="3"/>
+                        </svg>
+                    </button>
+                    <button class="action-btn" title="Add">
+                        <svg viewBox="0 0 24 24">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                    </button>
+                    <button class="action-btn" title="Edit">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="wine-expanded">
+                    <div class="expanded-grid">
+                        <div class="expanded-section">
+                            <h4>Description</h4>
+                            <p>A legendary estate producing one of the most consistently excellent Châteauneuf-du-Papes. Deep garnet with extraordinary complexity.</p>
+                        </div>
+                        <div class="expanded-section">
+                            <h4>Tasting Notes</h4>
+                            <p>Dark fruits, garrigue herbs, and subtle spice. Velvety tannins with a long finish of black cherry and lavender.</p>
+                        </div>
+                        <div class="expanded-section">
+                            <h4>Pairing</h4>
+                            <p>Braised lamb shoulder, wild boar ragù, aged comté, roasted duck with cherry reduction.</p>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Wine Card 2: Krug Grande Cuvée -->
+            <article class="wine-card" onclick="toggleExpand(this)">
+                <span class="wine-type">Sparkling</span>
+                <div class="wine-image-container">
+                    <div class="wine-image-placeholder">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M8 2h8l1 8c0 3.5-2.5 6-5 6s-5-2.5-5-6l1-8z"/>
+                            <line x1="12" y1="16" x2="12" y2="22"/>
+                            <line x1="8" y1="22" x2="16" y2="22"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="wine-details">
+                    <div class="wine-header">
+                        <h2 class="wine-name">Krug Grande Cuvée</h2>
+                        <span class="wine-year">171ème</span>
+                    </div>
+                    <div class="wine-divider"></div>
+                    <p class="wine-producer">Champagne · Krug</p>
+                    <p class="wine-location">
+                        <span>Champagne, France</span>
+                        <span class="wine-flag">🇫🇷</span>
+                    </p>
+                    <div class="wine-meta">
+                        <div class="bottle-indicators" title="1 Standard">
+                            <svg class="bottle-icon standard" viewBox="0 0 8 24">
+                                <path d="M2.5 0h3v2.5c1.5 0.8 2.5 2 2.5 4.5v14c0 1.5-1 3-2.5 3h-3c-1.5 0-2.5-1.5-2.5-3V7c0-2.5 1-3.7 2.5-4.5V0z"/>
+                            </svg>
+                        </div>
+                        <span class="bottle-count">1</span>
+                        <div class="wine-rating">
+                            <span class="rating-dot"></span>
+                            <span class="rating-value">9.2</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="wine-actions">
+                    <button class="action-btn" title="Drink">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M8 2h8l1 5c.5 4-2 7-5 7s-5.5-3-5-7l1-5z"/>
+                            <line x1="12" y1="14" x2="12" y2="22"/>
+                            <circle cx="12" cy="18" r="3"/>
+                        </svg>
+                    </button>
+                    <button class="action-btn" title="Add">
+                        <svg viewBox="0 0 24 24">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                    </button>
+                    <button class="action-btn" title="Edit">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="wine-expanded">
+                    <div class="expanded-grid">
+                        <div class="expanded-section">
+                            <h4>Description</h4>
+                            <p>The flagship multi-vintage champagne from Krug. Each edition blends over 120 wines from more than 10 vintages.</p>
+                        </div>
+                        <div class="expanded-section">
+                            <h4>Tasting Notes</h4>
+                            <p>Toasted brioche, hazelnuts, citrus zest. Fine bubbles with layers of almond, honey, and white flowers.</p>
+                        </div>
+                        <div class="expanded-section">
+                            <h4>Pairing</h4>
+                            <p>Oysters, seared scallops, truffle risotto, or simply on its own for contemplation.</p>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Wine Card 3: Penfolds Grange -->
+            <article class="wine-card" onclick="toggleExpand(this)">
+                <span class="wine-type">Red</span>
+                <div class="wine-image-container">
+                    <div class="wine-image-placeholder">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M8 2h8l1 8c0 3.5-2.5 6-5 6s-5-2.5-5-6l1-8z"/>
+                            <line x1="12" y1="16" x2="12" y2="22"/>
+                            <line x1="8" y1="22" x2="16" y2="22"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="wine-details">
+                    <div class="wine-header">
+                        <h2 class="wine-name">Penfolds Grange</h2>
+                        <span class="wine-year">2018</span>
+                    </div>
+                    <div class="wine-divider"></div>
+                    <p class="wine-producer">South Australia · Penfolds</p>
+                    <p class="wine-location">
+                        <span>Barossa Valley, Australia</span>
+                        <span class="wine-flag">🇦🇺</span>
+                    </p>
+                    <div class="wine-meta">
+                        <div class="bottle-indicators" title="1 Magnum, 1 Jeroboam">
+                            <svg class="bottle-icon large" viewBox="0 0 10 32" style="height: 36px;">
+                                <path d="M3 0h4v3c2 1 3 3 3 6v20c0 2-1 3-3 3H3c-2 0-3-1-3-3V9c0-3 1-5 3-6V0z"/>
+                            </svg>
+                            <svg class="bottle-icon large" viewBox="0 0 10 32">
+                                <path d="M3 0h4v3c2 1 3 3 3 6v20c0 2-1 3-3 3H3c-2 0-3-1-3-3V9c0-3 1-5 3-6V0z"/>
+                            </svg>
+                        </div>
+                        <span class="bottle-count">2</span>
+                        <div class="wine-rating">
+                            <span style="color: var(--text-tertiary); font-style: italic; font-size: 0.75rem;">Unrated</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="wine-actions">
+                    <button class="action-btn" title="Drink">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M8 2h8l1 5c.5 4-2 7-5 7s-5.5-3-5-7l1-5z"/>
+                            <line x1="12" y1="14" x2="12" y2="22"/>
+                            <circle cx="12" cy="18" r="3"/>
+                        </svg>
+                    </button>
+                    <button class="action-btn" title="Add">
+                        <svg viewBox="0 0 24 24">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                    </button>
+                    <button class="action-btn" title="Edit">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="wine-expanded">
+                    <div class="expanded-grid">
+                        <div class="expanded-section">
+                            <h4>Description</h4>
+                            <p>Australia's most celebrated wine. A powerful, multi-regional Shiraz produced since 1951, embodying Australian winemaking.</p>
+                        </div>
+                        <div class="expanded-section">
+                            <h4>Tasting Notes</h4>
+                            <p>Intense blackberry, dark chocolate, American oak spice. Massive structure with decades of aging potential.</p>
+                        </div>
+                        <div class="expanded-section">
+                            <h4>Pairing</h4>
+                            <p>Wagyu beef, chargrilled kangaroo, aged cheddar, dark chocolate desserts.</p>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Wine Card 4: Cloudy Bay -->
+            <article class="wine-card" onclick="toggleExpand(this)">
+                <span class="wine-type">White</span>
+                <div class="wine-image-container">
+                    <div class="wine-image-placeholder">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M8 2h8l1 8c0 3.5-2.5 6-5 6s-5-2.5-5-6l1-8z"/>
+                            <line x1="12" y1="16" x2="12" y2="22"/>
+                            <line x1="8" y1="22" x2="16" y2="22"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="wine-details">
+                    <div class="wine-header">
+                        <h2 class="wine-name">Cloudy Bay</h2>
+                        <span class="wine-year">2023</span>
+                    </div>
+                    <div class="wine-divider"></div>
+                    <p class="wine-producer">Sauvignon Blanc · Cloudy Bay</p>
+                    <p class="wine-location">
+                        <span>Marlborough, New Zealand</span>
+                        <span class="wine-flag">🇳🇿</span>
+                    </p>
+                    <div class="wine-meta">
+                        <div class="bottle-indicators" title="3 Standard, 1 Demi">
+                            <svg class="bottle-icon standard" viewBox="0 0 8 24">
+                                <path d="M2.5 0h3v2.5c1.5 0.8 2.5 2 2.5 4.5v14c0 1.5-1 3-2.5 3h-3c-1.5 0-2.5-1.5-2.5-3V7c0-2.5 1-3.7 2.5-4.5V0z"/>
+                            </svg>
+                            <svg class="bottle-icon standard" viewBox="0 0 8 24">
+                                <path d="M2.5 0h3v2.5c1.5 0.8 2.5 2 2.5 4.5v14c0 1.5-1 3-2.5 3h-3c-1.5 0-2.5-1.5-2.5-3V7c0-2.5 1-3.7 2.5-4.5V0z"/>
+                            </svg>
+                            <svg class="bottle-icon standard" viewBox="0 0 8 24">
+                                <path d="M2.5 0h3v2.5c1.5 0.8 2.5 2 2.5 4.5v14c0 1.5-1 3-2.5 3h-3c-1.5 0-2.5-1.5-2.5-3V7c0-2.5 1-3.7 2.5-4.5V0z"/>
+                            </svg>
+                            <svg class="bottle-icon small" viewBox="0 0 6 16">
+                                <path d="M2 0h2v1.5c1 0.5 2 1.5 2 3v9.5c0 1-0.5 2-1.5 2h-3c-1 0-1.5-1-1.5-2V4.5c0-1.5 1-2.5 2-3V0z"/>
+                            </svg>
+                        </div>
+                        <span class="bottle-count">4</span>
+                        <div class="wine-rating">
+                            <span class="rating-dot"></span>
+                            <span class="rating-value">7.8</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="wine-actions">
+                    <button class="action-btn" title="Drink">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M8 2h8l1 5c.5 4-2 7-5 7s-5.5-3-5-7l1-5z"/>
+                            <line x1="12" y1="14" x2="12" y2="22"/>
+                            <circle cx="12" cy="18" r="3"/>
+                        </svg>
+                    </button>
+                    <button class="action-btn" title="Add">
+                        <svg viewBox="0 0 24 24">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                    </button>
+                    <button class="action-btn" title="Edit">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="wine-expanded">
+                    <div class="expanded-grid">
+                        <div class="expanded-section">
+                            <h4>Description</h4>
+                            <p>The wine that put New Zealand Sauvignon Blanc on the world stage. Crisp, vibrant, instantly recognizable.</p>
+                        </div>
+                        <div class="expanded-section">
+                            <h4>Tasting Notes</h4>
+                            <p>Passion fruit, grapefruit zest, fresh-cut grass. Bright acidity with a clean, refreshing finish.</p>
+                        </div>
+                        <div class="expanded-section">
+                            <h4>Pairing</h4>
+                            <p>Fresh oysters, goat cheese salad, grilled prawns, Thai green curry.</p>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </main>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         SCRIPTS
+         ═══════════════════════════════════════════════════════════ -->
+    <script>
+        // Theme handling
+        const html = document.documentElement;
+        const themeToggle = document.getElementById('themeToggle');
+
+        // Check for saved preference or system preference
+        const savedTheme = localStorage.getItem('qve-theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        if (savedTheme) {
+            html.setAttribute('data-theme', savedTheme);
+        } else if (systemPrefersDark) {
+            html.setAttribute('data-theme', 'dark');
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('qve-theme', newTheme);
+        });
+
+        // View mode controller
+        const ViewModeController = {
+            STORAGE_KEY: 'qve-view-mode',
+            DEFAULT_VIEW: 'medium',
+
+            init() {
+                this.grid = document.querySelector('.wine-grid');
+                this.buttons = document.querySelectorAll('.view-btn');
+
+                // Load saved preference
+                const savedView = localStorage.getItem(this.STORAGE_KEY) || this.DEFAULT_VIEW;
+                this.setView(savedView, false);
+
+                // Bind click handlers
+                this.buttons.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const view = btn.dataset.view;
+                        this.setView(view, true);
+                    });
+                });
+            },
+
+            setView(viewMode, animate = true) {
+                // Update button states
+                this.buttons.forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.view === viewMode);
+                });
+
+                // Apply view class
+                this.grid.classList.remove('view-compact', 'view-medium');
+                this.grid.classList.add(`view-${viewMode}`);
+
+                // Close expanded cards when switching to compact
+                if (viewMode === 'compact') {
+                    document.querySelectorAll('.wine-card.expanded').forEach(card => {
+                        card.classList.remove('expanded');
+                    });
+                }
+
+                // Save preference
+                localStorage.setItem(this.STORAGE_KEY, viewMode);
+            }
+        };
+
+        // Initialize view mode controller
+        ViewModeController.init();
+
+        // Header scroll effect
+        const header = document.getElementById('header');
+        window.addEventListener('scroll', () => {
+            header.classList.toggle('scrolled', window.scrollY > 10);
+        });
+
+        // Filter pill toggle
+        document.querySelectorAll('.filter-pill').forEach(pill => {
+            pill.addEventListener('click', (e) => {
+                if (!pill.querySelector('svg')) {
+                    document.querySelectorAll('.filter-pill').forEach(p => {
+                        if (!p.querySelector('svg')) p.classList.remove('active');
+                    });
+                    pill.classList.add('active');
+                }
+            });
+        });
+
+        // Card expand/collapse
+        function toggleExpand(card) {
+            if (event.target.closest('.action-btn')) return;
+
+            const wasExpanded = card.classList.contains('expanded');
+
+            document.querySelectorAll('.wine-card').forEach(c => {
+                c.classList.remove('expanded');
+            });
+
+            if (!wasExpanded) {
+                card.classList.add('expanded');
+            }
+        }
+
+        // Action button feedback
+        document.querySelectorAll('.action-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                btn.style.transform = 'scale(0.92)';
+                setTimeout(() => btn.style.transform = '', 120);
+            });
+        });
+    </script>
+</body>
+</html>
