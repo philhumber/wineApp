@@ -1,6 +1,6 @@
 # Wine Collection App - Development Guide
 
-**Last Updated**: 2026-01-13
+**Last Updated**: 2026-01-16
 **Status**: Phase 1 Complete, Sprint 1-2 Complete ✅, Sprint 3 In Progress
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
@@ -23,11 +23,12 @@
 1. **Phase 1 refactoring is COMPLETE** - 17 ES6 modules, fully tested
 2. **Qvé Migration Plan APPROVED** - See `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
 3. **Sprint 3 first, then Qvé** - Complete remaining Sprint 3 items before migration
-4. **Old wineapp.js should NOT be loaded** - causes conflicts
-5. **New toast.js module** - Lightweight notification system added
-6. **View Mode system** - OURS/ALL/CLEAR buttons with viewMode state for filtering
-7. **Qvé Rebrand mockup COMPLETE** - Design work in `design/qve-rebrand/` folder
-8. **PHP backend is reusable** - New Svelte frontend will use existing PHP API unchanged
+4. **GitHub branching strategy DOCUMENTED** - See [docs/06-reference/GITHUB_SETUP_PLAN.md](docs/06-reference/GITHUB_SETUP_PLAN.md) and [CONTRIBUTING.md](CONTRIBUTING.md)
+5. **Old wineapp.js should NOT be loaded** - causes conflicts
+6. **New toast.js module** - Lightweight notification system added
+7. **View Mode system** - OURS/ALL/CLEAR buttons with viewMode state for filtering
+8. **Qvé Rebrand mockup COMPLETE** - Design work in `design/qve-rebrand/` folder
+9. **PHP backend is reusable** - New Svelte frontend will use existing PHP API unchanged
 
 ### Key Commands
 ```bash
@@ -1492,6 +1493,8 @@ Instead of incrementally updating the existing app, we're building a **new Svelt
 - **Phase 1 Report**: [docs/04-sprints/phase1/PHASE1_TESTING_REPORT.md](docs/04-sprints/phase1/PHASE1_TESTING_REPORT.md)
 - **Sprint 1 Summary**: [docs/04-sprints/sprint-01/SPRINT1_SUMMARY.md](docs/04-sprints/sprint-01/SPRINT1_SUMMARY.md) - Critical bug fixes (2026-01-12)
 - **📁 Documentation Organization**: [docs/06-reference/DOCUMENTATION_ORGANIZATION_GUIDE.md](docs/06-reference/DOCUMENTATION_ORGANIZATION_GUIDE.md) - Organizational guide
+- **🌿 GitHub Setup Plan**: [docs/06-reference/GITHUB_SETUP_PLAN.md](docs/06-reference/GITHUB_SETUP_PLAN.md) - Complete branching strategy
+- **🤝 Contributing Guide**: [CONTRIBUTING.md](CONTRIBUTING.md) - PR workflow and code style
 
 ### Design & Migration
 - **Qvé Migration Plan**: `C:\Users\Phil\.claude\plans\recursive-petting-cat.md` - Full implementation plan
