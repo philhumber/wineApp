@@ -1,6 +1,6 @@
 # Wine Collection App - Quick Start Guide
 
-**Last Updated**: 2026-01-16
+**Last Updated**: 2026-01-17
 **Status**: Phase 1 Complete ✅ | Sprint 1-2 Complete ✅ | Sprint 3 In Progress 🟡
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
@@ -17,13 +17,13 @@
 |--------|--------|-------|
 | Sprint 1 | ✅ COMPLETE | Critical bug fixes (WIN-87, WIN-86, WIN-66, WIN-93) |
 | Sprint 2 | ✅ COMPLETE | UX improvements (toast, filters, scroll, view mode) |
-| Sprint 3 | 🟡 IN PROGRESS | Features: WIN-88, WIN-84, WIN-38, WIN-43 remaining |
+| Sprint 3 | 🟡 IN PROGRESS | Features: WIN-84, WIN-38, WIN-43 remaining |
 | Qvé Migration | 📋 PLANNED | Svelte/SvelteKit PWA - plan approved |
 
 ### What You Need to Know
 
 1. **✅ Phase 1 Complete** - 16 ES6 modules, old `wineapp.js` deprecated (DO NOT LOAD)
-2. **🟡 Sprint 3 Active** - 4 remaining issues before Qvé migration
+2. **🟡 Sprint 3 Active** - 3 remaining issues before Qvé migration
 3. **✅ GitHub Setup Complete** - Repo at `philhumber/wineApp` with 4-branch workflow
 4. **✅ Credentials Secured** - All credentials in `../wineapp-config/config.local.php` (outside web root)
 5. **📋 Qvé Plan Ready** - Full plan at `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
@@ -149,11 +149,12 @@ resources/php/
 
 ### Making Changes
 
-1. **Read files first** - Never modify code you haven't read
-2. **Follow existing patterns** - Maintain consistency with modular architecture
-3. **Test thoroughly** - Run 10-point regression test (see [docs/03-testing/TESTING_GUIDE.md](docs/03-testing/TESTING_GUIDE.md))
-4. **Update JIRA** - Mark issues as Done when complete
-5. **Update docs** - Update CLAUDE.md or relevant sprint docs if needed
+1. **Create a feature branch** - Always create a branch from `develop` before starting work: `git checkout develop && git pull origin develop && git checkout -b feature/WIN-XX-description`
+2. **Read files first** - Never modify code you haven't read
+3. **Follow existing patterns** - Maintain consistency with modular architecture
+4. **Test thoroughly** - Run 10-point regression test (see [docs/03-testing/TESTING_GUIDE.md](docs/03-testing/TESTING_GUIDE.md))
+5. **Update JIRA** - Mark issues as Done when complete
+6. **Update docs** - Update CLAUDE.md or relevant sprint docs if needed
 
 ### Common Pitfalls to Avoid
 
@@ -170,11 +171,7 @@ resources/php/
 
 ## Current Sprint Work
 
-### Sprint 3 Remaining Issues (4 issues)
-
-**WIN-88: Show price value on wine card**
-- Display $ to $$$$$ scale based on collection average
-- Files: `getWines.php`, `cards.js`, `wineapp.css`
+### Sprint 3 Remaining Issues (3 issues)
 
 **WIN-84: Add purchase date field**
 - Note: `bottles.dateAdded` field already exists in DB!
@@ -188,7 +185,8 @@ resources/php/
 - Fun text during AI loading ("Searching cellars...", "Tasting vintages...")
 - Files: `ai-integration.js`
 
-### Sprint 3 Completed (4 issues) ✅
+### Sprint 3 Completed (5 issues) ✅
+- WIN-88: Price scale on wine cards ($ to $$$$$, per-liter comparison, by bottle size) ✅
 - WIN-95: Picture upload (800x800px, edge-sampled backgrounds) ✅
 - WIN-27: Right-click context menu ✅
 - WIN-96: Card collapse scroll behavior ✅

@@ -153,6 +153,12 @@ export class WineCardRenderer {
 		// Bottle count and rating
 		this.renderBottleCount(card, wineItem);
 
+		// Price scale indicator
+		this.renderPriceScale(card, wineItem);
+
+		// Actual price in expanded view
+		this.renderActualPrice(card, wineItem);
+
 		// Country and flag
 		this.renderCountryFlag(card, wineItem);
 
@@ -196,6 +202,73 @@ export class WineCardRenderer {
 		addBottleIcons(wineItem.standardBottles || 0, 'bottleIcon');
 		addBottleIcons(wineItem.largeBottles || 0, 'bottleIconBig');
 		addBottleIcons(wineItem.smallBottles || 0, 'bottleIconSmall');
+	}
+
+	/**
+	 * Render price scale indicator ($ to $$$$$) on collapsed card
+	 * Compares wine's price to same wine type average (currency-normalized)
+	 * @param {Element} card - Wine card element
+	 * @param {object} wineItem - Wine data with avgPriceEUR and typeAvgPriceEUR
+	 */
+	renderPriceScale(card, wineItem) {
+		const el = card.querySelector('.priceScale');
+		if (!el) return;
+
+		// Use price per liter (EUR) for fair comparison across currencies and bottle sizes
+		const { avgPricePerLiterEUR, typeAvgPricePerLiterEUR } = wineItem;
+		if (!avgPricePerLiterEUR || !typeAvgPricePerLiterEUR || typeAvgPricePerLiterEUR === 0) {
+			// Show placeholder for consistent UI
+			el.textContent = '—';
+			el.className = 'priceScale priceScale-none';
+			el.title = 'No price data';
+			return;
+		}
+
+		const ratio = avgPricePerLiterEUR / typeAvgPricePerLiterEUR;
+		let scale;
+		if (ratio < 0.5) scale = 1;       // $ - Budget
+		else if (ratio < 0.8) scale = 2;  // $$ - Value
+		else if (ratio < 1.2) scale = 3;  // $$$ - Average
+		else if (ratio < 1.8) scale = 4;  // $$$$ - Premium
+		else scale = 5;                    // $$$$$ - Luxury
+
+		const labels = ['', 'Budget', 'Value', 'Average', 'Premium', 'Luxury'];
+		el.textContent = '$'.repeat(scale);
+		el.className = `priceScale priceScale-${scale}`;
+		el.title = labels[scale];
+	}
+
+	/**
+	 * Render actual price in expanded view, grouped by bottle size
+	 * @param {Element} card - Wine card element
+	 * @param {object} wineItem - Wine data with prices by size and currency
+	 */
+	renderActualPrice(card, wineItem) {
+		const el = card.querySelector('.winePrice');
+		if (!el) return;
+
+		const { standardPrice, magnumPrice, demiPrice, smallPrice, currency } = wineItem;
+		const curr = currency || 'GBP';
+
+		// Build price display by size
+		const prices = [];
+		if (standardPrice) prices.push(`Standard: ${formatPrice(standardPrice, curr)}`);
+		if (magnumPrice) prices.push(`Magnum: ${formatPrice(magnumPrice, curr)}`);
+		if (demiPrice) prices.push(`Half: ${formatPrice(demiPrice, curr)}`);
+		if (smallPrice) prices.push(`Small: ${formatPrice(smallPrice, curr)}`);
+
+		if (prices.length === 0) {
+			el.textContent = 'No price data';
+			return;
+		}
+
+		// If only one size, show just the price without label
+		if (prices.length === 1) {
+			const singlePrice = standardPrice || magnumPrice || demiPrice || smallPrice;
+			el.textContent = formatPrice(singlePrice, curr);
+		} else {
+			el.textContent = prices.join(' • ');
+		}
 	}
 
 	/**
