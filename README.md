@@ -3,7 +3,7 @@
 A personal wine collection management application with AI-powered data entry, bottle tracking, and rating system.
 
 **Last Updated**: 2026-01-18
-**Status**: Phase 1 Complete ✅ | Sprint 1-2 Complete ✅ | Sprint 3 In Progress 🟡
+**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Fix & Migrate Phase 🔧
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
 ---
@@ -503,15 +503,36 @@ All Issues Completed (9 total):
 - ✅ **WIN-NEW**: avgRating DECIMAL overflow fix
 - ✅ **WIN-105**: Price scale uses median instead of average (reduces outlier skew)
 
+### Post-Sprint Cleanup (2026-01-18)
+- ✅ **WIN-104**: Edit page tab counter reset
+- ✅ **WIN-105**: Median for price scale (moved to Done)
+- ✅ **WIN-27**: Right-click context menu (moved to Done)
+
+### Fix & Migrate Phase 🔧 ACTIVE
+
+**Current Plan**: Fix remaining bugs in current app, then start Qvé migration
+
+**Phase 1: Bug Fixes**
+- 🔧 **WIN-102**: Can't edit a wine with no bottles - TO DO
+
+**Phase 2: Qvé Migration** - Start after WIN-102
+
 ### Open JIRA Issues
 
-**Total**: 45 open issues across various priorities
+**Bugs** (1 issue):
+- WIN-102: Can't edit a wine with no bottles
 
-**High Priority** (4 issues):
-- WIN-80, WIN-70, WIN-79, WIN-34
+**Tasks - Will migrate to Qvé** (8 issues):
+- WIN-106, WIN-103, WIN-80, WIN-70, WIN-68, WIN-24, WIN-34, WIN-69
 
-**Medium Priority** (12 issues)
-**Low Priority** (25 issues)
+**Tasks - AI Features (Post-Migration)** (3 issues):
+- WIN-42, WIN-37, WIN-64
+
+**Tasks - Infrastructure** (3 issues):
+- WIN-97, WIN-78, WIN-65
+
+**In Progress (review status)** (3 issues):
+- WIN-79, WIN-67, WIN-57
 
 See JIRA board for complete list: https://philhumber.atlassian.net/jira/software/projects/WIN
 
@@ -519,39 +540,41 @@ See JIRA board for complete list: https://philhumber.atlassian.net/jira/software
 
 ## Roadmap
 
-### Short Term (Next 2-4 weeks)
+### Immediate: Fix & Migrate Phase
 
-1. **Create Qvé mockups** - Design Add Wine and Drink/Rate flows
-2. **Begin SvelteKit project** - Initialize Qvé migration
-3. **Implement core components** - Routing and base layout
+**Phase 1: Bug Fixes** (current app)
+1. Fix WIN-102: Can't edit a wine with no bottles
 
-### Medium Term (1-2 months)
+**Phase 2: Qvé Migration** (starts after Phase 1)
+1. Create Qvé mockups - Design Add Wine and Drink/Rate flows
+2. Begin SvelteKit project initialization
+3. Implement core components and routing
+4. Port remaining backlog features to new stack
+
+### Medium Term: Qvé Migration
 
 **Qvé Migration** - Full Svelte/SvelteKit PWA rebuild
 
 - **Plan**: `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
-- **Timeline**: 17-24 days
 - **Approach**: Build new app at `/qve/` alongside existing app
 - **Tech Stack**: Svelte/SvelteKit + Melt UI/Bits UI + existing PHP API
 - **Features**: PWA installable, offline support, dual themes
 
-**Phases**:
+**Migration Phases**:
 1. Phase 0: Complete mockups
 2. Phase 1: Initialize SvelteKit project
 3. Phase 2: API client + stores + PWA config
 4. Phase 3: Build UI components
 5. Phase 4: Implement page routes
-6. Phase 5: Port advanced features
-7. Phase 6: Testing and polish
-8. Phase 7: Deploy
 
-### Long Term (Phase 2+)
+### Post-Migration: AI Features
+- WIN-42: Build image recognition
+- WIN-37: Build AI chatbot (winebot)
+- WIN-64: Use structured output and grounding
 
-- **WIN-42**: Image recognition for wine labels
-- **WIN-37**: AI chatbot (winebot)
-- **WIN-32/31/30**: Producer and region info pages
-- **WIN-78**: Caching layer
-- **WIN-64**: Structured output with grounding
+### Long Term
+- WIN-32/31/30: Producer and region info pages
+- WIN-78: Caching layer
 
 ---
 

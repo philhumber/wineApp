@@ -1,7 +1,7 @@
 # Wine Collection App - Quick Start Guide
 
 **Last Updated**: 2026-01-18
-**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Migration Next 📋
+**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Fix & Migrate Phase 🔧
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
 > **💡 For comprehensive project information, see [README.md](README.md)**
@@ -18,15 +18,28 @@
 | Sprint 1 | ✅ COMPLETE | Critical bug fixes (WIN-87, WIN-86, WIN-66, WIN-93) |
 | Sprint 2 | ✅ COMPLETE | UX improvements (toast, filters, scroll, view mode) |
 | Sprint 3 | ✅ COMPLETE | Features (WIN-84 purchase date, WIN-38 upload, etc.) |
-| Qvé Migration | 📋 PLANNED | Svelte/SvelteKit PWA - plan approved |
+| Fix & Migrate | 🔧 ACTIVE | Fix remaining bugs, then start Qvé migration |
+
+### Current Plan: Fix & Migrate (Option A)
+
+**Phase 1: Quick Bug Fixes** (current app)
+1. ✅ WIN-104: Edit page tab counter reset - DONE
+2. ✅ WIN-105: Median for price scale - DONE
+3. ✅ WIN-27: Right-click menu popup - DONE
+4. 🔧 WIN-102: Can't edit a wine with no bottles - TO DO
+
+**Phase 2: Qvé Migration**
+- Start Svelte/SvelteKit PWA build
+- Implement remaining features in new stack
+- Defer AI features (WIN-37, WIN-42, WIN-64) to post-migration
 
 ### What You Need to Know
 
 1. **✅ Phase 1 Complete** - 17 ES6 modules, old `wineapp.js` deprecated (DO NOT LOAD)
-2. **✅ Sprint 3 Complete** - All feature work done, ready for Qvé migration
+2. **✅ Sprint 1-3 Complete** - Core app stable, ready for migration
 3. **✅ GitHub Setup Complete** - Repo at `philhumber/wineApp` with 3-branch workflow
 4. **✅ Credentials Secured** - All credentials in `../wineapp-config/` (outside web root)
-5. **📋 Qvé Migration Next** - Full plan at `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
+5. **🔧 Fix & Migrate Active** - Fix WIN-102, then start Qvé migration
 
 ### Critical Warnings
 
@@ -60,19 +73,15 @@ mysql -h 10.0.0.16 -u username -p winelist
 
 ### JIRA API Access
 
-Use the **WebFetch** tool to query JIRA issues:
-```
-WebFetch URL: https://philhumber.atlassian.net/jira/software/projects/WIN/board
-Prompt: "List all open issues in the current sprint"
-```
-
-For REST API queries, Claude Code can use WebFetch with the search endpoint:
-```
-WebFetch URL: https://philhumber.atlassian.net/rest/api/3/search?jql=project=WIN+AND+status!=Done
-Prompt: "Extract issue keys, summaries, and statuses from the JSON response"
+Use **curl with Basic Auth** to query JIRA (the old `/rest/api/3/search` endpoint was deprecated):
+```bash
+# Get all open issues
+curl -s -u "email:token" "https://philhumber.atlassian.net/rest/api/3/search/jql?jql=project=WIN+AND+status!=Done+ORDER+BY+priority+DESC&fields=key,summary,status,priority,issuetype"
 ```
 
-**Note**: JIRA API token stored in `../wineapp-config/jira.config.json` for authenticated requests.
+**Credentials**: Stored in `../wineapp-config/jira.config.json` (email, token, baseUrl)
+
+**Note**: The JIRA board UI requires browser login; use the REST API for programmatic access.
 
 ---
 
@@ -204,6 +213,10 @@ resources/php/
 - WIN-96: Card collapse scroll behavior ✅
 - WIN-NEW: avgRating DECIMAL overflow fix ✅
 
+### Post-Sprint Cleanup (2026-01-18)
+- WIN-104: Edit page tab counter reset ✅
+- WIN-105: Median for price scale ✅
+
 **See [README.md](README.md) for complete issue list and JIRA board for full details.**
 
 ---
@@ -229,10 +242,9 @@ Run after each change:
 
 ---
 
-## Qvé Migration Plan (Next Phase)
+## Qvé Migration Plan (Phase 2)
 
-**Status**: Plan approved (2026-01-13)
-**Timeline**: 17-24 days after Sprint 3 completion
+**Status**: Ready to start after WIN-102 fix
 **Approach**: Build new Svelte/SvelteKit PWA at `/qve/` alongside existing app
 
 **Key Details**:
@@ -243,12 +255,61 @@ Run after each change:
 
 **Full plan**: `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
 
-**Next Steps**:
-1. Create mockups for Add Wine and Drink/Rate flows
-2. Begin SvelteKit project initialization
-3. Implement core components and routing
+**Migration Steps**:
+1. Fix WIN-102 (can't edit wine with no bottles)
+2. Create mockups for Add Wine and Drink/Rate flows
+3. Begin SvelteKit project initialization
+4. Implement core components and routing
+5. Port remaining backlog features to new stack
 
 **See [README.md](README.md) for complete roadmap and migration phases.**
+
+---
+
+## Open Backlog Summary
+
+### Bugs (To Do)
+| Key | Summary |
+|-----|---------|
+| **WIN-102** | Can't edit a wine with no bottles |
+
+### Tasks - Will migrate to Qvé
+| Key | Summary |
+|-----|---------|
+| WIN-106 | Prepopulate wine image when editing |
+| WIN-103 | Remove hardcoded currencies and sizes |
+| WIN-80 | Delete a bottle (drink with no rating) |
+| WIN-70 | Allow cancel 'drink Bottle' |
+| WIN-68 | Sort by buttons |
+| WIN-24 | Search |
+| WIN-34 | Filtering and Sorting |
+| WIN-69 | Add drink history |
+
+### Tasks - AI Features (Post-Migration)
+| Key | Summary |
+|-----|---------|
+| WIN-42 | Build Image recognition |
+| WIN-37 | Build AI chatbot (winebot) |
+| WIN-64 | Use structured output and grounding |
+
+### Tasks - Infrastructure
+| Key | Summary |
+|-----|---------|
+| WIN-97 | Add audit functions to all insert/update |
+| WIN-78 | JS/PHP Caching |
+| WIN-65 | Limit size of ownership return |
+
+### In Progress (from previous work - review status)
+| Key | Summary |
+|-----|---------|
+| WIN-79 | Check if similar region/producer/wine exists |
+| WIN-67 | Add wine dropdowns context aware |
+| WIN-57 | Add Wine Search Boxes |
+
+### Epics
+- WIN-1: AI
+- WIN-21: UX/UI
+- WIN-22: Functionality
 
 ---
 
