@@ -1,0 +1,26 @@
+<?php
+/**
+ * Local configuration template
+ *
+ * SETUP INSTRUCTIONS:
+ * 1. Create directory: ../wineapp-config/ (outside web root)
+ * 2. Copy this file to: ../wineapp-config/config.local.php
+ * 3. Fill in your actual values below
+ * 4. The config file will be loaded automatically by the app
+ */
+
+// Prevent direct access (defense in depth)
+if (basename($_SERVER['PHP_SELF'] ?? '') === basename(__FILE__)) {
+    http_response_code(403);
+    die('Direct access forbidden');
+}
+
+// Database
+define('DB_HOST', 'your-db-host');
+define('DB_NAME', 'winelist');
+define('DB_USER', 'your-username');
+define('DB_PASS', 'your-password');
+
+// API Keys
+define('GEMINI_API_KEY', 'your-gemini-api-key');
+?>

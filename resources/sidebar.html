@@ -1,0 +1,19 @@
+<nav class="ui-sidebar" style="top: 0; z-index: 3; width: 300px; display: none;" id="mySidebar">
+	<a href="#" onclick="nav_close()" class="ui-right ui-padding" title="close menu">-<i class=""></i></a>
+	<br><br>
+	<div class="ui-bar-block">
+		<h2>
+			<a href="#" onclick="nav_close();clearContentArea('./addwine.html').then(() => loadAddWinePage());" class="ui-button ui-padding"><i class="ui-margin-right"></i>Add Wine</a>
+			<a href="#" onclick="nav_close();clearContentArea();appState.setViewMode('ourWines');appState.clearFilters();getWineData('./resources/php/getWines.php', {bottleCount: '1'});refreshDropDowns({bottleCount: '1', wineCount: '1'});" class="ui-button ui-padding"><i class="ui-margin-right"></i>Our Wines</a>
+			<a href="#" onclick="nav_close();clearContentArea();getWineData('./resources/php/getDrunkWines.php', {}, 'drunk')" class="ui-button ui-padding"><i class="ui-margin-right"></i>Drunk Wines</a>
+			<a href="#" onclick="nav_close();clearContentArea();appState.setViewMode('allWines');appState.clearFilters();getWineData('./resources/php/getWines.php', {bottleCount: '0'});refreshDropDowns({bottleCount: '0', wineCount: '1'});" class="ui-button ui-padding"><i class="ui-margin-right"></i>All Wines</a>
+			<a href="#" onclick="nav_close();" class="ui-button ui-padding"><i class="ui-margin-right"></i>Producers</a>
+		</h2>
+	</div>
+	<div class="ui-panel ui-notetext">
+		WineList App 2025 - Phil Humber
+	</div>
+</nav>
+
+<div class="ui-overlay" onmousedown="nav_close()" style="display: none;" id="myOverlay"></div>
+	

@@ -1,0 +1,39 @@
+<div id="starOverlay" class="starOverlay" role="dialog" aria-modal="true" aria-labelledby="ratingTitle" style="display:none;">
+    <div class="card" role="document">
+      <h2>Rate that wine!</h2>
+      <h3>Overall Rating</h3>
+      <div class="rating-row" id="ratingRowOverall" aria-label="5-star rating" role="radiogroup"></div>
+      <h3>Value</h3>
+      <div class="rating-row" id="ratingRowValue" aria-label="5-star rating" role="radiogroup"></div>
+      <h3>Drink Date</h3>
+      <div>
+          <input type="text" name="drinkDate" id="drinkDate">
+      </div>
+      <h3></h3>
+      <div>
+
+        <input type="checkbox" id="buyAgain" value="1">
+        <label for="buyAgain">Buy Again?</label>
+      </div>
+       <div class="form__group field" style="margin-top: 15px;">
+                    <label for="specificBottleDrunk" class="form__label" style="top: 0;">Which Bottle?</label>
+                    <select name="specificBottleDrunk" id="specificBottleDrunk" class="form__field">  
+                      
+                    </select>
+                </div>
+
+      <div class="form__group field" style="margin-top: 15px;">
+        <textarea type="input" name="ratingNotes" id= "ratingNotes" class="form__field" data-validatetype="text" rows="3" cols="50" style="overflow:hidden; transition: height 0.2s ease-out;" onkeyup="if (this.scrollHeight > this.clientHeight) this.style.height = this.scrollHeight + 'px';"></textarea>
+        <label for="ratingNotes" class="form__label" style="top: 0;">Notes</label>
+      </div>
+      <div class="controls">
+        <button id="cancelBtn" class="lockBtn" type="button" >Cancel</button>
+        <button id="lockBtn" class="lockBtn" type="button" disabled>Rate!</button>
+      </div>
+      
+
+      <div id="wineToRate" class="final" aria-live="polite" style="display:none;"></div>
+
+      
+    </div>
+</div>

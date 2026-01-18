@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<link href='https://fonts.googleapis.com/css?family=Inter' rel='stylesheet'>
+		<link rel="stylesheet" href="./resources/wineapp.css">
+		<link rel="stylesheet" href="resources/rating.css">
+
+		<!-- <script type="text/javascript" src="./resources/wineapp.js"></script> -->
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.3.4/dist/css/datepicker.min.css">
+
+		<script src="https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.3.4/dist/js/datepicker.min.js"></script>
+		
+		<meta name="viewport" content="width=device-width, initial-scale=1">		
+		<meta charset="utf-8">
+		
+		<title>Wine App!</title>
+			
+		<style>
+			/* TODO - add test styles here */
+		</style>
+	</head>
+	
+	<body style="max-width:100%">
+			<!-- Header / Sidebar -->
+			<!--TODO: Split filters from Header -->
+			<div id="loader"></div>
+			<div id="sidebarContent"></div>
+			<div id="headerContent"></div>
+			
+
+			<!-- Content -->
+			<div class="ui-gapfornav">
+				<div class="ui-row-padding">
+					<div class="wineContent" id="contentArea">
+						<div class="rating">Content Loading...</div>
+						<!--CONTENT LOADS HERE-->
+
+					</div>			
+				</div>
+			</div>
+    </body>
+
+	<script>
+
+		document.addEventListener("DOMContentLoaded", async function() {
+			console.log("OLD initialization (index.html) - DISABLED during modular migration");
+			// DISABLED: New modular system (app.js) handles this now
+			// await loadHTMLContent('./resources/sidebar.html', 'sidebarContent');
+			// await loadHTMLContent('./resources/header.html', 'headerContent');
+
+			// DISABLED: Event listeners moved to app.js modular system
+			// These old inline handlers were causing duplicate calls
+			/*
+			document.getElementById("contentArea").addEventListener("click", async function (event) {
+				if (event.target.matches("#lockBtn")) {
+					lockRating();
+				}
+				if (event.target.matches("#cancelBtn")) {
+					cancelDrink();
+				}
+				if (event.target.matches("#addBtn")) {
+					bottleForm = document.getElementById("addBottleForm");
+					const formData = new FormData(bottleForm);
+					const data = {wineID: document.getElementById('wineToAdd').innerHTML};
+					formData.forEach((value, key) => {data[key] = value;});
+					//this code should not clear out the form, it should retain the data if there is an error.
+					result = await pushData('./resources/php/addBottle.php', data);
+					console.log(result);
+					closeModal();
+				}
+				if (event.target.matches("#genWineData")) {
+					genWineData();
+				}
+				if (event.target.matches("#genProducerData")) {
+					genProducerData();
+				}
+				if (event.target.matches("#genRegionData")) {
+					genRegionData();
+				}
+				if (event.target.matches("#submit")) {
+					event.preventDefault();
+					uploadImage();
+				}
+			});
+			*/
+			
+
+//
+
+			const dropdowns = document.querySelectorAll('.dropdown');
+
+            
+            dropdowns.forEach(dropdown => {
+                const button = dropdown.querySelector('.ui-button');
+				const content = dropdown.querySelector('.dropdown-content');
+                if (!button) return;
+                
+                button.addEventListener('click', function(event) {
+					event.stopPropagation();
+                    
+                    // Close other dropdowns
+                    dropdowns.forEach(d => {
+                        if (d !== dropdown) {                            
+							d.classList.remove('active');
+                        }
+                    });
+					const isActive = dropdown.classList.toggle('active');
+                    if (isActive && content) {
+                        positionDropdown(button, content);
+                    }
+                });
+            });
+ 
+	// Reposition dropdowns on scroll
+            const scrollContainer = document.querySelector('.ui-bottombar');
+            if (scrollContainer) {
+                scrollContainer.addEventListener('scroll', function() {
+                    dropdowns.forEach(dropdown => {
+                        if (dropdown.classList.contains('active')) {
+                            const button = dropdown.querySelector('.ui-button');
+                            const content = dropdown.querySelector('.dropdown-content');
+                            positionDropdown(button, content);
+                        }
+                    });
+                });
+            }
+			// Reposition on window scroll and resize
+            //window.addEventListener('scroll', updateAllDropdowns);
+            //window.addEventListener('resize', updateAllDropdowns);
+            
+            function updateAllDropdowns() {
+                dropdowns.forEach(dropdown => {
+                    if (dropdown.classList.contains('active')) {
+                        const button = dropdown.querySelector('.ui-button');
+                        const content = dropdown.querySelector('.dropdown-content');
+						if (content){
+                        	positionDropdown(button, content);
+						}
+                    }
+                });
+            }
+            
+            function positionDropdown(button, content) {
+                const rect = button.getBoundingClientRect();
+                const contentHeight = content.offsetHeight;
+                const contentWidth = content.offsetWidth;
+                const viewportHeight = window.innerHeight;
+                const viewportWidth = window.innerWidth;
+                
+                // Vertical positioning - check if there's space below
+                let top;
+                const spaceBelow = viewportHeight - rect.bottom;
+                const spaceAbove = rect.top;
+                
+                if (spaceBelow >= contentHeight || spaceBelow >= spaceAbove) {
+                    // Position below button
+                    top = rect.bottom + 2;
+                } else {
+                    // Position above button
+                    top = rect.top - contentHeight - 2;
+                }
+                
+                // Horizontal positioning - check if dropdown goes off-screen
+                let left = rect.left;
+                
+                // Check if dropdown goes off right edge
+                if (left + contentWidth > viewportWidth) {
+                    left = viewportWidth - contentWidth - 10; // 10px margin from edge
+                }
+                
+                // Check if dropdown goes off left edge
+                if (left < 10) {
+                    left = 10; // 10px margin from edge
+                }
+                
+                content.style.top = top + 'px';
+                content.style.left = left + 'px';
+            }
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(event) {
+                dropdowns.forEach(d => d.classList.remove('active'));
+            });
+
+
+//
+
+
+		});
+
+
+
+		window.addEventListener("load", async function() {
+			console.log("OLD window.load handler (index.html) - DISABLED during modular migration");
+			// DISABLED: New modular system (app.js) handles data loading now
+			// await getWineData('./resources/php/getWines.php');
+			// await refreshDropDowns ({bottleCount: '1'});
+			// await loadDropdown('./resources/php/getCountries.php', 'countryDropdown', {bottleCount: '1'});
+			// await loadDropdown('./resources/php/getTypes.php', 'typesDropdown', {bottleCount: '1'});
+			// await loadDropdown('./resources/php/getRegions.php', 'regionDropdown', {bottleCount: '1'});
+			// await loadDropdown('./resources/php/getProducers.php', 'producerDropdown', {bottleCount: '1'});
+			// await loadDropdown('./resources/php/getYears.php', 'yearDropdown', {bottleCount: '1'});
+
+			console.log("Loading wine list...");
+			
+			
+
+			//await document.addEventListener('contextmenu', event => event.preventDefault());
+			
+
+
+			
+		});
+
+		
+	</script>
+
+	<!-- OLD: Load old wineapp.js for backward compatibility during transition -->
+	<!-- DISABLED for testing - new modular system should handle everything -->
+	<!-- <script type="text/javascript" src="./resources/wineapp.js"></script> -->
+
+	<!-- Load configuration (must be before app.js) -->
+	<script src="./resources/php/getJsConfig.php"></script>
+
+	<!-- Load new modular system -->
+	<script type="module" src="./resources/js/app.js"></script>
+
+</html>

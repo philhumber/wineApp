@@ -1,0 +1,1158 @@
+/* CSS File for the wineApp 	*/
+
+/* || General Styles 			*/
+
+
+	*{
+		box-sizing: border-box;
+		/*border: 1px solid red; */
+		-webkit-tap-highlight-color: transparent;
+		-webkit-touch-callout: none;
+		-webkit-user-select: none;
+		-khtml-user-select: none;
+		-moz-user-select: none;
+		-ms-user-select: none;
+		user-select: none;
+	}
+	body {
+		font-family: 'Inter';
+		/* font-size: 40px; */
+		margin: 0;
+	}	
+	h1{
+		font-size:25px}
+	h2{
+		font-size:30px}
+	h3{
+		font-size:24px}
+	h4{
+		padding-top: 10px;
+		font-size:20px;
+		font-weight: 900 !important;
+	}
+	h5{
+		font-size:16px;
+		text-align: center;
+	}
+	h6{
+		font-size:16px}
+	h1,h2,h3,h4,h5,h6{
+		font-weight:400;
+		margin:10px 0;
+	}
+	a{
+		color:inherit;
+		text-decoration: none;
+	}
+	input[type=search] {
+		-webkit-appearance: none;
+	}
+
+
+
+
+/* || Sitewide UI Styles 		*/
+
+
+/* || || Colours				*/
+
+
+		.ui-white,.ui-hover-white:hover{
+			color:#000!important;
+			background-color:#fff!important;
+		}
+		.ui-black{
+			color:#fff!important;background-color:#000!important
+		}
+		.ui-hover-text-grey:hover{
+			color:#757575!important;
+		}
+
+
+
+/* || || Alignment / Layout				*/
+
+
+		.ui-right{
+			float:right!important;
+		}
+		.ui-padding{
+			padding:8px 16px!important;
+		}
+		.ui-margin{
+			margin:10px!important;
+		}
+		.ui-margin-bottom{
+			margin-bottom:10px!important
+		}
+		.ui-margin-top{
+			margin-top:10px!important
+		}
+		.ui-margin-right{
+			margin-right:10px!important
+		}
+		.ui-margin-left{
+			margin-left:10px!important
+		}
+		.ui-padding-16{
+			padding-top:16px!important;
+			padding-bottom:16px!important
+		}
+		.ui-gapfornav {
+		  margin-top: 90px;
+		}
+		
+
+
+/* || || Page Elements				*/
+		.ui-bar-block .ui-button,.ui-bar-block .ui-button{
+			width:100%;
+			text-align:left;
+			padding:8px 16px;
+		}
+		.ui-button:hover{
+			color:#000!important;
+			background-color:#ccc!important;
+		}
+		.ui-button{
+			border:none;
+			display:inline-block;
+			vertical-align:middle;
+			text-decoration:none;
+			color:inherit;
+			background-color:inherit;
+			text-align:center;
+			cursor:pointer;
+			white-space:nowrap;
+			-webkit-touch-callout:none;
+			-webkit-user-select:none;
+			-khtml-user-select:none;
+			-moz-user-select:none;
+			-ms-user-select:none;
+			user-select:none;
+			z-index: 5556;
+			width: auto;
+		}
+		.ui-button:disabled{
+			cursor:not-allowed;
+			opacity:0.3;
+			}
+
+		.ui-sidebar{
+			height:100%;
+			padding-top: 20px;
+			width:200px;
+			background-color:#fff;
+			position:fixed!important;
+			z-index:1;
+			overflow:auto;
+		}
+		.ui-section{			
+			/* margin-bottom:16px!important; */
+		}
+		.ui-bottombar{
+			overflow-x: auto;
+			white-space: nowrap;
+			overflow-y: hidden;
+			 scrollbar-width: none;
+			 z-index: 5555;
+			  padding-right: 100px;
+			  padding-left: 10px;
+			  height: 22px;
+		}
+		/* Optional: Custom scrollbar styling for webkit browsers */
+		.ui-bottombar::-webkit-scrollbar {
+			height: 6px;
+		}
+
+		.ui-bottombar::-webkit-scrollbar-track {
+			background: #f1f1f1;
+		}
+
+		.ui-bottombar::-webkit-scrollbar-thumb {
+			background: #888;
+			border-radius: 3px;
+		}
+
+		.ui-bottombar::-webkit-scrollbar-thumb:hover {
+			background: #555;
+		}
+
+		/* Prevent text from being selected while scrolling */
+		.ui-notetext {
+			flex-shrink: 0;
+			user-select: none;
+			
+		}
+
+		/* Keep buttons from shrinking */
+		.ui-button {
+			flex-shrink: 0;
+		}
+
+		/* Optional: Completely hide scrollbar (for a cleaner mobile look) */
+		.ui-bottombar.hide-scrollbar {
+			scrollbar-width: none; /* Firefox */
+			-ms-overflow-style: none; /* IE and Edge */
+		}
+
+		.ui-bottombar.hide-scrollbar::-webkit-scrollbar {
+			display: none; /* Chrome, Safari, Opera */
+		}
+		.ui-panel{
+			padding:0.01em 16px;
+			        position: fixed;
+        bottom: 0px;
+        left: 0px;
+        right: 0px;
+		}
+		.ui-notetext{
+			font-size:10px!important;
+			font-style: italic!important;
+			position: relative;
+			bottom: 0;
+		}
+		.ui-panel.ui-notetext {
+			position: fixed;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			/* You might also want to add a background-color and padding */
+			/* background-color: white; */
+			/* padding: 10px; */
+		}
+		.ui-panel{
+			padding:0.01em 16px;
+			margin-top:16px;
+			margin-bottom:16px;				
+		}
+		.ui-container:after,.ui-container:before,.ui-panel:after,.ui-panel:before{
+			/* content:"";
+			display:table;
+			clear:both; */
+		}
+		
+		.ui-overlay{
+			position:fixed;
+			display:none;
+			width:100%;
+			height:100%;
+			top:0;
+			left:0;
+			right:0;
+			bottom:0;
+			background-color:rgba(0,0,0,0.5);
+			z-index:2;
+		}
+		.ui-opacity{
+			opacity: 1;
+		}
+		.ui-topbar {
+			overflow: visible;
+			background-color: #e3e3e3;
+			position: fixed;
+			top: 0; 
+			width: 100%;
+			border-radius: 5px;
+			display: grid;  
+			grid-template-columns: 40px auto ;  
+			background-color: #f2f2f2;
+			grid-template-rows: 50px auto 0px;
+			
+			box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+		}
+		.menuCell
+		{
+			grid-row-start: 1;
+			grid-row-end: 1;
+			grid-column-start: 1;
+			grid-column-end: 1;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		.titleCell
+		{
+			grid-row-start: 1;
+			grid-row-end: 1;
+			grid-column-start: 2;
+			grid-column-end: 2;
+			display: flex;
+			align-items: center;
+			justify-content: right;
+		}
+
+		.filterCell
+		{
+			padding-right: 5px;
+			grid-row-start: 2;
+			grid-row-end: 2;
+			grid-column-start: 1;
+			grid-column-end: 1;
+			display: flex;
+			align-items: center;
+			justify-content: right;
+		}
+		.optionCell
+		{
+			grid-row-start: 2;
+			grid-row-end: 2;
+			grid-column-start: 2;
+			grid-column-end: 2;
+			display: grid;  
+			align-items: center;
+			grid-template-columns: repeat(7, min-content);  
+			background-color: #f2f2f2;
+			grid-auto-columns: 1fr; /* Makes auto-generated columns equal width */
+			grid-template-rows: 1fr;
+			grid-auto-flow: column;
+			column-gap: 5px;
+		}
+		
+		
+		
+/* || || Animations				*/
+		.ui-animate-right{				
+			position:relative;
+			animation:animateright 0.4s}@keyframes animateright{
+			from{left:0px;opacity:1} to{left:-300px;opacity:0;}
+		}
+		.ui-animate-left{
+			position:relative;
+			animation:animateleft 0.4s}@keyframes animateleft{from{left:-300px;opacity:0} to{left:0;opacity:1}
+		}
+
+		.ui-animate-opacity{
+			animation:opac 0.8s}@keyframes opac{from{opacity:0} to{opacity:1}
+		}
+		.ui-animate-opacity-rev{
+			animation:opacrev 0.4s}@keyframes opacrev{from{opacity:1} to{opacity:0}
+		}
+		
+		
+		
+/* || WineList UI Display				*/
+	.wineContent {
+		padding: 10px 10px 10px 10px;				
+		margin: 10px;
+			
+	}
+	.wineCard {
+		margin: 10px;
+		display: grid;  
+		grid-template-columns: 120px auto auto 50px;  
+		background-color: #f2f2f2;
+		grid-template-rows: 60px 60px 30px 25px auto;
+		border-radius: 10px;
+		box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+	}
+	.fade-to-dark > div {
+		transition: background-color 0.5s ease; /* match your duration */
+		background-color: #33333382 !important; /* dark grey */
+	  }	
+	.wineCard > div {
+		
+		background-color: rgb(242, 242, 242);
+		display: grid;  
+	}
+	.wineImageCell {
+		grid-row-start: 1;
+		grid-row-end: 3;
+		align-content: center;
+		top: 50;
+	}
+	.winePicture {	
+		max-height: 100px;
+		max-width: 100px;
+		/* align: middle;*/
+		border-radius: 10px;
+		box-shadow: 0 4px 5px 0 rgba(0, 0, 0, 0.2), 0 6px 5px 0 rgba(0, 0, 0, 0.19);
+		display: block;
+		margin: auto;
+	}
+	.wineNameCell {
+		grid-column-start: 2;
+		grid-column-end: 5;
+		align-content: center;
+		font-weight: bold;
+		padding: 0px 10px 0px 0px !important;
+	}
+	.wineName {
+		text-align: right;
+		font-size: 2em;
+	}
+	.regionProducerCell {
+		grid-column-start: 2;
+		grid-column-end: 5;
+		font-style: italic;
+		padding: 0px 10px 0px 0px;
+		align-items: center;
+		justify-content: right;
+	}
+	.regionProducer {
+		text-align: right;
+		font-size: 1em;
+	}
+	.countryCell {  
+		grid-column-start: 3;
+		grid-column-end: 5;
+		font-style: italic;
+		justify-content: right;
+		font-size: 1em;
+		align-items: start;
+		padding: 0px 10px 0px 0px;
+	}
+	.flagIcon {	
+		height: 15px;
+		border-radius: 5px;
+		box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+		margin-left: 6px;
+		
+	}
+	.yearCell {
+		grid-column-start: 4;
+		grid-column-end: 5;
+		font-style: italic;
+		padding: 0px 10px 0px 0px;
+		align-items: center;
+		justify-content: right;
+		font-size: 1em;		
+		align-items: center;
+	}
+	.ratingCell {
+		grid-column-start: 3;
+		grid-column-end: 4;
+		font-style: italic;
+		padding: 0px 10px 0px 0px;
+		align-items: center;
+		justify-content: right;
+		font-size: 1em;		
+		align-items: center;
+	}
+	.glassIcon {
+		height: 20px;
+		padding-left: 3px;
+	}	
+	.bottleCountCell {
+		grid-column-start: 1;
+		grid-column-end: 3;
+		grid-row-start: 3;
+		grid-row-end: 5;
+		padding: 0px 0px 0px 10px;  
+		font-style: italic;
+		font-size: 1em;
+	}
+	.bottleIconBig {
+		height: 40px;
+		padding-left: 3px;
+	}	
+	.bottleIcon {
+		height: 30px;
+		padding-left: 3px;
+	}	
+	.bottleIconSmall {
+		height: 20px;
+		padding-left: 3px;
+	}
+
+	/* Price Scale Indicator (collapsed card) */
+	.priceScale {
+		display: inline-block;
+		width: fit-content;
+		font-weight: 600;
+		font-size: 0.85em;
+		letter-spacing: 1px;
+		margin-left: 8px;
+		padding: 2px 6px;
+		border-radius: 4px;
+		cursor: help;
+	}
+
+	.priceScale-1 { color: #4a7c59; background: rgba(74, 124, 89, 0.1); }
+	.priceScale-2 { color: #5a8f5a; background: rgba(90, 143, 90, 0.1); }
+	.priceScale-3 { color: #8b7355; background: rgba(139, 115, 85, 0.1); }
+	.priceScale-4 { color: #a0522d; background: rgba(160, 82, 45, 0.1); }
+	.priceScale-5 { color: #722f37; background: rgba(114, 47, 55, 0.15); }
+	.priceScale-none { color: #999; background: rgba(153, 153, 153, 0.1); }
+
+	/* Actual price in expanded view */
+	.winePrice {
+		font-weight: 500;
+		color: #333;
+	}
+
+	.contentCell {
+		grid-column-start: 1;
+		grid-column-end: 5;
+	}
+	.content {				  
+		padding: 15px 10px 10px 10px !important;
+		max-height: 0;
+		overflow: hidden;
+		transition: max-height 0.2s ease-out;
+		line-height: 1.6;
+		font-size: 1em;
+	}
+	.space2 {
+		grid-column-start: 2;
+		grid-column-end: 5;
+	}
+
+	.dropdown {
+			flex-shrink: 0;
+	}
+	.dropdown-fixer {
+			min-width: 0;
+	}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: #f9f9f9;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 999999;
+	border-radius: 4px;
+	max-height: 400px;
+	max-width: 150px;
+	overflow-y: auto;
+	overflow-x: hidden;
+	text-overflow: ellipsis;
+	min-height: 1px;
+	 -webkit-overflow-scrolling: touch;
+	  will-change: transform, height;
+
+	}
+
+.dropdown-content a {
+  color: black;
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+  border-bottom: 1px solid #ddd;
+   white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+	text-align: left;
+}
+ .dropdown-content a:last-child {
+            border-bottom: none;
+        }
+
+/* Filter dropdown content styling */
+.filter-dropdown-content {
+	display: none;
+	position: fixed;
+	background-color: #f9f9f9;
+	min-width: 160px;
+	max-width: 200px;
+	box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+	z-index: 999999;
+	border-radius: 4px;
+	max-height: 400px;
+	overflow-y: auto;
+}
+
+.filter-dropdown {
+	display: inline-block;
+	position: relative;
+}
+
+.filter-dropdown-content a {
+	color: black;
+	padding: 12px 16px;
+	text-decoration: none;
+	display: block;
+	border-bottom: 1px solid #ddd;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 100%;
+	text-align: left;
+}
+
+.filter-dropdown-content a:last-child {
+	border-bottom: none;
+}
+
+.filter-dropdown-content a:hover {
+	background-color: #f1f1f1;
+}
+
+/* Legacy dropdown styles */
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: #f9f9f9;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 999999;
+	border-radius: 4px;
+	max-height: 400px;
+	max-width: 150px;
+	overflow-y: auto;
+	overflow-x: hidden;
+	text-overflow: ellipsis;
+	min-height: 1px;
+	 -webkit-overflow-scrolling: touch;
+	  will-change: transform, height;
+
+	}
+
+.dropdown-content a:hover {background-color: #f1f1f1}
+
+.dropdown:hover .dropbtn {
+  background-color: #3e8e41;
+}
+.dropdown.active .dropdown-content {
+    display: block;
+}
+
+/* || Wine Add UI Display				*/
+	.formLayout{
+		display: grid;
+		grid-template-columns: auto 200px;
+		grid-template-rows: auto 40px;
+		grid-gap:10px;
+		border-radius: 10px;
+		box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+		transition: 0.3s ease;
+		padding: 10px;
+	}
+	.tab{
+
+		grid-column: 1/3;
+		width: 100%;
+		height: auto;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		grid-template-columns: auto; 
+		grid-template-rows: auto auto auto;
+		display: none;	
+	}
+	.navigationCell{
+		grid-column: 2/3;
+		display: flex;
+		justify-content: flex-end;
+		gap: 0.5rem;
+	}
+	.progressCell{
+		grid-column: 1/2;	
+		background-color: rgb(255, 255, 255);
+		display: flex;
+		display:  flex;
+		justify-content: center;
+		align-items: center;	
+	}
+	.step {
+		display: inline-block;
+		height: 15px;
+		width: 15px;
+		margin: 0 2px;
+		background-color: #9b9b9b;
+		border: none;
+		border-radius: 50%;
+		opacity: 0.5;
+	}
+	.step.active {
+		opacity: 1;
+		background-color: #11998e;
+	}
+	.step.finish {
+		background-color: #38ef7d;
+	}
+	.searchResults{
+		max-height: 220px;
+		min-width: 270px;
+		display: block;
+		overflow: scroll;
+		position: absolute;
+		box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+	}
+	.myUL {
+		list-style-type: none;
+		padding: 0;
+		margin: 0;
+		z-index: 5;
+		position: absolute;
+	  }
+	.myUL li {
+		border: 1px solid #ddd;
+		margin-top: -1px; /* Prevent double borders */
+		background-color: #f6f6f6;
+		padding: 12px;
+		text-decoration: none;
+		font-size: 18px;
+		color: black;
+		display: block;
+		height: auto;
+		width: auto;
+		min-height: 50px;
+		min-width: 270px;
+	  }
+	  .myUL li:hover:not(.header) {
+		background-color: #eee;
+	  }
+	  #findProducer, #findWine, #findRegion {
+		background-image: url('../images/ui/searchIcon.png');
+		background-position: 6px 6px;
+		background-repeat: no-repeat;
+		width: 95%;
+		padding: 12px 20px 12px 40px;
+		border: 1px solid #ddd;
+		margin-bottom: 12px;
+		color: grey;
+		font-size:3.5vw;
+	  }
+	  .searchBox{
+		display: flex;
+		width: 100%;
+		justify-content: center;
+	  }
+
+	 
+
+/* CSS */
+.button-30 {
+	align-items: center;
+	appearance: none;
+	background-color: #FCFCFD;
+	border-radius: 4px;
+	border-width: 0;
+	box-shadow: rgba(45, 35, 66, 0.4) 0 2px 4px,rgba(45, 35, 66, 0.3) 0 7px 13px -3px,#D6D6E7 0 -3px 0 inset;
+	box-sizing: border-box;
+	color: #36395A;
+	cursor: pointer;
+	display: inline-flex;
+	height: 38px;
+	justify-content: center;
+	line-height: 1;
+	list-style: none;
+	overflow: hidden;
+	padding-left: 16px;
+	padding-right: 16px;
+	position: relative;
+	text-align: left;
+	text-decoration: none;
+	transition: box-shadow .15s,transform .15s;
+	user-select: none;
+	-webkit-user-select: none;
+	touch-action: manipulation;
+	white-space: nowrap;
+	will-change: box-shadow,transform;
+	font-size: 15px;
+}
+
+.button-30:focus {
+	box-shadow: #D6D6E7 0 0 0 1.5px inset, rgba(45, 35, 66, 0.4) 0 2px 4px, rgba(45, 35, 66, 0.3) 0 7px 13px -3px, #D6D6E7 0 -3px 0 inset;
+}
+
+.button-30:hover {
+	box-shadow: rgba(45, 35, 66, 0.4) 0 4px 8px, rgba(45, 35, 66, 0.3) 0 7px 13px -3px, #D6D6E7 0 -3px 0 inset;
+	transform: translateY(-2px);
+}
+
+.button-30:active {
+	box-shadow: #D6D6E7 0 3px 7px inset;
+	transform: translateY(2px);
+}
+		
+.form__field {
+	font-family: inherit;
+	width: 100%;
+	border: 0;
+	border-bottom: 2px solid #9b9b9b;
+	outline: 0;
+	font-size: 1rem;
+	color: #373737;
+	padding: 7px 0;
+	background: rgba(205, 205, 205, 0.18);
+	background: -webkit-gradient(
+        linear,
+        left bottom,
+        left top,
+        color-stop(1, rgba(242, 242, 242,0.0)), /* Top */
+        color-stop(0, rgba(192, 192, 192, 0.18)) /* Bottom */
+    );
+	transition: border-color 0.2s;
+  
+	&::placeholder {
+	  color: transparent;
+	}
+  
+	&:placeholder-shown ~ .form__label {
+	  font-size: 1rem;
+	  cursor: text;
+	  top: 15px;
+	}
+  }
+
+  #producerDescription {
+	&:placeholder-shown ~ .form__label {
+		font-size: 1rem;
+		cursor: text;
+		top: 60px;
+	  }
+	}
+	#producerDescription:focus{
+		~ .form__label {
+			position: absolute;
+			top: 0px;
+			display: block;
+			transition: 0.2s;
+			font-size: 0.8rem;
+			color: #11998e;
+			font-weight:700;   
+		}
+	}
+		#producerDescription.form__label {
+		position: absolute;
+		top: 0px;
+		display: block;
+		transition: 0.2s;
+		font-size: 0.8rem;
+		padding-bottom: 0px;
+		color: #9b9b9b;
+  }
+
+
+  
+  .form__label {
+	position: absolute;
+	top: 15px;
+	display: block;
+	transition: 0.2s;
+	font-size: 0.8rem;
+	padding-bottom: 0px;
+	color: #9b9b9b;
+  }
+  
+  .form__field:focus {
+	~ .form__label {
+	  position: absolute;
+	  top: 15px;
+	  display: block;
+	  transition: 0.2s;
+	  font-size: 0.8rem;
+	  color: #11998e;
+	  font-weight:700;    
+	}
+	padding-bottom: 6px;  
+	font-weight: 700;
+	border-width: 3px;
+	border-image: linear-gradient(to right, #11998e,#38ef7d);
+	border-image-slice: 1;
+  }
+  
+  .form__field{
+	&:required,&:invalid { box-shadow:none; }
+  }
+
+
+.form__group {
+  position: relative;
+  padding: 15px 0 15px  15px;
+  width: 90%;
+}
+.form__field[valid="invalid"] {
+	border-width: 4px;
+	border-image: linear-gradient(to right, #00000000,#ff0e0ec7);
+	border-image-slice: 1;
+	/* background-image: linear-gradient(180deg, rgba(255,0,0,0), #ff00005f); */
+	~ .form__label {
+		color: #ff00005f;
+	}
+}
+
+
+
+
+.context-menu {
+	display: none;
+	position: absolute;
+	z-index: 1000;
+	width: 200px;
+	background: white;
+	border: 1px solid #ccc;
+	border-radius: 6px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	font-family: sans-serif;
+  }
+  
+  .context-menu ul {
+	list-style: none;
+	margin: 5px;
+	padding: 0;
+  }
+  
+  .context-menu li {
+	padding: 10px 15px;
+	cursor: pointer;
+	border: 1px solid #ccc;
+  }
+  
+  .context-menu li:hover {
+	background: #f0f0f0;
+  }
+  
+  .context-menu li.danger {
+	color: #c0392b;
+  }
+
+
+
+
+  .loading {
+    top: 50%;
+    left: 50%;
+    position: absolute;
+    border: 2px solid #ccc;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border-top-color: #1ecd97;
+    border-left-color:  #1ecd97;
+    animation: spin 1s infinite ease-in;
+	z-index: 4;
+  }
+
+
+@keyframes spin {
+  0% {
+      transform: rotate(0deg);
+  }
+  100% {
+      transform: rotate(360deg);
+  }
+}
+
+/* Loading Text Cycler */
+.loading-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    z-index: 4;
+}
+
+.loading-container .loading {
+    position: relative;
+    top: auto;
+    left: auto;
+}
+
+.loading-text {
+    color: #fff;
+    font-size: 1.1rem;
+    font-style: italic;
+    text-align: center;
+    margin: 0;
+    opacity: 1;
+    transition: opacity 0.35s ease-in-out;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.loading-text-fade {
+    opacity: 0;
+}
+
+
+
+
+.rate {
+    float: left;
+    height: 46px;
+    padding: 10px;
+	position: fixed;
+	background: #333333;
+	
+	left: 100px;
+	bottom: auto;
+	right: auto;
+	z-index: 10;
+}
+.rate:not(:checked) > input {
+    position:absolute;
+    top:-9999px;
+}
+.rate:not(:checked) > label {
+    float:right;
+    width:1em;
+    overflow:hidden;
+    white-space:nowrap;
+    cursor:pointer;
+    font-size:30px;
+    color:#ccc;
+}
+.rate:not(:checked) > label:before {
+    content: '★ ';
+}
+.rate > input:checked ~ label {
+    color: #ffc700;    
+}
+.rate:not(:checked) > label:hover,
+.rate:not(:checked) > label:hover ~ label {
+    color: #deb217;  
+}
+.rate > input:checked + label:hover,
+.rate > input:checked + label:hover ~ label,
+.rate > input:checked ~ label:hover,
+.rate > input:checked ~ label:hover ~ label,
+.rate > label:hover ~ input:checked ~ label {
+    color: #c59b08;
+}
+
+/* ===== Toast Notifications ===== */
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 999999;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 10px;
+    pointer-events: none;
+    max-width: 90vw;
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    border-radius: 8px;
+    background: #333;
+    color: #fff;
+    font-size: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    pointer-events: auto;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    max-width: 400px;
+}
+
+.toast-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast-hiding {
+    opacity: 0;
+    transform: translateY(-20px);
+}
+
+.toast-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.toast-message {
+    flex: 1;
+    line-height: 1.4;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 0 0 8px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.toast-close:hover {
+    opacity: 1;
+}
+
+/* Toast type variants */
+.toast-success {
+    background: linear-gradient(135deg, #2e7d32, #388e3c);
+}
+
+.toast-error {
+    background: linear-gradient(135deg, #c62828, #d32f2f);
+}
+
+.toast-warning {
+    background: linear-gradient(135deg, #f57c00, #ff9800);
+}
+
+.toast-info {
+    background: linear-gradient(135deg, #1565c0, #1976d2);
+}
+
+/* Wine card highlight for scroll-to */
+.wineCard.highlight {
+    animation: highlight-pulse 2s ease-out;
+}
+
+@keyframes highlight-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(197, 155, 8, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 20px 10px rgba(197, 155, 8, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(197, 155, 8, 0);
+    }
+}
+
+/* ===== View Mode Badge ===== */
+.view-mode-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    margin-left: 10px;
+    border-radius: 12px;
+    background-color: #722F37;  /* Wine red for "Our Wines" */
+    color: white;
+    vertical-align: middle;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.view-mode-badge.all-wines {
+    background-color: #4682B4;  /* Steel blue for "All Wines" */
+}
+
+/* ===== Filter Active Indicator ===== */
+.filter-dropdown button {
+    position: relative;
+}
+
+.filter-dropdown button.has-filter::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    background-color: #722F37;  /* Wine red */
+    border-radius: 50%;
+    box-shadow: 0 0 2px rgba(0,0,0,0.3);
+}
+
+
+
+
+
+
+
+
+
+
+
+

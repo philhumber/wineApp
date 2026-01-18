@@ -1,0 +1,203 @@
+<?php
+	// 1. Include dependencies at the top
+    require_once 'databaseConnection.php';
+    require_once 'audit_log.php';
+
+    // 2. Initialize response
+    $response = ['success' => false, 'message' => '', 'data' => null];
+
+    try {
+        // 3. Get database connection
+        $pdo = getDBConnection();
+        
+        // 4. Get and validate input
+        $data = json_decode(file_get_contents('php://input'), true);	
+
+		//set up deafults here
+		$producerName = '%';
+		$wineYear = '%';
+
+		$bottleCount = $data['bottleCount'] ?? '1';
+		$producerName = $data['producerDropdown'] ?? '%';
+		$countryName = $data['countryDropdown'] ?? '%';
+		$wineType = $data['typesDropdown'] ?? '%';
+		$regionName = $data['regionDropdown'] ?? '%';
+		$bottleCount =  $data['bottleCount'] ?? '1';
+		$wineYear = $data['yearDropdown'] ?? '%';
+		$wineID = $data['wineID'] ?? '%';
+
+		$sqlQuery = "SELECT
+						wine.wineID,
+						wine.wineName,
+						wine.description,
+						wine.pictureURL,
+						country.countryName,
+						wine.year,
+						wine.tastingNotes,
+						wine.pairing,	
+						region.regionName,
+						winetype.wineType,
+						producers.producerName,
+						country.code,
+						country.world_code,
+						wine.rating,								
+						(SELECT ROUND(AVG(overallRating), 2) FROM ratings WHERE ratings.wineID = wine.wineID) AS avgRating,
+						(SELECT GROUP_CONCAT(Notes SEPARATOR '; ') FROM ratings WHERE ratings.wineID = wine.wineID) AS allNotes,
+						(SELECT ROUND(AVG(
+							(CASE b.currency
+								WHEN 'EUR' THEN b.price
+								WHEN 'GBP' THEN b.price * 1.17
+								WHEN 'SEK' THEN b.price * 0.087
+								WHEN 'USD' THEN b.price * 0.92
+								ELSE b.price
+							END) / (CASE b.bottleSize
+								WHEN 'Piccolo' THEN 0.187
+								WHEN 'Quarter' THEN 0.187
+								WHEN 'Demi' THEN 0.375
+								WHEN 'Standard' THEN 0.75
+								WHEN 'Magnum' THEN 1.5
+								ELSE 0.75
+							END)
+						), 2)
+						FROM bottles b
+						WHERE b.wineID = wine.wineID
+							AND b.price IS NOT NULL
+							AND b.price > 0) AS avgPricePerLiterEUR,
+						(SELECT ROUND(AVG(
+							(CASE b.currency
+								WHEN 'EUR' THEN b.price
+								WHEN 'GBP' THEN b.price * 1.17
+								WHEN 'SEK' THEN b.price * 0.087
+								WHEN 'USD' THEN b.price * 0.92
+								ELSE b.price
+							END) / (CASE b.bottleSize
+								WHEN 'Piccolo' THEN 0.187
+								WHEN 'Quarter' THEN 0.187
+								WHEN 'Demi' THEN 0.375
+								WHEN 'Standard' THEN 0.75
+								WHEN 'Magnum' THEN 1.5
+								ELSE 0.75
+							END)
+						), 2)
+						FROM bottles b
+						JOIN wine w2 ON b.wineID = w2.wineID
+						WHERE w2.wineTypeID = wine.wineTypeID
+							AND b.price IS NOT NULL
+							AND b.price > 0) AS typeAvgPricePerLiterEUR,
+						(SELECT ROUND(AVG(b.price), 2)
+						FROM bottles b
+						WHERE b.wineID = wine.wineID
+							AND b.bottleSize = 'Standard'
+							AND b.price IS NOT NULL
+							AND b.price > 0) AS standardPrice,
+						(SELECT ROUND(AVG(b.price), 2)
+						FROM bottles b
+						WHERE b.wineID = wine.wineID
+							AND b.bottleSize = 'Magnum'
+							AND b.price IS NOT NULL
+							AND b.price > 0) AS magnumPrice,
+						(SELECT ROUND(AVG(b.price), 2)
+						FROM bottles b
+						WHERE b.wineID = wine.wineID
+							AND b.bottleSize = 'Demi'
+							AND b.price IS NOT NULL
+							AND b.price > 0) AS demiPrice,
+						(SELECT ROUND(AVG(b.price), 2)
+						FROM bottles b
+						WHERE b.wineID = wine.wineID
+							AND b.bottleSize IN ('Piccolo', 'Quarter')
+							AND b.price IS NOT NULL
+							AND b.price > 0) AS smallPrice,
+						(SELECT b.currency
+						FROM bottles b
+						WHERE b.wineID = wine.wineID
+							AND b.price IS NOT NULL
+						LIMIT 1) AS currency,
+						SUM(CASE WHEN bottles.bottleSize = 'Standard' THEN 1 ELSE 0 END) AS standardBottles,
+						SUM(CASE WHEN bottles.bottleSize IN ('Piccolo', 'Quarter', 'Demi') THEN 1 ELSE 0 END) AS smallBottles,
+						COUNT(bottles.bottleID) - 
+							SUM(CASE WHEN bottles.bottleSize = 'Standard' THEN 1 ELSE 0 END) - 
+							SUM(CASE WHEN bottles.bottleSize IN ('Piccolo', 'Quarter', 'Demi') THEN 1 ELSE 0 END) AS largeBottles,
+						COUNT(bottles.bottleID) AS bottleCount
+					FROM wine
+					JOIN producers ON wine.producerID = producers.producerID
+					JOIN region ON producers.regionID = region.regionID
+					JOIN country ON region.countryID = country.countryID
+					JOIN winetype ON wine.wineTypeID = winetype.wineTypeID
+					LEFT JOIN bottles ON bottles.wineID = wine.wineID AND bottles.bottleDrunk = 0";
+
+		$join = [];
+		$where = [];
+		$params = [];
+		$groupBy = [];
+		$orderBy = [];
+		$having = [];
+
+		if (!empty($producerName) && $producerName !== '%') {
+			$where[] = "producers.producerName = :producerName";
+			$params[':producerName'] = $producerName;
+		}
+		if (!empty($wineID) && $wineID !== '%') {
+			$where[] = "wine.wineID = :wineID";
+			$params[':wineID'] = $wineID;
+		}
+		if (!empty($countryName) && $countryName !== '%') {
+			$where[] = "country.countryName = :countryName";
+			$params[':countryName'] = $countryName;
+		}
+		if (!empty($wineType) && $wineType !== '%') {
+			$where[] = "winetype.wineType = :wineType";
+			$params[':wineType'] = $wineType;
+		}
+		if (!empty($regionName) && $regionName !== '%') {
+			$where[] = "region.regionName = :regionName";
+			$params[':regionName'] = $regionName;
+		}
+		if (!empty($wineYear) && $wineYear !== '%') {
+			if ($wineYear == 'No Year') {
+				$where[] = "(wine.year IS NULL OR wine.year = '')";
+			} else {
+				$where[] = "wine.year = :wineYear";
+				$params[':wineYear'] = $wineYear;
+			}			
+		}
+		if (!empty($where)) {
+			$sqlQuery .= " WHERE " . implode(' AND ', $where);
+		}
+		
+		$sqlQuery .= " GROUP BY wine.wineID";
+		
+		$having[] = "COUNT(bottles.bottleID) >= :bottleCount";
+		$params[':bottleCount'] = $bottleCount;
+
+		if (!empty($having)) {
+			$sqlQuery .= " HAVING " . implode(' AND ', $having);
+		}
+		$sqlQuery .= " ORDER BY producers.producerName ASC, wine.year ASC, wine.wineName ASC";	
+
+		
+		try {
+            // 8. Perform database operation
+            $stmt = $pdo->prepare($sqlQuery);
+            $stmt->execute($params);
+            $producerList = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // 12. Set success response
+            $response['success'] = true;
+            $response['message'] = 'Wines with bottle count >= ' . $bottleCount . ' retrieved sucessfully!';
+            $response['data'] = ['wineList' =>  $producerList];
+        
+		} catch (Exception $e) {                
+			throw $e;
+		}
+
+	} catch (Exception $e) {
+		// 14. Handle all errors
+		$response['success'] = false;
+		$response['message'] = $e->getMessage();
+		error_log("Error in getWines.php: " . $e->getMessage());
+	}
+	// 15. Return JSON response
+	header('Content-Type: application/json');
+	echo json_encode($response);
+?>
