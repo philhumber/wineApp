@@ -11,6 +11,11 @@ config.local.php
 resources/wineapp.js
 
 # ===================
+# User Content
+# ===================
+.images/
+
+# ===================
 # OS FILES
 # ===================
 .DS_Store
