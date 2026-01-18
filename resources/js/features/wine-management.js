@@ -21,6 +21,146 @@ export class WineManagementManager {
 	}
 
 	/**
+	 * Initialize drop zone functionality for drag & drop uploads
+	 */
+	initDropzone() {
+		const dropzone = document.getElementById('uploadDropzone');
+		const fileInput = document.getElementById('fileToUpload');
+		if (!dropzone || !fileInput) return;
+
+		// Prevent default drag behaviors on document
+		['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+			document.body.addEventListener(eventName, (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+			}, false);
+		});
+
+		// Highlight drop zone when dragging over
+		['dragenter', 'dragover'].forEach(eventName => {
+			dropzone.addEventListener(eventName, () => {
+				dropzone.classList.add('is-dragging');
+			}, false);
+		});
+
+		// Remove highlight when leaving or dropping
+		['dragleave', 'drop'].forEach(eventName => {
+			dropzone.addEventListener(eventName, () => {
+				dropzone.classList.remove('is-dragging');
+			}, false);
+		});
+
+		// Handle dropped files
+		dropzone.addEventListener('drop', (e) => {
+			const files = e.dataTransfer.files;
+			if (files.length > 0) {
+				const dataTransfer = new DataTransfer();
+				dataTransfer.items.add(files[0]);
+				fileInput.files = dataTransfer.files;
+				this.uploadImage();
+			}
+		}, false);
+
+		// Handle file input change (click to browse)
+		fileInput.addEventListener('change', () => {
+			if (fileInput.files.length > 0) {
+				this.uploadImage();
+			}
+		});
+
+		// Replace image button
+		const replaceBtn = document.getElementById('replaceImageBtn');
+		if (replaceBtn) {
+			replaceBtn.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				this.resetDropzone();
+				fileInput.click();
+			});
+		}
+	}
+
+	/**
+	 * Show loading state in dropzone
+	 */
+	showDropzoneLoading() {
+		const content = document.getElementById('dropzoneContent');
+		const preview = document.getElementById('dropzonePreview');
+		const loading = document.getElementById('dropzoneLoading');
+		const fileInput = document.getElementById('fileToUpload');
+
+		if (content) content.style.display = 'none';
+		if (preview) preview.style.display = 'none';
+		if (loading) loading.style.display = 'flex';
+		if (fileInput) fileInput.style.display = 'none';
+	}
+
+	/**
+	 * Show preview state in dropzone with uploaded image
+	 * @param {string} imagePath - Path to the uploaded image
+	 */
+	showDropzonePreview(imagePath) {
+		const content = document.getElementById('dropzoneContent');
+		const preview = document.getElementById('dropzonePreview');
+		const loading = document.getElementById('dropzoneLoading');
+		const thumbnail = document.getElementById('dropzoneThumbnail');
+		const fileInput = document.getElementById('fileToUpload');
+		const dropzone = document.getElementById('uploadDropzone');
+
+		if (content) content.style.display = 'none';
+		if (loading) loading.style.display = 'none';
+		if (preview) preview.style.display = 'flex';
+		if (thumbnail) {
+			const timestamp = new Date().getTime();
+			thumbnail.src = `./${imagePath}?t=${timestamp}`;
+		}
+		if (fileInput) fileInput.style.display = 'none';
+		if (dropzone) dropzone.classList.remove('is-error');
+	}
+
+	/**
+	 * Show error state in dropzone
+	 * @param {string} message - Error message to display
+	 */
+	showDropzoneError(message) {
+		const content = document.getElementById('dropzoneContent');
+		const preview = document.getElementById('dropzonePreview');
+		const loading = document.getElementById('dropzoneLoading');
+		const dropzone = document.getElementById('uploadDropzone');
+		const status = document.getElementById('uploadStatus');
+		const fileInput = document.getElementById('fileToUpload');
+
+		if (content) content.style.display = 'flex';
+		if (preview) preview.style.display = 'none';
+		if (loading) loading.style.display = 'none';
+		if (dropzone) dropzone.classList.add('is-error');
+		if (status) status.innerHTML = `<span style="color:red">${message}</span>`;
+		if (fileInput) fileInput.style.display = 'block';
+	}
+
+	/**
+	 * Reset dropzone to default state
+	 */
+	resetDropzone() {
+		const content = document.getElementById('dropzoneContent');
+		const preview = document.getElementById('dropzonePreview');
+		const loading = document.getElementById('dropzoneLoading');
+		const dropzone = document.getElementById('uploadDropzone');
+		const status = document.getElementById('uploadStatus');
+		const fileInput = document.getElementById('fileToUpload');
+
+		if (content) content.style.display = 'flex';
+		if (preview) preview.style.display = 'none';
+		if (loading) loading.style.display = 'none';
+		if (dropzone) dropzone.classList.remove('is-error', 'is-dragging');
+		if (status) status.innerHTML = '';
+		if (fileInput) {
+			fileInput.value = '';
+			fileInput.style.display = 'block';
+		}
+	}
+
+	/**
 	 * Load the add wine page with initial data
 	 */
 	async loadAddWinePage() {
@@ -53,6 +193,9 @@ export class WineManagementManager {
 			// Set mode AFTER reset (reset clears the mode)
 			formManager.setMode('add');
 
+			// Initialize dropzone functionality
+			this.initDropzone();
+
 		} catch (error) {
 			console.error("Failed to load data for Add Wine page:", error);
 			const contentArea = document.getElementById('contentArea');
@@ -69,6 +212,9 @@ export class WineManagementManager {
 		try {
 			// Remove load tag if present
 			document.getElementById("loadTag")?.remove();
+
+			// Initialize dropzone functionality
+			this.initDropzone();
 
 		} catch (error) {
 			console.error("Failed to load data for edit Wine page:", error);
@@ -361,38 +507,104 @@ export class WineManagementManager {
 	}
 
 	/**
-	 * Upload wine image
+	 * Upload wine image with dropzone integration
 	 */
 	async uploadImage() {
 		const fileInput = document.getElementById('fileToUpload');
 		const uploadStatus = document.getElementById("uploadStatus");
+		const winePictureField = document.getElementById("winePicture");
 
 		if (uploadStatus) {
 			uploadStatus.innerHTML = '';
 		}
 
 		if (!fileInput || !fileInput.files[0]) {
-			if (uploadStatus) {
-				uploadStatus.innerHTML = "<span style='color:red'>Please select a file first.</span>";
-			}
+			this.showDropzoneError('Please select a file first.');
 			return;
 		}
+
+		// Client-side validation
+		const file = fileInput.files[0];
+		const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+		if (!allowedTypes.includes(file.type)) {
+			this.showDropzoneError('Only JPG, PNG, GIF, and WebP images are allowed.');
+			return;
+		}
+
+		// Validate file size (10MB max)
+		const maxSize = 10 * 1024 * 1024;
+		if (file.size > maxSize) {
+			this.showDropzoneError('File is too large. Maximum size is 10MB.');
+			return;
+		}
+
+		// Show loading state
+		this.showDropzoneLoading();
 
 		try {
 			const result = await wineAPI.pushData('./resources/php/upload.php', "winePictureUpload");
 
-			if (result.success && uploadStatus) {
+			if (result.success) {
 				const isError = /^.?Error/.test(result.data);
-				const color = isError ? 'red' : 'green';
-				const message = isError ? result.data : 'File uploaded.';
-				uploadStatus.innerHTML = `<span style='color:${color}'>${message}</span>`;
+
+				if (isError) {
+					this.showDropzoneError(result.data);
+				} else {
+					// Success - extract filename and show preview
+					const filename = result.data.replace('Filename: ', '');
+
+					// Update hidden field
+					if (winePictureField) {
+						winePictureField.value = filename;
+					}
+
+					// Show success status
+					if (uploadStatus) {
+						uploadStatus.innerHTML = '<span style="color:green">Image uploaded!</span>';
+					}
+
+					// Show preview in dropzone
+					this.showDropzonePreview(filename);
+				}
 			}
 		} catch (error) {
 			console.error("Failed to upload image:", error);
-			if (uploadStatus) {
-				uploadStatus.innerHTML = `<span style='color:red'>Upload failed: ${error.message}</span>`;
-			}
+			this.showDropzoneError('Upload failed: ' + error.message);
 		}
+	}
+
+	/**
+	 * Show thumbnail preview of uploaded image (legacy support)
+	 * @param {string} filename - Image path (e.g., "images/wines/GUID.jpg")
+	 */
+	showUploadThumbnail(filename) {
+		// Use the new dropzone preview if available
+		const dropzone = document.getElementById('uploadDropzone');
+		if (dropzone) {
+			this.showDropzonePreview(filename);
+			return;
+		}
+
+		// Legacy fallback for non-dropzone contexts
+		const uploadStatus = document.getElementById('uploadStatus');
+		if (!uploadStatus) return;
+
+		let previewContainer = document.getElementById('uploadPreviewContainer');
+
+		if (!previewContainer) {
+			previewContainer = document.createElement('div');
+			previewContainer.id = 'uploadPreviewContainer';
+			previewContainer.className = 'upload-preview-container';
+			uploadStatus.parentNode.insertBefore(previewContainer, uploadStatus.nextSibling);
+		}
+
+		// Add timestamp to prevent caching
+		const timestamp = new Date().getTime();
+		previewContainer.innerHTML = `
+			<div class="upload-preview">
+				<img src="./${filename}?t=${timestamp}" alt="Wine image preview" class="upload-thumbnail" />
+			</div>
+		`;
 	}
 
 	/**
