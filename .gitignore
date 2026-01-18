@@ -16,6 +16,12 @@ resources/wineapp.js
 .images/
 
 # ===================
+# DEPLOYMENT FILES
+# ===================
+deploy.ps1
+
+
+# ===================
 # OS FILES
 # ===================
 .DS_Store
