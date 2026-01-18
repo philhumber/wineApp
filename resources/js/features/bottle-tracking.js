@@ -143,6 +143,10 @@ export class BottleTrackingManager {
 		try {
 			// Set form mode to edit
 			if (window.formManager) {
+				// Reset to first tab
+				formManager.reset();
+	
+				// Set mode AFTER reset (reset clears the mode)
 				window.formManager.setMode('edit');
 			}
 
