@@ -4,6 +4,7 @@
  */
 
 import { modalManager, showOverlay, hideOverlay } from '../ui/modals.js';
+import { loadingTextCycler } from '../ui/loading.js';
 
 /**
  * AIIntegrationManager class for Gemini AI operations
@@ -187,12 +188,10 @@ export class AIIntegrationManager {
 		regionName.setAttribute("valid", "");
 
 		if (countryDropDown.value !== "" && regionName.value !== "") {
-			// Show loading overlay
+			// Show loading overlay with cycling text
 			showOverlay();
 			const loader = document.getElementById("loader");
-			if (loader) {
-				loader.innerHTML = "<div class='loading'></div>";
-			}
+			loadingTextCycler.start(loader);
 
 			// Get AI data
 			const data = await this.getAIData(
@@ -201,7 +200,7 @@ export class AIIntegrationManager {
 			);
 
 			// Hide loading
-			if (loader) loader.innerHTML = "";
+			loadingTextCycler.stop(loader);
 			hideOverlay();
 
 			// Show extra details section
@@ -256,12 +255,10 @@ export class AIIntegrationManager {
 				wineRegion = document.getElementById("regionName")?.value || "";
 			}
 
-			// Show loading overlay
+			// Show loading overlay with cycling text
 			showOverlay();
 			const loader = document.getElementById("loader");
-			if (loader) {
-				loader.innerHTML = "<div class='loading'></div>";
-			}
+			loadingTextCycler.start(loader);
 
 			// Get AI data
 			const data = await this.getAIData(
@@ -270,7 +267,7 @@ export class AIIntegrationManager {
 			);
 
 			// Hide loading
-			if (loader) loader.innerHTML = "";
+			loadingTextCycler.stop(loader);
 			hideOverlay();
 
 			// Show extra details section
@@ -330,12 +327,10 @@ export class AIIntegrationManager {
 				wineProducer = document.getElementById("producerName")?.value || "";
 			}
 
-			// Show loading overlay
+			// Show loading overlay with cycling text
 			showOverlay();
 			const loader = document.getElementById("loader");
-			if (loader) {
-				loader.innerHTML = "<div class='loading'></div>";
-			}
+			loadingTextCycler.start(loader);
 
 			// Get AI data
 			const data = await this.getAIData(
@@ -344,7 +339,7 @@ export class AIIntegrationManager {
 			);
 
 			// Hide loading
-			if (loader) loader.innerHTML = "";
+			loadingTextCycler.stop(loader);
 			hideOverlay();
 
 			// Show extra details section
