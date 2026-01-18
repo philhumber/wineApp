@@ -630,10 +630,6 @@ docs/
 # Run local server
 php -S localhost:8000
 
-# View JIRA issues (requires API token)
-curl -u "phil.humber@gmail.com:[TOKEN]" \
-  "https://philhumber.atlassian.net/rest/api/3/search?jql=project=WIN+AND+status!=Done"
-
 # Search for function definition
 grep -r "function functionName" resources/js/
 
@@ -646,6 +642,22 @@ wc -l resources/js/**/*.js
 # Database connection test
 mysql -h 10.0.0.16 -u username -p winelist
 ```
+
+### JIRA API Access
+
+Use the **WebFetch** tool to query JIRA issues:
+```
+WebFetch URL: https://philhumber.atlassian.net/jira/software/projects/WIN/board
+Prompt: "List all open issues in the current sprint"
+```
+
+For REST API queries:
+```
+WebFetch URL: https://philhumber.atlassian.net/rest/api/3/search?jql=project=WIN+AND+status!=Done
+Prompt: "Extract issue keys, summaries, and statuses"
+```
+
+**Note**: API token stored in `../wineapp-config/jira.config.json`
 
 ### File Locations
 
