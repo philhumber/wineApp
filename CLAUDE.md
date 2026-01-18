@@ -25,7 +25,7 @@
 1. **✅ Phase 1 Complete** - 17 ES6 modules, old `wineapp.js` deprecated (DO NOT LOAD)
 2. **🟡 Sprint 3 Active** - 2 remaining issues before Qvé migration
 3. **✅ GitHub Setup Complete** - Repo at `philhumber/wineApp` with 3-branch workflow
-4. **✅ Credentials Secured** - All credentials in `../wineapp-config/config.local.php` (outside web root)
+4. **✅ Credentials Secured** - All credentials in `../wineapp-config/` (outside web root)
 5. **📋 Qvé Plan Ready** - Full plan at `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
 
 ### Critical Warnings
@@ -33,7 +33,7 @@
 ⚠️ **DO NOT** load old `resources/wineapp.js` - causes conflicts with modular system
 ⚠️ **DO NOT** use `ratingManager.closeModal()` - use `modalManager.hideAll()` instead
 ⚠️ **ALWAYS** refresh dropdowns after mutations - `dropdownManager.refreshAllDropdowns()`
-⚠️ **CREDENTIALS** are in `../wineapp-config/config.local.php` (outside web root, not in repo)
+⚠️ **CREDENTIALS** are in `../wineapp-config/` (DB: `config.local.php`, JIRA: `jira.config.json`)
 
 ---
 
@@ -48,8 +48,8 @@ git checkout develop
 git pull origin develop
 git checkout -b feature/WINE-XX-description
 
-# View open JIRA issues
-curl -u "phil.humber@gmail.com:[TOKEN]" \
+# View open JIRA issues (token in ../wineapp-config/jira.config.json)
+curl -u "phil.humber@gmail.com:$(cat ../wineapp-config/jira.config.json | jq -r .token)" \
   "https://philhumber.atlassian.net/rest/api/3/search?jql=project=WIN+AND+status!=Done"
 
 # Database connection
@@ -74,8 +74,9 @@ main (QA / testing - manual deploy to prod)
 **Workflow**: Create feature branches from `develop`, open PRs, squash merge.
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/06-reference/GITHUB_QUICK_REFERENCE.md](docs/06-reference/GITHUB_QUICK_REFERENCE.md)
 
-**Credentials**: Stored in `../wineapp-config/config.local.php` (outside repo).
-See [resources/php/config.local.php.example](resources/php/config.local.php.example) for setup.
+**Credentials**: Stored in `../wineapp-config/` (outside repo):
+- `config.local.php` - Database credentials
+- `jira.config.json` - JIRA API token (email, token, baseUrl)
 
 ---
 
