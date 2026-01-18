@@ -48,13 +48,25 @@ git checkout develop
 git pull origin develop
 git checkout -b feature/WINE-XX-description
 
-# View open JIRA issues (token in ../wineapp-config/jira.config.json)
-curl -u "phil.humber@gmail.com:$(cat ../wineapp-config/jira.config.json | jq -r .token)" \
-  "https://philhumber.atlassian.net/rest/api/3/search?jql=project=WIN+AND+status!=Done"
-
 # Database connection
 mysql -h 10.0.0.16 -u username -p winelist
 ```
+
+### JIRA API Access
+
+Use the **WebFetch** tool to query JIRA issues:
+```
+WebFetch URL: https://philhumber.atlassian.net/jira/software/projects/WIN/board
+Prompt: "List all open issues in the current sprint"
+```
+
+For REST API queries, Claude Code can use WebFetch with the search endpoint:
+```
+WebFetch URL: https://philhumber.atlassian.net/rest/api/3/search?jql=project=WIN+AND+status!=Done
+Prompt: "Extract issue keys, summaries, and statuses from the JSON response"
+```
+
+**Note**: JIRA API token stored in `../wineapp-config/jira.config.json` for authenticated requests.
 
 ---
 
