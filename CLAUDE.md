@@ -17,13 +17,13 @@
 |--------|--------|-------|
 | Sprint 1 | ✅ COMPLETE | Critical bug fixes (WIN-87, WIN-86, WIN-66, WIN-93) |
 | Sprint 2 | ✅ COMPLETE | UX improvements (toast, filters, scroll, view mode) |
-| Sprint 3 | 🟡 IN PROGRESS | Features: WIN-84, WIN-38, WIN-43 remaining |
+| Sprint 3 | 🟡 IN PROGRESS | Features: WIN-84, WIN-38 remaining |
 | Qvé Migration | 📋 PLANNED | Svelte/SvelteKit PWA - plan approved |
 
 ### What You Need to Know
 
-1. **✅ Phase 1 Complete** - 16 ES6 modules, old `wineapp.js` deprecated (DO NOT LOAD)
-2. **🟡 Sprint 3 Active** - 3 remaining issues before Qvé migration
+1. **✅ Phase 1 Complete** - 17 ES6 modules, old `wineapp.js` deprecated (DO NOT LOAD)
+2. **🟡 Sprint 3 Active** - 2 remaining issues before Qvé migration
 3. **✅ GitHub Setup Complete** - Repo at `philhumber/wineApp` with 4-branch workflow
 4. **✅ Credentials Secured** - All credentials in `../wineapp-config/config.local.php` (outside web root)
 5. **📋 Qvé Plan Ready** - Full plan at `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
@@ -78,7 +78,7 @@ See [resources/php/config.local.php.example](resources/php/config.local.php.exam
 
 ## Technology Stack (Quick Reference)
 
-- **Frontend**: Vanilla JavaScript ES6+ modules (16 modules, no frameworks)
+- **Frontend**: Vanilla JavaScript ES6+ modules (17 modules, no frameworks)
 - **Backend**: PHP 7+ with PDO
 - **Database**: MySQL 8.0 on 10.0.0.16 (database: `winelist`)
 - **AI**: Google Gemini AI API
@@ -90,7 +90,7 @@ See [resources/php/config.local.php.example](resources/php/config.local.php.exam
 
 ## Key Files to Know
 
-### JavaScript Modules (16 total)
+### JavaScript Modules (17 total)
 ```
 resources/js/
 ├── app.js                          # Main entry, event delegation, init
@@ -100,7 +100,8 @@ resources/js/
 │   └── modals.js                   # Modal overlay management
 ├── ui/
 │   ├── cards.js                    # Card rendering, scrollToCard
-│   ├── toast.js                    # Toast notifications (NEW Sprint 2)
+│   ├── toast.js                    # Toast notifications
+│   ├── loading.js                  # AI loading text cycler
 │   ├── dropdowns.js                # Filter dropdowns
 │   └── navigation.js               # Sidebar navigation
 ├── features/
@@ -141,7 +142,7 @@ resources/php/
 1. **Read this file** (CLAUDE.md) for current context
 2. **Check current sprint** - See Sprint Status table above
 3. **Check JIRA board** - https://philhumber.atlassian.net/jira/software/projects/WIN
-4. **Pick an issue** from Sprint 3 (WIN-88, WIN-84, WIN-38, WIN-43)
+4. **Pick an issue** from Sprint 3 (WIN-84, WIN-38)
 5. **Read relevant docs** if needed:
    - [docs/01-overview/ARCHITECTURE.md](docs/01-overview/ARCHITECTURE.md) - System design
    - [docs/02-development/MODULE_GUIDE.md](docs/02-development/MODULE_GUIDE.md) - Module API reference
@@ -171,7 +172,7 @@ resources/php/
 
 ## Current Sprint Work
 
-### Sprint 3 Remaining Issues (3 issues)
+### Sprint 3 Remaining Issues (2 issues)
 
 **WIN-84: Add purchase date field**
 - Note: `bottles.dateAdded` field already exists in DB!
@@ -181,11 +182,8 @@ resources/php/
 - Hide button after success, show success/error messages
 - Files: `wine-management.js`
 
-**WIN-43: Loading UI improvements**
-- Fun text during AI loading ("Searching cellars...", "Tasting vintages...")
-- Files: `ai-integration.js`
-
-### Sprint 3 Completed (5 issues) ✅
+### Sprint 3 Completed (6 issues) ✅
+- WIN-43: Loading UI improvements (cycling wine-themed messages during AI loading) ✅
 - WIN-88: Price scale on wine cards ($ to $$$$$, per-liter comparison, by bottle size) ✅
 - WIN-95: Picture upload (800x800px, edge-sampled backgrounds) ✅
 - WIN-27: Right-click context menu ✅

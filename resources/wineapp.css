@@ -929,7 +929,39 @@
   }
 }
 
+/* Loading Text Cycler */
+.loading-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    z-index: 4;
+}
 
+.loading-container .loading {
+    position: relative;
+    top: auto;
+    left: auto;
+}
+
+.loading-text {
+    color: #fff;
+    font-size: 1.1rem;
+    font-style: italic;
+    text-align: center;
+    margin: 0;
+    opacity: 1;
+    transition: opacity 0.35s ease-in-out;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.loading-text-fade {
+    opacity: 0;
+}
 
 
 

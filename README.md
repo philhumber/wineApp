@@ -112,7 +112,7 @@ wineapp/
 
 ### JavaScript Module Architecture
 
-**16 ES6 Modules** organized in 4 layers:
+**17 ES6 Modules** organized in 4 layers:
 
 #### Core Layer (Foundation)
 - `core/api.js` - WineAPI class, all backend communication
@@ -126,6 +126,7 @@ wineapp/
 - `ui/dropdowns.js` - DropdownManager for filters
 - `ui/navigation.js` - NavigationManager for sidebar
 - `ui/toast.js` - ToastManager for notifications
+- `ui/loading.js` - LoadingTextCycler for AI loading states
 
 #### Features Layer (Business Logic)
 - `features/rating.js` - RatingManager (10-star system)
@@ -465,7 +466,7 @@ See `CLAUDE.md` or sprint docs for detailed test cases.
 ### Phase 1: ES6 Modular Refactoring ✅ COMPLETE
 **Completed**: January 2026
 
-- Refactored 1,642-line monolith into 16 ES6 modules (~5,241 lines)
+- Refactored 1,642-line monolith into 17 ES6 modules
 - 100% feature parity maintained
 - All regression tests passing
 - Old `wineapp.js` deprecated (do not load)
