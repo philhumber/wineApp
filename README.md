@@ -501,8 +501,9 @@ Completed:
 
 Remaining:
 - 🟡 **WIN-84**: Add purchase date field
-- 🟡 **WIN-38**: Upload button UI improvements
-- 🟡 **WIN-43**: Loading UI messages
+
+Recently Completed:
+- ✅ **WIN-38**: Upload button UI - Modern drag & drop zone with responsive thumbnail
 
 ### Open JIRA Issues
 
