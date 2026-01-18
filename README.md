@@ -2,7 +2,7 @@
 
 A personal wine collection management application with AI-powered data entry, bottle tracking, and rating system.
 
-**Last Updated**: 2026-01-16
+**Last Updated**: 2026-01-18
 **Status**: Phase 1 Complete ✅ | Sprint 1-2 Complete ✅ | Sprint 3 In Progress 🟡
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
@@ -367,7 +367,7 @@ main (QA / testing - manual deploy to prod)
         └── rewrite/*
 ```
 
-**Production deployment**: Files are manually deployed to the webserver when ready.
+**Production deployment**: Use `deploy.ps1` script to deploy to `V:\html\wineApp` with automatic backup.
 
 **Flow for features/fixes:** `feature/WIN-XX` → `develop` → `main` → manual deploy
 
@@ -640,6 +640,30 @@ wc -l resources/js/**/*.js
 # Database connection test
 mysql -h 10.0.0.16 -u username -p winelist
 ```
+
+### Deployment
+
+Deploy to production server at `V:\html\wineApp` using PowerShell:
+
+```powershell
+# Preview deployment (no changes made)
+.\deploy.ps1 -DryRun
+
+# Deploy to production (creates backup first)
+.\deploy.ps1
+
+# List available backups
+.\deploy.ps1 -ListBackups
+
+# Rollback to a specific backup
+.\deploy.ps1 -Rollback "2026-01-18_143022"
+```
+
+**Features:**
+- Auto-backup before each deployment (kept at `V:\html\wineApp-backups\`)
+- Retains 5 most recent backups, auto-cleans older ones
+- Excludes config files, docs, design, and dev files
+- Wine images use merge mode (adds new, never overwrites existing uploads)
 
 ### JIRA API Access
 
