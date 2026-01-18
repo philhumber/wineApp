@@ -3,8 +3,8 @@
      * Database configuration and connection
      */
 
-    // Load config from outside web root
-    $configPath = __DIR__ . '/../../wineapp-config/config.local.php';
+    // Load config from outside web root (sibling directory to wineapp)
+    $configPath = __DIR__ . '/../../../wineapp-config/config.local.php';
     if (!file_exists($configPath)) {
         throw new Exception('Config file not found. See config.local.php.example for setup instructions.');
     }

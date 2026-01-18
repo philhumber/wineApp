@@ -37,3 +37,14 @@ npm-debug.log*
 # ===================
 tmpclaude-*
 *.tmp
+
+# ===================
+# JIRA EXPORTS
+# ===================
+jira_*.json
+jira_*.txt
+
+# ===================
+# TRASH FOLDER
+# ===================
+.trash/

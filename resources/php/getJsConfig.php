@@ -6,8 +6,8 @@
 header('Content-Type: application/javascript');
 header('Cache-Control: no-store'); // Don't cache credentials
 
-// Load from outside web root (Layer 3: Location security)
-$configPath = __DIR__ . '/../../wineapp-config/config.local.php';
+// Load from outside web root (sibling directory to wineapp)
+$configPath = __DIR__ . '/../../../wineapp-config/config.local.php';
 
 if (!file_exists($configPath)) {
     // Fallback for development - warn developer

@@ -112,7 +112,7 @@ wineapp/
 
 ### JavaScript Module Architecture
 
-**16 ES6 Modules** organized in 4 layers:
+**17 ES6 Modules** organized in 4 layers:
 
 #### Core Layer (Foundation)
 - `core/api.js` - WineAPI class, all backend communication
@@ -126,6 +126,7 @@ wineapp/
 - `ui/dropdowns.js` - DropdownManager for filters
 - `ui/navigation.js` - NavigationManager for sidebar
 - `ui/toast.js` - ToastManager for notifications
+- `ui/loading.js` - LoadingTextCycler for AI loading states
 
 #### Features Layer (Business Logic)
 - `features/rating.js` - RatingManager (10-star system)
@@ -296,79 +297,85 @@ Run through the 10-point regression test checklist (see [Testing](#testing) belo
 
 ### Development Workflow
 
-1. **Pick a JIRA issue** from the current sprint
-2. **Read the code** - Never modify files you haven't read
-3. **Clone Repo** - Set up the correct development repo based on the type of work
-4. **Make changes** - Follow existing patterns
-5. **Test thoroughly** - Run regression tests
-6. **Update JIRA** - Mark issue as Done
-7. **Document** - Update relevant docs if needed
+#### One-Time Setup
 
-### Git Workflow Approach & Branching Strategy
-We use a **four-tier branching strategy** to support both ongoing development and a parallel Svelte rewrite:
+1. **Clone the repository** (if not already done)
+   ```bash
+   git clone https://github.com/philhumber/wineApp.git
+   cd wineApp
+   ```
 
+2. **Set up credentials** - Copy config example and add your credentials
+   ```bash
+   cp resources/php/config.local.php.example ../wineapp-config/config.local.php
+   # Edit the file with your database and API credentials
+   ```
+
+#### Starting Work on a Feature
+
+1. **Check JIRA** - Pick an issue from the current sprint
+   - Board: https://philhumber.atlassian.net/jira/software/projects/WIN
+
+2. **Create a feature branch**
+   ```bash
+   git checkout develop
+   git pull origin develop
+   git checkout -b feature/WIN-XX-short-description
+   ```
+
+3. **Your local files now match your branch**
+   - When you switch branches, Git updates your working directory
+   - The branch name in VSCode's bottom-left shows which code version you have
+
+4. **Read relevant code** - Never modify files you haven't read first
+
+5. **Start the dev server and test as you work**
+   ```bash
+   php -S localhost:8000
+   ```
+   Open http://localhost:8000 - this runs your current branch's code
+
+6. **Commit your changes**
+   ```bash
+   git add .
+   git commit -m "Add feature description
+
+   Refs: WIN-XX"
+   ```
+
+7. **Push and create a Pull Request**
+   ```bash
+   git push -u origin feature/WIN-XX-short-description
+   ```
+   - Open PR on GitHub targeting `develop`
+   - Use **Squash and merge**
+
+8. **Update JIRA** - Mark issue as Done after merge
+
+### Git Branching Strategy
+
+We use a **four-tier branching strategy**:
+
+```
 main (production)
   │
   └── staging (QA / integration testing)
         │
         ├── develop (ongoing fixes & features)
-        │     ├── feature/WINE-*
-        │     └── bugfix/WINE-*
+        │     ├── feature/WIN-*
+        │     └── bugfix/WIN-*
         │
         └── svelte-rewrite (long-lived Qvé migration)
-              ├── rewrite/component-library
-              ├── rewrite/wine-list-page
-              └── rewrite/api-integration
-
-**For current app features/fixes:**
-```
-feature/WINE-42 → develop → staging → main
+              └── rewrite/*
 ```
 
-**For Svelte/Qvé rewrite:**
-```
-rewrite/wine-list-page → svelte-rewrite → staging → main
-```
+**Flow for features/fixes:** `feature/WIN-XX` → `develop` → `staging` → `main`
 
-**For emergency hotfixes:**
-```
-hotfix/critical-bug → main (then backport to develop + svelte-rewrite)
-```
+**Flow for Svelte rewrite:** `rewrite/*` → `svelte-rewrite` → `staging` → `main`
 
-**Workflow**
-1. Clone the Repository
+**Flow for hotfixes:** `hotfix/*` → `main` (then backport to `develop` + `svelte-rewrite`)
 
-```bash
-git clone https://github.com/philhumber/wineApp.git
-cd wineApp
-```
-
-2. Start Development
-
-**For current app work:**
-```bash
-git checkout develop
-git pull origin develop
-git checkout -b feature/WINE-XX-description
-```
-
-**For rewrite work:**
-```bash
-git checkout svelte-rewrite
-git pull origin svelte-rewrite
-git checkout -b rewrite/component-name
-```
-
-3. Run Local Server
-
-```bash
-php -S localhost:8000
-```
-Open http://localhost:8000 in your browser.
-
-4. Make Changes & Open PR
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for complete workflow.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for complete PR workflow and merge strategies.
 
 ---
 
@@ -459,7 +466,7 @@ See `CLAUDE.md` or sprint docs for detailed test cases.
 ### Phase 1: ES6 Modular Refactoring ✅ COMPLETE
 **Completed**: January 2026
 
-- Refactored 1,642-line monolith into 16 ES6 modules (~5,241 lines)
+- Refactored 1,642-line monolith into 17 ES6 modules
 - 100% feature parity maintained
 - All regression tests passing
 - Old `wineapp.js` deprecated (do not load)
@@ -486,13 +493,13 @@ Implemented major UX improvements:
 ### Sprint 3: Feature Enhancements 🟡 IN PROGRESS
 
 Completed:
+- ✅ **WIN-88**: Price scale on wine cards ($ to $$$$$, per-liter normalized, by bottle size)
 - ✅ **WIN-95**: Picture upload (800x800px, edge-sampled backgrounds)
 - ✅ **WIN-27**: Right-click context menu
 - ✅ **WIN-96**: Card collapse scroll behavior
 - ✅ **WIN-NEW**: avgRating DECIMAL overflow fix
 
 Remaining:
-- 🟡 **WIN-88**: Show price value on wine card ($ to $$$$$)
 - 🟡 **WIN-84**: Add purchase date field
 - 🟡 **WIN-38**: Upload button UI improvements
 - 🟡 **WIN-43**: Loading UI messages
@@ -501,8 +508,8 @@ Remaining:
 
 **Total**: 45 open issues across various priorities
 
-**High Priority** (8 issues):
-- WIN-88, WIN-84, WIN-38, WIN-43 (Sprint 3)
+**High Priority** (7 issues):
+- WIN-84, WIN-38, WIN-43 (Sprint 3)
 - WIN-80, WIN-70, WIN-79, WIN-34
 
 **Medium Priority** (12 issues)
@@ -516,7 +523,7 @@ See JIRA board for complete list: https://philhumber.atlassian.net/jira/software
 
 ### Short Term (Next 2-4 weeks)
 
-1. **Complete Sprint 3** - Finish remaining 4 issues
+1. **Complete Sprint 3** - Finish remaining 3 issues
 2. **Sprint 4**: Architecture review and polish
 3. **Create Qvé mockups** - Design Add Wine and Drink/Rate flows
 

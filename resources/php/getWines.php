@@ -43,6 +43,76 @@
 						wine.rating,								
 						(SELECT ROUND(AVG(overallRating), 2) FROM ratings WHERE ratings.wineID = wine.wineID) AS avgRating,
 						(SELECT GROUP_CONCAT(Notes SEPARATOR '; ') FROM ratings WHERE ratings.wineID = wine.wineID) AS allNotes,
+						(SELECT ROUND(AVG(
+							(CASE b.currency
+								WHEN 'EUR' THEN b.price
+								WHEN 'GBP' THEN b.price * 1.17
+								WHEN 'SEK' THEN b.price * 0.087
+								WHEN 'USD' THEN b.price * 0.92
+								ELSE b.price
+							END) / (CASE b.bottleSize
+								WHEN 'Piccolo' THEN 0.187
+								WHEN 'Quarter' THEN 0.187
+								WHEN 'Demi' THEN 0.375
+								WHEN 'Standard' THEN 0.75
+								WHEN 'Magnum' THEN 1.5
+								ELSE 0.75
+							END)
+						), 2)
+						FROM bottles b
+						WHERE b.wineID = wine.wineID
+							AND b.price IS NOT NULL
+							AND b.price > 0) AS avgPricePerLiterEUR,
+						(SELECT ROUND(AVG(
+							(CASE b.currency
+								WHEN 'EUR' THEN b.price
+								WHEN 'GBP' THEN b.price * 1.17
+								WHEN 'SEK' THEN b.price * 0.087
+								WHEN 'USD' THEN b.price * 0.92
+								ELSE b.price
+							END) / (CASE b.bottleSize
+								WHEN 'Piccolo' THEN 0.187
+								WHEN 'Quarter' THEN 0.187
+								WHEN 'Demi' THEN 0.375
+								WHEN 'Standard' THEN 0.75
+								WHEN 'Magnum' THEN 1.5
+								ELSE 0.75
+							END)
+						), 2)
+						FROM bottles b
+						JOIN wine w2 ON b.wineID = w2.wineID
+						WHERE w2.wineTypeID = wine.wineTypeID
+							AND b.price IS NOT NULL
+							AND b.price > 0) AS typeAvgPricePerLiterEUR,
+						(SELECT ROUND(AVG(b.price), 2)
+						FROM bottles b
+						WHERE b.wineID = wine.wineID
+							AND b.bottleSize = 'Standard'
+							AND b.price IS NOT NULL
+							AND b.price > 0) AS standardPrice,
+						(SELECT ROUND(AVG(b.price), 2)
+						FROM bottles b
+						WHERE b.wineID = wine.wineID
+							AND b.bottleSize = 'Magnum'
+							AND b.price IS NOT NULL
+							AND b.price > 0) AS magnumPrice,
+						(SELECT ROUND(AVG(b.price), 2)
+						FROM bottles b
+						WHERE b.wineID = wine.wineID
+							AND b.bottleSize = 'Demi'
+							AND b.price IS NOT NULL
+							AND b.price > 0) AS demiPrice,
+						(SELECT ROUND(AVG(b.price), 2)
+						FROM bottles b
+						WHERE b.wineID = wine.wineID
+							AND b.bottleSize IN ('Piccolo', 'Quarter')
+							AND b.price IS NOT NULL
+							AND b.price > 0) AS smallPrice,
+						(SELECT b.currency
+						FROM bottles b
+						WHERE b.wineID = wine.wineID
+							AND b.price IS NOT NULL
+						LIMIT 1) AS currency,
 						SUM(CASE WHEN bottles.bottleSize = 'Standard' THEN 1 ELSE 0 END) AS standardBottles,
 						SUM(CASE WHEN bottles.bottleSize IN ('Piccolo', 'Quarter', 'Demi') THEN 1 ELSE 0 END) AS smallBottles,
 						COUNT(bottles.bottleID) - 
