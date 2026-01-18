@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qvé — Toast Notifications</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <style>
+        /* ═══════════════════════════════════════════════════════════
+           QVÉ DESIGN SYSTEM - TOAST NOTIFICATIONS MOCKUP
+           ═══════════════════════════════════════════════════════════ */
+
+        :root {
+            --bg: #FAF9F7;
+            --bg-subtle: #F5F3F0;
+            --surface: #FFFFFF;
+            --surface-raised: #FFFFFF;
+
+            --text-primary: #2D2926;
+            --text-secondary: #5C5652;
+            --text-tertiary: #8A847D;
+
+            --accent: #A69B8A;
+            --accent-subtle: #C4BAA9;
+            --accent-muted: #D9D2C6;
+
+            --divider: #E8E4DE;
+            --divider-subtle: #F0EDE8;
+
+            --success: #6B8E6B;
+            --success-bg: rgba(107, 142, 107, 0.1);
+            --error: #B87A7A;
+            --error-bg: rgba(184, 122, 122, 0.1);
+            --info: #7A8BA8;
+            --info-bg: rgba(122, 139, 168, 0.1);
+            --warning: #B8A07A;
+            --warning-bg: rgba(184, 160, 122, 0.1);
+
+            --shadow-sm: 0 1px 2px rgba(45, 41, 38, 0.03);
+            --shadow-md: 0 2px 8px rgba(45, 41, 38, 0.04), 0 1px 2px rgba(45, 41, 38, 0.03);
+            --shadow-lg: 0 8px 24px rgba(45, 41, 38, 0.08), 0 2px 4px rgba(45, 41, 38, 0.04);
+            --shadow-toast: 0 4px 16px rgba(45, 41, 38, 0.1), 0 1px 3px rgba(45, 41, 38, 0.05);
+
+            --font-serif: 'Cormorant Garamond', 'Didot', 'Bodoni MT', Georgia, serif;
+            --font-sans: 'Outfit', 'Avenir Next', system-ui, sans-serif;
+
+            --space-1: 0.25rem;
+            --space-2: 0.5rem;
+            --space-3: 0.75rem;
+            --space-4: 1rem;
+            --space-5: 1.5rem;
+            --space-6: 2rem;
+
+            --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+            --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --theme-transition: background 0.5s var(--ease-out),
+                               color 0.3s var(--ease-out);
+        }
+
+        [data-theme="dark"] {
+            --bg: #0C0B0A;
+            --bg-subtle: #141312;
+            --surface: #1A1918;
+            --surface-raised: #222120;
+
+            --text-primary: #F0EDE6;
+            --text-secondary: #A8A29A;
+            --text-tertiary: #6B665F;
+
+            --accent: #B8AFA0;
+            --accent-subtle: #7A756C;
+            --accent-muted: #4A4640;
+
+            --divider: #2A2826;
+            --divider-subtle: #1F1E1C;
+
+            --success: #8BA88B;
+            --success-bg: rgba(139, 168, 139, 0.15);
+            --error: #C99999;
+            --error-bg: rgba(201, 153, 153, 0.15);
+            --info: #9AABC8;
+            --info-bg: rgba(154, 171, 200, 0.15);
+            --warning: #C8B89A;
+            --warning-bg: rgba(200, 184, 154, 0.15);
+
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 1px rgba(255, 255, 255, 0.03);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.05);
+            --shadow-toast: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            color: var(--text-primary);
+            background: var(--bg);
+            line-height: 1.5;
+            min-height: 100vh;
+            transition: var(--theme-transition);
+        }
+
+        [data-theme="dark"] body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60vh;
+            background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(180, 165, 140, 0.03) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.015;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        [data-theme="dark"] body::after { opacity: 0.03; }
+
+        /* ═══════════════════════════════════════════════════════════
+           PAGE LAYOUT
+           ═══════════════════════════════════════════════════════════ */
+
+        .main {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: var(--space-6);
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: var(--space-6);
+        }
+
+        .page-title {
+            font-family: var(--font-serif);
+            font-size: 2rem;
+            font-weight: 400;
+            margin-bottom: var(--space-2);
+        }
+
+        .page-subtitle {
+            font-size: 0.9375rem;
+            color: var(--text-tertiary);
+        }
+
+        /* Demo Controls */
+        .demo-controls {
+            position: fixed;
+            top: var(--space-4);
+            right: var(--space-4);
+            display: flex;
+            gap: var(--space-2);
+            z-index: 100;
+        }
+
+        .demo-btn {
+            padding: var(--space-2) var(--space-4);
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: var(--surface);
+            border: 1px solid var(--divider);
+            border-radius: 100px;
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        .demo-btn:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           TOAST SHOWCASE
+           ═══════════════════════════════════════════════════════════ */
+
+        .showcase {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-6);
+        }
+
+        .showcase-section {
+            background: var(--surface);
+            border: 1px solid var(--divider-subtle);
+            border-radius: 12px;
+            padding: var(--space-5);
+        }
+
+        .showcase-title {
+            font-size: 0.6875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-4);
+        }
+
+        .toast-stack {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           TOAST COMPONENT
+           ═══════════════════════════════════════════════════════════ */
+
+        .toast {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-3);
+            padding: var(--space-4);
+            background: var(--surface);
+            border: 1px solid var(--divider);
+            border-radius: 12px;
+            box-shadow: var(--shadow-toast);
+            animation: toastIn 0.4s var(--ease-bounce);
+            position: relative;
+            overflow: hidden;
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px) scale(0.96);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .toast-icon {
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .toast-icon svg {
+            width: 14px;
+            height: 14px;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .toast-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .toast-title {
+            font-size: 0.9375rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .toast-message {
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
+        }
+
+        .toast-close {
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: 50%;
+            background: transparent;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .toast-close:hover {
+            background: var(--bg-subtle);
+        }
+
+        .toast-close svg {
+            width: 12px;
+            height: 12px;
+            stroke: var(--text-tertiary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* Toast Variants */
+        .toast-success .toast-icon {
+            background: var(--success-bg);
+        }
+        .toast-success .toast-icon svg {
+            stroke: var(--success);
+        }
+
+        .toast-error .toast-icon {
+            background: var(--error-bg);
+        }
+        .toast-error .toast-icon svg {
+            stroke: var(--error);
+        }
+
+        .toast-info .toast-icon {
+            background: var(--info-bg);
+        }
+        .toast-info .toast-icon svg {
+            stroke: var(--info);
+        }
+
+        .toast-warning .toast-icon {
+            background: var(--warning-bg);
+        }
+        .toast-warning .toast-icon svg {
+            stroke: var(--warning);
+        }
+
+        /* Toast with Action */
+        .toast-action {
+            margin-top: var(--space-2);
+        }
+
+        .toast-action-btn {
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: var(--accent);
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .toast-action-btn:hover {
+            color: var(--text-primary);
+            text-decoration: underline;
+        }
+
+        /* Progress Bar */
+        .toast-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: var(--accent);
+            border-radius: 0 0 0 12px;
+            animation: progress 5s linear forwards;
+        }
+
+        @keyframes progress {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+
+        .toast-success .toast-progress {
+            background: var(--success);
+        }
+
+        .toast-error .toast-progress {
+            background: var(--error);
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           LIVE TOAST CONTAINER
+           ═══════════════════════════════════════════════════════════ */
+
+        .toast-container {
+            position: fixed;
+            bottom: var(--space-5);
+            right: var(--space-5);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+            z-index: 1000;
+            max-width: 360px;
+            width: 100%;
+        }
+
+        @media (max-width: 480px) {
+            .toast-container {
+                left: var(--space-4);
+                right: var(--space-4);
+                bottom: var(--space-4);
+                max-width: none;
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           TRIGGER BUTTONS
+           ═══════════════════════════════════════════════════════════ -->
+
+        .trigger-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-3);
+            margin-top: var(--space-4);
+        }
+
+        .trigger-btn {
+            padding: var(--space-3) var(--space-4);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            background: var(--bg-subtle);
+            border: 1px solid var(--divider);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        .trigger-btn:hover {
+            border-color: var(--accent);
+            background: var(--surface);
+        }
+
+        .trigger-btn.success { color: var(--success); }
+        .trigger-btn.error { color: var(--error); }
+        .trigger-btn.info { color: var(--info); }
+        .trigger-btn.warning { color: var(--warning); }
+
+        @media (max-width: 600px) {
+            .trigger-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           SWIPE HINT
+           ═══════════════════════════════════════════════════════════ -->
+
+        .swipe-hint {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-2);
+            padding: var(--space-3);
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            background: var(--bg-subtle);
+            border-radius: 8px;
+            margin-top: var(--space-4);
+        }
+
+        .swipe-hint svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        ::selection {
+            background: var(--accent-muted);
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body>
+    <!-- Demo Controls -->
+    <div class="demo-controls">
+        <button class="demo-btn" onclick="toggleTheme()">Toggle Theme</button>
+    </div>
+
+    <main class="main">
+        <div class="page-header">
+            <h1 class="page-title">Toast Notifications</h1>
+            <p class="page-subtitle">Non-intrusive feedback for user actions</p>
+        </div>
+
+        <div class="showcase">
+            <!-- Success Toasts -->
+            <div class="showcase-section">
+                <h2 class="showcase-title">Success</h2>
+                <div class="toast-stack">
+                    <div class="toast toast-success">
+                        <div class="toast-icon">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="toast-content">
+                            <div class="toast-title">Wine added successfully!</div>
+                            <div class="toast-message">Clos des Papes 2019 is now in your collection.</div>
+                        </div>
+                        <button class="toast-close">
+                            <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        </button>
+                        <div class="toast-progress"></div>
+                    </div>
+
+                    <div class="toast toast-success">
+                        <div class="toast-icon">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="toast-content">
+                            <div class="toast-title">Cheers! Great wine!</div>
+                            <div class="toast-message">You rated this wine 8/10.</div>
+                        </div>
+                        <button class="toast-close">
+                            <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Toasts -->
+            <div class="showcase-section">
+                <h2 class="showcase-title">Error</h2>
+                <div class="toast-stack">
+                    <div class="toast toast-error">
+                        <div class="toast-icon">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        </div>
+                        <div class="toast-content">
+                            <div class="toast-title">Failed to save</div>
+                            <div class="toast-message">Please check your connection and try again.</div>
+                        </div>
+                        <button class="toast-close">
+                            <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="toast toast-error">
+                        <div class="toast-icon">
+                            <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        </div>
+                        <div class="toast-content">
+                            <div class="toast-title">Image upload failed</div>
+                            <div class="toast-message">File size exceeds 10MB limit.</div>
+                        </div>
+                        <button class="toast-close">
+                            <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Toasts -->
+            <div class="showcase-section">
+                <h2 class="showcase-title">Info</h2>
+                <div class="toast-stack">
+                    <div class="toast toast-info">
+                        <div class="toast-icon">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                        </div>
+                        <div class="toast-content">
+                            <div class="toast-title">Syncing your collection...</div>
+                            <div class="toast-message">This may take a moment.</div>
+                        </div>
+                        <button class="toast-close">
+                            <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Undo Toasts -->
+            <div class="showcase-section">
+                <h2 class="showcase-title">With Action (Undo)</h2>
+                <div class="toast-stack">
+                    <div class="toast toast-success">
+                        <div class="toast-icon">
+                            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="toast-content">
+                            <div class="toast-title">Bottle marked as drunk</div>
+                            <div class="toast-message">Clos des Papes 2019 - Standard</div>
+                            <div class="toast-action">
+                                <button class="toast-action-btn">Undo</button>
+                            </div>
+                        </div>
+                        <button class="toast-close">
+                            <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        </button>
+                        <div class="toast-progress"></div>
+                    </div>
+
+                    <div class="toast toast-info">
+                        <div class="toast-icon">
+                            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        </div>
+                        <div class="toast-content">
+                            <div class="toast-title">Export complete</div>
+                            <div class="toast-message">Your collection has been exported.</div>
+                            <div class="toast-action">
+                                <button class="toast-action-btn">Download CSV</button>
+                            </div>
+                        </div>
+                        <button class="toast-close">
+                            <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trigger Buttons -->
+            <div class="showcase-section">
+                <h2 class="showcase-title">Interactive Demo</h2>
+                <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: var(--space-3);">Click to trigger live toasts (bottom-right corner)</p>
+                <div class="trigger-grid">
+                    <button class="trigger-btn success" onclick="showToast('success')">Success</button>
+                    <button class="trigger-btn error" onclick="showToast('error')">Error</button>
+                    <button class="trigger-btn info" onclick="showToast('info')">Info</button>
+                    <button class="trigger-btn warning" onclick="showToast('undo')">With Undo</button>
+                </div>
+
+                <div class="swipe-hint">
+                    <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    <span>Swipe right to dismiss (on mobile)</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Live Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // Theme
+        const html = document.documentElement;
+        const savedTheme = localStorage.getItem('qve-theme');
+        if (savedTheme) html.setAttribute('data-theme', savedTheme);
+        else if (window.matchMedia('(prefers-color-scheme: dark)').matches) html.setAttribute('data-theme', 'dark');
+
+        function toggleTheme() {
+            const newTheme = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('qve-theme', newTheme);
+        }
+
+        // Toast System
+        const toastData = {
+            success: {
+                icon: '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
+                title: 'Wine added successfully!',
+                message: 'Clos des Papes 2019 is now in your collection.'
+            },
+            error: {
+                icon: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+                title: 'Failed to save',
+                message: 'Please check your connection and try again.'
+            },
+            info: {
+                icon: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+                title: 'Syncing your collection...',
+                message: 'This may take a moment.'
+            },
+            undo: {
+                icon: '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
+                title: 'Bottle marked as drunk',
+                message: 'Clos des Papes 2019 - Standard',
+                action: 'Undo'
+            }
+        };
+
+        function showToast(type) {
+            const container = document.getElementById('toastContainer');
+            const data = toastData[type];
+            const toastClass = type === 'undo' ? 'toast-success' : `toast-${type}`;
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${toastClass}`;
+            toast.innerHTML = `
+                <div class="toast-icon">${data.icon}</div>
+                <div class="toast-content">
+                    <div class="toast-title">${data.title}</div>
+                    <div class="toast-message">${data.message}</div>
+                    ${data.action ? `<div class="toast-action"><button class="toast-action-btn">${data.action}</button></div>` : ''}
+                </div>
+                <button class="toast-close" onclick="this.parentElement.remove()">
+                    <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+                <div class="toast-progress"></div>
+            `;
+
+            container.appendChild(toast);
+
+            // Auto dismiss after 5s
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.style.animation = 'toastOut 0.3s var(--ease-out) forwards';
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, 5000);
+        }
+
+        // Add exit animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes toastOut {
+                from { opacity: 1; transform: translateX(0); }
+                to { opacity: 0; transform: translateX(100%); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

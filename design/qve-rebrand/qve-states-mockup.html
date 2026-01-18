@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qvé — Empty & Error States</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <style>
+        /* ═══════════════════════════════════════════════════════════
+           QVÉ DESIGN SYSTEM - EMPTY & ERROR STATES MOCKUP
+           ═══════════════════════════════════════════════════════════ */
+
+        :root {
+            --bg: #FAF9F7;
+            --bg-subtle: #F5F3F0;
+            --surface: #FFFFFF;
+            --surface-raised: #FFFFFF;
+
+            --text-primary: #2D2926;
+            --text-secondary: #5C5652;
+            --text-tertiary: #8A847D;
+
+            --accent: #A69B8A;
+            --accent-subtle: #C4BAA9;
+            --accent-muted: #D9D2C6;
+
+            --divider: #E8E4DE;
+            --divider-subtle: #F0EDE8;
+
+            --success: #6B8E6B;
+            --error: #B87A7A;
+
+            --shadow-sm: 0 1px 2px rgba(45, 41, 38, 0.03);
+            --shadow-md: 0 2px 8px rgba(45, 41, 38, 0.04), 0 1px 2px rgba(45, 41, 38, 0.03);
+            --shadow-lg: 0 8px 24px rgba(45, 41, 38, 0.06), 0 2px 4px rgba(45, 41, 38, 0.03);
+
+            --font-serif: 'Cormorant Garamond', 'Didot', 'Bodoni MT', Georgia, serif;
+            --font-sans: 'Outfit', 'Avenir Next', system-ui, sans-serif;
+
+            --space-1: 0.25rem;
+            --space-2: 0.5rem;
+            --space-3: 0.75rem;
+            --space-4: 1rem;
+            --space-5: 1.5rem;
+            --space-6: 2rem;
+            --space-8: 3rem;
+            --space-10: 4rem;
+
+            --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+            --theme-transition: background 0.5s var(--ease-out),
+                               color 0.3s var(--ease-out);
+        }
+
+        [data-theme="dark"] {
+            --bg: #0C0B0A;
+            --bg-subtle: #141312;
+            --surface: #1A1918;
+            --surface-raised: #222120;
+
+            --text-primary: #F0EDE6;
+            --text-secondary: #A8A29A;
+            --text-tertiary: #6B665F;
+
+            --accent: #B8AFA0;
+            --accent-subtle: #7A756C;
+            --accent-muted: #4A4640;
+
+            --divider: #2A2826;
+            --divider-subtle: #1F1E1C;
+
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 1px rgba(255, 255, 255, 0.03);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            color: var(--text-primary);
+            background: var(--bg);
+            line-height: 1.5;
+            min-height: 100vh;
+            transition: var(--theme-transition);
+        }
+
+        [data-theme="dark"] body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60vh;
+            background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(180, 165, 140, 0.03) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.015;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        [data-theme="dark"] body::after { opacity: 0.03; }
+
+        /* ═══════════════════════════════════════════════════════════
+           PAGE LAYOUT
+           ═══════════════════════════════════════════════════════════ */
+
+        .main {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: var(--space-6);
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: var(--space-8);
+        }
+
+        .page-title {
+            font-family: var(--font-serif);
+            font-size: 2rem;
+            font-weight: 400;
+            margin-bottom: var(--space-2);
+        }
+
+        .page-subtitle {
+            font-size: 0.9375rem;
+            color: var(--text-tertiary);
+        }
+
+        /* Demo Controls */
+        .demo-controls {
+            position: fixed;
+            top: var(--space-4);
+            right: var(--space-4);
+            display: flex;
+            gap: var(--space-2);
+            z-index: 100;
+        }
+
+        .demo-btn {
+            padding: var(--space-2) var(--space-4);
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: var(--surface);
+            border: 1px solid var(--divider);
+            border-radius: 100px;
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        .demo-btn:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           SHOWCASE GRID
+           ═══════════════════════════════════════════════════════════ */
+
+        .showcase-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-5);
+        }
+
+        @media (max-width: 768px) {
+            .showcase-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .showcase-card {
+            background: var(--surface);
+            border: 1px solid var(--divider-subtle);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .showcase-card.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .showcase-label {
+            padding: var(--space-3) var(--space-4);
+            font-size: 0.6875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-tertiary);
+            background: var(--bg-subtle);
+            border-bottom: 1px solid var(--divider-subtle);
+        }
+
+        .showcase-content {
+            padding: var(--space-8);
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           EMPTY STATE
+           ═══════════════════════════════════════════════════════════ */
+
+        .empty-state {
+            text-align: center;
+            max-width: 320px;
+        }
+
+        .empty-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto var(--space-5);
+            opacity: 0.4;
+        }
+
+        .empty-icon svg {
+            width: 100%;
+            height: 100%;
+            stroke: var(--accent);
+            stroke-width: 0.5;
+            fill: none;
+        }
+
+        .empty-title {
+            font-family: var(--font-serif);
+            font-size: 1.5rem;
+            font-weight: 400;
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+        }
+
+        .empty-message {
+            font-size: 0.9375rem;
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-5);
+            line-height: 1.6;
+        }
+
+        .empty-action {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-3) var(--space-5);
+            font-family: var(--font-sans);
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--bg);
+            background: var(--text-primary);
+            border: none;
+            border-radius: 100px;
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        .empty-action:hover {
+            background: var(--text-secondary);
+        }
+
+        .empty-action svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .empty-link {
+            font-size: 0.875rem;
+            color: var(--accent);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .empty-link:hover {
+            color: var(--text-primary);
+            text-decoration: underline;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           LOADING STATE - SKELETON CARDS
+           ═══════════════════════════════════════════════════════════ */
+
+        .skeleton-grid {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-4);
+            width: 100%;
+        }
+
+        .skeleton-card {
+            display: flex;
+            gap: var(--space-5);
+            padding: var(--space-5);
+            background: var(--bg-subtle);
+            border-radius: 8px;
+        }
+
+        .skeleton-image {
+            width: 80px;
+            height: 100px;
+            background: linear-gradient(90deg, var(--divider) 25%, var(--divider-subtle) 50%, var(--divider) 75%);
+            background-size: 200% 100%;
+            border-radius: 4px;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+        }
+
+        .skeleton-line {
+            height: 16px;
+            background: linear-gradient(90deg, var(--divider) 25%, var(--divider-subtle) 50%, var(--divider) 75%);
+            background-size: 200% 100%;
+            border-radius: 4px;
+            animation: shimmer 1.5s infinite;
+        }
+
+        .skeleton-line.short { width: 60%; }
+        .skeleton-line.medium { width: 80%; }
+        .skeleton-line.tiny { width: 30%; height: 12px; }
+
+        /* ═══════════════════════════════════════════════════════════
+           LOADING TEXT (AI Loading)
+           ═══════════════════════════════════════════════════════════ -->
+
+        .loading-text-demo {
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto var(--space-4);
+            border: 2px solid var(--divider);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-family: var(--font-serif);
+            font-size: 1.125rem;
+            font-style: italic;
+            color: var(--text-secondary);
+            min-height: 1.5em;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           NETWORK ERROR STATE
+           ═══════════════════════════════════════════════════════════ -->
+
+        .error-state {
+            text-align: center;
+            max-width: 320px;
+        }
+
+        .error-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto var(--space-4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(184, 122, 122, 0.1);
+            border-radius: 50%;
+        }
+
+        [data-theme="dark"] .error-icon {
+            background: rgba(201, 153, 153, 0.15);
+        }
+
+        .error-icon svg {
+            width: 28px;
+            height: 28px;
+            stroke: var(--error);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .error-title {
+            font-family: var(--font-serif);
+            font-size: 1.25rem;
+            font-weight: 400;
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+        }
+
+        .error-message {
+            font-size: 0.875rem;
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-4);
+        }
+
+        .error-action {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-2) var(--space-4);
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: var(--surface);
+            border: 1px solid var(--divider);
+            border-radius: 100px;
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        .error-action:hover {
+            border-color: var(--text-tertiary);
+            color: var(--text-primary);
+        }
+
+        .error-action svg {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           AI LOADING OVERLAY
+           ═══════════════════════════════════════════════════════════ -->
+
+        .ai-overlay-demo {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 250px;
+            background: var(--bg-subtle);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .ai-overlay-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(45, 41, 38, 0.6);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        [data-theme="dark"] .ai-overlay-backdrop {
+            background: rgba(12, 11, 10, 0.8);
+        }
+
+        .ai-overlay-content {
+            text-align: center;
+            color: white;
+        }
+
+        [data-theme="dark"] .ai-overlay-content {
+            color: var(--text-primary);
+        }
+
+        .ai-overlay-spinner {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto var(--space-4);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        [data-theme="dark"] .ai-overlay-spinner {
+            border-color: rgba(166, 155, 138, 0.2);
+            border-top-color: var(--accent);
+        }
+
+        .ai-overlay-text {
+            font-family: var(--font-serif);
+            font-size: 1.25rem;
+            font-style: italic;
+            margin-bottom: var(--space-3);
+        }
+
+        .ai-overlay-cancel {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .ai-overlay-cancel:hover {
+            color: white;
+        }
+
+        [data-theme="dark"] .ai-overlay-cancel {
+            color: var(--text-tertiary);
+        }
+
+        [data-theme="dark"] .ai-overlay-cancel:hover {
+            color: var(--text-secondary);
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           FOCUS & SELECTION
+           ═══════════════════════════════════════════════════════════ -->
+
+        ::selection {
+            background: var(--accent-muted);
+            color: var(--text-primary);
+        }
+
+        *:focus-visible {
+            outline: 1px solid var(--accent-subtle);
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Demo Controls -->
+    <div class="demo-controls">
+        <button class="demo-btn" onclick="toggleTheme()">Toggle Theme</button>
+    </div>
+
+    <main class="main">
+        <div class="page-header">
+            <h1 class="page-title">Empty & Error States</h1>
+            <p class="page-subtitle">Graceful handling when things don't go as planned</p>
+        </div>
+
+        <div class="showcase-grid">
+            <!-- Empty Collection -->
+            <div class="showcase-card">
+                <div class="showcase-label">Empty Collection</div>
+                <div class="showcase-content">
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M8 2h8l1 8c0 3.5-2.5 6-5 6s-5-2.5-5-6l1-8z"/>
+                                <line x1="12" y1="16" x2="12" y2="22"/>
+                                <line x1="8" y1="22" x2="16" y2="22"/>
+                            </svg>
+                        </div>
+                        <h3 class="empty-title">Your collection is empty</h3>
+                        <p class="empty-message">Start building your wine collection by adding your first bottle.</p>
+                        <button class="empty-action">
+                            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Add your first wine
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- No Search Results -->
+            <div class="showcase-card">
+                <div class="showcase-label">No Search Results</div>
+                <div class="showcase-content">
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <svg viewBox="0 0 24 24">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                                <line x1="8" y1="11" x2="14" y2="11"/>
+                            </svg>
+                        </div>
+                        <h3 class="empty-title">No wines found</h3>
+                        <p class="empty-message">No wines match your current filters. Try adjusting your search criteria.</p>
+                        <span class="empty-link">Clear all filters</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Skeleton Loading -->
+            <div class="showcase-card">
+                <div class="showcase-label">Loading State (Skeleton)</div>
+                <div class="showcase-content">
+                    <div class="skeleton-grid">
+                        <div class="skeleton-card">
+                            <div class="skeleton-image"></div>
+                            <div class="skeleton-content">
+                                <div class="skeleton-line medium"></div>
+                                <div class="skeleton-line short"></div>
+                                <div class="skeleton-line tiny"></div>
+                            </div>
+                        </div>
+                        <div class="skeleton-card">
+                            <div class="skeleton-image"></div>
+                            <div class="skeleton-content">
+                                <div class="skeleton-line medium"></div>
+                                <div class="skeleton-line short"></div>
+                                <div class="skeleton-line tiny"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Text -->
+            <div class="showcase-card">
+                <div class="showcase-label">Loading State (Text Cycling)</div>
+                <div class="showcase-content">
+                    <div class="loading-text-demo">
+                        <div class="loading-spinner"></div>
+                        <p class="loading-text" id="loadingText">Loading your collection...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Network Error -->
+            <div class="showcase-card">
+                <div class="showcase-label">Network Error</div>
+                <div class="showcase-content">
+                    <div class="error-state">
+                        <div class="error-icon">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M1 1l22 22"/>
+                                <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
+                                <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
+                                <path d="M10.71 5.05A16 16 0 0 1 22.58 9"/>
+                                <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
+                                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                                <line x1="12" y1="20" x2="12.01" y2="20"/>
+                            </svg>
+                        </div>
+                        <h3 class="error-title">Unable to connect</h3>
+                        <p class="error-message">Check your internet connection and try again.</p>
+                        <button class="error-action">
+                            <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                            Retry
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Server Error -->
+            <div class="showcase-card">
+                <div class="showcase-label">Server Error</div>
+                <div class="showcase-content">
+                    <div class="error-state">
+                        <div class="error-icon">
+                            <svg viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                        </div>
+                        <h3 class="error-title">Something went wrong</h3>
+                        <p class="error-message">We're having trouble loading your data. Please try again later.</p>
+                        <button class="error-action">
+                            <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                            Retry
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Loading Overlay -->
+            <div class="showcase-card full-width">
+                <div class="showcase-label">AI Loading Overlay</div>
+                <div class="showcase-content" style="padding: 0;">
+                    <div class="ai-overlay-demo">
+                        <!-- Blurred background content -->
+                        <div style="padding: var(--space-6); opacity: 0.3;">
+                            <div style="height: 24px; background: var(--divider); border-radius: 4px; margin-bottom: var(--space-3); width: 60%;"></div>
+                            <div style="height: 16px; background: var(--divider); border-radius: 4px; margin-bottom: var(--space-2); width: 80%;"></div>
+                            <div style="height: 16px; background: var(--divider); border-radius: 4px; width: 40%;"></div>
+                        </div>
+
+                        <!-- Overlay -->
+                        <div class="ai-overlay-backdrop">
+                            <div class="ai-overlay-content">
+                                <div class="ai-overlay-spinner"></div>
+                                <p class="ai-overlay-text" id="aiText">Searching the cellars...</p>
+                                <span class="ai-overlay-cancel">Cancel</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Theme
+        const html = document.documentElement;
+        const savedTheme = localStorage.getItem('qve-theme');
+        if (savedTheme) html.setAttribute('data-theme', savedTheme);
+        else if (window.matchMedia('(prefers-color-scheme: dark)').matches) html.setAttribute('data-theme', 'dark');
+
+        function toggleTheme() {
+            const newTheme = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('qve-theme', newTheme);
+        }
+
+        // Loading text cycling
+        const loadingMessages = [
+            "Loading your collection...",
+            "Sorting the vintages...",
+            "Counting the bottles...",
+            "Organizing the cellar..."
+        ];
+
+        const aiMessages = [
+            "Searching the cellars...",
+            "Consulting the sommelier...",
+            "Uncorking knowledge...",
+            "Decanting wisdom...",
+            "Swirling through vineyards...",
+            "Tasting the data..."
+        ];
+
+        let loadingIndex = 0;
+        let aiIndex = 0;
+
+        setInterval(() => {
+            loadingIndex = (loadingIndex + 1) % loadingMessages.length;
+            document.getElementById('loadingText').textContent = loadingMessages[loadingIndex];
+        }, 2000);
+
+        setInterval(() => {
+            aiIndex = (aiIndex + 1) % aiMessages.length;
+            document.getElementById('aiText').textContent = aiMessages[aiIndex];
+        }, 1800);
+    </script>
+</body>
+</html>
