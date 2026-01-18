@@ -22,11 +22,11 @@
 
 ### Current Plan: Fix & Migrate (Option A)
 
-**Phase 1: Quick Bug Fixes** (current app)
+**Phase 1: Quick Bug Fixes** (current app) ✅ COMPLETE
 1. ✅ WIN-104: Edit page tab counter reset - DONE
 2. ✅ WIN-105: Median for price scale - DONE
 3. ✅ WIN-27: Right-click menu popup - DONE
-4. 🔧 WIN-102: Can't edit a wine with no bottles - TO DO
+4. ✅ WIN-102: Can't edit a wine with no bottles - DONE (split Edit Wine / Edit Bottle)
 
 **Phase 2: Qvé Migration**
 - Start Svelte/SvelteKit PWA build
@@ -39,7 +39,7 @@
 2. **✅ Sprint 1-3 Complete** - Core app stable, ready for migration
 3. **✅ GitHub Setup Complete** - Repo at `philhumber/wineApp` with 3-branch workflow
 4. **✅ Credentials Secured** - All credentials in `../wineapp-config/` (outside web root)
-5. **🔧 Fix & Migrate Active** - Fix WIN-102, then start Qvé migration
+5. **✅ Phase 1 Bug Fixes Complete** - Ready to start Qvé migration
 
 ### Critical Warnings
 
@@ -244,7 +244,7 @@ Run after each change:
 
 ## Qvé Migration Plan (Phase 2)
 
-**Status**: Ready to start after WIN-102 fix
+**Status**: Ready to start
 **Approach**: Build new Svelte/SvelteKit PWA at `/qve/` alongside existing app
 
 **Key Details**:
@@ -256,11 +256,10 @@ Run after each change:
 **Full plan**: `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
 
 **Migration Steps**:
-1. Fix WIN-102 (can't edit wine with no bottles)
-2. Create mockups for Add Wine and Drink/Rate flows
-3. Begin SvelteKit project initialization
-4. Implement core components and routing
-5. Port remaining backlog features to new stack
+1. Create mockups for Add Wine and Drink/Rate flows
+2. Begin SvelteKit project initialization
+3. Implement core components and routing
+4. Port remaining backlog features to new stack
 
 **See [README.md](README.md) for complete roadmap and migration phases.**
 
@@ -269,9 +268,7 @@ Run after each change:
 ## Open Backlog Summary
 
 ### Bugs (To Do)
-| Key | Summary |
-|-----|---------|
-| **WIN-102** | Can't edit a wine with no bottles |
+No open bugs - all fixed!
 
 ### Tasks - Will migrate to Qvé
 | Key | Summary |
