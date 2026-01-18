@@ -490,9 +490,9 @@ Implemented major UX improvements:
 - ✅ **WIN-94**: Navigate to new wine after add
 - ✅ **WIN-XX**: Button ID collision fix
 
-### Sprint 3: Feature Enhancements 🟡 IN PROGRESS
+### Sprint 3: Feature Enhancements ✅ COMPLETE
 
-All Issues Completed (8 total):
+All Issues Completed (9 total):
 - ✅ **WIN-84**: Add purchase date field
 - ✅ **WIN-38**: Upload button UI - Modern drag & drop zone with responsive thumbnail
 - ✅ **WIN-43**: Loading UI improvements (cycling wine-themed messages)
@@ -501,6 +501,7 @@ All Issues Completed (8 total):
 - ✅ **WIN-27**: Right-click context menu
 - ✅ **WIN-96**: Card collapse scroll behavior
 - ✅ **WIN-NEW**: avgRating DECIMAL overflow fix
+- ✅ **WIN-105**: Price scale uses median instead of average (reduces outlier skew)
 
 ### Open JIRA Issues
 
