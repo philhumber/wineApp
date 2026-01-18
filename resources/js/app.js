@@ -91,6 +91,9 @@ class WineApp {
 	setupEventListeners() {
 		console.log('Setting up event listeners...');
 
+		// The secret cellar
+		this.setupSecretCellar();
+
 		// Content area event delegation
 		const contentArea = document.getElementById('contentArea');
 		if (contentArea) {
@@ -152,6 +155,39 @@ class WineApp {
 				hideOverlay();
 			});
 		}
+	}
+
+	/**
+	 * You found the secret cellar!
+	 */
+	setupSecretCellar() {
+		let clicks = 0;
+		let timeout = null;
+		const title = document.getElementById('appTitle');
+		if (!title) return;
+
+		title.style.cursor = 'default';
+		title.addEventListener('click', () => {
+			clicks++;
+			clearTimeout(timeout);
+			timeout = setTimeout(() => clicks = 0, 2000);
+
+			if (clicks === 7) {
+				clicks = 0;
+				title.style.transition = 'transform 0.1s ease-in-out';
+				title.style.display = 'inline-block';
+				let wobbles = 0;
+				const wobble = setInterval(() => {
+					title.style.transform = wobbles % 2 ? 'rotate(-2deg)' : 'rotate(2deg)';
+					wobbles++;
+					if (wobbles > 6) {
+						clearInterval(wobble);
+						title.style.transform = 'rotate(0deg)';
+					}
+				}, 100);
+				toast.info('You found the secret cellar! Cheers, wine detective.', { duration: 5000 });
+			}
+		});
 	}
 
 	/**

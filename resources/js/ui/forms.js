@@ -56,6 +56,12 @@ export class FormManager {
 			const tabs = document.getElementsByClassName('tab');
 			if (!tabs || tabs.length === 0) return false;
 
+			// Single-tab modes: submit directly without navigation
+			const isSingleTabMode = this.addORedit === 'editWineOnly' || this.addORedit === 'editBottleOnly';
+			if (isSingleTabMode && n === 1) {
+				return this.handleFormSubmit(n, tabs);
+			}
+
 			// Move to next/previous tab
 			this.currentTab = this.currentTab + n;
 
@@ -90,19 +96,19 @@ export class FormManager {
 			} else {
 				console.error('addWine function not found');
 			}
-		} else if (this.addORedit === 'edit') {
-			if (!confirm('Are you sure you want to edit this wine?')) {
+		} else if (this.addORedit === 'edit' || this.addORedit === 'editWineOnly' || this.addORedit === 'editBottleOnly') {
+			if (!confirm('Are you sure you want to save these changes?')) {
 				this.currentTab = this.currentTab - n;
 				return false;
 			}
-			// Call global editWine function
+			// Call global editWine function (handles edit, editWineOnly, and editBottleOnly modes)
 			if (window.editWine) {
 				window.editWine();
 			} else {
 				console.error('editWine function not found');
 			}
 		} else {
-			console.error(`Unknown form mode: '${this.addORedit}' (expected 'add' or 'edit')`);
+			console.error(`Unknown form mode: '${this.addORedit}' (expected 'add', 'edit', 'editWineOnly', or 'editBottleOnly')`);
 		}
 
 		// Stay on last tab
