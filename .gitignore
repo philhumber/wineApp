@@ -1,0 +1,50 @@
+# ===================
+# CREDENTIALS - NEVER COMMIT
+# ===================
+# Config is stored outside web root in ../wineapp-config/
+# This entry is for safety in case anyone puts config in repo
+config.local.php
+
+# ===================
+# DEPRECATED FILES
+# ===================
+resources/wineapp.js
+
+# ===================
+# OS FILES
+# ===================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ===================
+# EDITOR/IDE
+# ===================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ===================
+# LOGS
+# ===================
+*.log
+npm-debug.log*
+
+# ===================
+# TEMPORARY FILES
+# ===================
+tmpclaude-*
+*.tmp
+
+# ===================
+# JIRA EXPORTS
+# ===================
+jira_*.json
+jira_*.txt
+
+# ===================
+# TRASH FOLDER
+# ===================
+.trash/

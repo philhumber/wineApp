@@ -4,14 +4,19 @@
  */
 
 import { modalManager, showOverlay, hideOverlay } from '../ui/modals.js';
+import { loadingTextCycler } from '../ui/loading.js';
 
 /**
  * AIIntegrationManager class for Gemini AI operations
  */
 export class AIIntegrationManager {
 	constructor() {
-		this.apiKey = "AIzaSyCCqxRUoQuCkTlLD4m1Rm4ky51Ct-ATh_8"; // Replace with your actual API key
+		this.apiKey = window.WINE_APP_CONFIG?.geminiApiKey || "";
 		this.model = "gemini-2.5-pro";
+
+		if (!this.apiKey) {
+			console.warn('Gemini API key not configured. See config.local.php.example for setup.');
+		}
 	}
 
 	/**
@@ -183,12 +188,10 @@ export class AIIntegrationManager {
 		regionName.setAttribute("valid", "");
 
 		if (countryDropDown.value !== "" && regionName.value !== "") {
-			// Show loading overlay
+			// Show loading overlay with cycling text
 			showOverlay();
 			const loader = document.getElementById("loader");
-			if (loader) {
-				loader.innerHTML = "<div class='loading'></div>";
-			}
+			loadingTextCycler.start(loader);
 
 			// Get AI data
 			const data = await this.getAIData(
@@ -197,7 +200,7 @@ export class AIIntegrationManager {
 			);
 
 			// Hide loading
-			if (loader) loader.innerHTML = "";
+			loadingTextCycler.stop(loader);
 			hideOverlay();
 
 			// Show extra details section
@@ -252,12 +255,10 @@ export class AIIntegrationManager {
 				wineRegion = document.getElementById("regionName")?.value || "";
 			}
 
-			// Show loading overlay
+			// Show loading overlay with cycling text
 			showOverlay();
 			const loader = document.getElementById("loader");
-			if (loader) {
-				loader.innerHTML = "<div class='loading'></div>";
-			}
+			loadingTextCycler.start(loader);
 
 			// Get AI data
 			const data = await this.getAIData(
@@ -266,7 +267,7 @@ export class AIIntegrationManager {
 			);
 
 			// Hide loading
-			if (loader) loader.innerHTML = "";
+			loadingTextCycler.stop(loader);
 			hideOverlay();
 
 			// Show extra details section
@@ -326,12 +327,10 @@ export class AIIntegrationManager {
 				wineProducer = document.getElementById("producerName")?.value || "";
 			}
 
-			// Show loading overlay
+			// Show loading overlay with cycling text
 			showOverlay();
 			const loader = document.getElementById("loader");
-			if (loader) {
-				loader.innerHTML = "<div class='loading'></div>";
-			}
+			loadingTextCycler.start(loader);
 
 			// Get AI data
 			const data = await this.getAIData(
@@ -340,7 +339,7 @@ export class AIIntegrationManager {
 			);
 
 			// Hide loading
-			if (loader) loader.innerHTML = "";
+			loadingTextCycler.stop(loader);
 			hideOverlay();
 
 			// Show extra details section
