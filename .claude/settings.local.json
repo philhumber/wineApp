@@ -4,7 +4,12 @@
       "Bash(git checkout:*)",
       "Bash(git pull:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nWIN-88: Add price scale to wine cards + cleanup\n\n- Add price tier display \\($ to $$$$ on wine cards\n- Add per-liter price calculation and comparison logic\n- Update getWines.php with price/bottle size data\n- Clean up temporary files \\(jira_issues.json, jira_summary.txt, qve-mockup.html\\)\n- Update .gitignore, CLAUDE.md, README.md\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nWIN-88: Add price scale to wine cards + cleanup\n\n- Add price tier display \\($ to $$$$ on wine cards\n- Add per-liter price calculation and comparison logic\n- Update getWines.php with price/bottle size data\n- Clean up temporary files \\(jira_issues.json, jira_summary.txt, qve-mockup.html\\)\n- Update .gitignore, CLAUDE.md, README.md\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Skill(finishup)",
+      "Skill(finishup:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git stash:*)"
     ]
   }
 }

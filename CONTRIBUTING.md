@@ -6,22 +6,22 @@ Thank you for contributing! This guide will help you understand the workflow for
 
 ## Branch Strategy
 
-We use a **four-tier branching strategy**:
+We use a **three-tier branching strategy**:
 
 ```
-main (production)
+main (QA / testing - manual deploy to prod)
   │
-  └── staging (QA / integration testing)
-        │
-        ├── develop (ongoing fixes & features)
-        │     ├── feature/WINE-*
-        │     └── bugfix/WINE-*
-        │
-        └── svelte-rewrite (long-lived Qvé migration)
-              ├── rewrite/component-library
-              ├── rewrite/wine-list-page
-              └── rewrite/api-integration
+  ├── develop (ongoing fixes & features)
+  │     ├── feature/WINE-*
+  │     └── bugfix/WINE-*
+  │
+  └── svelte-rewrite (long-lived Qvé migration)
+        ├── rewrite/component-library
+        ├── rewrite/wine-list-page
+        └── rewrite/api-integration
 ```
+
+**Production deployment**: Files are manually deployed to the webserver when ready.
 
 **For detailed setup instructions**, see [docs/06-reference/GITHUB_SETUP_PLAN.md](docs/06-reference/GITHUB_SETUP_PLAN.md)
 
@@ -141,9 +141,9 @@ Closes WINE-42
 |----------------|--------------|-------|
 | `feature/*` → `develop` | **Squash and merge** | Cleans up WIP commits |
 | `bugfix/*` → `develop` | **Squash and merge** | Single logical unit |
-| `develop` → `staging` | **Merge commit** | Preserve milestone |
-| `staging` → `main` | **Merge commit** | Preserve release point |
+| `develop` → `main` | **Merge commit** | Preserve milestone |
 | `rewrite/*` → `svelte-rewrite` | **Squash and merge** | Clean rewrite history |
+| `svelte-rewrite` → `main` | **Merge commit** | Preserve release point |
 | `hotfix/*` → `main` | **Squash and merge** | Emergency fix |
 
 ---
@@ -163,13 +163,13 @@ Closes WINE-42
    ↓
 5. Merge (squash and merge)
    ↓
-6. Open PR: develop → staging
+6. Open PR: develop → main (requires 1 approval)
    ↓
-7. Run QA tests on staging
+7. Test on main branch
    ↓
-8. Open PR: staging → main (requires 1 approval)
+8. Merge (merge commit)
    ↓
-9. Merge (merge commit) → PRODUCTION RELEASE
+9. Manually deploy to production webserver when ready
 ```
 
 ### Svelte Rewrite Development
@@ -185,7 +185,7 @@ Closes WINE-42
    ↓
 5. Merge (squash and merge)
    ↓
-6. When complete → svelte-rewrite → staging → main
+6. When complete → svelte-rewrite → main
 ```
 
 ### Emergency Hotfix
@@ -234,9 +234,9 @@ Run the appropriate test suite from [CLAUDE.md](CLAUDE.md):
 - Verify touch gestures (long-press for context menu)
 - Check responsive layout (320px - 1920px)
 
-### After Merging to `staging`
+### After Merging to `main`
 
-Run **complete QA suite** before promoting to `main`:
+Run **complete QA suite** before deploying to production:
 - All regression tests
 - All sprint-specific tests
 - Mobile testing
@@ -353,22 +353,13 @@ git checkout -b feature/WINE-42-description
 
 ---
 
-### ❌ Don't skip the staging step
-```bash
-# BAD: develop → main (untested in QA)
-
-# GOOD: develop → staging → main
-```
-
----
-
 ### ❌ Don't bypass branch protection "just because"
 Only use admin bypass for true emergencies. See [Admin Bypass Policy](docs/06-reference/GITHUB_SETUP_PLAN.md#admin-bypass-policy).
 
 ---
 
 ### ❌ Don't merge without testing
-Always run at least basic regression tests before merging to `staging` or `main`.
+Always run at least basic regression tests before merging to `main`.
 
 ---
 
@@ -408,14 +399,9 @@ node_modules/
 
 ```bash
 # Sync all long-lived branches
-git checkout staging
-git pull origin staging
-git merge main
-git push origin staging
-
 git checkout develop
 git pull origin develop
-git merge staging
+git merge main
 git push origin develop
 
 git checkout svelte-rewrite
@@ -444,23 +430,19 @@ git checkout develop  # Return to develop
    - Squash merge all `feature/*` branches
    - Delete merged feature branches
 
-2. **Promote to staging**
-   - Open PR: `develop → staging`
+2. **Promote to main**
+   - Open PR: `develop → main`
    - Title: "Sprint X: Feature A, Feature B, Bug Fix C"
    - Merge commit (preserve milestone)
 
-3. **QA on staging**
+3. **QA on main**
    - Run complete test suite
    - Test on mobile devices
    - Check performance
    - Verify no regressions
 
-4. **Promote to production**
-   - Open PR: `staging → main`
-   - Title: "Release: Sprint X Features"
-   - Add release notes in description
-   - Require 1 approval (self-review checkpoint)
-   - Merge commit (preserve release point)
+4. **Deploy to production**
+   - Manually copy files to webserver
    - Tag: `v1.3.0` (optional)
 
 5. **Sync branches** (Monday ritual)
@@ -481,8 +463,8 @@ git checkout develop  # Return to develop
    git push origin svelte-rewrite
    ```
 
-3. **Promote to staging**
-   - Open PR: `svelte-rewrite → staging`
+3. **Promote to main**
+   - Open PR: `svelte-rewrite → main`
    - Title: "Qvé Migration: Complete Svelte rewrite"
    - Extensive description with:
      - Feature checklist
@@ -491,7 +473,7 @@ git checkout develop  # Return to develop
      - Rollback plan
    - Merge commit
 
-4. **Extended QA on staging**
+4. **Extended QA on main**
    - Full regression suite (current app)
    - Full rewrite testing
    - Side-by-side comparison
@@ -500,11 +482,7 @@ git checkout develop  # Return to develop
    - User acceptance testing
 
 5. **Production release**
-   - Open PR: `staging → main`
-   - Title: "Release: Qvé 2.0 (Svelte Migration)"
-   - Full release notes
-   - Deployment plan (phased rollout vs. big bang)
-   - Merge commit
+   - Manually deploy to webserver
    - Tag: `v2.0.0`
 
 ---
