@@ -1,6 +1,6 @@
 # Wine Collection App - Quick Start Guide
 
-**Last Updated**: 2026-01-17
+**Last Updated**: 2026-01-18
 **Status**: Phase 1 Complete ✅ | Sprint 1-2 Complete ✅ | Sprint 3 In Progress 🟡
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
@@ -24,7 +24,7 @@
 
 1. **✅ Phase 1 Complete** - 17 ES6 modules, old `wineapp.js` deprecated (DO NOT LOAD)
 2. **🟡 Sprint 3 Active** - 2 remaining issues before Qvé migration
-3. **✅ GitHub Setup Complete** - Repo at `philhumber/wineApp` with 4-branch workflow
+3. **✅ GitHub Setup Complete** - Repo at `philhumber/wineApp` with 3-branch workflow
 4. **✅ Credentials Secured** - All credentials in `../wineapp-config/config.local.php` (outside web root)
 5. **📋 Qvé Plan Ready** - Full plan at `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
 
@@ -64,8 +64,11 @@ mysql -h 10.0.0.16 -u username -p winelist
 
 **Branch Structure**:
 ```
-main (production) → staging (QA) → develop (active work)
-                              └→ svelte-rewrite (Qvé migration)
+main (QA / testing - manual deploy to prod)
+  │
+  ├── develop (ongoing fixes & features)
+  │
+  └── svelte-rewrite (Qvé migration)
 ```
 
 **Workflow**: Create feature branches from `develop`, open PRs, squash merge.

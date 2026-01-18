@@ -11,7 +11,7 @@
 
 ✅ **[GITHUB_SETUP_PLAN.md](GITHUB_SETUP_PLAN.md)** (5,400+ words)
 - Complete branch structure and hierarchy
-- Detailed branch protection rules for all 4 branches
+- Detailed branch protection rules for all 3 branches
 - Merge flow diagrams and policies
 - Weekly sync ritual instructions
 - Admin bypass policy
@@ -49,52 +49,40 @@
 
 ---
 
-## Branch Structure to Implement
+## Branch Structure
 
 ```
-main (production)
+main (QA / testing - manual deploy to prod)
   │
-  └── staging (QA / integration testing) ← already exists
-        │
-        ├── develop (ongoing fixes & features) ← needs creation
-        │     ├── feature/WINE-*
-        │     └── bugfix/WINE-*
-        │
-        └── svelte-rewrite (long-lived Qvé migration) ← needs creation
-              ├── rewrite/component-library
-              ├── rewrite/wine-list-page
-              └── rewrite/api-integration
+  ├── develop (ongoing fixes & features)
+  │     ├── feature/WINE-*
+  │     └── bugfix/WINE-*
+  │
+  └── svelte-rewrite (long-lived Qvé migration)
+        ├── rewrite/component-library
+        ├── rewrite/wine-list-page
+        └── rewrite/api-integration
 ```
+
+**Production deployment**: Files are manually deployed to the webserver when ready.
 
 ---
 
 ## Implementation Checklist
 
-### Phase 1: Create Branches (5 mins)
+### Phase 1: Verify Branches
 
 ```bash
-# 1. Create develop branch
-git checkout main
-git pull origin main
-git checkout -b develop
-git push -u origin develop
-
-# 2. Create svelte-rewrite branch
-git checkout main
-git checkout -b svelte-rewrite
-git push -u origin svelte-rewrite
-
-# 3. Verify all branches exist
+# Verify all branches exist
 git branch -a
 ```
 
 ✅ Expected output:
 ```
-* svelte-rewrite
+* develop
   main
-  develop
+  svelte-rewrite
   remotes/origin/main
-  remotes/origin/staging
   remotes/origin/develop
   remotes/origin/svelte-rewrite
 ```
@@ -120,17 +108,7 @@ Go to GitHub repository: **Settings → Branches**
 - ❌ Allow deletions
 - **Save changes**
 
-#### 3. Add Branch Protection Rule for `staging`
-- Branch name pattern: `staging`
-- ✅ Require a pull request before merging
-- ✅ Require approvals: **1**
-- ✅ Require branches to be up to date before merging
-- ❌ Include administrators
-- ❌ Allow force pushes
-- ❌ Allow deletions
-- **Save changes**
-
-#### 4. Add Branch Protection Rule for `develop`
+#### 3. Add Branch Protection Rule for `develop`
 - Branch name pattern: `develop`
 - ✅ Require a pull request before merging
 - ⚠️ Require approvals: **0** (lighter review)
@@ -139,7 +117,7 @@ Go to GitHub repository: **Settings → Branches**
 - ❌ Allow deletions
 - **Save changes**
 
-#### 5. Add Branch Protection Rule for `svelte-rewrite`
+#### 4. Add Branch Protection Rule for `svelte-rewrite`
 - Branch name pattern: `svelte-rewrite`
 - ✅ Require a pull request before merging
 - ✅ Require approvals: **1**
@@ -149,7 +127,7 @@ Go to GitHub repository: **Settings → Branches**
 - ❌ Allow deletions
 - **Save changes**
 
-#### 6. Configure Merge Button Settings
+#### 5. Configure Merge Button Settings
 `Settings → General → Pull Requests`
 
 - ✅ Allow squash merging
@@ -189,19 +167,13 @@ git push -u origin feature/WINE-TEST-github-setup
    - Merge using: **Squash and merge**
    - Verify: Branch auto-deleted
 
-2. **Open PR: develop → staging**
-   - Title: "Test: Merge to staging"
-   - Description: "Testing develop → staging flow"
+2. **Open PR: develop → main**
+   - Title: "Test: Merge to main"
+   - Description: "Testing develop → main flow"
    - Verify: 1 approval required
    - Self-approve and merge using: **Create a merge commit**
 
-3. **Open PR: staging → main**
-   - Title: "Test: Merge to production"
-   - Description: "Testing staging → main flow"
-   - Verify: 1 approval required
-   - Self-approve and merge using: **Create a merge commit**
-
-4. **Clean up test file**
+3. **Clean up test file**
    ```bash
    git checkout main
    git pull origin main
@@ -233,7 +205,6 @@ git push -u origin feature/WINE-TEST-github-setup
 |---------|-------|----------|
 | **Default Branch** | `main` | Settings → General |
 | **main protection** | 1 approval, admin bypass allowed | Settings → Branches |
-| **staging protection** | 1 approval | Settings → Branches |
 | **develop protection** | 0 approvals | Settings → Branches |
 | **svelte-rewrite protection** | 1 approval | Settings → Branches |
 | **Merge strategies** | Squash + Merge commits (no rebase) | Settings → General → PRs |
@@ -248,9 +219,8 @@ git push -u origin feature/WINE-TEST-github-setup
 | `feature/*` → `develop` | **Squash** | Clean up WIP commits |
 | `bugfix/*` → `develop` | **Squash** | Single logical unit |
 | `rewrite/*` → `svelte-rewrite` | **Squash** | Clean rewrite history |
-| `develop` → `staging` | **Merge Commit** | Preserve milestone |
-| `staging` → `main` | **Merge Commit** | Preserve release point |
-| `svelte-rewrite` → `staging` | **Merge Commit** | Major milestone |
+| `develop` → `main` | **Merge Commit** | Preserve milestone |
+| `svelte-rewrite` → `main` | **Merge Commit** | Major milestone |
 | `hotfix/*` → `main` | **Squash** | Single emergency fix |
 
 ---
@@ -262,14 +232,9 @@ git push -u origin feature/WINE-TEST-github-setup
 ```bash
 # Sync all long-lived branches
 
-git checkout staging
-git pull origin staging
-git merge main
-git push origin staging
-
 git checkout develop
 git pull origin develop
-git merge staging
+git merge main
 git push origin develop
 
 git checkout svelte-rewrite
@@ -303,7 +268,8 @@ After setup is complete:
 3. **Prepare for Qvé migration**
    - All rewrite work goes to `svelte-rewrite` branch
    - Keep synced with `main` weekly (bug fixes)
-   - When complete: `svelte-rewrite → staging → main`
+   - When complete: `svelte-rewrite → main`
+   - Manually deploy to webserver
 
 ---
 
@@ -359,15 +325,15 @@ All documentation created for this setup:
 
 Once implementation is complete, verify:
 
-- [ ] `develop` branch exists
-- [ ] `svelte-rewrite` branch exists
-- [ ] All 4 protection rules configured
-- [ ] Default branch is `main`
-- [ ] Merge buttons configured (squash + merge commits)
-- [ ] Auto-delete branches enabled
+- [x] `develop` branch exists
+- [x] `svelte-rewrite` branch exists
+- [x] All 3 protection rules configured
+- [x] Default branch is `main`
+- [x] Merge buttons configured (squash + merge commits)
+- [x] Auto-delete branches enabled
 - [ ] Test PR flow completed successfully
 - [ ] Calendar reminder set for Monday morning sync
-- [ ] Documentation reviewed and accessible
+- [x] Documentation reviewed and accessible
 - [ ] Ready to start Sprint 3 work with new workflow!
 
 ---

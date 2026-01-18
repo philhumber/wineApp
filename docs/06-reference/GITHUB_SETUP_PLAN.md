@@ -13,30 +13,30 @@ This document outlines the complete GitHub setup for the Wine Collection App, in
 ### Branch Hierarchy
 
 ```
-main (production)
+main (QA / testing - manual deploy to prod)
   │
-  └── staging (QA / integration testing)
-        │
-        ├── develop (ongoing fixes & features)
-        │     ├── feature/WINE-*
-        │     └── bugfix/WINE-*
-        │
-        └── svelte-rewrite (long-lived Qvé migration)
-              ├── rewrite/component-library
-              ├── rewrite/wine-list-page
-              └── rewrite/api-integration
+  ├── develop (ongoing fixes & features)
+  │     ├── feature/WINE-*
+  │     └── bugfix/WINE-*
+  │
+  └── svelte-rewrite (long-lived Qvé migration)
+        ├── rewrite/component-library
+        ├── rewrite/wine-list-page
+        └── rewrite/api-integration
 ```
+
+**Production deployment**: Files are manually deployed to the webserver when ready.
 
 ### The Flow
 
 **For normal work:**
 ```
-feature/WINE-42 → develop → staging → main
+feature/WINE-42 → develop → main → manual deploy to prod
 ```
 
 **For the Svelte/Qvé rewrite:**
 ```
-rewrite/wine-list-page → svelte-rewrite → staging → main
+rewrite/wine-list-page → svelte-rewrite → main → manual deploy to prod
 ```
 
 ---
@@ -45,33 +45,15 @@ rewrite/wine-list-page → svelte-rewrite → staging → main
 
 ### Current State
 ```
-✅ main (exists - production)
-✅ staging (exists - QA gate)
-❌ develop (needs creation)
-❌ svelte-rewrite (needs creation)
+✅ main (exists - QA/testing, manual deploy to prod)
+✅ develop (exists - active development)
+✅ svelte-rewrite (exists - Qvé migration)
 ```
 
-### Implementation Commands
-
-**1. Create `develop` branch**
-```bash
-git checkout main
-git pull origin main
-git checkout -b develop
-git push -u origin develop
-```
-
-**2. Create `svelte-rewrite` branch**
-```bash
-git checkout main
-git checkout -b svelte-rewrite
-git push -u origin svelte-rewrite
-```
-
-**3. Verify all branches exist**
+### Verify all branches exist
 ```bash
 git branch -a
-# Should show: main, staging, develop, svelte-rewrite
+# Should show: main, develop, svelte-rewrite
 ```
 
 ---
@@ -80,7 +62,7 @@ git branch -a
 
 Go to: **Settings → Branches → Add branch protection rule**
 
-### Rule 1: Protect `main` (Production)
+### Rule 1: Protect `main` (QA / Testing)
 
 | Setting | Value | Reason |
 |---------|-------|--------|
@@ -94,26 +76,11 @@ Go to: **Settings → Branches → Add branch protection rule**
 | **Include administrators** | ❌ | **Allow emergency hotfixes** |
 | **Restrict who can push** | ❌ | Solo dev |
 | **Allow force pushes** | ❌ | Protect history |
-| **Allow deletions** | ❌ | Can't delete production |
+| **Allow deletions** | ❌ | Can't delete main |
 
 ---
 
-### Rule 2: Protect `staging` (QA Gate)
-
-| Setting | Value | Reason |
-|---------|-------|--------|
-| **Branch name pattern** | `staging` | Exact match |
-| **Require a pull request before merging** | ✅ | Code review |
-| **Require approvals** | **1** | QA sign-off (self-review) |
-| **Require status checks to pass** | ❌ | No CI yet |
-| **Require branches to be up to date** | ✅ | No stale merges |
-| **Include administrators** | ❌ | Allow quick fixes |
-| **Allow force pushes** | ❌ | Protect QA history |
-| **Allow deletions** | ❌ | |
-
----
-
-### Rule 3: Protect `develop` (Integration)
+### Rule 2: Protect `develop` (Integration)
 
 | Setting | Value | Reason |
 |---------|-------|--------|
@@ -128,7 +95,7 @@ Go to: **Settings → Branches → Add branch protection rule**
 
 ---
 
-### Rule 4: Protect `svelte-rewrite` (Long-lived Migration)
+### Rule 3: Protect `svelte-rewrite` (Long-lived Migration)
 
 | Setting | Value | Reason |
 |---------|-------|--------|
@@ -166,9 +133,8 @@ Go to: **Settings → General → Pull Requests**
 | `feature/*` → `develop` | **Squash Merge** | Clean up WIP commits |
 | `bugfix/*` → `develop` | **Squash Merge** | Single logical unit |
 | `rewrite/*` → `svelte-rewrite` | **Squash Merge** | Clean rewrite history |
-| `develop` → `staging` | **Merge Commit** | Preserve milestone |
-| `staging` → `main` | **Merge Commit** | Preserve release point |
-| `svelte-rewrite` → `staging` | **Merge Commit** | Major milestone |
+| `develop` → `main` | **Merge Commit** | Preserve milestone |
+| `svelte-rewrite` → `main` | **Merge Commit** | Major milestone |
 | `hotfix/*` → `main` | **Squash Merge** | Single emergency fix |
 
 ---
@@ -243,18 +209,18 @@ Go to GitHub → Pull Requests → New
 
 
 ┌─────────────────────────────────────────────────────────┐
-│  3. Open PR: develop → staging                          │
+│  3. Open PR: develop → main                             │
 └─────────────────────────────────────────────────────────┘
 
 After merging feature branch:
 - Title: "Sprint 3: Price scale + Purchase date features"
 - Description: List all features included
-- Reviewers: (self-review)
+- Reviewers: (self-review + approval required)
 - Merge method: **Merge commit** (preserve milestone)
 
 
 ┌─────────────────────────────────────────────────────────┐
-│  4. QA Testing on staging                                │
+│  4. QA Testing on main                                   │
 └─────────────────────────────────────────────────────────┘
 
 Run complete test suite (see CLAUDE.md Testing Guide)
@@ -265,14 +231,11 @@ Run complete test suite (see CLAUDE.md Testing Guide)
 
 
 ┌─────────────────────────────────────────────────────────┐
-│  5. Open PR: staging → main                             │
+│  5. Deploy to Production                                 │
 └─────────────────────────────────────────────────────────┘
 
 After QA passes:
-- Title: "Release: Sprint 3 Features (WINE-42, WINE-88, ...)"
-- Description: Full release notes
-- Reviewers: (self-review + approval required)
-- Merge method: **Merge commit** (preserve release point)
+- Manually copy files to webserver
 - Tag: v1.3.0 (optional)
 ```
 
@@ -306,25 +269,23 @@ $ git push -u origin rewrite/wine-list-page
 
 
 ┌─────────────────────────────────────────────────────────┐
-│  3. When Rewrite is Ready: svelte-rewrite → staging    │
+│  3. When Rewrite is Ready: svelte-rewrite → main       │
 └─────────────────────────────────────────────────────────┘
 
 Only when /qve/ app is feature-complete:
 - Title: "Qvé Migration: Complete Svelte rewrite"
-- Description: Full feature parity checklist
+- Description: Full feature parity checklist, migration notes, rollback plan
 - Reviewers: (thorough review + QA)
 - Merge method: **Merge commit** (major milestone)
+- Tag: v2.0.0
 
 
 ┌─────────────────────────────────────────────────────────┐
-│  4. Final Release: staging → main                       │
+│  4. Deploy to Production                                 │
 └─────────────────────────────────────────────────────────┘
 
-After extensive QA on staging:
-- Title: "Release: Qvé 2.0 (Svelte Migration)"
-- Description: Migration notes, breaking changes, rollback plan
-- Merge method: **Merge commit**
-- Tag: v2.0.0
+After extensive QA on main:
+- Manually deploy to webserver
 ```
 
 ---
@@ -379,23 +340,19 @@ $ git push origin svelte-rewrite
 **Every Monday (or after every release to `main`):**
 
 ```bash
-# 1. Sync staging with main
-git checkout staging
-git pull origin staging
-git merge main
-git push origin staging
-
-# 2. Sync develop with staging
+# 1. Sync develop with main
 git checkout develop
 git pull origin develop
-git merge staging
+git merge main
 git push origin develop
 
-# 3. Sync svelte-rewrite with main (CRITICAL!)
+# 2. Sync svelte-rewrite with main (CRITICAL!)
 git checkout svelte-rewrite
 git pull origin svelte-rewrite
 git merge main
 git push origin svelte-rewrite
+
+git checkout develop  # Return to develop
 ```
 
 **Why this matters:**
@@ -408,8 +365,7 @@ git push origin svelte-rewrite
 ```bash
 # Create a script: scripts/sync-branches.sh
 #!/bin/bash
-git checkout staging && git pull && git merge main && git push
-git checkout develop && git pull && git merge staging && git push
+git checkout develop && git pull && git merge main && git push
 git checkout svelte-rewrite && git pull && git merge main && git push
 git checkout develop
 echo "✅ All branches synced!"
@@ -458,34 +414,31 @@ Before pushing directly to protected branch:
 ## Phase 8: Implementation Checklist
 
 ### Week 1: Foundation Setup
-- [ ] Create `develop` branch from `main`
-- [ ] Create `svelte-rewrite` branch from `main`
-- [ ] Set `main` as default branch (Settings → General)
-- [ ] Enable branch protection for `main` (1 approval, admin bypass allowed)
-- [ ] Enable branch protection for `staging` (1 approval)
-- [ ] Enable branch protection for `develop` (0 approvals)
-- [ ] Enable branch protection for `svelte-rewrite` (1 approval)
-- [ ] Configure merge buttons (allow squash + merge commits, no rebase)
-- [ ] Enable auto-delete head branches
+- [x] Create `develop` branch from `main`
+- [x] Create `svelte-rewrite` branch from `main`
+- [x] Set `main` as default branch (Settings → General)
+- [x] Enable branch protection for `main` (1 approval, admin bypass allowed)
+- [x] Enable branch protection for `develop` (0 approvals)
+- [x] Enable branch protection for `svelte-rewrite` (1 approval)
+- [x] Configure merge buttons (allow squash + merge commits, no rebase)
+- [x] Enable auto-delete head branches
 
 ### Week 2: Documentation
-- [ ] Update CLAUDE.md with branch strategy reference
-- [ ] Create CONTRIBUTING.md with PR workflow
-- [ ] Add branch diagram to main README.md
-- [ ] Document weekly sync ritual
+- [x] Update CLAUDE.md with branch strategy reference
+- [x] Create CONTRIBUTING.md with PR workflow
+- [x] Add branch diagram to main README.md
+- [x] Document weekly sync ritual
 
 ### Week 3: Test the Flow
 - [ ] Create test feature: `feature/WINE-TEST-github-setup`
 - [ ] Open PR → develop (squash merge)
-- [ ] Open PR → staging (merge commit)
 - [ ] Open PR → main (verify approval required)
 - [ ] Complete full flow end-to-end
 - [ ] Delete test branch
 - [ ] Verify auto-delete worked
 
 ### Ongoing
-- [ ] Weekly: Sync `svelte-rewrite` with `main`
-- [ ] After releases: Sync `develop` and `staging`
+- [ ] Weekly: Sync `develop` and `svelte-rewrite` with `main`
 - [ ] Monthly: Review bypass log (did I abuse it?)
 - [ ] Quarterly: Review protection rules (adjust if needed)
 
@@ -505,9 +458,9 @@ Before pushing directly to protected branch:
 
 ---
 
-### ❌ Mistake 3: Merging `develop` → `main` directly
+### ❌ Mistake 3: Skipping QA before production deploy
 **Result:** Untested code in production
-**Solution:** ALWAYS merge through `staging` first (QA gate)
+**Solution:** ALWAYS run full test suite on `main` before deploying to webserver
 
 ---
 
@@ -564,9 +517,9 @@ git rebase origin/develop
 git push -u origin feature/WINE-XX
 
 # Sync branches (weekly ritual)
-git checkout staging && git pull && git merge main && git push
-git checkout develop && git pull && git merge staging && git push
+git checkout develop && git pull && git merge main && git push
 git checkout svelte-rewrite && git pull && git merge main && git push
+git checkout develop
 
 # Emergency hotfix
 git checkout main && git pull && git checkout -b hotfix/description
