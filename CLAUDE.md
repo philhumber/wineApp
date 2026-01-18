@@ -50,6 +50,12 @@ git checkout -b feature/WINE-XX-description
 
 # Database connection
 mysql -h 10.0.0.16 -u username -p winelist
+
+# Deploy to production (PowerShell)
+.\deploy.ps1 -DryRun    # Preview changes
+.\deploy.ps1            # Deploy with auto-backup
+.\deploy.ps1 -ListBackups
+.\deploy.ps1 -Rollback "2026-01-18_143022"
 ```
 
 ### JIRA API Access
