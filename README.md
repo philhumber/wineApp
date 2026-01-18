@@ -354,24 +354,24 @@ Run through the 10-point regression test checklist (see [Testing](#testing) belo
 
 ### Git Branching Strategy
 
-We use a **four-tier branching strategy**:
+We use a **three-tier branching strategy**:
 
 ```
-main (production)
+main (QA / testing - manual deploy to prod)
   │
-  └── staging (QA / integration testing)
-        │
-        ├── develop (ongoing fixes & features)
-        │     ├── feature/WIN-*
-        │     └── bugfix/WIN-*
-        │
-        └── svelte-rewrite (long-lived Qvé migration)
-              └── rewrite/*
+  ├── develop (ongoing fixes & features)
+  │     ├── feature/WIN-*
+  │     └── bugfix/WIN-*
+  │
+  └── svelte-rewrite (long-lived Qvé migration)
+        └── rewrite/*
 ```
 
-**Flow for features/fixes:** `feature/WIN-XX` → `develop` → `staging` → `main`
+**Production deployment**: Files are manually deployed to the webserver when ready.
 
-**Flow for Svelte rewrite:** `rewrite/*` → `svelte-rewrite` → `staging` → `main`
+**Flow for features/fixes:** `feature/WIN-XX` → `develop` → `main` → manual deploy
+
+**Flow for Svelte rewrite:** `rewrite/*` → `svelte-rewrite` → `main` → manual deploy
 
 **Flow for hotfixes:** `hotfix/*` → `main` (then backport to `develop` + `svelte-rewrite`)
 
