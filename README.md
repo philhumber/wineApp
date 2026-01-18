@@ -492,25 +492,21 @@ Implemented major UX improvements:
 
 ### Sprint 3: Feature Enhancements 🟡 IN PROGRESS
 
-Completed:
+All Issues Completed (8 total):
+- ✅ **WIN-84**: Add purchase date field
+- ✅ **WIN-38**: Upload button UI - Modern drag & drop zone with responsive thumbnail
+- ✅ **WIN-43**: Loading UI improvements (cycling wine-themed messages)
 - ✅ **WIN-88**: Price scale on wine cards ($ to $$$$$, per-liter normalized, by bottle size)
 - ✅ **WIN-95**: Picture upload (800x800px, edge-sampled backgrounds)
 - ✅ **WIN-27**: Right-click context menu
 - ✅ **WIN-96**: Card collapse scroll behavior
 - ✅ **WIN-NEW**: avgRating DECIMAL overflow fix
 
-Remaining:
-- 🟡 **WIN-84**: Add purchase date field
-
-Recently Completed:
-- ✅ **WIN-38**: Upload button UI - Modern drag & drop zone with responsive thumbnail
-
 ### Open JIRA Issues
 
 **Total**: 45 open issues across various priorities
 
-**High Priority** (7 issues):
-- WIN-84, WIN-38, WIN-43 (Sprint 3)
+**High Priority** (4 issues):
 - WIN-80, WIN-70, WIN-79, WIN-34
 
 **Medium Priority** (12 issues)
@@ -524,9 +520,9 @@ See JIRA board for complete list: https://philhumber.atlassian.net/jira/software
 
 ### Short Term (Next 2-4 weeks)
 
-1. **Complete Sprint 3** - Finish remaining 3 issues
-2. **Sprint 4**: Architecture review and polish
-3. **Create Qvé mockups** - Design Add Wine and Drink/Rate flows
+1. **Create Qvé mockups** - Design Add Wine and Drink/Rate flows
+2. **Begin SvelteKit project** - Initialize Qvé migration
+3. **Implement core components** - Routing and base layout
 
 ### Medium Term (1-2 months)
 

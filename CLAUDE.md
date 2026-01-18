@@ -1,7 +1,7 @@
 # Wine Collection App - Quick Start Guide
 
 **Last Updated**: 2026-01-18
-**Status**: Phase 1 Complete ✅ | Sprint 1-2 Complete ✅ | Sprint 3 In Progress 🟡
+**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Migration Next 📋
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
 > **💡 For comprehensive project information, see [README.md](README.md)**
@@ -17,16 +17,16 @@
 |--------|--------|-------|
 | Sprint 1 | ✅ COMPLETE | Critical bug fixes (WIN-87, WIN-86, WIN-66, WIN-93) |
 | Sprint 2 | ✅ COMPLETE | UX improvements (toast, filters, scroll, view mode) |
-| Sprint 3 | 🟡 IN PROGRESS | Features: WIN-84 remaining |
+| Sprint 3 | ✅ COMPLETE | Features (WIN-84 purchase date, WIN-38 upload, etc.) |
 | Qvé Migration | 📋 PLANNED | Svelte/SvelteKit PWA - plan approved |
 
 ### What You Need to Know
 
 1. **✅ Phase 1 Complete** - 17 ES6 modules, old `wineapp.js` deprecated (DO NOT LOAD)
-2. **🟡 Sprint 3 Active** - 1 remaining issue before Qvé migration
+2. **✅ Sprint 3 Complete** - All feature work done, ready for Qvé migration
 3. **✅ GitHub Setup Complete** - Repo at `philhumber/wineApp` with 3-branch workflow
 4. **✅ Credentials Secured** - All credentials in `../wineapp-config/` (outside web root)
-5. **📋 Qvé Plan Ready** - Full plan at `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
+5. **📋 Qvé Migration Next** - Full plan at `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
 
 ### Critical Warnings
 
@@ -158,7 +158,7 @@ resources/php/
 1. **Read this file** (CLAUDE.md) for current context
 2. **Check current sprint** - See Sprint Status table above
 3. **Check JIRA board** - https://philhumber.atlassian.net/jira/software/projects/WIN
-4. **Pick an issue** from Sprint 3 (WIN-84)
+4. **Check Qvé plan** - Ready to begin migration phase
 5. **Read relevant docs** if needed:
    - [docs/01-overview/ARCHITECTURE.md](docs/01-overview/ARCHITECTURE.md) - System design
    - [docs/02-development/MODULE_GUIDE.md](docs/02-development/MODULE_GUIDE.md) - Module API reference
@@ -186,15 +186,10 @@ resources/php/
 
 ---
 
-## Current Sprint Work
+## Sprint 3 Summary (Complete ✅)
 
-### Sprint 3 Remaining Issues (1 issue)
-
-**WIN-84: Add purchase date field**
-- Note: `bottles.dateAdded` field already exists in DB!
-- Files: `addwine.html`, `wine-management.js`
-
-### Sprint 3 Completed (7 issues) ✅
+### All Issues Completed (8 issues)
+- WIN-84: Add purchase date field ✅
 - WIN-38: Upload button UI - drag & drop zone with responsive thumbnail ✅
 - WIN-43: Loading UI improvements (cycling wine-themed messages during AI loading) ✅
 - WIN-88: Price scale on wine cards ($ to $$$$$, per-liter comparison, by bottle size) ✅
@@ -243,9 +238,9 @@ Run after each change:
 **Full plan**: `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
 
 **Next Steps**:
-1. Complete Sprint 3 remaining issues
-2. Create mockups for Add Wine and Drink/Rate flows
-3. Begin SvelteKit project initialization
+1. Create mockups for Add Wine and Drink/Rate flows
+2. Begin SvelteKit project initialization
+3. Implement core components and routing
 
 **See [README.md](README.md) for complete roadmap and migration phases.**
 
