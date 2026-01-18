@@ -206,9 +206,13 @@
 		}
 		
 		$sqlQuery .= " GROUP BY wine.wineID";
-		
-		$having[] = "COUNT(bottles.bottleID) >= :bottleCount";
-		$params[':bottleCount'] = $bottleCount;
+
+		// Only apply bottle count filter when NOT fetching a specific wine by ID
+		// This allows editing wines with 0 bottles
+		if (empty($wineID) || $wineID === '%') {
+			$having[] = "COUNT(bottles.bottleID) >= :bottleCount";
+			$params[':bottleCount'] = $bottleCount;
+		}
 
 		if (!empty($having)) {
 			$sqlQuery .= " HAVING " . implode(' AND ', $having);

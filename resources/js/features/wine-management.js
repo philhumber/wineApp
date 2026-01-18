@@ -450,31 +450,63 @@ export class WineManagementManager {
 		console.log('Editing wine:', data);
 
 		try {
-			// Update both bottle and wine in parallel
-			const [bottleResult, wineResult] = await Promise.allSettled([
-				wineAPI.pushData('./resources/php/updateBottle.php', data),
-				wineAPI.pushData('./resources/php/updateWine.php', data)
-			]);
+			// Check form mode to determine which updates to perform
+			const formMode = window.formManager?.addORedit;
+			const isWineOnlyMode = formMode === 'editWineOnly';
+			const isBottleOnlyMode = formMode === 'editBottleOnly';
 
-			// Check if both updates succeeded
-			let bottleSuccess = false;
-			let wineSuccess = false;
+			let bottleSuccess = true; // Default to true when skipping
+			let wineSuccess = true; // Default to true when skipping
 
-			if (bottleResult.status === 'fulfilled' && bottleResult.value.success) {
-				console.log('Bottle updated:', bottleResult.value.data);
-				bottleSuccess = true;
+			if (isWineOnlyMode) {
+				// Only update wine data
+				console.log('Edit wine only mode - skipping bottle update');
+				wineSuccess = false;
+				const wineResult = await wineAPI.pushData('./resources/php/updateWine.php', data);
+
+				if (wineResult.success) {
+					console.log('Wine updated:', wineResult.data);
+					wineSuccess = true;
+				} else {
+					console.error('Wine update failed:', wineResult);
+				}
+			} else if (isBottleOnlyMode) {
+				// Only update bottle data
+				console.log('Edit bottle only mode - skipping wine update');
+				bottleSuccess = false;
+				const bottleResult = await wineAPI.pushData('./resources/php/updateBottle.php', data);
+
+				if (bottleResult.success) {
+					console.log('Bottle updated:', bottleResult.data);
+					bottleSuccess = true;
+				} else {
+					console.error('Bottle update failed:', bottleResult);
+				}
 			} else {
-				console.error('Bottle update failed:', bottleResult.reason || bottleResult.value);
+				// Update both bottle and wine in parallel (legacy 'edit' mode)
+				bottleSuccess = false;
+				wineSuccess = false;
+				const [bottleResult, wineResult] = await Promise.allSettled([
+					wineAPI.pushData('./resources/php/updateBottle.php', data),
+					wineAPI.pushData('./resources/php/updateWine.php', data)
+				]);
+
+				if (bottleResult.status === 'fulfilled' && bottleResult.value.success) {
+					console.log('Bottle updated:', bottleResult.value.data);
+					bottleSuccess = true;
+				} else {
+					console.error('Bottle update failed:', bottleResult.reason || bottleResult.value);
+				}
+
+				if (wineResult.status === 'fulfilled' && wineResult.value.success) {
+					console.log('Wine updated:', wineResult.value.data);
+					wineSuccess = true;
+				} else {
+					console.error('Wine update failed:', wineResult.reason || wineResult.value);
+				}
 			}
 
-			if (wineResult.status === 'fulfilled' && wineResult.value.success) {
-				console.log('Wine updated:', wineResult.value.data);
-				wineSuccess = true;
-			} else {
-				console.error('Wine update failed:', wineResult.reason || wineResult.value);
-			}
-
-			// Show success if both succeeded
+			// Show success if updates succeeded
 			if (bottleSuccess && wineSuccess) {
 				// Refresh dropdowns to reflect updated wine data
 				await dropdownManager.refreshAll();
