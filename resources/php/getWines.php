@@ -43,47 +43,87 @@
 						wine.rating,								
 						(SELECT ROUND(AVG(overallRating), 2) FROM ratings WHERE ratings.wineID = wine.wineID) AS avgRating,
 						(SELECT GROUP_CONCAT(Notes SEPARATOR '; ') FROM ratings WHERE ratings.wineID = wine.wineID) AS allNotes,
-						(SELECT ROUND(AVG(
-							(CASE b.currency
-								WHEN 'EUR' THEN b.price
-								WHEN 'GBP' THEN b.price * 1.17
-								WHEN 'SEK' THEN b.price * 0.087
-								WHEN 'USD' THEN b.price * 0.92
-								ELSE b.price
-							END) / (CASE b.bottleSize
-								WHEN 'Piccolo' THEN 0.187
-								WHEN 'Quarter' THEN 0.187
-								WHEN 'Demi' THEN 0.375
-								WHEN 'Standard' THEN 0.75
-								WHEN 'Magnum' THEN 1.5
-								ELSE 0.75
-							END)
-						), 2)
-						FROM bottles b
-						WHERE b.wineID = wine.wineID
-							AND b.price IS NOT NULL
-							AND b.price > 0) AS avgPricePerLiterEUR,
-						(SELECT ROUND(AVG(
-							(CASE b.currency
-								WHEN 'EUR' THEN b.price
-								WHEN 'GBP' THEN b.price * 1.17
-								WHEN 'SEK' THEN b.price * 0.087
-								WHEN 'USD' THEN b.price * 0.92
-								ELSE b.price
-							END) / (CASE b.bottleSize
-								WHEN 'Piccolo' THEN 0.187
-								WHEN 'Quarter' THEN 0.187
-								WHEN 'Demi' THEN 0.375
-								WHEN 'Standard' THEN 0.75
-								WHEN 'Magnum' THEN 1.5
-								ELSE 0.75
-							END)
-						), 2)
-						FROM bottles b
-						JOIN wine w2 ON b.wineID = w2.wineID
-						WHERE w2.wineTypeID = wine.wineTypeID
-							AND b.price IS NOT NULL
-							AND b.price > 0) AS typeAvgPricePerLiterEUR,
+						(SELECT ROUND(AVG(normalized_price), 2)
+						FROM (
+							SELECT
+								(CASE b.currency
+									WHEN 'EUR' THEN b.price
+									WHEN 'GBP' THEN b.price * 1.17
+									WHEN 'SEK' THEN b.price * 0.087
+									WHEN 'USD' THEN b.price * 0.92
+									ELSE b.price
+								END) / (CASE b.bottleSize
+									WHEN 'Piccolo' THEN 0.187
+									WHEN 'Quarter' THEN 0.187
+									WHEN 'Demi' THEN 0.375
+									WHEN 'Standard' THEN 0.75
+									WHEN 'Magnum' THEN 1.5
+									ELSE 0.75
+								END) AS normalized_price,
+								ROW_NUMBER() OVER (ORDER BY
+									(CASE b.currency
+										WHEN 'EUR' THEN b.price
+										WHEN 'GBP' THEN b.price * 1.17
+										WHEN 'SEK' THEN b.price * 0.087
+										WHEN 'USD' THEN b.price * 0.92
+										ELSE b.price
+									END) / (CASE b.bottleSize
+										WHEN 'Piccolo' THEN 0.187
+										WHEN 'Quarter' THEN 0.187
+										WHEN 'Demi' THEN 0.375
+										WHEN 'Standard' THEN 0.75
+										WHEN 'Magnum' THEN 1.5
+										ELSE 0.75
+									END)
+								) AS rn,
+								COUNT(*) OVER () AS cnt
+							FROM bottles b
+							WHERE b.wineID = wine.wineID
+								AND b.price IS NOT NULL
+								AND b.price > 0
+						) AS ranked
+						WHERE rn IN (FLOOR((cnt + 1) / 2), CEILING((cnt + 1) / 2))) AS avgPricePerLiterEUR,
+						(SELECT ROUND(AVG(normalized_price), 2)
+						FROM (
+							SELECT
+								(CASE b.currency
+									WHEN 'EUR' THEN b.price
+									WHEN 'GBP' THEN b.price * 1.17
+									WHEN 'SEK' THEN b.price * 0.087
+									WHEN 'USD' THEN b.price * 0.92
+									ELSE b.price
+								END) / (CASE b.bottleSize
+									WHEN 'Piccolo' THEN 0.187
+									WHEN 'Quarter' THEN 0.187
+									WHEN 'Demi' THEN 0.375
+									WHEN 'Standard' THEN 0.75
+									WHEN 'Magnum' THEN 1.5
+									ELSE 0.75
+								END) AS normalized_price,
+								ROW_NUMBER() OVER (ORDER BY
+									(CASE b.currency
+										WHEN 'EUR' THEN b.price
+										WHEN 'GBP' THEN b.price * 1.17
+										WHEN 'SEK' THEN b.price * 0.087
+										WHEN 'USD' THEN b.price * 0.92
+										ELSE b.price
+									END) / (CASE b.bottleSize
+										WHEN 'Piccolo' THEN 0.187
+										WHEN 'Quarter' THEN 0.187
+										WHEN 'Demi' THEN 0.375
+										WHEN 'Standard' THEN 0.75
+										WHEN 'Magnum' THEN 1.5
+										ELSE 0.75
+									END)
+								) AS rn,
+								COUNT(*) OVER () AS cnt
+							FROM bottles b
+							JOIN wine w2 ON b.wineID = w2.wineID
+							WHERE w2.wineTypeID = wine.wineTypeID
+								AND b.price IS NOT NULL
+								AND b.price > 0
+						) AS ranked
+						WHERE rn IN (FLOOR((cnt + 1) / 2), CEILING((cnt + 1) / 2))) AS typeAvgPricePerLiterEUR,
 						(SELECT ROUND(AVG(b.price), 2)
 						FROM bottles b
 						WHERE b.wineID = wine.wineID
