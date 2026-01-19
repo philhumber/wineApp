@@ -524,7 +524,10 @@ All Issues Completed (9 total):
 - Svelte stores and PWA configuration ready
 - See [qve/README.md](qve/README.md) for development setup
 
-**Next: Qvé Phase 2** - Build UI components (WineCard, Header, FilterBar)
+**Qvé Phase 2: Core UI Components** (In Progress)
+- **Wave 1 ✅ COMPLETE** - Foundation components (Icon, ThemeToggle, ViewToggle, RatingDisplay, BottleIndicators)
+- **Wave 2** (Next) - Wine card components (WineImage, WineCard, WineGrid)
+- **Wave 3** - Header, filters, and toast components
 
 ### Open JIRA Issues
 
@@ -560,7 +563,7 @@ See JIRA board for complete list: https://philhumber.atlassian.net/jira/software
 **Migration Phases**:
 1. ✅ **Phase 0**: Complete mockups - All 7 mockups in `design/qve-rebrand/`
 2. ✅ **Phase 1**: SvelteKit foundation - Project structure, design tokens, API client, stores
-3. 🔧 **Phase 2**: Core infrastructure - UI components (WineCard, Header, FilterBar)
+3. 🔧 **Phase 2**: Core UI components - Wave 1 ✅ (Icon, ThemeToggle, ViewToggle, RatingDisplay, BottleIndicators), Wave 2 next
 4. **Phase 3**: Wine list & cards - Implement main wine list page
 5. **Phase 4**: Forms & modals - Add/edit wine, drink/rate
 6. **Phase 5**: Polish & launch - PWA optimization, testing, cutover
