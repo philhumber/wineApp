@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qvé — Add Bottle</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <style>
+        /* ═══════════════════════════════════════════════════════════
+           QVÉ DESIGN SYSTEM - ADD BOTTLE MOCKUP
+           ═══════════════════════════════════════════════════════════ */
+
+        :root {
+            --bg: #FAF9F7;
+            --bg-subtle: #F5F3F0;
+            --surface: #FFFFFF;
+            --surface-raised: #FFFFFF;
+
+            --text-primary: #2D2926;
+            --text-secondary: #5C5652;
+            --text-tertiary: #8A847D;
+
+            --accent: #A69B8A;
+            --accent-subtle: #C4BAA9;
+            --accent-muted: #D9D2C6;
+
+            --divider: #E8E4DE;
+            --divider-subtle: #F0EDE8;
+
+            --success: #6B8E6B;
+            --error: #B87A7A;
+
+            --shadow-sm: 0 1px 2px rgba(45, 41, 38, 0.03);
+            --shadow-md: 0 2px 8px rgba(45, 41, 38, 0.04), 0 1px 2px rgba(45, 41, 38, 0.03);
+            --shadow-lg: 0 8px 24px rgba(45, 41, 38, 0.06), 0 2px 4px rgba(45, 41, 38, 0.03);
+            --shadow-xl: 0 20px 40px rgba(45, 41, 38, 0.12);
+
+            --font-serif: 'Cormorant Garamond', 'Didot', 'Bodoni MT', Georgia, serif;
+            --font-sans: 'Outfit', 'Avenir Next', system-ui, sans-serif;
+
+            --space-1: 0.25rem;
+            --space-2: 0.5rem;
+            --space-3: 0.75rem;
+            --space-4: 1rem;
+            --space-5: 1.5rem;
+            --space-6: 2rem;
+            --space-8: 3rem;
+
+            --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+            --theme-transition: background 0.5s var(--ease-out),
+                               color 0.3s var(--ease-out),
+                               border-color 0.3s var(--ease-out),
+                               box-shadow 0.3s var(--ease-out);
+        }
+
+        [data-theme="dark"] {
+            --bg: #0C0B0A;
+            --bg-subtle: #141312;
+            --surface: #1A1918;
+            --surface-raised: #222120;
+
+            --text-primary: #F0EDE6;
+            --text-secondary: #A8A29A;
+            --text-tertiary: #6B665F;
+
+            --accent: #B8AFA0;
+            --accent-subtle: #7A756C;
+            --accent-muted: #4A4640;
+
+            --divider: #2A2826;
+            --divider-subtle: #1F1E1C;
+
+            --success: #8BA88B;
+            --error: #C99999;
+
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 1px rgba(255, 255, 255, 0.03);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.05);
+            --shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.5);
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            color: var(--text-primary);
+            background: var(--bg);
+            line-height: 1.5;
+            min-height: 100vh;
+            transition: var(--theme-transition);
+        }
+
+        [data-theme="dark"] body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60vh;
+            background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(180, 165, 140, 0.03) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.015;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        [data-theme="dark"] body::after { opacity: 0.03; }
+
+        /* Demo Background */
+        .demo-bg {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: var(--space-6);
+        }
+
+        .demo-card {
+            background: var(--surface);
+            border: 1px solid var(--divider);
+            border-radius: 12px;
+            padding: var(--space-6);
+            max-width: 400px;
+            text-align: center;
+            opacity: 0.5;
+        }
+
+        .demo-card h3 {
+            font-family: var(--font-serif);
+            font-size: 1.25rem;
+            margin-bottom: var(--space-2);
+        }
+
+        .demo-card p {
+            font-size: 0.875rem;
+            color: var(--text-tertiary);
+        }
+
+        /* Demo Controls */
+        .demo-controls {
+            position: fixed;
+            bottom: var(--space-4);
+            right: var(--space-4);
+            display: flex;
+            gap: var(--space-2);
+            z-index: 100;
+        }
+
+        .demo-btn {
+            padding: var(--space-2) var(--space-4);
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: var(--surface);
+            border: 1px solid var(--divider);
+            border-radius: 100px;
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        .demo-btn:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(45, 41, 38, 0.6);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-4);
+            animation: fadeIn 0.3s var(--ease-out);
+        }
+
+        [data-theme="dark"] .modal-overlay {
+            background: rgba(12, 11, 10, 0.8);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: 16px;
+            box-shadow: var(--shadow-xl);
+            width: 100%;
+            max-width: 440px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.35s var(--ease-out);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Modal Header */
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-5) var(--space-6);
+            border-bottom: 1px solid var(--divider-subtle);
+        }
+
+        .modal-title {
+            font-family: var(--font-serif);
+            font-size: 1.5rem;
+            font-weight: 400;
+        }
+
+        .modal-close {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: 50%;
+            background: var(--bg-subtle);
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        .modal-close:hover { background: var(--divider); }
+
+        .modal-close svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-tertiary);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* Modal Body */
+        .modal-body {
+            padding: var(--space-6);
+        }
+
+        /* Wine Info Header */
+        .wine-info {
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+            padding: var(--space-4);
+            background: var(--bg-subtle);
+            border-radius: 8px;
+            margin-bottom: var(--space-5);
+        }
+
+        .wine-info-image {
+            width: 48px;
+            height: 64px;
+            background: var(--divider-subtle);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .wine-info-image svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--accent-muted);
+            stroke-width: 1;
+            fill: none;
+        }
+
+        .wine-info-details { flex: 1; }
+
+        .wine-info-name {
+            font-family: var(--font-serif);
+            font-size: 1.125rem;
+            line-height: 1.3;
+        }
+
+        .wine-info-meta {
+            font-size: 0.8125rem;
+            color: var(--text-tertiary);
+            margin-top: 2px;
+        }
+
+        /* Form Fields */
+        .form-group {
+            margin-bottom: var(--space-5);
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.6875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-2);
+        }
+
+        .form-label .required { color: var(--error); }
+
+        .form-input,
+        .form-select {
+            width: 100%;
+            padding: var(--space-3) var(--space-4);
+            font-family: var(--font-sans);
+            font-size: 0.9375rem;
+            color: var(--text-primary);
+            background: var(--bg-subtle);
+            border: 1px solid var(--divider);
+            border-radius: 8px;
+            outline: none;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        .form-input:focus,
+        .form-select:focus {
+            border-color: var(--accent);
+            background: var(--surface);
+            box-shadow: 0 0 0 3px rgba(166, 155, 138, 0.1);
+        }
+
+        .form-select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238A847D' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right var(--space-4) center;
+            padding-right: 3rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-4);
+        }
+
+        /* Modal Footer */
+        .modal-footer {
+            display: flex;
+            gap: var(--space-3);
+            padding: var(--space-5) var(--space-6);
+            border-top: 1px solid var(--divider-subtle);
+            background: var(--bg-subtle);
+        }
+
+        .btn {
+            flex: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-2);
+            padding: var(--space-3) var(--space-5);
+            font-family: var(--font-sans);
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: 100px;
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        .btn-secondary {
+            color: var(--text-secondary);
+            background: var(--surface);
+            border: 1px solid var(--divider);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--text-tertiary);
+            color: var(--text-primary);
+        }
+
+        .btn-primary {
+            color: var(--bg);
+            background: var(--text-primary);
+            border: 1px solid var(--text-primary);
+        }
+
+        .btn-primary:hover {
+            background: var(--text-secondary);
+            border-color: var(--text-secondary);
+        }
+
+        .btn svg {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 520px) {
+            .modal-content {
+                max-height: 100vh;
+                border-radius: 16px 16px 0 0;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                max-width: 100%;
+            }
+
+            .modal-overlay {
+                align-items: flex-end;
+                padding: 0;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        ::selection {
+            background: var(--accent-muted);
+            color: var(--text-primary);
+        }
+
+        *:focus-visible {
+            outline: 1px solid var(--accent-subtle);
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Demo Background -->
+    <div class="demo-bg">
+        <div class="demo-card">
+            <h3>Clos des Papes 2019</h3>
+            <p>Click "Toggle Modal" to see the Add Bottle interface</p>
+        </div>
+    </div>
+
+    <!-- Demo Controls -->
+    <div class="demo-controls">
+        <button class="demo-btn" onclick="toggleModal()">Toggle Modal</button>
+        <button class="demo-btn" onclick="toggleTheme()">Toggle Theme</button>
+    </div>
+
+    <!-- Add Bottle Modal -->
+    <div class="modal-overlay" id="addBottleModal">
+        <div class="modal-content">
+            <!-- Header -->
+            <div class="modal-header">
+                <h2 class="modal-title">Add Bottle</h2>
+                <button class="modal-close" onclick="toggleModal()">
+                    <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body">
+                <!-- Wine Info (Read-only) -->
+                <div class="wine-info">
+                    <div class="wine-info-image">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M8 2h8l1 8c0 3.5-2.5 6-5 6s-5-2.5-5-6l1-8z"/>
+                            <line x1="12" y1="16" x2="12" y2="22"/>
+                            <line x1="8" y1="22" x2="16" y2="22"/>
+                        </svg>
+                    </div>
+                    <div class="wine-info-details">
+                        <div class="wine-info-name">Clos des Papes 2019</div>
+                        <div class="wine-info-meta">Châteauneuf-du-Pape · France</div>
+                    </div>
+                </div>
+
+                <!-- Bottle Size -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Bottle Size <span class="required">*</span></label>
+                        <select class="form-select">
+                            <option value="">Select size...</option>
+                            <option value="piccolo">Piccolo (187.5ml)</option>
+                            <option value="demi">Demi (375ml)</option>
+                            <option value="standard" selected>Standard (750ml)</option>
+                            <option value="magnum">Magnum (1.5L)</option>
+                            <option value="jeroboam">Jeroboam (3L)</option>
+                            <option value="methuselah">Methuselah (6L)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Storage Location <span class="required">*</span></label>
+                        <select class="form-select">
+                            <option value="">Select location...</option>
+                            <option value="fridge" selected>Wine Fridge</option>
+                            <option value="cellar">Wine Cellar</option>
+                            <option value="cupboard">Spirit Cupboard</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Source -->
+                <div class="form-group">
+                    <label class="form-label">Source <span class="required">*</span></label>
+                    <input type="text" class="form-input" placeholder="e.g., Waitrose, Majestic, Gift..." value="Wine Society">
+                </div>
+
+                <!-- Price & Currency -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Price</label>
+                        <input type="text" class="form-input" placeholder="e.g., 45.00" value="52.00">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Currency <span class="required">*</span></label>
+                        <select class="form-select">
+                            <option value="EUR">EUR</option>
+                            <option value="GBP" selected>GBP</option>
+                            <option value="USD">USD</option>
+                            <option value="AUD">AUD</option>
+                            <option value="NZD">NZD</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Purchase Date -->
+                <div class="form-group">
+                    <label class="form-label">Purchase Date</label>
+                    <input type="date" class="form-input" value="2026-01-18">
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="toggleModal()">Cancel</button>
+                <button class="btn btn-primary">
+                    <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Add Bottle
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme
+        const html = document.documentElement;
+        const savedTheme = localStorage.getItem('qve-theme');
+        if (savedTheme) html.setAttribute('data-theme', savedTheme);
+        else if (window.matchMedia('(prefers-color-scheme: dark)').matches) html.setAttribute('data-theme', 'dark');
+
+        function toggleTheme() {
+            const newTheme = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('qve-theme', newTheme);
+        }
+
+        // Modal
+        function toggleModal() {
+            const modal = document.getElementById('addBottleModal');
+            modal.style.display = modal.style.display === 'none' ? 'flex' : 'none';
+        }
+    </script>
+</body>
+</html>

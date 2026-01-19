@@ -1,7 +1,7 @@
 # Qvé UI Components
 
-**Version**: 1.0
-**Last Updated**: 2026-01-13
+**Version**: 1.1
+**Last Updated**: 2026-01-19
 
 ---
 
@@ -15,6 +15,12 @@
 6. [Bottle Indicators](#bottle-indicators)
 7. [Rating Display](#rating-display)
 8. [Action Buttons](#action-buttons)
+9. [Rating Modal](#rating-modal) *(Phase 0)*
+10. [Multi-Step Form](#multi-step-form) *(Phase 0)*
+11. [Toast Notifications](#toast-notifications) *(Phase 0)*
+12. [Modal Dialogs](#modal-dialogs) *(Phase 0)*
+13. [Empty & Error States](#empty--error-states) *(Phase 0)*
+14. [AI Loading Overlay](#ai-loading-overlay) *(Phase 0)*
 
 ---
 
@@ -431,4 +437,552 @@ In compact view, bottle indicators are hidden and replaced with numeric count:
 
 ---
 
-*Component specifications for implementing Qvé in the production app.*
+## Rating Modal
+
+**Mockup**: `qve-drink-rate-mockup.html`
+
+### Structure
+
+```html
+<div class="modal-backdrop">
+    <div class="modal rating-modal">
+        <div class="modal-header">
+            <h2>Rate that wine!</h2>
+            <button class="modal-close">×</button>
+        </div>
+
+        <div class="modal-body">
+            <!-- Wine Info (read-only) -->
+            <div class="wine-info-header">
+                <span class="wine-name">Wine Name 2019</span>
+                <span class="producer">Producer Name</span>
+            </div>
+
+            <!-- Bottle Selector -->
+            <div class="form-group">
+                <label>Bottle</label>
+                <select class="bottle-select">
+                    <option>750ml - Cellar - $45 - Jan 2024</option>
+                </select>
+            </div>
+
+            <!-- Rating Row -->
+            <div class="rating-row">
+                <div class="rating-group rating-overall">
+                    <label>Overall<span class="rating-value">: 8</span></label>
+                    <div class="rating-dots">
+                        <!-- 10 dots, filled cumulatively -->
+                        <span class="rating-dot filled"></span>
+                        <!-- ... -->
+                    </div>
+                </div>
+                <div class="rating-group rating-value">
+                    <label>Value<span class="rating-value">: 7</span></label>
+                    <div class="rating-dots">
+                        <!-- 10 dots -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Fields -->
+            <div class="form-group">
+                <label>Drink Date</label>
+                <input type="date" value="2026-01-19">
+            </div>
+
+            <div class="form-group toggle-group">
+                <label>Buy Again?</label>
+                <button class="toggle-switch active">Yes</button>
+            </div>
+
+            <div class="form-group">
+                <label>Tasting Notes</label>
+                <textarea class="auto-expand"></textarea>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-secondary">Cancel</button>
+            <button class="btn-primary" disabled>Rate!</button>
+        </div>
+    </div>
+</div>
+```
+
+### Rating Dots Behavior
+
+| Action | Effect |
+|--------|--------|
+| Click dot N | Fill dots 1 through N |
+| Hover dot N | Preview fill state |
+| Click filled dot | Deselect (unfill all) |
+
+### CSS Classes
+
+| Class | Description |
+|-------|-------------|
+| `.rating-modal` | Modal container with max-width |
+| `.rating-row` | Flex row for both ratings (stacks on mobile) |
+| `.rating-group` | Container for label + dots |
+| `.rating-dots` | Flex container for 10 dots |
+| `.rating-dot` | Individual 10px circle |
+| `.rating-dot.filled` | Filled state (color varies by group) |
+| `.rating-overall .filled` | Burgundy `#8B4A5C` |
+| `.rating-value .filled` | Green `#7A8B6B` |
+
+### States
+
+| State | Description |
+|-------|-------------|
+| Initial | No ratings selected, Rate button disabled |
+| Partial | One rating selected, button still disabled |
+| Complete | Both ratings selected, button enabled |
+| Submitting | Button shows loading state |
+
+---
+
+## Multi-Step Form
+
+**Mockup**: `qve-add-wine-mockup.html`
+
+### Structure
+
+```html
+<div class="form-wizard">
+    <!-- Step Indicator -->
+    <div class="step-indicator">
+        <span class="step completed">1</span>
+        <span class="step active">2</span>
+        <span class="step">3</span>
+        <span class="step">4</span>
+    </div>
+
+    <!-- Step Content -->
+    <div class="step-content" data-step="1">
+        <h2>Region</h2>
+        <!-- Form fields -->
+    </div>
+
+    <!-- Navigation -->
+    <div class="form-nav">
+        <button class="btn-secondary">Back</button>
+        <button class="btn-primary">Next</button>
+    </div>
+</div>
+```
+
+### Step Indicator
+
+```css
+.step-indicator {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-6);
+}
+
+.step {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    border: 1px solid var(--divider);
+    color: var(--text-tertiary);
+}
+
+.step.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+}
+
+.step.completed {
+    background: var(--bg-subtle);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+```
+
+### AI Button
+
+Button to trigger AI data generation:
+
+```html
+<button class="ai-button">
+    <svg><!-- Sparkle icon --></svg>
+    Get More Info
+</button>
+```
+
+```css
+.ai-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    border-radius: 100px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ai-button:hover {
+    background: var(--accent);
+    color: white;
+}
+
+.ai-button.loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+```
+
+### Form Steps
+
+| Step | Fields | AI Button Reveals |
+|------|--------|-------------------|
+| 1. Region | Name, Country, Drink Type | Description, Climate, Soil |
+| 2. Producer | Name | Town, Founded, Ownership, Description |
+| 3. Wine | Name, Year, Type, Image | Description, Tasting Notes, Pairing Notes |
+| 4. Bottle | Size, Location, Source, Price, Currency | - |
+
+---
+
+## Toast Notifications
+
+**Mockup**: `qve-toasts-mockup.html`
+
+### Structure
+
+```html
+<div class="toast-container">
+    <div class="toast toast-success">
+        <svg class="toast-icon"><!-- Check icon --></svg>
+        <span class="toast-message">Wine added successfully!</span>
+        <button class="toast-close">×</button>
+        <div class="toast-progress"></div>
+    </div>
+</div>
+```
+
+### Toast Types
+
+| Type | Class | Icon | Accent Color |
+|------|-------|------|--------------|
+| Success | `.toast-success` | Checkmark | `#4A7C59` |
+| Error | `.toast-error` | X | `#A63D40` |
+| Info | `.toast-info` | Info circle | `var(--accent)` |
+| Undo | `.toast-undo` | Undo arrow | `var(--accent)` |
+
+### Positioning
+
+```css
+.toast-container {
+    position: fixed;
+    bottom: var(--space-5);
+    right: var(--space-5);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+/* Mobile: center bottom */
+@media (max-width: 520px) {
+    .toast-container {
+        left: var(--space-4);
+        right: var(--space-4);
+        bottom: var(--space-4);
+    }
+}
+```
+
+### Behavior
+
+| Feature | Description |
+|---------|-------------|
+| Auto-dismiss | 5 seconds default, progress bar shows remaining time |
+| Swipe-to-dismiss | Touch gesture support on mobile |
+| Undo action | Optional button that triggers callback |
+| Stacking | Multiple toasts stack vertically |
+
+---
+
+## Modal Dialogs
+
+**Mockups**: `qve-add-bottle-mockup.html`, `qve-edit-mockup.html`
+
+### Base Modal Structure
+
+```html
+<div class="modal-backdrop">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 class="modal-title">Modal Title</h2>
+            <button class="modal-close" aria-label="Close">
+                <svg><!-- X icon --></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <!-- Content -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary">Cancel</button>
+            <button class="btn-primary">Confirm</button>
+        </div>
+    </div>
+</div>
+```
+
+### Modal Sizes
+
+| Size | Class | Max Width |
+|------|-------|-----------|
+| Small | `.modal-sm` | 400px |
+| Default | `.modal` | 500px |
+| Large | `.modal-lg` | 700px |
+
+### Add Bottle Modal
+
+Read-only wine header + bottle form fields:
+
+```html
+<div class="modal add-bottle-modal">
+    <div class="wine-info-readonly">
+        <span class="wine-name">Château Example 2019</span>
+        <span class="producer">Producer Name • Region</span>
+    </div>
+    <!-- Bottle form fields -->
+</div>
+```
+
+### Edit Modal (Tabbed)
+
+Two-tab interface for editing wine or bottle:
+
+```html
+<div class="modal edit-modal">
+    <div class="tab-bar">
+        <button class="tab active">Wine Details</button>
+        <button class="tab">Bottle Details</button>
+    </div>
+    <div class="tab-content" data-tab="wine">
+        <!-- Wine fields -->
+    </div>
+    <div class="tab-content" data-tab="bottle" hidden>
+        <!-- Bottle selector + fields -->
+    </div>
+</div>
+```
+
+### Tab Bar Styling
+
+```css
+.tab-bar {
+    display: flex;
+    border-bottom: 1px solid var(--divider);
+    margin-bottom: var(--space-5);
+}
+
+.tab {
+    padding: var(--space-3) var(--space-4);
+    border: none;
+    background: none;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+}
+
+.tab.active {
+    color: var(--text-primary);
+    border-bottom-color: var(--accent);
+}
+```
+
+---
+
+## Empty & Error States
+
+**Mockup**: `qve-states-mockup.html`
+
+### Empty Collection
+
+```html
+<div class="empty-state">
+    <svg class="empty-illustration"><!-- Wine bottle outline --></svg>
+    <h2>Your collection is empty</h2>
+    <p>Start by adding your first wine to the cellar.</p>
+    <button class="btn-primary">Add Wine</button>
+</div>
+```
+
+### No Search Results
+
+```html
+<div class="empty-state">
+    <svg class="search-illustration"><!-- Magnifying glass --></svg>
+    <h2>No wines match your filters</h2>
+    <p>Try adjusting your search or filters.</p>
+    <button class="btn-link">Clear filters</button>
+</div>
+```
+
+### Loading State (Skeleton)
+
+```html
+<div class="wine-card skeleton">
+    <div class="skeleton-image"></div>
+    <div class="skeleton-content">
+        <div class="skeleton-line title"></div>
+        <div class="skeleton-line"></div>
+        <div class="skeleton-line short"></div>
+    </div>
+</div>
+```
+
+```css
+.skeleton-line {
+    height: 16px;
+    background: linear-gradient(
+        90deg,
+        var(--bg-subtle) 25%,
+        var(--surface) 50%,
+        var(--bg-subtle) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+```
+
+### Network Error
+
+```html
+<div class="error-state">
+    <svg class="error-icon"><!-- Cloud with X --></svg>
+    <h2>Unable to connect</h2>
+    <p>Check your connection and try again.</p>
+    <button class="btn-primary">Retry</button>
+</div>
+```
+
+### Server Error
+
+```html
+<div class="error-state">
+    <svg class="error-icon"><!-- Warning triangle --></svg>
+    <h2>Something went wrong</h2>
+    <p>We're working on it. Please try again later.</p>
+    <button class="btn-secondary">Go Back</button>
+</div>
+```
+
+---
+
+## AI Loading Overlay
+
+**Mockup**: `qve-states-mockup.html`
+
+### Structure
+
+```html
+<div class="ai-loading-overlay">
+    <div class="ai-loading-content">
+        <button class="ai-loading-close" aria-label="Cancel">
+            <svg><!-- X icon --></svg>
+        </button>
+
+        <!-- Animation container -->
+        <div class="loading-animation decanting">
+            <div class="loading-bar"></div>
+            <div class="loading-bar"></div>
+            <div class="loading-bar"></div>
+        </div>
+
+        <!-- Cycling message -->
+        <p class="loading-message">Searching the cellars...</p>
+    </div>
+</div>
+```
+
+### Animation Styles
+
+| Style | Class | Description |
+|-------|-------|-------------|
+| Basic | `.loading-basic` | Opacity pulse on horizontal bars |
+| Decanting | `.loading-decanting` | Width-breathing horizontal bars |
+| Vineyard | `.loading-vineyard` | Height-varying vertical bars |
+
+### Behavior
+
+| Feature | Description |
+|---------|-------------|
+| Backdrop | 50% black with 4px blur |
+| Close button | Top-right X, cancels AI request |
+| Message cycling | Changes every 2-3 seconds |
+| Cancelable | User can dismiss at any time |
+
+### CSS
+
+```css
+.ai-loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.ai-loading-content {
+    position: relative;
+    background: var(--surface);
+    padding: var(--space-8) var(--space-6);
+    border-radius: 16px;
+    text-align: center;
+    min-width: 280px;
+    max-width: 320px;
+}
+
+.ai-loading-close {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: var(--bg-subtle);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.loading-message {
+    margin-top: var(--space-4);
+    color: var(--text-secondary);
+    font-style: italic;
+}
+```
+
+---
+
+*Component specifications for implementing Qvé in the production app. Phase 0 components are marked and documented based on the mockup review session of 2026-01-19.*

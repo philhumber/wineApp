@@ -1,7 +1,7 @@
 # Qvé Design System
 
-**Version**: 1.0
-**Last Updated**: 2026-01-13
+**Version**: 1.1
+**Last Updated**: 2026-01-19
 
 ---
 
@@ -49,6 +49,15 @@
 | Success | `#4A7C59` | `#6B9B7A` |
 | Warning | `#C4A35A` | `#D4B86A` |
 | Error | `#A63D40` | `#C45D60` |
+
+### Rating Colors (Phase 0 Addition)
+
+| Rating Type | Color | Usage |
+|-------------|-------|-------|
+| Overall Rating | `#8B4A5C` | Burgundy - wine/quality association |
+| Value Rating | `#7A8B6B` | Sage green - money/value association |
+
+These colors are used for the cumulative dot-fill rating interface. They work in both light and dark modes without modification.
 
 ---
 
@@ -247,6 +256,187 @@ Each bottle is an SVG silhouette. The height difference communicates bottle size
 | MD | `768-991px` | 4 |
 | SM | `480-767px` | 3 |
 | XS | `<480px` | 2 |
+
+---
+
+## Rating Interface (Phase 0 Addition)
+
+The rating system uses a minimal dot-based approach for selecting scores on a 10-point scale.
+
+### Dot Specifications
+
+```css
+.rating-dot {
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid var(--divider);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.rating-dot:hover {
+    transform: scale(1.2);
+    border-color: var(--accent);
+}
+
+.rating-dot.filled {
+    /* Filled by cumulative selection */
+}
+
+/* Overall rating - burgundy */
+.rating-overall .rating-dot.filled {
+    background: #8B4A5C;
+    border-color: #8B4A5C;
+}
+
+/* Value rating - sage green */
+.rating-value .rating-dot.filled {
+    background: #7A8B6B;
+    border-color: #7A8B6B;
+}
+```
+
+### Behavior
+
+- **Cumulative fill**: Clicking dot 7 fills dots 1-7
+- **Hover preview**: Shows fill state before click
+- **Both ratings required**: Submit button disabled until both selected
+- **Numeric display**: Selected value shows in header (e.g., "Overall: 8")
+
+### Layout
+
+```
+Desktop (>520px):        Mobile (<520px):
+┌──────────────────┐     ┌──────────────────┐
+│ Overall  ○○○○○○○○○○│     │ Overall          │
+│ Value    ○○○○○○○○○○│     │ ○○○○○○○○○○       │
+└──────────────────┘     │ Value            │
+                         │ ○○○○○○○○○○       │
+                         └──────────────────┘
+```
+
+---
+
+## AI Loading Animations (Phase 0 Addition)
+
+Three animation styles are available for AI loading states. Each maintains the quiet luxury aesthetic.
+
+### Style 1: Basic (Default)
+
+Simple opacity cycling on horizontal bars:
+
+```css
+.loading-bar {
+    height: 2px;
+    background: var(--accent);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+}
+```
+
+### Style 2: Decanting
+
+Horizontal bars that "breathe" (width pulses), suggesting wine being poured:
+
+```css
+.loading-bar-decanting {
+    height: 2px;
+    background: var(--accent);
+    animation: decant 2s ease-in-out infinite;
+}
+
+@keyframes decant {
+    0%, 100% { width: 20%; }
+    50% { width: 80%; }
+}
+
+/* Stagger each bar */
+.bar-1 { animation-delay: 0s; }
+.bar-2 { animation-delay: 0.3s; }
+.bar-3 { animation-delay: 0.6s; }
+```
+
+### Style 3: Vineyard Rows
+
+Vertical bars at staggered heights, representing grape vines:
+
+```css
+.loading-bar-vineyard {
+    width: 3px;
+    background: var(--accent);
+    animation: grow 1.2s ease-in-out infinite;
+}
+
+@keyframes grow {
+    0%, 100% { height: 8px; }
+    50% { height: 24px; }
+}
+
+/* Stagger each bar with different timing */
+.vine-1 { animation-delay: 0s; animation-duration: 1.0s; }
+.vine-2 { animation-delay: 0.2s; animation-duration: 1.4s; }
+.vine-3 { animation-delay: 0.1s; animation-duration: 1.2s; }
+```
+
+### Loading Messages
+
+Wine-themed messages cycle during AI operations (2-3 second intervals):
+
+```javascript
+const loadingMessages = [
+    "Searching the cellars...",
+    "Consulting the sommelier...",
+    "Uncorking knowledge...",
+    "Checking the vintages...",
+    "Reading the terroir...",
+    "Decanting information...",
+    "Inspecting the cork...",
+    "Swirling the glass...",
+    "Examining the legs...",
+    "Nosing the bouquet...",
+    "Assessing the finish...",
+    "Conferring with the maître d'...",
+    "Perusing the carte des vins..."
+];
+```
+
+### AI Loading Overlay
+
+Full-screen overlay with centered loading animation:
+
+```css
+.ai-loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.ai-loading-content {
+    background: var(--surface);
+    padding: var(--space-6);
+    border-radius: 16px;
+    text-align: center;
+    max-width: 300px;
+}
+
+.ai-loading-close {
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-4);
+    /* X button styling */
+}
+```
 
 ---
 

@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qvé — Add Wine</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <style>
+        /* ═══════════════════════════════════════════════════════════
+           QVÉ DESIGN SYSTEM - ADD WINE MOCKUP
+           ═══════════════════════════════════════════════════════════ */
+
+        :root {
+            --bg: #FAF9F7;
+            --bg-subtle: #F5F3F0;
+            --surface: #FFFFFF;
+            --surface-raised: #FFFFFF;
+
+            --text-primary: #2D2926;
+            --text-secondary: #5C5652;
+            --text-tertiary: #8A847D;
+
+            --accent: #A69B8A;
+            --accent-subtle: #C4BAA9;
+            --accent-muted: #D9D2C6;
+
+            --divider: #E8E4DE;
+            --divider-subtle: #F0EDE8;
+
+            --success: #6B8E6B;
+            --error: #B87A7A;
+
+            --shadow-sm: 0 1px 2px rgba(45, 41, 38, 0.03);
+            --shadow-md: 0 2px 8px rgba(45, 41, 38, 0.04), 0 1px 2px rgba(45, 41, 38, 0.03);
+            --shadow-lg: 0 8px 24px rgba(45, 41, 38, 0.06), 0 2px 4px rgba(45, 41, 38, 0.03);
+
+            --font-serif: 'Cormorant Garamond', 'Didot', 'Bodoni MT', Georgia, serif;
+            --font-sans: 'Outfit', 'Avenir Next', system-ui, sans-serif;
+
+            --space-1: 0.25rem;
+            --space-2: 0.5rem;
+            --space-3: 0.75rem;
+            --space-4: 1rem;
+            --space-5: 1.5rem;
+            --space-6: 2rem;
+            --space-8: 3rem;
+            --space-10: 4rem;
+            --space-12: 6rem;
+
+            --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+            --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+            --theme-transition: background 0.5s var(--ease-out),
+                               color 0.3s var(--ease-out),
+                               border-color 0.3s var(--ease-out),
+                               box-shadow 0.3s var(--ease-out);
+        }
+
+        [data-theme="dark"] {
+            --bg: #0C0B0A;
+            --bg-subtle: #141312;
+            --surface: #1A1918;
+            --surface-raised: #222120;
+
+            --text-primary: #F0EDE6;
+            --text-secondary: #A8A29A;
+            --text-tertiary: #6B665F;
+
+            --accent: #B8AFA0;
+            --accent-subtle: #7A756C;
+            --accent-muted: #4A4640;
+
+            --divider: #2A2826;
+            --divider-subtle: #1F1E1C;
+
+            --success: #8BA88B;
+            --error: #C99999;
+
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 1px rgba(255, 255, 255, 0.03);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           BASE RESET & TYPOGRAPHY
+           ═══════════════════════════════════════════════════════════ */
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            font-weight: 400;
+            color: var(--text-primary);
+            background: var(--bg);
+            line-height: 1.5;
+            min-height: 100vh;
+            transition: var(--theme-transition);
+        }
+
+        [data-theme="dark"] body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60vh;
+            background: radial-gradient(
+                ellipse 80% 50% at 50% 0%,
+                rgba(180, 165, 140, 0.03) 0%,
+                transparent 70%
+            );
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.015;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        [data-theme="dark"] body::after {
+            opacity: 0.03;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           HEADER
+           ═══════════════════════════════════════════════════════════ */
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: var(--bg);
+            border-bottom: 1px solid var(--divider);
+            transition: var(--theme-transition);
+        }
+
+        [data-theme="dark"] .header {
+            background: rgba(12, 11, 10, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .header-inner {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: var(--space-5) var(--space-6);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-back {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-family: var(--font-sans);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s var(--ease-out);
+        }
+
+        .header-back:hover {
+            color: var(--text-primary);
+        }
+
+        .header-back svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .header-title {
+            font-family: var(--font-serif);
+            font-size: 1.25rem;
+            font-weight: 400;
+            color: var(--text-primary);
+        }
+
+        .header-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--divider);
+            border-radius: 50%;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        .header-icon:hover {
+            border-color: var(--accent-subtle);
+            background: var(--surface);
+        }
+
+        .header-icon svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-tertiary);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           MAIN CONTENT
+           ═══════════════════════════════════════════════════════════ */
+
+        .main {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: calc(100px + var(--space-6)) var(--space-6) var(--space-12);
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           STEP INDICATOR
+           ═══════════════════════════════════════════════════════════ */
+
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-3);
+            margin-bottom: var(--space-8);
+        }
+
+        .step-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--divider);
+            transition: all 0.3s var(--ease-out);
+        }
+
+        .step-dot.active {
+            background: var(--accent);
+            transform: scale(1.2);
+        }
+
+        .step-dot.completed {
+            background: var(--accent-subtle);
+        }
+
+        .step-line {
+            width: 40px;
+            height: 1px;
+            background: var(--divider);
+        }
+
+        .step-line.completed {
+            background: var(--accent-subtle);
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           FORM CONTAINER
+           ═══════════════════════════════════════════════════════════ */
+
+        .form-container {
+            background: var(--surface);
+            border: 1px solid var(--divider-subtle);
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+        }
+
+        .form-section {
+            padding: var(--space-6);
+            display: none;
+        }
+
+        .form-section.active {
+            display: block;
+            animation: fadeIn 0.3s var(--ease-out);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-header {
+            margin-bottom: var(--space-6);
+        }
+
+        .section-title {
+            font-family: var(--font-serif);
+            font-size: 1.5rem;
+            font-weight: 400;
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+        }
+
+        .section-subtitle {
+            font-family: var(--font-sans);
+            font-size: 0.875rem;
+            color: var(--text-tertiary);
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           FORM FIELDS
+           ═══════════════════════════════════════════════════════════ */
+
+        .form-group {
+            margin-bottom: var(--space-5);
+        }
+
+        .form-label {
+            display: block;
+            font-family: var(--font-sans);
+            font-size: 0.6875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-2);
+        }
+
+        .form-label .required {
+            color: var(--error);
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: var(--space-3) var(--space-4);
+            font-family: var(--font-sans);
+            font-size: 0.9375rem;
+            color: var(--text-primary);
+            background: var(--bg-subtle);
+            border: 1px solid var(--divider);
+            border-radius: 8px;
+            outline: none;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            border-color: var(--accent);
+            background: var(--surface);
+            box-shadow: 0 0 0 3px rgba(166, 155, 138, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+            line-height: 1.6;
+        }
+
+        .form-select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238A847D' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right var(--space-4) center;
+            padding-right: var(--space-10);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-4);
+        }
+
+        /* Invalid state */
+        .form-input.invalid,
+        .form-select.invalid {
+            border-color: var(--error);
+            background: rgba(184, 122, 122, 0.05);
+        }
+
+        .form-error {
+            font-size: 0.75rem;
+            color: var(--error);
+            margin-top: var(--space-1);
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           SEARCH INPUT WITH RESULTS
+           ═══════════════════════════════════════════════════════════ */
+
+        .search-container {
+            position: relative;
+            margin-bottom: var(--space-5);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: var(--space-4);
+            padding-left: var(--space-10);
+            font-family: var(--font-sans);
+            font-size: 0.9375rem;
+            color: var(--text-primary);
+            background: var(--bg-subtle);
+            border: 1px solid var(--divider);
+            border-radius: 8px;
+            outline: none;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        .search-input:focus {
+            border-color: var(--accent);
+            background: var(--surface);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: var(--space-4);
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-tertiary);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: var(--space-2);
+            background: var(--surface);
+            border: 1px solid var(--divider);
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 10;
+            display: none;
+        }
+
+        .search-results.active {
+            display: block;
+        }
+
+        .search-result-item {
+            padding: var(--space-3) var(--space-4);
+            cursor: pointer;
+            transition: background 0.15s var(--ease-out);
+        }
+
+        .search-result-item:hover {
+            background: var(--bg-subtle);
+        }
+
+        .search-result-item:not(:last-child) {
+            border-bottom: 1px solid var(--divider-subtle);
+        }
+
+        .search-result-name {
+            font-size: 0.9375rem;
+            color: var(--text-primary);
+        }
+
+        .search-result-meta {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            margin-top: 2px;
+        }
+
+        .search-result-new {
+            color: var(--accent);
+            font-style: italic;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           AI BUTTON
+           ═══════════════════════════════════════════════════════════ */
+
+        .ai-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-2);
+            width: 100%;
+            padding: var(--space-3) var(--space-4);
+            font-family: var(--font-sans);
+            font-size: 0.8125rem;
+            font-weight: 400;
+            color: var(--accent);
+            background: transparent;
+            border: 1px dashed var(--accent-subtle);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out);
+            margin-bottom: var(--space-5);
+        }
+
+        .ai-button:hover {
+            background: rgba(166, 155, 138, 0.05);
+            border-style: solid;
+        }
+
+        .ai-button svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           AI EXPANDED SECTION
+           ═══════════════════════════════════════════════════════════ */
+
+        .ai-expanded {
+            display: none;
+            padding-top: var(--space-5);
+            border-top: 1px solid var(--divider-subtle);
+            margin-top: var(--space-5);
+            animation: expandIn 0.35s var(--ease-out);
+        }
+
+        .ai-expanded.active {
+            display: block;
+        }
+
+        @keyframes expandIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .ai-expanded-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            margin-bottom: var(--space-4);
+        }
+
+        .ai-badge {
+            display: flex;
+            align-items: center;
+            gap: var(--space-1);
+            padding: var(--space-1) var(--space-3);
+            font-size: 0.6875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--accent);
+            background: rgba(166, 155, 138, 0.1);
+            border-radius: 100px;
+        }
+
+        .ai-badge svg {
+            width: 12px;
+            height: 12px;
+            stroke: currentColor;
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           IMAGE UPLOAD
+           ═══════════════════════════════════════════════════════════ */
+
+        .upload-zone {
+            position: relative;
+            border: 2px dashed var(--divider);
+            border-radius: 12px;
+            padding: var(--space-8);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent-subtle);
+            background: rgba(166, 155, 138, 0.02);
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(166, 155, 138, 0.05);
+        }
+
+        .upload-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto var(--space-4);
+            stroke: var(--accent-muted);
+            stroke-width: 1;
+            fill: none;
+        }
+
+        .upload-text {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-1);
+        }
+
+        .upload-hint {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+        }
+
+        /* Upload Preview State */
+        .upload-zone.has-preview {
+            padding: var(--space-4);
+            border-style: solid;
+        }
+
+        .upload-preview {
+            display: none;
+            align-items: center;
+            gap: var(--space-4);
+        }
+
+        .upload-zone.has-preview .upload-preview {
+            display: flex;
+        }
+
+        .upload-zone.has-preview .upload-default {
+            display: none;
+        }
+
+        .preview-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid var(--divider);
+        }
+
+        .preview-info {
+            flex: 1;
+            text-align: left;
+        }
+
+        .preview-name {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            margin-bottom: var(--space-1);
+        }
+
+        .preview-replace {
+            font-size: 0.75rem;
+            color: var(--accent);
+            cursor: pointer;
+        }
+
+        .preview-replace:hover {
+            text-decoration: underline;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           FORM NAVIGATION
+           ═══════════════════════════════════════════════════════════ */
+
+        .form-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-5) var(--space-6);
+            background: var(--bg-subtle);
+            border-top: 1px solid var(--divider-subtle);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-3) var(--space-5);
+            font-family: var(--font-sans);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border-radius: 100px;
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out);
+        }
+
+        .btn svg {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .btn-secondary {
+            color: var(--text-secondary);
+            background: transparent;
+            border: 1px solid var(--divider);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--text-tertiary);
+            color: var(--text-primary);
+        }
+
+        .btn-primary {
+            color: var(--bg);
+            background: var(--text-primary);
+            border: 1px solid var(--text-primary);
+        }
+
+        .btn-primary:hover {
+            background: var(--text-secondary);
+            border-color: var(--text-secondary);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           AI LOADING OVERLAY
+           ═══════════════════════════════════════════════════════════ */
+
+        .ai-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(45, 41, 38, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ai-overlay.active {
+            display: flex;
+        }
+
+        [data-theme="dark"] .ai-overlay {
+            background: rgba(12, 11, 10, 0.8);
+        }
+
+        .ai-overlay-content {
+            text-align: center;
+            color: var(--bg);
+            max-width: 300px;
+        }
+
+        [data-theme="dark"] .ai-overlay-content {
+            color: var(--text-primary);
+        }
+
+        .ai-spinner {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto var(--space-5);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        [data-theme="dark"] .ai-spinner {
+            border-color: rgba(166, 155, 138, 0.2);
+            border-top-color: var(--accent);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .ai-loading-text {
+            font-family: var(--font-serif);
+            font-size: 1.25rem;
+            font-style: italic;
+            margin-bottom: var(--space-4);
+        }
+
+        .ai-cancel {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+        }
+
+        .ai-cancel:hover {
+            color: white;
+        }
+
+        [data-theme="dark"] .ai-cancel {
+            color: var(--text-tertiary);
+        }
+
+        [data-theme="dark"] .ai-cancel:hover {
+            color: var(--text-secondary);
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           RESPONSIVE
+           ═══════════════════════════════════════════════════════════ */
+
+        @media (max-width: 768px) {
+            .main {
+                padding: calc(90px + var(--space-4)) var(--space-4) var(--space-8);
+            }
+
+            .header-inner {
+                padding: var(--space-4);
+            }
+
+            .form-section {
+                padding: var(--space-5);
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .section-title {
+                font-size: 1.25rem;
+            }
+
+            .form-nav {
+                padding: var(--space-4);
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           THEME TOGGLE
+           ═══════════════════════════════════════════════════════════ */
+
+        .theme-toggle {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .theme-toggle .icon-sun,
+        .theme-toggle .icon-moon {
+            position: absolute;
+            transition: transform 0.3s var(--ease-out), opacity 0.3s var(--ease-out);
+        }
+
+        .theme-toggle .icon-sun {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .theme-toggle .icon-moon {
+            transform: translateY(100%);
+            opacity: 0;
+        }
+
+        [data-theme="dark"] .theme-toggle .icon-sun {
+            transform: translateY(-100%);
+            opacity: 0;
+        }
+
+        [data-theme="dark"] .theme-toggle .icon-moon {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           FOCUS STATES
+           ═══════════════════════════════════════════════════════════ */
+
+        ::selection {
+            background: var(--accent-muted);
+            color: var(--text-primary);
+        }
+
+        *:focus-visible {
+            outline: 1px solid var(--accent-subtle);
+            outline-offset: 2px;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body>
+    <!-- ═══════════════════════════════════════════════════════════
+         HEADER
+         ═══════════════════════════════════════════════════════════ -->
+    <header class="header">
+        <div class="header-inner">
+            <a href="#" class="header-back">
+                <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                Back
+            </a>
+            <h1 class="header-title">Add Wine</h1>
+            <button class="header-icon theme-toggle" id="themeToggle" title="Toggle theme">
+                <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/>
+                    <line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+                <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         MAIN CONTENT
+         ═══════════════════════════════════════════════════════════ -->
+    <main class="main">
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step-dot active" data-step="1"></div>
+            <div class="step-line"></div>
+            <div class="step-dot" data-step="2"></div>
+            <div class="step-line"></div>
+            <div class="step-dot" data-step="3"></div>
+            <div class="step-line"></div>
+            <div class="step-dot" data-step="4"></div>
+        </div>
+
+        <!-- Form Container -->
+        <div class="form-container">
+            <!-- Step 1: Region -->
+            <div class="form-section active" data-step="1">
+                <div class="section-header">
+                    <h2 class="section-title">Region</h2>
+                    <p class="section-subtitle">Where does this wine come from?</p>
+                </div>
+
+                <!-- Search existing regions -->
+                <div class="search-container">
+                    <svg class="search-icon" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="7"/>
+                        <path d="M21 21l-4.35-4.35"/>
+                    </svg>
+                    <input type="text" class="search-input" placeholder="Search existing regions...">
+                    <div class="search-results active">
+                        <div class="search-result-item">
+                            <div class="search-result-name">Champagne</div>
+                            <div class="search-result-meta">France</div>
+                        </div>
+                        <div class="search-result-item">
+                            <div class="search-result-name">Burgundy</div>
+                            <div class="search-result-meta">France</div>
+                        </div>
+                        <div class="search-result-item search-result-new">
+                            <div class="search-result-name">+ Add new region...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Region Name <span class="required">*</span></label>
+                    <input type="text" class="form-input" placeholder="e.g., Barossa Valley">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Country <span class="required">*</span></label>
+                        <select class="form-select">
+                            <option value="">Select country...</option>
+                            <option value="FR">France</option>
+                            <option value="IT">Italy</option>
+                            <option value="ES">Spain</option>
+                            <option value="AU">Australia</option>
+                            <option value="US">United States</option>
+                            <option value="NZ">New Zealand</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Drink Type <span class="required">*</span></label>
+                        <select class="form-select">
+                            <option value="wine" selected>Wine</option>
+                            <option value="cider">Cider</option>
+                            <option value="beer">Beer</option>
+                            <option value="spirit">Spirit</option>
+                            <option value="sake">Sake</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- AI Button -->
+                <button class="ai-button" onclick="toggleAISection(1)">
+                    <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    Get More Information About This Region...
+                </button>
+
+                <!-- AI Expanded Section -->
+                <div class="ai-expanded" id="aiSection1">
+                    <div class="ai-expanded-header">
+                        <span class="ai-badge">
+                            <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>
+                            AI Generated
+                        </span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-textarea" rows="4" placeholder="AI will generate a description of this region..."></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Climate</label>
+                            <textarea class="form-textarea" rows="3" placeholder="Climate characteristics..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Soil</label>
+                            <textarea class="form-textarea" rows="3" placeholder="Soil composition..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Producer -->
+            <div class="form-section" data-step="2">
+                <div class="section-header">
+                    <h2 class="section-title">Producer</h2>
+                    <p class="section-subtitle">Who made this wine?</p>
+                </div>
+
+                <div class="search-container">
+                    <svg class="search-icon" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="7"/>
+                        <path d="M21 21l-4.35-4.35"/>
+                    </svg>
+                    <input type="text" class="search-input" placeholder="Search existing producers...">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Producer Name <span class="required">*</span></label>
+                    <input type="text" class="form-input" placeholder="e.g., Penfolds">
+                </div>
+
+                <button class="ai-button" onclick="toggleAISection(2)">
+                    <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    Get More Information About This Producer...
+                </button>
+
+                <div class="ai-expanded" id="aiSection2">
+                    <div class="ai-expanded-header">
+                        <span class="ai-badge">
+                            <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>
+                            AI Generated
+                        </span>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Town</label>
+                            <input type="text" class="form-input" placeholder="Producer location...">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Founded</label>
+                            <input type="text" class="form-input" placeholder="Year established...">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Ownership</label>
+                        <input type="text" class="form-input" placeholder="e.g., Family, Cooperative, LVMH...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-textarea" rows="3" placeholder="AI will generate a description..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Wine -->
+            <div class="form-section" data-step="3">
+                <div class="section-header">
+                    <h2 class="section-title">Wine</h2>
+                    <p class="section-subtitle">Tell us about the wine</p>
+                </div>
+
+                <div class="search-container">
+                    <svg class="search-icon" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="7"/>
+                        <path d="M21 21l-4.35-4.35"/>
+                    </svg>
+                    <input type="text" class="search-input" placeholder="Search existing wines...">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Wine Name <span class="required">*</span></label>
+                    <input type="text" class="form-input" placeholder="e.g., Grange">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Vintage Year</label>
+                        <input type="text" class="form-input" placeholder="e.g., 2019">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Wine Type <span class="required">*</span></label>
+                        <select class="form-select">
+                            <option value="">Select type...</option>
+                            <option value="red">Red</option>
+                            <option value="white">White</option>
+                            <option value="rose">Rosé</option>
+                            <option value="sparkling">Sparkling</option>
+                            <option value="dessert">Dessert</option>
+                            <option value="orange">Orange</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button class="ai-button" onclick="toggleAISection(3)">
+                    <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    Get More Information About This Wine...
+                </button>
+
+                <div class="ai-expanded" id="aiSection3">
+                    <div class="ai-expanded-header">
+                        <span class="ai-badge">
+                            <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>
+                            AI Generated
+                        </span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-textarea" rows="3" placeholder="Brief wine description..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tasting Notes</label>
+                        <textarea class="form-textarea" rows="3" placeholder="Nose and palate description..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Food Pairing</label>
+                        <textarea class="form-textarea" rows="2" placeholder="Recommended pairings..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Image Upload -->
+                <div class="form-group">
+                    <label class="form-label">Wine Image</label>
+                    <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+                        <div class="upload-default">
+                            <svg class="upload-icon" viewBox="0 0 24 24">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            <p class="upload-text">Drag & drop image here</p>
+                            <p class="upload-hint">or click to browse · PNG, JPG up to 10MB</p>
+                        </div>
+                        <div class="upload-preview">
+                            <img src="https://via.placeholder.com/80" alt="Preview" class="preview-image">
+                            <div class="preview-info">
+                                <p class="preview-name">wine-bottle.jpg</p>
+                                <span class="preview-replace">Replace image</span>
+                            </div>
+                        </div>
+                        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Bottle -->
+            <div class="form-section" data-step="4">
+                <div class="section-header">
+                    <h2 class="section-title">Bottle</h2>
+                    <p class="section-subtitle">Details about this specific bottle</p>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Bottle Size <span class="required">*</span></label>
+                        <select class="form-select">
+                            <option value="">Select size...</option>
+                            <option value="piccolo">Piccolo (187.5ml)</option>
+                            <option value="demi">Demi (375ml)</option>
+                            <option value="standard" selected>Standard (750ml)</option>
+                            <option value="magnum">Magnum (1.5L)</option>
+                            <option value="jeroboam">Jeroboam (3L)</option>
+                            <option value="methuselah">Methuselah (6L)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Storage Location <span class="required">*</span></label>
+                        <select class="form-select">
+                            <option value="">Select location...</option>
+                            <option value="fridge">Wine Fridge</option>
+                            <option value="cellar">Wine Cellar</option>
+                            <option value="cupboard">Spirit Cupboard</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Source <span class="required">*</span></label>
+                    <input type="text" class="form-input" placeholder="e.g., Waitrose, Majestic, Gift...">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Price</label>
+                        <input type="text" class="form-input" placeholder="e.g., 45.00">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Currency <span class="required">*</span></label>
+                        <select class="form-select">
+                            <option value="EUR">EUR</option>
+                            <option value="GBP" selected>GBP</option>
+                            <option value="USD">USD</option>
+                            <option value="AUD">AUD</option>
+                            <option value="NZD">NZD</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Purchase Date</label>
+                    <input type="date" class="form-input">
+                </div>
+            </div>
+
+            <!-- Form Navigation -->
+            <div class="form-nav">
+                <button class="btn btn-secondary" id="prevBtn" style="visibility: hidden;">
+                    <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    Back
+                </button>
+                <button class="btn btn-primary" id="nextBtn">
+                    Next
+                    <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- AI Loading Overlay -->
+    <div class="ai-overlay" id="aiOverlay">
+        <div class="ai-overlay-content">
+            <div class="ai-spinner"></div>
+            <p class="ai-loading-text" id="aiLoadingText">Searching the cellars...</p>
+            <span class="ai-cancel" onclick="hideAIOverlay()">Cancel</span>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         SCRIPTS
+         ═══════════════════════════════════════════════════════════ -->
+    <script>
+        // Theme handling
+        const html = document.documentElement;
+        const themeToggle = document.getElementById('themeToggle');
+
+        const savedTheme = localStorage.getItem('qve-theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        if (savedTheme) {
+            html.setAttribute('data-theme', savedTheme);
+        } else if (systemPrefersDark) {
+            html.setAttribute('data-theme', 'dark');
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('qve-theme', newTheme);
+        });
+
+        // Step navigation
+        let currentStep = 1;
+        const totalSteps = 4;
+
+        function updateStepUI() {
+            // Update step dots
+            document.querySelectorAll('.step-dot').forEach((dot, index) => {
+                const stepNum = index + 1;
+                dot.classList.remove('active', 'completed');
+                if (stepNum === currentStep) {
+                    dot.classList.add('active');
+                } else if (stepNum < currentStep) {
+                    dot.classList.add('completed');
+                }
+            });
+
+            // Update step lines
+            document.querySelectorAll('.step-line').forEach((line, index) => {
+                line.classList.toggle('completed', index + 1 < currentStep);
+            });
+
+            // Update form sections
+            document.querySelectorAll('.form-section').forEach(section => {
+                const sectionStep = parseInt(section.dataset.step);
+                section.classList.toggle('active', sectionStep === currentStep);
+            });
+
+            // Update buttons
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+
+            prevBtn.style.visibility = currentStep === 1 ? 'hidden' : 'visible';
+
+            if (currentStep === totalSteps) {
+                nextBtn.innerHTML = 'Submit <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+            } else {
+                nextBtn.innerHTML = 'Next <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+            }
+        }
+
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            if (currentStep < totalSteps) {
+                currentStep++;
+                updateStepUI();
+            } else {
+                alert('Form submitted! (This is a mockup)');
+            }
+        });
+
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            if (currentStep > 1) {
+                currentStep--;
+                updateStepUI();
+            }
+        });
+
+        // AI Section toggle
+        function toggleAISection(sectionNum) {
+            const section = document.getElementById('aiSection' + sectionNum);
+            if (section.classList.contains('active')) {
+                section.classList.remove('active');
+            } else {
+                showAIOverlay();
+                setTimeout(() => {
+                    hideAIOverlay();
+                    section.classList.add('active');
+                }, 2000);
+            }
+        }
+
+        // AI Loading overlay
+        const aiMessages = [
+            "Searching the cellars...",
+            "Consulting the sommelier...",
+            "Uncorking knowledge...",
+            "Decanting wisdom...",
+            "Swirling through vineyards...",
+            "Tasting the data..."
+        ];
+
+        let messageIndex = 0;
+        let messageInterval;
+
+        function showAIOverlay() {
+            document.getElementById('aiOverlay').classList.add('active');
+            messageIndex = 0;
+            updateLoadingText();
+            messageInterval = setInterval(updateLoadingText, 1500);
+        }
+
+        function hideAIOverlay() {
+            document.getElementById('aiOverlay').classList.remove('active');
+            clearInterval(messageInterval);
+        }
+
+        function updateLoadingText() {
+            document.getElementById('aiLoadingText').textContent = aiMessages[messageIndex];
+            messageIndex = (messageIndex + 1) % aiMessages.length;
+        }
+
+        // Search results toggle (demo)
+        document.querySelectorAll('.search-input').forEach(input => {
+            input.addEventListener('focus', () => {
+                const results = input.parentElement.querySelector('.search-results');
+                if (results) results.classList.add('active');
+            });
+            input.addEventListener('blur', () => {
+                setTimeout(() => {
+                    const results = input.parentElement.querySelector('.search-results');
+                    if (results) results.classList.remove('active');
+                }, 200);
+            });
+        });
+
+        // Upload zone preview toggle (demo)
+        const uploadZone = document.querySelector('.upload-zone');
+        if (uploadZone) {
+            uploadZone.addEventListener('dblclick', () => {
+                uploadZone.classList.toggle('has-preview');
+            });
+        }
+    </script>
+</body>
+</html>
