@@ -3,14 +3,18 @@
    * Rating display component
    * Shows a colored dot + rating value, or "Unrated" if no rating
    */
-  export let rating: number | null = null;
+  export let rating: number | string | null = null;
   export let compact: boolean = false;
+
+  // Convert to number (PHP may return string)
+  $: numericRating = rating !== null ? Number(rating) : null;
+  $: hasRating = numericRating !== null && !isNaN(numericRating) && numericRating > 0;
 </script>
 
 <div class="wine-rating" class:compact>
-  {#if rating !== null && rating > 0}
+  {#if hasRating && numericRating !== null}
     <span class="rating-dot"></span>
-    <span class="rating-value">{rating.toFixed(1)}</span>
+    <span class="rating-value">{numericRating.toFixed(1)}</span>
   {:else}
     <span class="unrated">Unrated</span>
   {/if}

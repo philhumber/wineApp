@@ -10,27 +10,27 @@
 export interface Wine {
   wineID: number;
   wineName: string;
-  wineYear: string;
-  winePicture: string | null;
-  wineDescription: string | null;
+  year: string | null;              // PHP returns 'year' not 'wineYear'
+  pictureURL: string | null;        // PHP returns 'pictureURL' not 'winePicture'
+  description: string | null;       // PHP returns 'description' not 'wineDescription'
   tastingNotes: string | null;
-  pairingNotes: string | null;
-  producerID: number;
+  pairing: string | null;           // PHP returns 'pairing' not 'pairingNotes'
   producerName: string;
-  regionID: number;
   regionName: string;
-  countryID: number;
   countryName: string;
-  countryEmoji: string;
-  wineTypeID: number;
-  wineTypeName: string;
+  code: string;                     // Country code (e.g., 'FR')
+  wineType: string;                 // PHP returns 'wineType' not 'wineTypeName'
   bottleCount: number;
   avgRating: number | null;
-  avgValue: number | null;
-  // Price calculation fields (from getWines.php)
-  minPricePerLiter?: number;
-  maxPricePerLiter?: number;
-  medianPricePerLiter?: number;
+  rating: number | null;            // Individual rating
+  // Price fields from PHP
+  avgPricePerLiterEUR?: string;
+  standardPrice?: string | null;
+  magnumPrice?: string | null;
+  currency?: string;
+  standardBottles?: string;
+  smallBottles?: string;
+  largeBottles?: string;
 }
 
 export interface Bottle {
