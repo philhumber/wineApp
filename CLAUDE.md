@@ -1,7 +1,7 @@
 # Wine Collection App - Quick Start Guide
 
-**Last Updated**: 2026-01-18
-**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Fix & Migrate Phase 🔧
+**Last Updated**: 2026-01-19
+**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Phase 0 Complete ✅
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
 > **💡 For comprehensive project information, see [README.md](README.md)**
@@ -20,18 +20,21 @@
 | Sprint 3 | ✅ COMPLETE | Features (WIN-84 purchase date, WIN-38 upload, etc.) |
 | Fix & Migrate | 🔧 ACTIVE | Fix remaining bugs, then start Qvé migration |
 
-### Current Plan: Fix & Migrate (Option A)
+### Current Plan: Qvé Migration
 
-**Phase 1: Quick Bug Fixes** (current app) ✅ COMPLETE
-1. ✅ WIN-104: Edit page tab counter reset - DONE
-2. ✅ WIN-105: Median for price scale - DONE
-3. ✅ WIN-27: Right-click menu popup - DONE
-4. ✅ WIN-102: Can't edit a wine with no bottles - DONE (split Edit Wine / Edit Bottle)
+**Bug Fixes** (current app) ✅ COMPLETE
+- WIN-104, WIN-105, WIN-27, WIN-102 - All done
 
-**Phase 2: Qvé Migration**
-- Start Svelte/SvelteKit PWA build
-- Implement remaining features in new stack
-- Defer AI features (WIN-37, WIN-42, WIN-64) to post-migration
+**Phase 0: Mockup Design** ✅ COMPLETE
+- All 7 mockups delivered and reviewed
+- Branch: `phase-0/mockups` (ready for PR to `svelte-rewrite`)
+- See: `design/qve-rebrand/README.md` for mockup inventory
+
+**Phase 1: SvelteKit Foundation** (Next)
+- Initialize SvelteKit project in `/qve/` folder
+- Extract design tokens from mockup CSS
+- Build core components matching mockup specs
+- See: `design/qve-rebrand/QVE_MIGRATION_PLAN.md` for full roadmap
 
 ### What You Need to Know
 
@@ -39,7 +42,7 @@
 2. **✅ Sprint 1-3 Complete** - Core app stable, ready for migration
 3. **✅ GitHub Setup Complete** - Repo at `philhumber/wineApp` with 3-branch workflow
 4. **✅ Credentials Secured** - All credentials in `../wineapp-config/` (outside web root)
-5. **✅ Phase 1 Bug Fixes Complete** - Ready to start Qvé migration
+5. **✅ Qvé Phase 0 Complete** - All mockups in `design/qve-rebrand/`, ready for Phase 1
 
 ### Critical Warnings
 
