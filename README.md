@@ -311,6 +311,24 @@ Run through the 10-point regression test checklist (see [Testing](#testing) belo
    # Edit the file with your database and API credentials
    ```
 
+3. **Set up test database** (recommended for development)
+   ```bash
+   # Clone production database to test
+   mysqldump -h 10.0.0.16 -u webuser -p winelist > winelist_backup.sql
+   mysql -h 10.0.0.16 -u webuser -p -e "CREATE DATABASE winelist_test;"
+   mysql -h 10.0.0.16 -u webuser -p winelist_test < winelist_backup.sql
+   ```
+
+   Then in `config.local.php`, set `APP_ENV`:
+   ```php
+   define('APP_ENV', 'test');  // Use 'test' or 'prod'
+   ```
+
+   When `APP_ENV = 'test'`:
+   - Connects to `winelist_test` database
+   - Shows orange "TEST MODE" banner at top of page
+   - Safe to experiment without affecting production data
+
 #### Starting Work on a Feature
 
 1. **Check JIRA** - Pick an issue from the current sprint

@@ -71,6 +71,26 @@ mysql -h 10.0.0.16 -u username -p winelist
 .\deploy.ps1 -Rollback "2026-01-18_143022"
 ```
 
+### Test vs Production Database
+
+The app supports environment switching via `APP_ENV` in `../wineapp-config/config.local.php`:
+
+```php
+define('APP_ENV', 'test');  // 'test' or 'prod'
+```
+
+| Environment | Database | Visual Indicator |
+|-------------|----------|------------------|
+| `test` | `winelist_test` | Orange "TEST MODE" banner |
+| `prod` | `winelist` | No banner |
+
+**To create test database** (one-time setup):
+```bash
+mysqldump -h 10.0.0.16 -u webuser -p winelist > winelist_backup.sql
+mysql -h 10.0.0.16 -u webuser -p -e "CREATE DATABASE winelist_test;"
+mysql -h 10.0.0.16 -u webuser -p winelist_test < winelist_backup.sql
+```
+
 ### JIRA API Access
 
 Use **curl with Basic Auth** to query JIRA (the old `/rest/api/3/search` endpoint was deprecated):
