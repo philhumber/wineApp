@@ -54,7 +54,7 @@ export const winesByCountry = derived(wines, ($wines) => {
 export const winesByType = derived(wines, ($wines) => {
   const grouped = new Map<string, Wine[]>();
   for (const wine of $wines) {
-    const type = wine.wineTypeName;
+    const type = wine.wineType;
     if (!grouped.has(type)) {
       grouped.set(type, []);
     }

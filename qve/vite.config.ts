@@ -9,6 +9,11 @@ export default defineConfig({
       '/resources/php': {
         target: 'http://localhost:8000',
         changeOrigin: true
+      },
+      // Proxy image requests to PHP backend
+      '/images': {
+        target: 'http://localhost:8000',
+        changeOrigin: true
       }
     }
   },
