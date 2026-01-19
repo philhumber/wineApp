@@ -4,6 +4,9 @@
   import { theme, viewDensity, viewMode } from '$stores';
   import { api } from '$api';
 
+  // Import Wave 1 components
+  import { Icon, ThemeToggle, ViewToggle, RatingDisplay, BottleIndicators } from '$lib/components';
+
   let wineCount = 0;
   let loading = true;
   let error: string | null = null;
@@ -47,19 +50,65 @@
       <div class="status-card">
         <span class="status-label">Theme</span>
         <span class="status-value">{$theme}</span>
-        <button class="action-btn" on:click={theme.toggle}>
-          Toggle Theme
-        </button>
+        <div class="component-demo">
+          <ThemeToggle />
+        </div>
       </div>
 
       <div class="status-card">
         <span class="status-label">View Density</span>
         <span class="status-value">{$viewDensity}</span>
+        <div class="component-demo">
+          <ViewToggle />
+        </div>
       </div>
 
       <div class="status-card">
         <span class="status-label">View Mode</span>
         <span class="status-value">{$viewMode}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="components-section">
+    <h2 class="section-title">Wave 1 Components</h2>
+
+    <div class="component-grid">
+      <div class="component-card">
+        <span class="component-name">Icon</span>
+        <div class="icon-showcase">
+          <Icon name="sun" size={18} />
+          <Icon name="moon" size={18} />
+          <Icon name="grid" size={18} />
+          <Icon name="list" size={18} />
+          <Icon name="search" size={18} />
+          <Icon name="menu" size={18} />
+          <Icon name="plus" size={18} />
+          <Icon name="edit" size={18} />
+          <Icon name="drink" size={18} />
+          <Icon name="wine-bottle" size={18} />
+          <Icon name="check" size={18} />
+          <Icon name="x" size={18} />
+        </div>
+      </div>
+
+      <div class="component-card">
+        <span class="component-name">RatingDisplay</span>
+        <div class="rating-showcase">
+          <RatingDisplay rating={8.5} />
+          <RatingDisplay rating={9.2} />
+          <RatingDisplay rating={null} />
+          <RatingDisplay rating={7.0} compact={true} />
+        </div>
+      </div>
+
+      <div class="component-card">
+        <span class="component-name">BottleIndicators</span>
+        <div class="bottle-showcase">
+          <BottleIndicators count={3} />
+          <BottleIndicators count={1} />
+          <BottleIndicators count={5} compact={true} />
+        </div>
       </div>
     </div>
   </section>
@@ -88,8 +137,8 @@
   </section>
 
   <footer class="page-footer">
-    <p>Qve Phase 1 Foundation - SvelteKit + TypeScript + PWA</p>
-    <p class="subtle">Run <code>npm install</code> then <code>npm run dev</code> to start</p>
+    <p>Qvé Phase 2 Wave 1 - Foundation Components</p>
+    <p class="subtle">Run <code>npm run dev</code> to start</p>
   </footer>
 </main>
 
@@ -186,24 +235,6 @@
     font-size: 0.875rem;
   }
 
-  .action-btn {
-    margin-top: var(--space-2);
-    padding: var(--space-2) var(--space-4);
-    background: var(--text-primary);
-    color: var(--bg);
-    border-radius: var(--radius-pill);
-    font-size: 0.75rem;
-    font-weight: 500;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    transition: all 0.2s var(--ease-out);
-    align-self: flex-start;
-  }
-
-  .action-btn:hover {
-    background: var(--accent);
-  }
-
   .route-list {
     display: flex;
     flex-direction: column;
@@ -255,5 +286,57 @@
     padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-sm);
     font-size: 0.75rem;
+  }
+
+  /* Component demo in status cards */
+  .component-demo {
+    margin-top: var(--space-2);
+  }
+
+  /* Component showcase section */
+  .components-section {
+    margin-bottom: var(--space-8);
+  }
+
+  .component-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--space-4);
+  }
+
+  .component-card {
+    background: var(--surface);
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .component-name {
+    font-family: monospace;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .icon-showcase {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    color: var(--text-secondary);
+  }
+
+  .rating-showcase {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .bottle-showcase {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
   }
 </style>
