@@ -19,6 +19,7 @@ if (!file_exists($configPath)) {
 require_once $configPath;
 
 echo "window.WINE_APP_CONFIG = {\n";
-echo "    geminiApiKey: \"" . (defined('GEMINI_API_KEY') ? GEMINI_API_KEY : '') . "\"\n";
+echo "    geminiApiKey: \"" . (defined('GEMINI_API_KEY') ? GEMINI_API_KEY : '') . "\",\n";
+echo "    environment: \"" . (defined('APP_ENV') ? APP_ENV : 'prod') . "\"\n";
 echo "};\n";
 ?>
