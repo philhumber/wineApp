@@ -48,3 +48,21 @@ export type { Toast, ToastType, ToastAction } from './toast';
 // Modal
 export { modal, isModalOpen, isModalType, modalData } from './modal';
 export type { ModalState, ModalType, ConfirmModalData } from './modal';
+
+// Add Wine Wizard
+export {
+  addWineStore,
+  currentStep,
+  isSubmitting,
+  isAILoading,
+  canProceed,
+  aiLoadingMessages
+} from './addWine';
+export type {
+  WizardStep,
+  SelectionMode,
+  RegionFormData,
+  ProducerFormData,
+  WineFormData,
+  BottleFormData
+} from './addWine';
