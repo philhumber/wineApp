@@ -354,7 +354,7 @@
 
         /* ═══════════════════════════════════════════════════════════
            LOADING TEXT (AI Loading)
-           ═══════════════════════════════════════════════════════════ -->
+           ═══════════════════════════════════════════════════════════ */
 
         .loading-text-demo {
             text-align: center;
@@ -384,7 +384,7 @@
 
         /* ═══════════════════════════════════════════════════════════
            NETWORK ERROR STATE
-           ═══════════════════════════════════════════════════════════ -->
+           ═══════════════════════════════════════════════════════════ */
 
         .error-state {
             text-align: center;
@@ -429,23 +429,24 @@
         }
 
         .error-action {
+            appearance: none;
             display: inline-flex;
             align-items: center;
             gap: var(--space-2);
-            padding: var(--space-2) var(--space-4);
+            padding: var(--space-3) var(--space-5);
+            font-family: var(--font-sans);
             font-size: 0.875rem;
             font-weight: 500;
-            color: var(--text-secondary);
-            background: var(--surface);
-            border: 1px solid var(--divider);
+            color: var(--bg);
+            background: var(--text-primary);
+            border: none;
             border-radius: 100px;
             cursor: pointer;
             transition: all 0.2s var(--ease-out);
         }
 
         .error-action:hover {
-            border-color: var(--text-tertiary);
-            color: var(--text-primary);
+            background: var(--text-secondary);
         }
 
         .error-action svg {
@@ -458,13 +459,12 @@
 
         /* ═══════════════════════════════════════════════════════════
            AI LOADING OVERLAY
-           ═══════════════════════════════════════════════════════════ -->
+           ═══════════════════════════════════════════════════════════ */
 
         .ai-overlay-demo {
             position: relative;
             width: 100%;
-            height: 100%;
-            min-height: 250px;
+            height: 250px;
             background: var(--bg-subtle);
             border-radius: 8px;
             overflow: hidden;
@@ -473,6 +473,7 @@
         .ai-overlay-backdrop {
             position: absolute;
             inset: 0;
+            z-index: 2;
             background: rgba(45, 41, 38, 0.6);
             backdrop-filter: blur(8px);
             display: flex;
@@ -487,6 +488,7 @@
         .ai-overlay-content {
             text-align: center;
             color: white;
+            width: 250px;
         }
 
         [data-theme="dark"] .ai-overlay-content {
@@ -535,8 +537,98 @@
         }
 
         /* ═══════════════════════════════════════════════════════════
+           DECANTING ANIMATION
+           ═══════════════════════════════════════════════════════════ */
+
+        .decant-bar {
+            background: linear-gradient(
+                90deg,
+                var(--accent-muted) 0%,
+                #8B6B61 20%,
+                #7A4A5A 40%,
+                #6B3A4A 50%,
+                #7A4A5A 60%,
+                #8B6B61 80%,
+                var(--accent-muted) 100%
+            );
+            background-size: 200% 100%;
+            animation: decant 3s ease-in-out infinite;
+        }
+
+        [data-theme="dark"] .decant-bar {
+            background: linear-gradient(
+                90deg,
+                var(--accent-muted) 0%,
+                #6B4A50 20%,
+                #5A3A45 40%,
+                #4A2A35 50%,
+                #5A3A45 60%,
+                #6B4A50 80%,
+                var(--accent-muted) 100%
+            );
+            background-size: 200% 100%;
+        }
+
+        @keyframes decant {
+            0% { background-position: 100% 0; }
+            50% { background-position: 0% 0; }
+            100% { background-position: 100% 0; }
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           VINEYARD ROWS ANIMATION
+           ═══════════════════════════════════════════════════════════ */
+
+        .vineyard-bar {
+            background: linear-gradient(
+                90deg,
+                var(--accent) 0%,
+                var(--accent-subtle) 100%
+            );
+            border-radius: 2px 6px 6px 2px;
+            position: relative;
+            opacity: 0.7;
+        }
+
+        .vineyard-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent 0px,
+                transparent 8px,
+                rgba(255,255,255,0.03) 8px,
+                rgba(255,255,255,0.03) 10px
+            );
+            border-radius: inherit;
+        }
+
+        [data-theme="dark"] .vineyard-bar {
+            background: linear-gradient(
+                90deg,
+                var(--accent-muted) 0%,
+                var(--accent-subtle) 100%
+            );
+            opacity: 0.6;
+        }
+
+        [data-theme="dark"] .vineyard-bar::after {
+            background: repeating-linear-gradient(
+                90deg,
+                transparent 0px,
+                transparent 8px,
+                rgba(255,255,255,0.02) 8px,
+                rgba(255,255,255,0.02) 10px
+            );
+        }
+
+        /* ═══════════════════════════════════════════════════════════
            FOCUS & SELECTION
-           ═══════════════════════════════════════════════════════════ -->
+           ═══════════════════════════════════════════════════════════ */
 
         ::selection {
             background: var(--accent-muted);
@@ -645,20 +737,15 @@
                 <div class="showcase-content">
                     <div class="error-state">
                         <div class="error-icon">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M1 1l22 22"/>
-                                <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
-                                <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
-                                <path d="M10.71 5.05A16 16 0 0 1 22.58 9"/>
-                                <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
-                                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
-                                <line x1="12" y1="20" x2="12.01" y2="20"/>
+                            <svg viewBox="0 0 24 24" style="width: 28px; height: 28px; stroke: var(--error); stroke-width: 1.5; fill: none; stroke-linecap: round; stroke-linejoin: round;">
+                                <path d="M18 10h1a4 4 0 0 1 0 8H7a5 5 0 1 1 .43-9.98A8 8 0 0 1 18 10z"/>
+                                <line x1="4" y1="4" x2="20" y2="20"/>
                             </svg>
                         </div>
                         <h3 class="error-title">Unable to connect</h3>
                         <p class="error-message">Check your internet connection and try again.</p>
-                        <button class="error-action">
-                            <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        <button style="appearance: none; display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.5rem 1rem; margin-top: 0.5rem; font-family: var(--font-sans); font-size: 0.8125rem; font-weight: 500; color: #FAF9F7; background: var(--error); border: none; border-radius: 100px; cursor: pointer;">
+                            <svg viewBox="0 0 24 24" style="width: 12px; height: 12px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                             Retry
                         </button>
                     </div>
@@ -671,7 +758,7 @@
                 <div class="showcase-content">
                     <div class="error-state">
                         <div class="error-icon">
-                            <svg viewBox="0 0 24 24">
+                            <svg viewBox="0 0 24 24" style="width: 28px; height: 28px; stroke: var(--error); stroke-width: 1.5; fill: none; stroke-linecap: round;">
                                 <circle cx="12" cy="12" r="10"/>
                                 <line x1="12" y1="8" x2="12" y2="12"/>
                                 <line x1="12" y1="16" x2="12.01" y2="16"/>
@@ -679,8 +766,8 @@
                         </div>
                         <h3 class="error-title">Something went wrong</h3>
                         <p class="error-message">We're having trouble loading your data. Please try again later.</p>
-                        <button class="error-action">
-                            <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        <button style="appearance: none; display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.5rem 1rem; margin-top: 0.5rem; font-family: var(--font-sans); font-size: 0.8125rem; font-weight: 500; color: #FAF9F7; background: var(--error); border: none; border-radius: 100px; cursor: pointer;">
+                            <svg viewBox="0 0 24 24" style="width: 12px; height: 12px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                             Retry
                         </button>
                     </div>
@@ -690,23 +777,77 @@
             <!-- AI Loading Overlay -->
             <div class="showcase-card full-width">
                 <div class="showcase-label">AI Loading Overlay</div>
-                <div class="showcase-content" style="padding: 0;">
-                    <div class="ai-overlay-demo">
-                        <!-- Blurred background content -->
-                        <div style="padding: var(--space-6); opacity: 0.3;">
-                            <div style="height: 24px; background: var(--divider); border-radius: 4px; margin-bottom: var(--space-3); width: 60%;"></div>
-                            <div style="height: 16px; background: var(--divider); border-radius: 4px; margin-bottom: var(--space-2); width: 80%;"></div>
-                            <div style="height: 16px; background: var(--divider); border-radius: 4px; width: 40%;"></div>
+                <div class="showcase-content" style="padding: -10;">
+                    <div class="ai-overlay-demo" style="position: relative; display: flex; flex-direction: column; justify-content: center; padding: var(--space-6);">
+                        <!-- Close button -->
+                        <button style="position: absolute; top: var(--space-4); right: var(--space-4); background: transparent; border: none; cursor: pointer; padding: 0; opacity: 0.5;">
+                            <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; stroke: var(--text-tertiary); stroke-width: 1.5; fill: none; stroke-linecap: round;">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+
+                        <!-- Animated bars - full width -->
+                        <div style="width: 100%; margin-bottom: var(--space-5); padding-right: var(--space-20);">
+                            <div id="aiBar1" style="height: 20px; background: var(--accent-muted); border-radius: 4px; margin-bottom: var(--space-3); width: 60%; transition: width 0.8s var(--ease-out);"></div>
+                            <div id="aiBar2" style="height: 14px; background: var(--accent-muted); border-radius: 4px; margin-bottom: var(--space-2); width: 80%; transition: width 0.8s var(--ease-out);"></div>
+                            <div id="aiBar3" style="height: 14px; background: var(--accent-muted); border-radius: 4px; width: 40%; transition: width 0.8s var(--ease-out);"></div>
                         </div>
 
-                        <!-- Overlay -->
-                        <div class="ai-overlay-backdrop">
-                            <div class="ai-overlay-content">
-                                <div class="ai-overlay-spinner"></div>
-                                <p class="ai-overlay-text" id="aiText">Searching the cellars...</p>
-                                <span class="ai-overlay-cancel">Cancel</span>
-                            </div>
+                        <!-- Loading text -->
+                        <p id="aiText" style="font-family: var(--font-serif); font-size: 1.125rem; font-style: italic; color: var(--text-secondary); text-align: center; white-space: nowrap;">Searching the cellars...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Loading Overlay - Decanting Style -->
+            <div class="showcase-card full-width">
+                <div class="showcase-label">AI Loading - Decanting Style</div>
+                <div class="showcase-content" style="padding: 0;">
+                    <div class="ai-overlay-demo" style="position: relative; display: flex; flex-direction: column; justify-content: center; padding: var(--space-6);">
+                        <!-- Close button -->
+                        <button style="position: absolute; top: var(--space-4); right: var(--space-4); background: transparent; border: none; cursor: pointer; padding: 0; opacity: 0.5;">
+                            <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; stroke: var(--text-tertiary); stroke-width: 1.5; fill: none; stroke-linecap: round;">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+
+                        <!-- Animated bars with decanting effect -->
+                        <div style="width: 100%; margin-bottom: var(--space-5); padding-right: var(--space-8);">
+                            <div id="decantBar1" class="decant-bar" style="height: 20px; border-radius: 4px; margin-bottom: var(--space-3); width: 60%; transition: width 0.8s var(--ease-out);"></div>
+                            <div id="decantBar2" class="decant-bar" style="height: 14px; border-radius: 4px; margin-bottom: var(--space-2); width: 80%; transition: width 0.8s var(--ease-out);"></div>
+                            <div id="decantBar3" class="decant-bar" style="height: 14px; border-radius: 4px; width: 40%; transition: width 0.8s var(--ease-out);"></div>
                         </div>
+
+                        <!-- Loading text -->
+                        <p id="decantText" style="font-family: var(--font-serif); font-size: 1.125rem; font-style: italic; color: var(--text-secondary); text-align: center; white-space: nowrap;">Decanting wisdom...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Loading Overlay - Vineyard Style -->
+            <div class="showcase-card full-width">
+                <div class="showcase-label">AI Loading - Vineyard Rows</div>
+                <div class="showcase-content" style="padding: 0;">
+                    <div class="ai-overlay-demo" style="position: relative; display: flex; flex-direction: column; justify-content: center; padding: var(--space-6);">
+                        <!-- Close button -->
+                        <button style="position: absolute; top: var(--space-4); right: var(--space-4); background: transparent; border: none; cursor: pointer; padding: 0; opacity: 0.5;">
+                            <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; stroke: var(--text-tertiary); stroke-width: 1.5; fill: none; stroke-linecap: round;">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+
+                        <!-- Animated bars - vineyard rows style -->
+                        <div style="width: 100%; margin-bottom: var(--space-5); padding-right: var(--space-8);">
+                            <div id="vineyardBar1" class="vineyard-bar" style="height: 18px; margin-bottom: var(--space-3); margin-left: 0; width: 70%; transition: width 0.8s var(--ease-out);"></div>
+                            <div id="vineyardBar2" class="vineyard-bar" style="height: 14px; margin-bottom: var(--space-2); margin-left: var(--space-4); width: 65%; transition: width 0.8s var(--ease-out);"></div>
+                            <div id="vineyardBar3" class="vineyard-bar" style="height: 10px; margin-left: var(--space-8); width: 55%; transition: width 0.8s var(--ease-out);"></div>
+                        </div>
+
+                        <!-- Loading text -->
+                        <p id="vineyardText" style="font-family: var(--font-serif); font-size: 1.125rem; font-style: italic; color: var(--text-secondary); text-align: center; white-space: nowrap;">Walking the rows...</p>
                     </div>
                 </div>
             </div>
@@ -740,7 +881,14 @@
             "Uncorking knowledge...",
             "Decanting wisdom...",
             "Swirling through vineyards...",
-            "Tasting the data..."
+            "Tasting the data...",
+            "Walking the rows...",
+            "Tending the vines...",
+            "Reading the terroir...",
+            "Aerating the data...",
+            "Letting it breathe...",
+            "Pouring over details...",
+            "Gathering from the cellar..."
         ];
 
         let loadingIndex = 0;
@@ -755,6 +903,64 @@
             aiIndex = (aiIndex + 1) % aiMessages.length;
             document.getElementById('aiText').textContent = aiMessages[aiIndex];
         }, 1800);
+
+        // Animate AI loading bars independently
+        function animateBar(id, minWidth, maxWidth, interval) {
+            const bar = document.getElementById(id);
+            if (!bar) return;
+            setInterval(() => {
+                const newWidth = minWidth + Math.random() * (maxWidth - minWidth);
+                bar.style.width = newWidth + '%';
+            }, interval);
+        }
+
+        // Each bar animates at different intervals for organic feel
+        animateBar('aiBar1', 45, 75, 1200);
+        animateBar('aiBar2', 60, 90, 1500);
+        animateBar('aiBar3', 30, 55, 1000);
+
+        // Decanting bars - same width animation
+        animateBar('decantBar1', 45, 75, 1400);
+        animateBar('decantBar2', 55, 85, 1700);
+        animateBar('decantBar3', 35, 60, 1100);
+
+        // Decanting text cycling
+        const decantMessages = [
+            "Decanting wisdom...",
+            "Swirling through vintages...",
+            "Aerating the data...",
+            "Letting it breathe...",
+            "Pouring over details...",
+            "Uncorking insights..."
+        ];
+        let decantIndex = 0;
+
+        setInterval(() => {
+            decantIndex = (decantIndex + 1) % decantMessages.length;
+            const el = document.getElementById('decantText');
+            if (el) el.textContent = decantMessages[decantIndex];
+        }, 2200);
+
+        // Vineyard bars - slower, more organic animation
+        animateBar('vineyardBar1', 50, 80, 1800);
+        animateBar('vineyardBar2', 45, 70, 2100);
+        animateBar('vineyardBar3', 35, 60, 1600);
+
+        // Vineyard text cycling
+        const vineyardMessages = [
+            "Walking the rows...",
+            "Tending the vines...",
+            "Reading the terroir...",
+            "Gathering from the cellar...",
+            "Consulting the harvest..."
+        ];
+        let vineyardIndex = 0;
+
+        setInterval(() => {
+            vineyardIndex = (vineyardIndex + 1) % vineyardMessages.length;
+            const el = document.getElementById('vineyardText');
+            if (el) el.textContent = vineyardMessages[vineyardIndex];
+        }, 2500);
     </script>
 </body>
 </html>

@@ -1,8 +1,8 @@
-# Qvé Rebrand - UI Mockup
+# Qvé Rebrand - Design Mockups
 
-**Status**: Complete (Phase 1 - Visual Design)
+**Status**: Phase 0 Complete ✅ (All mockups delivered)
 **Created**: 2026-01-13
-**File**: `qve-mockup.html`
+**Updated**: 2026-01-19
 
 ---
 
@@ -23,68 +23,123 @@ The design embodies **quiet luxury** - the aesthetic of small grower champagne p
 3. **Functional Beauty** - Every element serves a purpose
 4. **Respectful of Content** - The wines are the stars; UI stays in the background
 
-## Features Implemented
+## Mockup Inventory
 
-### Dual Theme System
-- **Light Mode**: Morning in the tasting room - soft natural light, aged paper tones
-- **Dark Mode**: Evening penthouse - warm blacks, ambient glow, city lights
+All mockups are complete and ready to serve as design specifications for the SvelteKit implementation.
 
-### Multi-View Density
-- **Medium/List View**: Full wine cards with all details (2-3 per screen)
-- **Compact/Grid View**: Tile layout for large collections (4-6 per row)
-- View preference persists via localStorage
+| Mockup | File | Description | Status |
+|--------|------|-------------|--------|
+| Wine List | `qve-mockup.html` | Main collection view with cards, filters, view modes | ✅ Complete |
+| Add Wine | `qve-add-wine-mockup.html` | 4-step wizard (Region → Producer → Wine → Bottle) | ✅ Complete |
+| Drink/Rate | `qve-drink-rate-mockup.html` | Rating modal with 10-dot scale | ✅ Complete |
+| Add Bottle | `qve-add-bottle-mockup.html` | Modal for adding bottle to existing wine | ✅ Complete |
+| Edit Wine/Bottle | `qve-edit-mockup.html` | 2-tab form for editing wine or bottle details | ✅ Complete |
+| Toast Notifications | `qve-toasts-mockup.html` | Success/error/info/undo notification styles | ✅ Complete |
+| Empty/Error States | `qve-states-mockup.html` | Loading, empty, error states + AI loading overlay | ✅ Complete |
 
-### Wine Cards
-- Bottle size indicators (small/standard/large silhouettes)
-- Rating display with subtle dot accent
-- Expand/collapse with smooth animations
-- Contextual action buttons (drink, add, edit)
+## Key Design Decisions (Phase 0)
 
-### Responsive Design
-- Desktop: 6 columns in compact view
-- Tablet: 4-5 columns
-- Mobile: 2-3 columns
-- Cards stack vertically on narrow screens
+### Rating Interface
+- **10-point scale** using minimal dots (10px circles)
+- Dots fill **cumulatively** (not individual selections)
+- **Thematic colors**:
+  - Overall rating: Burgundy `#8B4A5C`
+  - Value rating: Green `#7A8B6B`
+- Both ratings on **single row** with shortened labels ("Overall" / "Value")
+- Responsive: stacks vertically on mobile (<520px)
+
+### AI Loading Animations
+Three animation styles available:
+1. **Basic**: Simple progress bars with opacity cycling
+2. **Decanting**: Horizontal bars that "breathe" (width pulses)
+3. **Vineyard Rows**: Staggered vertical bars representing grape vines
+
+**Wine-themed loading messages** (13 total):
+- "Searching the cellars..."
+- "Consulting the sommelier..."
+- "Uncorking knowledge..."
+- "Checking the vintages..."
+- "Reading the terroir..."
+- "Decanting information..."
+- "Inspecting the cork..."
+- "Swirling the glass..."
+- "Examining the legs..."
+- "Nosing the bouquet..."
+- "Assessing the finish..."
+- "Conferring with the maître d'..."
+- "Perusing the carte des vins..."
+
+### Form Patterns
+- **Multi-step wizard** with dot indicators (active state highlighted)
+- **Search-first dropdowns** for existing regions/producers/wines
+- **AI enrichment buttons** reveal additional fields on click
+- **Image upload** with drag-drop zone and preview states
+- **Pill buttons** with uppercase labels, 100px border-radius
+
+### Toast Notifications
+- Bottom-right positioning (desktop), bottom-center (mobile)
+- Auto-dismiss with progress indicator
+- Swipe-to-dismiss gesture hint
+- Undo action button variant
 
 ## File Structure
 
 ```
 design/qve-rebrand/
-├── README.md              # This file
-├── DESIGN_SYSTEM.md       # Colors, typography, spacing tokens
-├── COMPONENTS.md          # UI component specifications
-├── CHANGELOG.md           # Design iteration history
-└── qve-mockup.html        # Live mockup (single-file, self-contained)
+├── README.md                      # This file (overview)
+├── DESIGN_SYSTEM.md               # Colors, typography, spacing tokens
+├── COMPONENTS.md                  # UI component specifications
+├── CHANGELOG.md                   # Design iteration history
+├── QVE_MIGRATION_PLAN.md          # Full migration roadmap
+│
+├── qve-mockup.html                # Wine list (main view)
+├── qve-add-wine-mockup.html       # Add wine wizard (4 steps)
+├── qve-drink-rate-mockup.html     # Rating modal
+├── qve-add-bottle-mockup.html     # Add bottle modal
+├── qve-edit-mockup.html           # Edit wine/bottle (2 tabs)
+├── qve-toasts-mockup.html         # Toast notifications
+└── qve-states-mockup.html         # Empty/error/loading states
 ```
 
-## How to View
+## How to View Mockups
 
-1. Open `qve-mockup.html` in any modern browser
-2. Click the sun/moon icon to toggle dark mode
-3. Click the grid/list icons to toggle view density
-4. Click any wine card to expand/collapse details
+1. Open any `.html` file in a modern browser
+2. Click the sun/moon icon to toggle dark mode (where available)
+3. Interactive elements work for preview (tabs, steps, dropdowns)
+4. Resize viewport to test responsive behavior (1200px → 375px)
 
-## Next Steps (Future Phases)
+## Design System Reference
 
-- [ ] Add Wine modal design
-- [ ] Rating interface design
-- [ ] Search and filter UI
-- [ ] Navigation/sidebar design
-- [ ] Empty state designs
-- [ ] Loading state animations
-- [ ] Error state designs
-- [ ] Mobile-specific interactions
+### Quick Reference (Full details in DESIGN_SYSTEM.md)
 
-## Integration Notes
+| Token | Light | Dark |
+|-------|-------|------|
+| Background | `#FAF9F7` | `#0C0B0A` |
+| Surface | `#FFFFFF` | `#1A1918` |
+| Accent | `#A69B8A` | `#B8AFA0` |
+| Text Primary | `#2D2926` | `#F0EDE6` |
+| Divider | `#E8E4DE` | `#2A2826` |
 
-When ready to integrate with the live app:
+### Typography
+- **Headings**: Cormorant Garamond (400, 500)
+- **Body/UI**: Outfit (300, 400, 500)
 
-1. Extract CSS variables to `resources/wineapp.css`
-2. Update `resources/js/ui/cards.js` with new card template
-3. Add view toggle to `resources/header.html`
-4. Update `resources/js/app.js` with ViewModeController
-5. Test with real wine data from database
+### Component Patterns
+- Border radius: 8px (inputs, buttons), 16px (cards)
+- Pill buttons: 100px radius, uppercase labels
+- Shadows: Barely visible in light, subtle glow in dark
+
+## Next Steps (Phase 1)
+
+Phase 0 mockups are complete. Ready to proceed with:
+
+1. **Initialize SvelteKit project** in `/qve/` folder
+2. **Extract design tokens** from mockup CSS into Svelte styles
+3. **Build core components** matching mockup specifications
+4. **Implement routes** using mockups as visual spec
+
+See [QVE_MIGRATION_PLAN.md](QVE_MIGRATION_PLAN.md) for full implementation roadmap.
 
 ---
 
-*This mockup represents the visual direction for Qvé. Implementation into the production app is a separate phase.*
+*These mockups serve as the design specification for the Qvé SvelteKit implementation.*

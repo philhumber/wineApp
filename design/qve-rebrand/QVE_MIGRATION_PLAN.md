@@ -1,8 +1,8 @@
 # Qvé Migration Plan: Wine Collection App Redesign
 
 **Created**: 2026-01-13
-**Status**: Ready for Approval
-**Estimated Duration**: 15-21 days of development
+**Updated**: 2026-01-19
+**Status**: Phase 0 Complete ✅ | Ready for Phase 1
 
 ---
 
@@ -40,20 +40,38 @@ Migrate the existing Wine Collection App to a new **Svelte-based PWA** called "Q
 
 ---
 
-## Phase 0: Mockup Design (Before Coding)
+## Phase 0: Mockup Design ✅ COMPLETE
 
 **Goal**: Create static mockups for all flows not covered by the existing mockup.
+**Completed**: 2026-01-19
+**Branch**: `phase-0/mockups` (from `svelte-rewrite`)
 
-### Required Mockups
+### Delivered Mockups
 
-| Flow | Priority | Notes |
-|------|----------|-------|
-| Add Wine (4-step form) | P0 | Region → Producer → Wine → Bottle tabs |
-| Drink/Rate Bottle | P0 | Rating selection, notes, bottle picker |
-| Add Bottle (modal) | P1 | Single form, attach to existing wine |
-| Edit Wine/Bottle | P1 | 2-tab form |
-| Toast Notifications | P2 | Success/error styling |
-| Empty/Error States | P2 | No wines, loading, network error |
+| Flow | File | Priority | Status |
+|------|------|----------|--------|
+| Wine List | `qve-mockup.html` | P0 | ✅ Complete (existing) |
+| Add Wine (4-step form) | `qve-add-wine-mockup.html` | P0 | ✅ Complete |
+| Drink/Rate Bottle | `qve-drink-rate-mockup.html` | P0 | ✅ Complete |
+| Add Bottle (modal) | `qve-add-bottle-mockup.html` | P1 | ✅ Complete |
+| Edit Wine/Bottle | `qve-edit-mockup.html` | P1 | ✅ Complete |
+| Toast Notifications | `qve-toasts-mockup.html` | P2 | ✅ Complete |
+| Empty/Error States | `qve-states-mockup.html` | P2 | ✅ Complete |
+
+### Key Design Decisions Made
+
+1. **Rating Interface**: 10-point scale using minimal dots (10px circles) with cumulative fill
+   - Overall rating: Burgundy `#8B4A5C`
+   - Value rating: Green `#7A8B6B`
+   - Both ratings on single row (stacks on mobile)
+
+2. **AI Loading**: Three animation styles (Basic, Decanting, Vineyard Rows)
+   - 13 wine-themed cycling messages
+   - Cancelable overlay with close button
+
+3. **Form Patterns**: Multi-step wizard with dot indicators
+   - Search-first dropdowns for existing data
+   - AI enrichment buttons reveal additional fields
 
 **Design Principles** (from existing mockup):
 - Quiet luxury - understated, not flashy
@@ -62,7 +80,10 @@ Migrate the existing Wine Collection App to a new **Svelte-based PWA** called "Q
 - Subtle shadows, almost invisible borders
 - Accent color: aged cork `#A69B8A`
 
-**Deliverable**: Static HTML mockups in `design/qve-rebrand/` folder
+**Documentation Updated**:
+- `README.md` - Mockup inventory and design decisions
+- `DESIGN_SYSTEM.md` - Rating colors, AI loading animations
+- `COMPONENTS.md` - All new component specifications
 
 ---
 
@@ -466,16 +487,26 @@ While multi-user auth is **out of scope** for this migration, the architecture s
 
 ## Next Steps
 
-### Immediate (Sprint 3 Completion)
-1. Complete remaining Sprint 3 items (WIN-95, WIN-88, WIN-84, WIN-38, WIN-43, WIN-96)
-2. Verify all tests pass on existing app
+### ✅ Completed
+- Sprint 3: All items complete
+- Phase 0: All mockups delivered and reviewed
 
-### Then (Qvé Migration)
-1. **Create mockups** for Add Wine and Drink/Rate flows
+### Immediate (Phase 1: Project Foundation)
+1. **Initialize SvelteKit project** in `/qve/` folder
 2. **Choose headless library**: Melt UI vs Bits UI (try both, pick one)
-3. **Initialize SvelteKit project** in `/qve/` folder
-4. **Extract design tokens** from mockup CSS
-5. Begin component development
+3. **Extract design tokens** from mockup CSS into Svelte styles
+4. **Set up PWA configuration** (manifest, service worker)
+
+### Then (Phase 2: Core Infrastructure)
+1. Build TypeScript API client mirroring existing `api.js`
+2. Create Svelte stores for state management
+3. Implement theme toggle with persistence
+
+### Reference Materials
+- **Mockups**: All in `design/qve-rebrand/` folder
+- **Design System**: `DESIGN_SYSTEM.md` for tokens and patterns
+- **Components**: `COMPONENTS.md` for implementation specs
+- **Existing Code**: `resources/js/` for API patterns to port
 
 ---
 

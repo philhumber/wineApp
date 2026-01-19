@@ -153,7 +153,7 @@
 
         /* ═══════════════════════════════════════════════════════════
            DEMO BACKGROUND (Wine Card)
-           ═══════════════════════════════════════════════════════════ -->
+           ═══════════════════════════════════════════════════════════ */
 
         .demo-bg {
             display: flex;
@@ -402,64 +402,58 @@
             color: var(--text-primary);
         }
 
-        /* Rating Stars Row */
+        /* Ratings Container - Both ratings in one row */
+        .ratings-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-6);
+            margin-bottom: var(--space-5);
+        }
+
+        .ratings-row .rating-section {
+            margin-bottom: 0;
+        }
+
+        /* Rating Dots Row */
         .rating-row {
             display: flex;
-            gap: var(--space-1);
+            align-items: center;
+            gap: var(--space-2);
         }
 
-        .rating-btn {
-            flex: 1;
-            aspect-ratio: 1;
-            max-width: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--bg-subtle);
-            border: 1px solid var(--divider);
-            border-radius: 8px;
+        .rating-dot {
+            width: 10px;
+            height: 10px;
+            padding: 0;
+            background: transparent;
+            border: 1.5px solid var(--divider);
+            border-radius: 50%;
             cursor: pointer;
             transition: all 0.15s var(--ease-out);
-            font-size: 1rem;
-            opacity: 0.4;
         }
 
-        .rating-btn:hover {
-            transform: scale(1.08);
-            opacity: 0.7;
-        }
-
-        .rating-btn.preview {
-            opacity: 0.7;
-            background: var(--bg-subtle);
+        .rating-dot:hover {
+            transform: scale(1.2);
             border-color: var(--accent-subtle);
         }
 
-        .rating-btn.selected {
-            opacity: 1;
-            background: var(--surface);
-            border-color: var(--accent);
-            box-shadow: var(--shadow-sm);
+        .rating-dot.preview {
+            border-color: var(--accent-subtle);
+            background: var(--accent-muted);
+        }
+
+        .rating-dot.selected {
+            border-color: transparent;
         }
 
         /* Wine rating color */
-        .rating-wine .rating-btn.selected {
-            background: rgba(139, 74, 92, 0.1);
-            border-color: var(--rating-wine);
-        }
-
-        [data-theme="dark"] .rating-wine .rating-btn.selected {
-            background: rgba(201, 138, 156, 0.15);
+        .rating-wine .rating-dot.selected {
+            background: var(--rating-wine);
         }
 
         /* Value rating color */
-        .rating-value .rating-btn.selected {
-            background: rgba(122, 139, 107, 0.1);
-            border-color: var(--rating-value);
-        }
-
-        [data-theme="dark"] .rating-value .rating-btn.selected {
-            background: rgba(154, 171, 139, 0.15);
+        .rating-value .rating-dot.selected {
+            background: var(--rating-value);
         }
 
         /* ═══════════════════════════════════════════════════════════
@@ -517,7 +511,7 @@
 
         /* ═══════════════════════════════════════════════════════════
            MODAL FOOTER
-           ═══════════════════════════════════════════════════════════ -->
+           ═══════════════════════════════════════════════════════════ */
 
         .modal-footer {
             display: flex;
@@ -535,16 +529,26 @@
             gap: var(--space-2);
             padding: var(--space-3) var(--space-5);
             font-family: var(--font-sans);
-            font-size: 0.875rem;
+            font-size: 0.8125rem;
             font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
             border-radius: 100px;
             cursor: pointer;
             transition: all 0.2s var(--ease-out);
         }
 
+        .btn svg {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+
         .btn-secondary {
             color: var(--text-secondary);
-            background: var(--surface);
+            background: transparent;
             border: 1px solid var(--divider);
         }
 
@@ -565,18 +569,13 @@
         }
 
         .btn:disabled {
-            opacity: 0.4;
+            opacity: 0.5;
             cursor: not-allowed;
-        }
-
-        .btn:disabled:hover {
-            background: var(--text-primary);
-            border-color: var(--text-primary);
         }
 
         /* ═══════════════════════════════════════════════════════════
            WINE INFO HEADER
-           ═══════════════════════════════════════════════════════════ -->
+           ═══════════════════════════════════════════════════════════ */
 
         .wine-info {
             display: flex;
@@ -601,9 +600,6 @@
         .wine-info-image svg {
             width: 24px;
             height: 24px;
-            stroke: var(--accent-muted);
-            stroke-width: 1;
-            fill: none;
         }
 
         .wine-info-details {
@@ -625,7 +621,7 @@
 
         /* ═══════════════════════════════════════════════════════════
            RESPONSIVE
-           ═══════════════════════════════════════════════════════════ -->
+           ═══════════════════════════════════════════════════════════ */
 
         @media (max-width: 520px) {
             .modal-content {
@@ -647,14 +643,24 @@
                 grid-template-columns: 1fr;
             }
 
-            .rating-btn {
-                max-width: 32px;
+            .ratings-row {
+                grid-template-columns: 1fr;
+                gap: var(--space-4);
+            }
+
+            .rating-row {
+                gap: var(--space-2);
+            }
+
+            .rating-dot {
+                width: 8px;
+                height: 8px;
             }
         }
 
         /* ═══════════════════════════════════════════════════════════
            DEMO CONTROLS
-           ═══════════════════════════════════════════════════════════ -->
+           ═══════════════════════════════════════════════════════════ */
 
         .demo-controls {
             position: fixed;
@@ -684,7 +690,7 @@
 
         /* ═══════════════════════════════════════════════════════════
            FOCUS STATES
-           ═══════════════════════════════════════════════════════════ -->
+           ═══════════════════════════════════════════════════════════ */
 
         ::selection {
             background: var(--accent-muted);
@@ -731,9 +737,15 @@
                 <div class="wine-info">
                     <div class="wine-info-image">
                         <svg viewBox="0 0 24 24">
-                            <path d="M8 2h8l1 8c0 3.5-2.5 6-5 6s-5-2.5-5-6l1-8z"/>
-                            <line x1="12" y1="16" x2="12" y2="22"/>
-                            <line x1="8" y1="22" x2="16" y2="22"/>
+                            <!-- Bowl of the glass -->
+                            <path d="M8 2h8l1 8c0 3.5-2.5 6-5 6s-5-2.5-5-6l1-8z"
+                                  style="fill: none; stroke: var(--accent); stroke-width: 1.5;"/>
+                            <!-- Stem -->
+                            <line x1="12" y1="16" x2="12" y2="22"
+                                  style="stroke: var(--accent); stroke-width: 1.5;"/>
+                            <!-- Base -->
+                            <line x1="8" y1="22" x2="16" y2="22"
+                                  style="stroke: var(--accent); stroke-width: 1.5;"/>
                         </svg>
                     </div>
                     <div class="wine-info-details">
@@ -752,45 +764,48 @@
                     </select>
                 </div>
 
-                <!-- Overall Rating -->
-                <div class="rating-section rating-wine">
-                    <div class="rating-header">
-                        <span class="rating-icon">🍷</span>
-                        <span class="rating-title">Overall Rating</span>
-                        <span class="rating-value-display" id="overallValue">—</span>
+                <!-- Ratings Row -->
+                <div class="ratings-row">
+                    <!-- Overall Rating -->
+                    <div class="rating-section rating-wine">
+                        <div class="rating-header">
+                            <span class="rating-icon">🍷</span>
+                            <span class="rating-title">Overall</span>
+                            <span class="rating-value-display" id="overallValue">—</span>
+                        </div>
+                        <div class="rating-row" id="overallRating">
+                            <button class="rating-dot" data-value="1"></button>
+                            <button class="rating-dot" data-value="2"></button>
+                            <button class="rating-dot" data-value="3"></button>
+                            <button class="rating-dot" data-value="4"></button>
+                            <button class="rating-dot" data-value="5"></button>
+                            <button class="rating-dot" data-value="6"></button>
+                            <button class="rating-dot" data-value="7"></button>
+                            <button class="rating-dot" data-value="8"></button>
+                            <button class="rating-dot" data-value="9"></button>
+                            <button class="rating-dot" data-value="10"></button>
+                        </div>
                     </div>
-                    <div class="rating-row" id="overallRating">
-                        <button class="rating-btn" data-value="1">1</button>
-                        <button class="rating-btn" data-value="2">2</button>
-                        <button class="rating-btn" data-value="3">3</button>
-                        <button class="rating-btn" data-value="4">4</button>
-                        <button class="rating-btn" data-value="5">5</button>
-                        <button class="rating-btn" data-value="6">6</button>
-                        <button class="rating-btn" data-value="7">7</button>
-                        <button class="rating-btn selected" data-value="8">8</button>
-                        <button class="rating-btn" data-value="9">9</button>
-                        <button class="rating-btn" data-value="10">10</button>
-                    </div>
-                </div>
 
-                <!-- Value Rating -->
-                <div class="rating-section rating-value">
-                    <div class="rating-header">
-                        <span class="rating-icon">💰</span>
-                        <span class="rating-title">Value for Money</span>
-                        <span class="rating-value-display" id="valueValue">—</span>
-                    </div>
-                    <div class="rating-row" id="valueRating">
-                        <button class="rating-btn" data-value="1">1</button>
-                        <button class="rating-btn" data-value="2">2</button>
-                        <button class="rating-btn" data-value="3">3</button>
-                        <button class="rating-btn" data-value="4">4</button>
-                        <button class="rating-btn" data-value="5">5</button>
-                        <button class="rating-btn" data-value="6">6</button>
-                        <button class="rating-btn selected" data-value="7">7</button>
-                        <button class="rating-btn" data-value="8">8</button>
-                        <button class="rating-btn" data-value="9">9</button>
-                        <button class="rating-btn" data-value="10">10</button>
+                    <!-- Value Rating -->
+                    <div class="rating-section rating-value">
+                        <div class="rating-header">
+                            <span class="rating-icon">💰</span>
+                            <span class="rating-title">Value</span>
+                            <span class="rating-value-display" id="valueValue">—</span>
+                        </div>
+                        <div class="rating-row" id="valueRating">
+                            <button class="rating-dot" data-value="1"></button>
+                            <button class="rating-dot" data-value="2"></button>
+                            <button class="rating-dot" data-value="3"></button>
+                            <button class="rating-dot" data-value="4"></button>
+                            <button class="rating-dot" data-value="5"></button>
+                            <button class="rating-dot" data-value="6"></button>
+                            <button class="rating-dot" data-value="7"></button>
+                            <button class="rating-dot" data-value="8"></button>
+                            <button class="rating-dot" data-value="9"></button>
+                            <button class="rating-dot" data-value="10"></button>
+                        </div>
                     </div>
                 </div>
 
@@ -869,7 +884,7 @@
                 display.classList.add('active');
             }
 
-            const buttons = container.querySelectorAll('.rating-btn');
+            const buttons = container.querySelectorAll('.rating-dot');
 
             buttons.forEach(btn => {
                 const value = parseInt(btn.dataset.value);
