@@ -1,7 +1,7 @@
 # Wine Collection App - Quick Start Guide
 
 **Last Updated**: 2026-01-19
-**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Phase 0 Complete ✅ | Qvé Phase 1 Complete ✅ | Qvé Phase 2 Wave 1 Complete ✅
+**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Phase 0 Complete ✅ | Qvé Phase 1 Complete ✅ | Qvé Phase 2 Wave 1-2 Complete ✅
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
 > **💡 For comprehensive project information, see [README.md](README.md)**
@@ -21,6 +21,7 @@
 | Qvé Phase 0 | ✅ COMPLETE | All 7 mockups delivered |
 | Qvé Phase 1 | ✅ COMPLETE | SvelteKit foundation in `/qve/` |
 | Qvé Phase 2 Wave 1 | ✅ COMPLETE | Foundation UI components (Icon, ThemeToggle, ViewToggle, RatingDisplay, BottleIndicators) |
+| Qvé Phase 2 Wave 2 | ✅ COMPLETE | Wine card components (WineImage, WineCard, WineGrid) |
 
 ### Current Plan: Qvé Migration
 
@@ -41,8 +42,8 @@
 
 **Phase 2: Core UI Components** (In Progress)
 - **Wave 1 ✅ COMPLETE** - Foundation components (Icon, ThemeToggle, ViewToggle, RatingDisplay, BottleIndicators)
-- **Wave 2** (Next) - Wine card components (WineImage, WineCard, WineGrid)
-- **Wave 3** - Header, filters, and toast components
+- **Wave 2 ✅ COMPLETE** - Wine card components (WineImage, WineCard, WineGrid)
+- **Wave 3** (Next) - Header, filters, and toast components
 - See: `design/qve-rebrand/QVE_MIGRATION_PLAN.md` for full roadmap
 
 ### What You Need to Know
@@ -54,6 +55,7 @@
 5. **✅ Qvé Phase 0 Complete** - All mockups in `design/qve-rebrand/`
 6. **✅ Qvé Phase 1 Complete** - SvelteKit foundation in `/qve/` folder (requires Node 18+)
 7. **✅ Qvé Phase 2 Wave 1 Complete** - Foundation components in `qve/src/lib/components/ui/`
+8. **✅ Qvé Phase 2 Wave 2 Complete** - Wine card components in `qve/src/lib/components/wine/`
 
 ### Critical Warnings
 
@@ -263,6 +265,7 @@ Run after each change:
 ## Qvé Migration Status
 
 **Phase 1 Complete** ✅ - SvelteKit foundation ready
+**Phase 2 Wave 1-2 Complete** ✅ - Core UI components built
 
 **What's Built** (`/qve/` folder):
 - SvelteKit 2 + TypeScript + Vite 5
@@ -270,15 +273,19 @@ Run after each change:
 - TypeScript API client (mirrors all PHP endpoints)
 - Svelte stores (theme, wines, filters, view, toast, modal)
 - PWA configuration (manifest, service worker caching)
-- Placeholder routes for all pages
+- Foundation UI components (Icon, ThemeToggle, ViewToggle, RatingDisplay, BottleIndicators)
+- Wine card components (WineImage, WineCard, WineGrid)
+- Home page with live API data
 
 **Key Files**:
 - `qve/src/lib/api/client.ts` - API client
 - `qve/src/lib/stores/` - State management
 - `qve/src/lib/styles/tokens.css` - Design tokens
+- `qve/src/lib/components/ui/` - Foundation UI components
+- `qve/src/lib/components/wine/` - Wine card components
 - `qve/src/routes/` - Page routes
 
-**Next: Phase 2** - Build UI components (WineCard, Header, FilterBar)
+**Next: Phase 2 Wave 3** - Header, filters, and toast components
 
 **See [design/qve-rebrand/QVE_MIGRATION_PLAN.md](design/qve-rebrand/QVE_MIGRATION_PLAN.md) for full roadmap.**
 
