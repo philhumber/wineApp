@@ -1,7 +1,7 @@
 # Wine Collection App - Quick Start Guide
 
 **Last Updated**: 2026-01-19
-**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Phase 0 Complete ✅ | Qvé Phase 1 Complete ✅ | Qvé Phase 2 Wave 1-3 Complete ✅
+**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Phase 0 Complete ✅ | Qvé Phase 1 Complete ✅ | Qvé Phase 2 Complete ✅ | Qvé Phase 3 In Progress 🚧
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
 > **💡 For comprehensive project information, see [README.md](README.md)**
@@ -23,6 +23,7 @@
 | Qvé Phase 2 Wave 1 | ✅ COMPLETE | Foundation UI components (Icon, ThemeToggle, ViewToggle, RatingDisplay, BottleIndicators) |
 | Qvé Phase 2 Wave 2 | ✅ COMPLETE | Wine card components (WineImage, WineCard, WineGrid) |
 | Qvé Phase 2 Wave 3 | ✅ COMPLETE | Layout components (Header, FilterBar, FilterPill, Toast, ToastContainer) |
+| Qvé Phase 3 | 🚧 IN PROGRESS | Add Wine 4-step wizard |
 
 ### Current Plan: Qvé Migration
 
@@ -47,8 +48,17 @@
 - **Wave 3 ✅ COMPLETE** - Layout components (Header, FilterBar, FilterPill, Toast, ToastContainer)
 - See: `design/qve-rebrand/QVE_MIGRATION_PLAN.md` for full roadmap
 
-**Next: Phase 3 - Page Routes**
-- Add Wine flow (4-step wizard)
+**Phase 3: Page Routes** 🚧 IN PROGRESS
+- **Add Wine flow (4-step wizard)** 🚧 IN PROGRESS
+  - ✅ Form components (FormInput, FormSelect, FormTextarea, FormRow)
+  - ✅ Wizard components (WizardStepIndicator, WizardNav, SearchDropdown)
+  - ✅ AI components (AIGenerateButton, AIExpandedSection, AILoadingOverlay)
+  - ✅ ImageUploadZone component
+  - ✅ addWine store with validation
+  - ✅ Step components (RegionStep, ProducerStep, WineStep, BottleStep)
+  - ✅ AI enrichment integration
+  - ✅ PHP getProducers.php region filtering fix
+  - 🔲 Final API integration testing
 - Drink/Rate flow
 - Add Bottle modal
 - Edit Wine/Bottle page
@@ -65,6 +75,7 @@
 7. **✅ Qvé Phase 2 Wave 1 Complete** - Foundation components in `qve/src/lib/components/ui/`
 8. **✅ Qvé Phase 2 Wave 2 Complete** - Wine card components in `qve/src/lib/components/wine/`
 9. **✅ Qvé Phase 2 Wave 3 Complete** - Layout components in `qve/src/lib/components/layout/` + Toast
+10. **🚧 Qvé Phase 3 In Progress** - Add Wine wizard in `qve/src/routes/add/` with form/wizard components
 
 ### Critical Warnings
 
@@ -275,28 +286,38 @@ Run after each change:
 
 **Phase 1 Complete** ✅ - SvelteKit foundation ready
 **Phase 2 Complete** ✅ - All core UI components built (Waves 1-3)
+**Phase 3 In Progress** 🚧 - Add Wine wizard built, testing API integration
 
 **What's Built** (`/qve/` folder):
 - SvelteKit 2 + TypeScript + Vite 5
 - Design tokens extracted from mockups (light/dark themes)
 - TypeScript API client (mirrors all PHP endpoints)
-- Svelte stores (theme, wines, filters, view, toast, modal)
+- Svelte stores (theme, wines, filters, view, toast, modal, addWine)
 - PWA configuration (manifest, service worker caching)
 - Foundation UI components (Icon, ThemeToggle, ViewToggle, RatingDisplay, BottleIndicators)
 - Wine card components (WineImage, WineCard, WineGrid)
 - Layout components (Header, FilterBar, FilterPill, Toast, ToastContainer)
 - Home page with live API data, filtering, and toast notifications
+- **Add Wine wizard** (4-step: Region → Producer → Wine → Bottle)
+  - Form components (FormInput, FormSelect, FormTextarea, FormRow)
+  - Wizard components (WizardStepIndicator, WizardNav, SearchDropdown)
+  - AI components (AIGenerateButton, AIExpandedSection, AILoadingOverlay)
+  - ImageUploadZone with drag-drop and preview
 
 **Key Files**:
 - `qve/src/lib/api/client.ts` - API client
 - `qve/src/lib/stores/` - State management
+- `qve/src/lib/stores/addWine.ts` - Add Wine wizard state and validation
 - `qve/src/lib/styles/tokens.css` - Design tokens
 - `qve/src/lib/components/ui/` - Foundation UI components
 - `qve/src/lib/components/wine/` - Wine card components
 - `qve/src/lib/components/layout/` - Layout components (Header, FilterBar, FilterPill)
+- `qve/src/lib/components/forms/` - Form components
+- `qve/src/lib/components/wizard/` - Wizard components
 - `qve/src/routes/` - Page routes
+- `qve/src/routes/add/` - Add Wine wizard route
 
-**Next: Phase 3 - Page Routes** - Add Wine flow, Drink/Rate, Add Bottle, Edit, History
+**Next** - Drink/Rate flow, Add Bottle modal, Edit page, History page
 
 **See [design/qve-rebrand/QVE_MIGRATION_PLAN.md](design/qve-rebrand/QVE_MIGRATION_PLAN.md) for full roadmap.**
 

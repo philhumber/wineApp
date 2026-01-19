@@ -14,18 +14,20 @@
         $data = json_decode(file_get_contents('php://input'), true);
 
         //No validation as it should return all bottles if no ID specified.
-		$wineID = $inputData['wineID'] ?? '%';
+		$wineID = $data['wineID'] ?? '%';
 
 		$userID = $_SESSION['userID'] ?? null;
-	
+
 		$params = [];
 		$having = [];
-		$where = [];	
-		$bottleCount = $inputData['bottleCount'] ?? '0';		
-		$regionName = $inputData['regionName'] ?? '%';
+		$where = [];
+		$bottleCount = $data['bottleCount'] ?? '0';
+		$regionName = $data['regionName'] ?? '%';
 
-		$sqlQuery = "SELECT 
+		$sqlQuery = "SELECT
+						producers.producerID,
 						producerName,
+						region.regionName,
 						count(bottles.bottleID) AS bottleCount
 					FROM producers
 					LEFT JOIN region on region.regionID = producers.regionID
@@ -41,7 +43,7 @@
 		if (!empty($where)) {
 			$sqlQuery .= " WHERE " . implode(' AND ', $where);
 		}
-		$sqlQuery .= " GROUP BY producerName";
+		$sqlQuery .= " GROUP BY producers.producerID, producerName, region.regionName";
 
 		if (!empty($bottleCount) && $bottleCount !== '0') {
 			$having[] = "COUNT(bottles.bottleID) >= :bottleCount";

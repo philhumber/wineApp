@@ -160,11 +160,15 @@ class WineApiClient {
    * Get wine types for dropdown
    */
   async getTypes(withBottleCount = true): Promise<WineType[]> {
-    const response = await this.fetchJSON<{ wineList: WineType[] }>(
+    const response = await this.fetchJSON<{ wineList: Array<{ wineType: string; bottleCount?: number }> }>(
       'getTypes.php',
       withBottleCount ? { bottleCount: '1' } : {}
     );
-    return response.data?.wineList ?? [];
+    // Map PHP field name (wineType) to our interface (wineTypeName)
+    return (response.data?.wineList ?? []).map(t => ({
+      wineTypeName: t.wineType,
+      bottleCount: t.bottleCount
+    }));
   }
 
   /**
@@ -316,6 +320,7 @@ class WineApiClient {
       'geminiAPI.php',
       { type: 'region', prompt: `${regionName}, ${countryName}` }
     );
+    console.log('Raw AI response:', response);
     return response.data ?? {};
   }
 

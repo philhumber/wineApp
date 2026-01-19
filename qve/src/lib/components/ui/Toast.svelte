@@ -6,7 +6,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { fly } from 'svelte/transition';
   import { Icon } from '$lib/components';
-  import type { IconName } from '$lib/components';
+  import type { IconName } from '$lib/components/ui/Icon.svelte';
   import { toasts } from '$lib/stores';
   import type { Toast as ToastType, ToastType as ToastTypeEnum } from '$lib/stores';
 
