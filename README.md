@@ -510,12 +510,21 @@ All Issues Completed (9 total):
 
 ### Fix & Migrate Phase 🔧 ACTIVE
 
-**Current Plan**: Fix remaining bugs in current app, then start Qvé migration
+**Current Plan**: Fix remaining bugs in current app, then continue Qvé migration
 
-**Phase 1: Bug Fixes**
-- 🔧 **WIN-102**: Can't edit a wine with no bottles - TO DO
+**Phase 1: Bug Fixes** ✅ COMPLETE
+- ✅ **WIN-102**: Can't edit a wine with no bottles
 
-**Phase 2: Qvé Migration** - Start after WIN-102
+**Qvé Phase 0: Mockups** ✅ COMPLETE
+- All 7 mockups delivered in `design/qve-rebrand/`
+
+**Qvé Phase 1: SvelteKit Foundation** ✅ COMPLETE
+- SvelteKit project initialized in `/qve/` folder
+- Design tokens extracted, TypeScript API client built
+- Svelte stores and PWA configuration ready
+- See [qve/README.md](qve/README.md) for development setup
+
+**Next: Qvé Phase 2** - Build UI components (WineCard, Header, FilterBar)
 
 ### Open JIRA Issues
 
@@ -540,32 +549,21 @@ See JIRA board for complete list: https://philhumber.atlassian.net/jira/software
 
 ## Roadmap
 
-### Immediate: Fix & Migrate Phase
-
-**Phase 1: Bug Fixes** (current app)
-1. Fix WIN-102: Can't edit a wine with no bottles
-
-**Phase 2: Qvé Migration** (starts after Phase 1)
-1. Create Qvé mockups - Design Add Wine and Drink/Rate flows
-2. Begin SvelteKit project initialization
-3. Implement core components and routing
-4. Port remaining backlog features to new stack
-
-### Medium Term: Qvé Migration
+### Qvé Migration Progress
 
 **Qvé Migration** - Full Svelte/SvelteKit PWA rebuild
 
-- **Plan**: `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
 - **Approach**: Build new app at `/qve/` alongside existing app
-- **Tech Stack**: Svelte/SvelteKit + Melt UI/Bits UI + existing PHP API
-- **Features**: PWA installable, offline support, dual themes
+- **Tech Stack**: SvelteKit 2 + Svelte 5 + Bits UI + existing PHP API
+- **Features**: PWA installable, offline support, dual themes (light/dark)
 
 **Migration Phases**:
-1. Phase 0: Complete mockups
-2. Phase 1: Initialize SvelteKit project
-3. Phase 2: API client + stores + PWA config
-4. Phase 3: Build UI components
-5. Phase 4: Implement page routes
+1. ✅ **Phase 0**: Complete mockups - All 7 mockups in `design/qve-rebrand/`
+2. ✅ **Phase 1**: SvelteKit foundation - Project structure, design tokens, API client, stores
+3. 🔧 **Phase 2**: Core infrastructure - UI components (WineCard, Header, FilterBar)
+4. **Phase 3**: Wine list & cards - Implement main wine list page
+5. **Phase 4**: Forms & modals - Add/edit wine, drink/rate
+6. **Phase 5**: Polish & launch - PWA optimization, testing, cutover
 
 ### Post-Migration: AI Features
 - WIN-42: Build image recognition
