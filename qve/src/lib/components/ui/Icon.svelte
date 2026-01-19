@@ -7,6 +7,7 @@
     | 'search'
     | 'menu'
     | 'chevron-down'
+    | 'chevron-left'
     | 'plus'
     | 'edit'
     | 'drink'
@@ -70,6 +71,9 @@
   {:else if name === 'chevron-down'}
     <!-- Chevron down for dropdowns -->
     <polyline points="6 9 12 15 18 9" />
+  {:else if name === 'chevron-left'}
+    <!-- Chevron left for back navigation -->
+    <polyline points="15 18 9 12 15 6" />
   {:else if name === 'plus'}
     <!-- Plus icon for add actions -->
     <line x1="12" y1="5" x2="12" y2="19" />

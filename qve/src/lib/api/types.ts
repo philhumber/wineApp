@@ -85,8 +85,9 @@ export interface Producer {
 }
 
 export interface WineType {
-  wineTypeID: number;
+  wineTypeID?: number;
   wineTypeName: string;
+  wineType?: string; // PHP returns this field name
   bottleCount?: number;
 }
 
@@ -208,21 +209,23 @@ export interface DrinkBottlePayload {
 export interface AIRegionData {
   description?: string;
   climate?: string;
-  terroir?: string;
-  grapes?: string[];
+  soil?: string;
+  map?: string;
 }
 
 export interface AIProducerData {
   description?: string;
-  founded?: string;
-  winemaker?: string;
-  philosophy?: string;
+  founded?: number | string;
+  town?: string;
+  ownership?: string;
 }
 
 export interface AIWineData {
   description?: string;
-  tastingNotes?: string;
-  pairingNotes?: string;
-  grapes?: string[];
-  agingPotential?: string;
+  tasting?: string;
+  pairing?: string;
+  drinkwindow?: {
+    start?: number;
+    end?: number;
+  };
 }

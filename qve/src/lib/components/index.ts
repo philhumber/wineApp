@@ -3,6 +3,20 @@
  * Barrel export for all components
  */
 
+// Form Components
+export { FormInput, FormSelect, FormTextarea, FormRow } from './forms';
+
+// Wizard Components
+export {
+  WizardStepIndicator,
+  WizardNav,
+  SearchDropdown,
+  AIGenerateButton,
+  AIExpandedSection,
+  AILoadingOverlay,
+  ImageUploadZone
+} from './wizard';
+
 // UI Components
 export { default as Icon } from './ui/Icon.svelte';
 export { default as ThemeToggle } from './ui/ThemeToggle.svelte';
@@ -22,5 +36,5 @@ export { default as WineImage } from './wine/WineImage.svelte';
 export { default as WineCard } from './wine/WineCard.svelte';
 export { default as WineGrid } from './wine/WineGrid.svelte';
 
-// Re-export Icon types
-export type { IconName } from './ui/Icon.svelte';
+// Note: IconName type is exported from Icon.svelte via context="module"
+// Import directly from ./ui/Icon.svelte if needed
