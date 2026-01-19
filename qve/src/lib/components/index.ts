@@ -9,6 +9,13 @@ export { default as ThemeToggle } from './ui/ThemeToggle.svelte';
 export { default as ViewToggle } from './ui/ViewToggle.svelte';
 export { default as RatingDisplay } from './ui/RatingDisplay.svelte';
 export { default as BottleIndicators } from './ui/BottleIndicators.svelte';
+export { default as Toast } from './ui/Toast.svelte';
+export { default as ToastContainer } from './ui/ToastContainer.svelte';
+
+// Layout Components
+export { default as Header } from './layout/Header.svelte';
+export { default as FilterBar } from './layout/FilterBar.svelte';
+export { default as FilterPill } from './layout/FilterPill.svelte';
 
 // Wine Components
 export { default as WineImage } from './wine/WineImage.svelte';
