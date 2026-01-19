@@ -1,7 +1,7 @@
 # Wine Collection App - Quick Start Guide
 
 **Last Updated**: 2026-01-19
-**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Phase 0 Complete ✅
+**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Phase 0 Complete ✅ | Qvé Phase 1 Complete ✅
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
 > **💡 For comprehensive project information, see [README.md](README.md)**
@@ -18,7 +18,8 @@
 | Sprint 1 | ✅ COMPLETE | Critical bug fixes (WIN-87, WIN-86, WIN-66, WIN-93) |
 | Sprint 2 | ✅ COMPLETE | UX improvements (toast, filters, scroll, view mode) |
 | Sprint 3 | ✅ COMPLETE | Features (WIN-84 purchase date, WIN-38 upload, etc.) |
-| Fix & Migrate | 🔧 ACTIVE | Fix remaining bugs, then start Qvé migration |
+| Qvé Phase 0 | ✅ COMPLETE | All 7 mockups delivered |
+| Qvé Phase 1 | ✅ COMPLETE | SvelteKit foundation in `/qve/` |
 
 ### Current Plan: Qvé Migration
 
@@ -27,22 +28,29 @@
 
 **Phase 0: Mockup Design** ✅ COMPLETE
 - All 7 mockups delivered and reviewed
-- Branch: `phase-0/mockups` (ready for PR to `svelte-rewrite`)
 - See: `design/qve-rebrand/README.md` for mockup inventory
 
-**Phase 1: SvelteKit Foundation** (Next)
-- Initialize SvelteKit project in `/qve/` folder
-- Extract design tokens from mockup CSS
-- Build core components matching mockup specs
+**Phase 1: SvelteKit Foundation** ✅ COMPLETE
+- SvelteKit project initialized in `/qve/` folder
+- Design tokens extracted (tokens.css, base.css, animations.css)
+- TypeScript API client built (mirrors PHP backend)
+- Svelte stores created (theme, wines, filters, view, toast, modal)
+- PWA configuration ready
+- Run: `cd qve && npm install && npm run dev` → http://localhost:5173/qve/
+
+**Phase 2: Core Infrastructure** (Next)
+- Build UI components (WineCard, Header, FilterBar)
+- Implement wine list page with real data
 - See: `design/qve-rebrand/QVE_MIGRATION_PLAN.md` for full roadmap
 
 ### What You Need to Know
 
-1. **✅ Phase 1 Complete** - 17 ES6 modules, old `wineapp.js` deprecated (DO NOT LOAD)
+1. **✅ Current App Complete** - 17 ES6 modules, old `wineapp.js` deprecated (DO NOT LOAD)
 2. **✅ Sprint 1-3 Complete** - Core app stable, ready for migration
 3. **✅ GitHub Setup Complete** - Repo at `philhumber/wineApp` with 3-branch workflow
 4. **✅ Credentials Secured** - All credentials in `../wineapp-config/` (outside web root)
-5. **✅ Qvé Phase 0 Complete** - All mockups in `design/qve-rebrand/`, ready for Phase 1
+5. **✅ Qvé Phase 0 Complete** - All mockups in `design/qve-rebrand/`
+6. **✅ Qvé Phase 1 Complete** - SvelteKit foundation in `/qve/` folder (requires Node 18+)
 
 ### Critical Warnings
 
@@ -56,12 +64,16 @@
 ## Quick Commands
 
 ```bash
-# Run local development server
+# Run current app (PHP)
 php -S localhost:8000
 
-# Git workflow (always work from develop)
-git checkout develop
-git pull origin develop
+# Run Qvé app (SvelteKit) - requires Node 18+
+cd qve && npm run dev    # http://localhost:5173/qve/
+
+# Git workflow (always work from develop or svelte-rewrite)
+git checkout develop     # For current app fixes
+git checkout svelte-rewrite  # For Qvé migration
+git pull origin <branch>
 git checkout -b feature/WINE-XX-description
 
 # Database connection
@@ -245,26 +257,97 @@ Run after each change:
 
 ---
 
-## Qvé Migration Plan (Phase 2)
+## Qvé Migration Status
 
-**Status**: Ready to start
-**Approach**: Build new Svelte/SvelteKit PWA at `/qve/` alongside existing app
+**Phase 1 Complete** ✅ - SvelteKit foundation ready
 
-**Key Details**:
-- Framework: Svelte/SvelteKit + Melt UI/Bits UI
-- PWA: Installable, offline support
-- Backend: Reuse existing PHP API unchanged
-- Design: Complete mockup at `design/qve-rebrand/qve-mockup.html`
+**What's Built** (`/qve/` folder):
+- SvelteKit 2 + TypeScript + Vite 5
+- Design tokens extracted from mockups (light/dark themes)
+- TypeScript API client (mirrors all PHP endpoints)
+- Svelte stores (theme, wines, filters, view, toast, modal)
+- PWA configuration (manifest, service worker caching)
+- Placeholder routes for all pages
 
-**Full plan**: `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
+**Key Files**:
+- `qve/src/lib/api/client.ts` - API client
+- `qve/src/lib/stores/` - State management
+- `qve/src/lib/styles/tokens.css` - Design tokens
+- `qve/src/routes/` - Page routes
 
-**Migration Steps**:
-1. Create mockups for Add Wine and Drink/Rate flows
-2. Begin SvelteKit project initialization
-3. Implement core components and routing
-4. Port remaining backlog features to new stack
+**Next: Phase 2** - Build UI components (WineCard, Header, FilterBar)
 
-**See [README.md](README.md) for complete roadmap and migration phases.**
+**See [design/qve-rebrand/QVE_MIGRATION_PLAN.md](design/qve-rebrand/QVE_MIGRATION_PLAN.md) for full roadmap.**
+
+---
+
+## Qvé Development Setup
+
+### Prerequisites
+
+- **Node.js 18+** (tested with v24.13.0) - SvelteKit requires Node 18 or higher
+- **PHP 7+** with PDO extension
+- **MySQL 8.0** on 10.0.0.16
+
+### Running the Development Environment
+
+The Qvé app requires **two servers running simultaneously**:
+
+```bash
+# Terminal 1: Start PHP backend (from wineapp root)
+cd "c:\Users\Phil\Google Drive\dev\wineapp"
+php -S localhost:8000
+
+# Terminal 2: Start Vite dev server (from qve folder)
+cd "c:\Users\Phil\Google Drive\dev\wineapp\qve"
+npm install    # First time only
+npm run dev
+```
+
+Then open: **http://localhost:5173/qve/**
+
+### How the Proxy Works
+
+The Vite dev server proxies API requests to the PHP backend:
+
+```
+Browser → localhost:5173/qve/           (SvelteKit app)
+       → localhost:5173/resources/php/  (proxied to PHP)
+                ↓
+       → localhost:8000/resources/php/  (PHP backend)
+```
+
+This is configured in [qve/vite.config.ts](qve/vite.config.ts):
+```typescript
+server: {
+  proxy: {
+    '/resources/php': {
+      target: 'http://localhost:8000',
+      changeOrigin: true
+    }
+  }
+}
+```
+
+### Troubleshooting Common Errors
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| **404 Not Found** for API | Vite proxy not configured or PHP server not running | Ensure PHP server is running at localhost:8000 |
+| **500 Internal Server Error** | PHP running from wrong directory | Run `php -S localhost:8000` from wineapp root (not qve folder) |
+| **ECONNREFUSED** | PHP server not running | Start PHP server: `php -S localhost:8000` |
+| **TypeScript errors** | Missing types or dependencies | Run `npm install` then `npm run check` |
+| **Node version error** | Node.js < 18 | Upgrade Node.js to v18 or higher |
+
+### Verification Checklist
+
+After starting both servers, verify:
+
+1. ✅ Open http://localhost:5173/qve/ - should load the home page
+2. ✅ Check "API Connection" card shows "connected - X wines"
+3. ✅ Theme toggle works (persists on refresh)
+4. ✅ Navigate to /qve/add, /qve/history routes
+5. ✅ DevTools > Application > Manifest shows PWA config
 
 ---
 
