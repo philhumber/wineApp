@@ -3,6 +3,15 @@ import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  server: {
+    proxy: {
+      // Proxy API calls to PHP backend during development
+      '/resources/php': {
+        target: 'http://localhost:8000',
+        changeOrigin: true
+      }
+    }
+  },
   plugins: [
     sveltekit(),
     SvelteKitPWA({

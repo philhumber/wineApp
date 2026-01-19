@@ -281,6 +281,76 @@ Run after each change:
 
 ---
 
+## Qvé Development Setup
+
+### Prerequisites
+
+- **Node.js 18+** (tested with v24.13.0) - SvelteKit requires Node 18 or higher
+- **PHP 7+** with PDO extension
+- **MySQL 8.0** on 10.0.0.16
+
+### Running the Development Environment
+
+The Qvé app requires **two servers running simultaneously**:
+
+```bash
+# Terminal 1: Start PHP backend (from wineapp root)
+cd "c:\Users\Phil\Google Drive\dev\wineapp"
+php -S localhost:8000
+
+# Terminal 2: Start Vite dev server (from qve folder)
+cd "c:\Users\Phil\Google Drive\dev\wineapp\qve"
+npm install    # First time only
+npm run dev
+```
+
+Then open: **http://localhost:5173/qve/**
+
+### How the Proxy Works
+
+The Vite dev server proxies API requests to the PHP backend:
+
+```
+Browser → localhost:5173/qve/           (SvelteKit app)
+       → localhost:5173/resources/php/  (proxied to PHP)
+                ↓
+       → localhost:8000/resources/php/  (PHP backend)
+```
+
+This is configured in [qve/vite.config.ts](qve/vite.config.ts):
+```typescript
+server: {
+  proxy: {
+    '/resources/php': {
+      target: 'http://localhost:8000',
+      changeOrigin: true
+    }
+  }
+}
+```
+
+### Troubleshooting Common Errors
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| **404 Not Found** for API | Vite proxy not configured or PHP server not running | Ensure PHP server is running at localhost:8000 |
+| **500 Internal Server Error** | PHP running from wrong directory | Run `php -S localhost:8000` from wineapp root (not qve folder) |
+| **ECONNREFUSED** | PHP server not running | Start PHP server: `php -S localhost:8000` |
+| **TypeScript errors** | Missing types or dependencies | Run `npm install` then `npm run check` |
+| **Node version error** | Node.js < 18 | Upgrade Node.js to v18 or higher |
+
+### Verification Checklist
+
+After starting both servers, verify:
+
+1. ✅ Open http://localhost:5173/qve/ - should load the home page
+2. ✅ Check "API Connection" card shows "connected - X wines"
+3. ✅ Theme toggle works (persists on refresh)
+4. ✅ Navigate to /qve/add, /qve/history routes
+5. ✅ DevTools > Application > Manifest shows PWA config
+
+---
+
 ## Open Backlog Summary
 
 ### Bugs (To Do)
