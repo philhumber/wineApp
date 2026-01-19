@@ -9,6 +9,7 @@ config.local.php
 # DEPRECATED FILES
 # ===================
 resources/wineapp.js
+qve/
 
 # ===================
 # User Content
