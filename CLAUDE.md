@@ -1,7 +1,7 @@
 # Wine Collection App - Quick Start Guide
 
 **Last Updated**: 2026-01-20
-**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Phase 0 Complete ✅ | Qvé Phase 1 Complete ✅ | Qvé Phase 2 Complete ✅ | Qvé Phase 3 Add Wine ✅
+**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Phase 0 Complete ✅ | Qvé Phase 1 Complete ✅ | Qvé Phase 2 Complete ✅ | Qvé Phase 3 Add Wine ✅ | Qvé Phase 3 Drink/Rate ✅
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
 > **💡 For comprehensive project information, see [README.md](README.md)**
@@ -24,6 +24,7 @@
 | Qvé Phase 2 Wave 2 | ✅ COMPLETE | Wine card components (WineImage, WineCard, WineGrid) |
 | Qvé Phase 2 Wave 3 | ✅ COMPLETE | Layout components (Header, FilterBar, FilterPill, Toast, ToastContainer) |
 | Qvé Phase 3 Add Wine | ✅ COMPLETE | Add Wine 4-step wizard with scroll-to-wine |
+| Qvé Phase 3 Drink/Rate | ✅ COMPLETE | Modal-based rating flow with optional ratings |
 
 ### Current Plan: Qvé Migration
 
@@ -60,7 +61,16 @@
   - ✅ PHP purchaseDate support added to bottles table + addWine.php
   - ✅ Scroll-to-wine with highlight after adding
   - ✅ API integration tested and working
-- 🔲 Drink/Rate flow
+- **Drink/Rate flow** ✅ COMPLETE
+  - ✅ Modal components (DrinkRateModal, ConfirmModal, ModalContainer)
+  - ✅ Rating components (RatingDots 10-dot, MiniRatingDots 5-dot, ToggleSwitch)
+  - ✅ drinkWine store with validation and submission
+  - ✅ Optional ratings (Complexity, Drinkability, Surprise, Food Pairing)
+  - ✅ Food pairing reminder when rating > 0
+  - ✅ Cancel confirmation for unsaved changes
+  - ✅ PHP drinkBottle.php updated for optional ratings
+  - ✅ Database migration for optional rating columns
+  - ✅ Scroll-to-wine with header offset after rating
 - 🔲 Add Bottle modal
 - 🔲 Edit Wine/Bottle page
 - 🔲 History page
@@ -77,6 +87,7 @@
 8. **✅ Qvé Phase 2 Wave 2 Complete** - Wine card components in `qve/src/lib/components/wine/`
 9. **✅ Qvé Phase 2 Wave 3 Complete** - Layout components in `qve/src/lib/components/layout/` + Toast
 10. **✅ Qvé Phase 3 Add Wine Complete** - Full 4-step wizard with AI enrichment, image upload, scroll-to-wine
+11. **✅ Qvé Phase 3 Drink/Rate Complete** - Modal-based rating with 10-dot + optional 5-dot ratings, scroll-to-wine
 
 ### Critical Warnings
 
@@ -287,13 +298,13 @@ Run after each change:
 
 **Phase 1 Complete** ✅ - SvelteKit foundation ready
 **Phase 2 Complete** ✅ - All core UI components built (Waves 1-3)
-**Phase 3 In Progress** 🚧 - Add Wine wizard built, testing API integration
+**Phase 3 In Progress** 🚧 - Add Wine ✅, Drink/Rate ✅
 
 **What's Built** (`/qve/` folder):
 - SvelteKit 2 + TypeScript + Vite 5
 - Design tokens extracted from mockups (light/dark themes)
 - TypeScript API client (mirrors all PHP endpoints)
-- Svelte stores (theme, wines, filters, view, toast, modal, addWine)
+- Svelte stores (theme, wines, filters, view, toast, modal, addWine, drinkWine)
 - PWA configuration (manifest, service worker caching)
 - Foundation UI components (Icon, ThemeToggle, ViewToggle, RatingDisplay, BottleIndicators)
 - Wine card components (WineImage, WineCard, WineGrid)
@@ -304,21 +315,28 @@ Run after each change:
   - Wizard components (WizardStepIndicator, WizardNav, SearchDropdown)
   - AI components (AIGenerateButton, AIExpandedSection, AILoadingOverlay)
   - ImageUploadZone with drag-drop and preview
+- **Drink/Rate modal** (modal-based rating flow)
+  - Rating components (RatingDots 10-dot, MiniRatingDots 5-dot, ToggleSwitch)
+  - Modal components (DrinkRateModal, ConfirmModal, ModalContainer)
+  - Optional ratings (Complexity, Drinkability, Surprise, Food Pairing)
+  - Food pairing reminder, cancel confirmation, scroll-to-wine
 
 **Key Files**:
 - `qve/src/lib/api/client.ts` - API client
 - `qve/src/lib/stores/` - State management
 - `qve/src/lib/stores/addWine.ts` - Add Wine wizard state and validation
+- `qve/src/lib/stores/drinkWine.ts` - Drink/Rate modal state and validation
 - `qve/src/lib/styles/tokens.css` - Design tokens
 - `qve/src/lib/components/ui/` - Foundation UI components
 - `qve/src/lib/components/wine/` - Wine card components
 - `qve/src/lib/components/layout/` - Layout components (Header, FilterBar, FilterPill)
-- `qve/src/lib/components/forms/` - Form components
+- `qve/src/lib/components/forms/` - Form and rating components
 - `qve/src/lib/components/wizard/` - Wizard components
+- `qve/src/lib/components/modals/` - Modal components (DrinkRateModal, ConfirmModal)
 - `qve/src/routes/` - Page routes
 - `qve/src/routes/add/` - Add Wine wizard route
 
-**Next** - Drink/Rate flow, Add Bottle modal, Edit page, History page
+**Next** - Add Bottle modal, Edit page, History page
 
 **See [design/qve-rebrand/QVE_MIGRATION_PLAN.md](design/qve-rebrand/QVE_MIGRATION_PLAN.md) for full roadmap.**
 

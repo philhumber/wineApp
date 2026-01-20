@@ -66,3 +66,12 @@ export type {
   WineFormData,
   BottleFormData
 } from './addWine';
+
+// Drink Wine Modal
+export {
+  drinkWine,
+  isDirty,
+  canSubmit,
+  selectedBottle
+} from './drinkWine';
+export type { DrinkWineState, OptionalRatingType } from './drinkWine';
