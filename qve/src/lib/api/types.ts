@@ -212,6 +212,11 @@ export interface DrinkBottlePayload {
   drinkDate: string;
   buyAgain?: boolean;
   notes?: string;
+  // Optional ratings (0-5 scale)
+  complexityRating?: number;
+  drinkabilityRating?: number;
+  surpriseRating?: number;
+  foodPairingRating?: number;
 }
 
 // ─────────────────────────────────────────────────────────

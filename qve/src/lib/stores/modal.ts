@@ -4,6 +4,7 @@
  */
 
 import { writable, derived } from 'svelte/store';
+import type { Wine } from '$lib/api/types';
 
 // ─────────────────────────────────────────────────────────
 // TYPES
@@ -72,9 +73,10 @@ function createModalStore() {
 
     /**
      * Open drink/rate modal for a wine
+     * Pass the full Wine object for complete display info
      */
-    openDrink: (wineID: number, wineName: string): void => {
-      set({ type: 'drink', data: { wineID, wineName } });
+    openDrink: (wine: Wine): void => {
+      set({ type: 'drink', data: { wine } });
     },
 
     /**

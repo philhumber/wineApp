@@ -27,7 +27,8 @@
 						bottles.price,
 						bottles.currency,
 						bottles.location,
-						bottles.dateAdded
+						bottles.dateAdded,
+						bottles.purchaseDate
 					FROM bottles
 					WHERE bottles.wineID = :wineID AND bottles.bottleDrunk = 0";
 

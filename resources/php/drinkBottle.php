@@ -29,6 +29,16 @@
       $buyAgain = $inputData['buyAgain'] ?? 0;
       $notes = $inputData['notes'] ?? '';
 
+      // Optional ratings (0-5 scale, nullable)
+      $complexityRating = isset($inputData['complexityRating']) && $inputData['complexityRating'] > 0
+          ? (int)$inputData['complexityRating'] : null;
+      $drinkabilityRating = isset($inputData['drinkabilityRating']) && $inputData['drinkabilityRating'] > 0
+          ? (int)$inputData['drinkabilityRating'] : null;
+      $surpriseRating = isset($inputData['surpriseRating']) && $inputData['surpriseRating'] > 0
+          ? (int)$inputData['surpriseRating'] : null;
+      $foodPairingRating = isset($inputData['foodPairingRating']) && $inputData['foodPairingRating'] > 0
+          ? (int)$inputData['foodPairingRating'] : null;
+
       // Validate required fields
       if (empty($wineID)) {
           throw new Exception('Invalid wine ID');
@@ -59,7 +69,11 @@
                           `valueRating`,
                           `drinkDate`,
                           `buyAgain`,
-                          `Notes`)
+                          `Notes`,
+                          `complexityRating`,
+                          `drinkabilityRating`,
+                          `surpriseRating`,
+                          `foodPairingRating`)
                       VALUES (
                           :wineID,
                           :bottleID,
@@ -67,7 +81,11 @@
                           :valueRating,
                           :drinkDate,
                           :buyAgain,
-                          :notes)";
+                          :notes,
+                          :complexityRating,
+                          :drinkabilityRating,
+                          :surpriseRating,
+                          :foodPairingRating)";
 
       // Build parameters array
       $params = [
@@ -77,7 +95,11 @@
           ':valueRating' => $valueRating,
           ':drinkDate' => $drinkDate,
           ':buyAgain' => $buyAgain,
-          ':notes' => $notes
+          ':notes' => $notes,
+          ':complexityRating' => $complexityRating,
+          ':drinkabilityRating' => $drinkabilityRating,
+          ':surpriseRating' => $surpriseRating,
+          ':foodPairingRating' => $foodPairingRating
       ];
 
       // 7. Start transaction
@@ -92,14 +114,18 @@
           $ratingID = $pdo->lastInsertId();
           
           // Log the insert
-          logInsert($pdo, 'ratings', $ratingID, [                
+          logInsert($pdo, 'ratings', $ratingID, [
             ':wineID' => $wineID,
             ':bottleID' => $bottleID,
             ':overallRating' => $overallRating,
             ':valueRating' => $valueRating,
             ':drinkDate' => $drinkDate,
             ':buyAgain' => $buyAgain,
-            ':notes' => $notes
+            ':notes' => $notes,
+            ':complexityRating' => $complexityRating,
+            ':drinkabilityRating' => $drinkabilityRating,
+            ':surpriseRating' => $surpriseRating,
+            ':foodPairingRating' => $foodPairingRating
           ], $userID);
 
 

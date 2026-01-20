@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { base } from '$app/paths';
-  import { theme, viewDensity, viewMode, wines, winesLoading, winesError, filters, toasts, targetWineID } from '$stores';
+  import { theme, viewDensity, viewMode, wines, winesLoading, winesError, filters, toasts, targetWineID, modal } from '$stores';
   import { api } from '$api';
   import type { Wine, WineFilters } from '$lib/api/types';
 
@@ -54,8 +54,17 @@
     tick().then(() => {
       setTimeout(() => {
         const targetCard = document.querySelector(`[data-wine-id="${wineIdToHighlight}"]`);
+        const header = document.querySelector('.header');
         if (targetCard) {
-          targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Calculate scroll position accounting for fixed header
+          const headerHeight = header?.getBoundingClientRect().height ?? 160;
+          const cardTop = targetCard.getBoundingClientRect().top + window.scrollY;
+          const scrollTarget = cardTop - headerHeight - 16; // 16px extra padding
+
+          window.scrollTo({
+            top: scrollTarget,
+            behavior: 'smooth'
+          });
 
           // After scroll completes (~600ms), trigger the highlight animation
           setTimeout(() => {
@@ -64,7 +73,6 @@
             setTimeout(() => {
               scrolledToWineID = null;
             }, 2500);
-            // TODO: Change this dealy or make it based on the wine length list to show the highlight at the right time
           }, 600);
         }
       }, 100); // Small delay to ensure cards are rendered
@@ -80,11 +88,15 @@
     toasts.info('Menu functionality coming soon!');
   }
 
-  // Action handlers for wine cards (placeholders until pages are built)
+  // Action handlers for wine cards
   function handleDrink(event: CustomEvent<{ wine: Wine }>) {
     const { wine } = event.detail;
-    // TODO: Navigate to drink/rate page or open modal
-    toasts.info(`Drink: ${wine.wineName} ${wine.year || 'NV'} - coming soon!`);
+    // Check if wine has bottles
+    if (wine.bottleCount <= 0) {
+      toasts.info('No bottles available to drink');
+      return;
+    }
+    modal.openDrink(wine);
   }
 
   function handleAdd(event: CustomEvent<{ wine: Wine }>) {
