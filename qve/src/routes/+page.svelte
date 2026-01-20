@@ -64,6 +64,7 @@
             setTimeout(() => {
               scrolledToWineID = null;
             }, 2500);
+            // TODO: Change this dealy or make it based on the wine length list to show the highlight at the right time
           }, 600);
         }
       }, 100); // Small delay to ensure cards are rendered
