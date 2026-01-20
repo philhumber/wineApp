@@ -64,6 +64,7 @@
   class:expanded
   class:compact
   class:target-highlight={targetHighlight}
+  data-wine-id={wine.wineID}
   on:click={handleCardClick}
   on:keydown={handleKeydown}
   role="button"
