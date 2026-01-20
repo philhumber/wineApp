@@ -563,10 +563,10 @@ See JIRA board for complete list: https://philhumber.atlassian.net/jira/software
 **Migration Phases**:
 1. ✅ **Phase 0**: Complete mockups - All 7 mockups in `design/qve-rebrand/`
 2. ✅ **Phase 1**: SvelteKit foundation - Project structure, design tokens, API client, stores
-3. 🔧 **Phase 2**: Core UI components - Wave 1 ✅ (Icon, ThemeToggle, ViewToggle, RatingDisplay, BottleIndicators), Wave 2 next
-4. **Phase 3**: Wine list & cards - Implement main wine list page
-5. **Phase 4**: Forms & modals - Add/edit wine, drink/rate
-6. **Phase 5**: Polish & launch - PWA optimization, testing, cutover
+3. ✅ **Phase 2**: Core UI components - All 3 waves complete (foundation, wine cards, layout)
+4. ✅ **Phase 3 Add Wine**: 4-step wizard with AI enrichment, image upload, scroll-to-wine highlight
+5. 🔧 **Phase 3 continued**: Drink/Rate flow, Add Bottle modal, Edit page, History page
+6. **Phase 4**: Polish & launch - PWA optimization, testing, cutover
 
 ### Post-Migration: AI Features
 - WIN-42: Build image recognition

@@ -353,7 +353,6 @@ function createAddWineStore() {
 
 		try {
 			const data = await api.getAIRegionData(regionName, country);
-			console.log('AI Region Data received:', data);
 
 			if (!data || Object.keys(data).length === 0) {
 				toasts.error('No AI data received');
@@ -396,7 +395,6 @@ function createAddWineStore() {
 
 		try {
 			const data = await api.getAIProducerData(producerName, regionName);
-			console.log('AI Producer Data received:', data);
 			update((s) => ({
 				...s,
 				producer: {
@@ -432,7 +430,6 @@ function createAddWineStore() {
 
 		try {
 			const data = await api.getAIWineData(wineName, producerName, wineYear);
-			console.log('AI Wine Data received:', data);
 			update((s) => ({
 				...s,
 				wine: {
@@ -598,7 +595,7 @@ function createAddWineStore() {
 
 			// Build form data using PHP expected field names
 			// See addWine.php for field name reference
-			const formData: Record<string, string> = {
+			const formData: AddWinePayload = {
 				// Region - either existing (findRegion) or new (regionName + details)
 				findRegion: state.selected.region?.regionName || '',
 				regionName: state.mode.region === 'create' ? state.region.regionName : '',
@@ -631,7 +628,8 @@ function createAddWineStore() {
 				storageLocation: state.bottle.storageLocation || '',
 				bottleSource: state.bottle.source || '',
 				bottlePrice: state.bottle.price || '',
-				bottleCurrency: state.bottle.currency || ''
+				bottleCurrency: state.bottle.currency || '',
+				bottlePurchaseDate: state.bottle.purchaseDate || ''
 			};
 
 			const result = await api.addWine(formData);
