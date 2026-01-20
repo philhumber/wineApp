@@ -132,33 +132,45 @@ export interface BottleListResponse {
 // MUTATION PAYLOAD TYPES
 // ─────────────────────────────────────────────────────────
 
+/**
+ * AddWinePayload - matches PHP addWine.php expected field names
+ * Uses search-first pattern: findX for existing, xName for new
+ */
 export interface AddWinePayload {
-  // Region (new or existing)
-  regionID?: number;
-  regionName?: string;
-  countryID?: number;
-  countryName?: string;
+  // Region - either existing (findRegion) or new (regionName + details)
+  findRegion: string;
+  regionName: string;
+  regionCountry: string;
+  regionDescription?: string;
+  regionClimate?: string;
+  regionSoil?: string;
+  regionMap?: string;
 
-  // Producer (new or existing)
-  producerID?: number;
-  producerName?: string;
+  // Producer - either existing (findProducer) or new (producerName + details)
+  findProducer: string;
+  producerName: string;
+  producerTown?: string;
+  producerFounded?: string;
+  producerOwnership?: string;
+  producerDescription?: string;
 
-  // Wine details
+  // Wine - either existing (findWine) or new (wineName + details)
+  findWine: string;
   wineName: string;
   wineYear: string;
-  wineTypeID: number;
+  wineType: string;
   wineDescription?: string;
-  tastingNotes?: string;
-  pairingNotes?: string;
+  wineTasting?: string;
+  winePairing?: string;
   winePicture?: string;
 
   // Bottle details
-  bottleSize?: string;
-  bottleLocation?: string;
-  bottleSource?: string;
-  bottlePrice?: number;
+  bottleType: string;
+  storageLocation: string;
+  bottleSource: string;
+  bottlePrice?: string;
   bottleCurrency?: string;
-  purchaseDate?: string;
+  bottlePurchaseDate?: string;
 }
 
 export interface AddBottlePayload {

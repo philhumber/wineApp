@@ -320,7 +320,6 @@ class WineApiClient {
       'geminiAPI.php',
       { type: 'region', prompt: `${regionName}, ${countryName}` }
     );
-    console.log('Raw AI response:', response);
     return response.data ?? {};
   }
 

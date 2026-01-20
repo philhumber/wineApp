@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { base } from '$app/paths';
-  import { theme, viewDensity, viewMode, wines, winesLoading, winesError, filters, toasts } from '$stores';
+  import { theme, viewDensity, viewMode, wines, winesLoading, winesError, filters, toasts, targetWineID } from '$stores';
   import { api } from '$api';
   import type { Wine, WineFilters } from '$lib/api/types';
 
@@ -37,6 +37,37 @@
   // Refetch when filters change
   function handleFilterChange(event: CustomEvent<{ key: string; value: string | undefined }>) {
     fetchWines($filters);
+  }
+
+  // Track if we've already handled the scroll for this target
+  let scrolledToWineID: number | null = null;
+
+  // Scroll to target wine after wines load, then highlight
+  $: if (!$winesLoading && $wines.length > 0 && $targetWineID && $targetWineID !== scrolledToWineID) {
+    const wineIdToHighlight = $targetWineID;
+    scrolledToWineID = wineIdToHighlight;
+
+    // Clear targetWineID so highlight doesn't start before scroll
+    targetWineID.set(null);
+
+    // Use tick to ensure DOM is updated, then scroll
+    tick().then(() => {
+      setTimeout(() => {
+        const targetCard = document.querySelector(`[data-wine-id="${wineIdToHighlight}"]`);
+        if (targetCard) {
+          targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+          // After scroll completes (~600ms), trigger the highlight animation
+          setTimeout(() => {
+            targetWineID.set(wineIdToHighlight);
+            // Clear the lock after highlight is done (2s animation + buffer)
+            setTimeout(() => {
+              scrolledToWineID = null;
+            }, 2500);
+          }, 600);
+        }
+      }, 100); // Small delay to ensure cards are rendered
+    });
   }
 
   // Placeholder handlers for header actions

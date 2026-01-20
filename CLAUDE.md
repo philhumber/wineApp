@@ -1,7 +1,7 @@
 # Wine Collection App - Quick Start Guide
 
-**Last Updated**: 2026-01-19
-**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Phase 0 Complete ✅ | Qvé Phase 1 Complete ✅ | Qvé Phase 2 Complete ✅ | Qvé Phase 3 In Progress 🚧
+**Last Updated**: 2026-01-20
+**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Phase 0 Complete ✅ | Qvé Phase 1 Complete ✅ | Qvé Phase 2 Complete ✅ | Qvé Phase 3 Add Wine ✅
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
 > **💡 For comprehensive project information, see [README.md](README.md)**
@@ -23,7 +23,7 @@
 | Qvé Phase 2 Wave 1 | ✅ COMPLETE | Foundation UI components (Icon, ThemeToggle, ViewToggle, RatingDisplay, BottleIndicators) |
 | Qvé Phase 2 Wave 2 | ✅ COMPLETE | Wine card components (WineImage, WineCard, WineGrid) |
 | Qvé Phase 2 Wave 3 | ✅ COMPLETE | Layout components (Header, FilterBar, FilterPill, Toast, ToastContainer) |
-| Qvé Phase 3 | 🚧 IN PROGRESS | Add Wine 4-step wizard |
+| Qvé Phase 3 Add Wine | ✅ COMPLETE | Add Wine 4-step wizard with scroll-to-wine |
 
 ### Current Plan: Qvé Migration
 
@@ -49,7 +49,7 @@
 - See: `design/qve-rebrand/QVE_MIGRATION_PLAN.md` for full roadmap
 
 **Phase 3: Page Routes** 🚧 IN PROGRESS
-- **Add Wine flow (4-step wizard)** 🚧 IN PROGRESS
+- **Add Wine flow (4-step wizard)** ✅ COMPLETE
   - ✅ Form components (FormInput, FormSelect, FormTextarea, FormRow)
   - ✅ Wizard components (WizardStepIndicator, WizardNav, SearchDropdown)
   - ✅ AI components (AIGenerateButton, AIExpandedSection, AILoadingOverlay)
@@ -57,12 +57,13 @@
   - ✅ addWine store with validation
   - ✅ Step components (RegionStep, ProducerStep, WineStep, BottleStep)
   - ✅ AI enrichment integration
-  - ✅ PHP getProducers.php region filtering fix
-  - 🔲 Final API integration testing
-- Drink/Rate flow
-- Add Bottle modal
-- Edit Wine/Bottle page
-- History page
+  - ✅ PHP purchaseDate support added to bottles table + addWine.php
+  - ✅ Scroll-to-wine with highlight after adding
+  - ✅ API integration tested and working
+- 🔲 Drink/Rate flow
+- 🔲 Add Bottle modal
+- 🔲 Edit Wine/Bottle page
+- 🔲 History page
 
 ### What You Need to Know
 
@@ -75,7 +76,7 @@
 7. **✅ Qvé Phase 2 Wave 1 Complete** - Foundation components in `qve/src/lib/components/ui/`
 8. **✅ Qvé Phase 2 Wave 2 Complete** - Wine card components in `qve/src/lib/components/wine/`
 9. **✅ Qvé Phase 2 Wave 3 Complete** - Layout components in `qve/src/lib/components/layout/` + Toast
-10. **🚧 Qvé Phase 3 In Progress** - Add Wine wizard in `qve/src/routes/add/` with form/wizard components
+10. **✅ Qvé Phase 3 Add Wine Complete** - Full 4-step wizard with AI enrichment, image upload, scroll-to-wine
 
 ### Critical Warnings
 
@@ -424,12 +425,17 @@ No open bugs - all fixed!
 | WIN-78 | JS/PHP Caching |
 | WIN-65 | Limit size of ownership return |
 
-### In Progress (from previous work - review status)
+### Completed - Add Wine Wizard (2026-01-20)
 | Key | Summary |
 |-----|---------|
-| WIN-79 | Check if similar region/producer/wine exists |
-| WIN-67 | Add wine dropdowns context aware |
-| WIN-57 | Add Wine Search Boxes |
+| WIN-57 | Add Wine Search Boxes ✅ |
+| WIN-59 | When no results, let user reveal core details ✅ |
+| WIN-60 | Prompt user to add data manually or with AI ✅ |
+| WIN-61 | Show populated or blank forms ✅ |
+| WIN-62 | Grey next button until complete ✅ |
+| WIN-63 | Check field validation ✅ |
+| WIN-67 | Add wine dropdowns context aware ✅ |
+| WIN-79 | Check if similar region/producer/wine exists ✅ |
 
 ### Epics
 - WIN-1: AI
