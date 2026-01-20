@@ -39,7 +39,14 @@
   // Handle Add Bottle action from history card
   function handleAddBottle(event: CustomEvent<{ wine: DrunkWine }>) {
     const { wine } = event.detail;
-    modal.openAddBottle(wine.wineID, wine.wineName);
+    modal.openAddBottle(
+      wine.wineID,
+      wine.wineName,
+      wine.pictureURL,
+      wine.year,
+      wine.regionName,
+      wine.countryName
+    );
   }
 </script>
 

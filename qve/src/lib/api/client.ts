@@ -252,11 +252,23 @@ class WineApiClient {
 
   /**
    * Add bottle to existing wine
+   * Maps TypeScript field names to PHP backend expected names
    */
   async addBottle(data: AddBottlePayload): Promise<{ bottleID: number }> {
+    // Map TypeScript fields to PHP expected field names
+    const payload: Record<string, unknown> = {
+      wineID: data.wineID,
+      bottleType: data.bottleSize,           // PHP expects 'bottleType'
+      storageLocation: data.bottleLocation,  // PHP expects 'storageLocation'
+      bottleSource: data.bottleSource,
+      bottlePrice: data.bottlePrice,
+      bottleCurrency: data.bottleCurrency,
+      purchaseDate: data.purchaseDate
+    };
+
     const response = await this.fetchJSON<{ bottleID: number }>(
       'addBottle.php',
-      data as unknown as Record<string, unknown>
+      payload
     );
 
     if (!response.success) {

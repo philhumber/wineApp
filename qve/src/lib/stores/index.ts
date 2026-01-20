@@ -25,6 +25,7 @@ export {
   updateWineInList,
   removeWineFromList,
   decrementBottleCount,
+  incrementBottleCount,
   scrollToWine
 } from './wines';
 
@@ -75,6 +76,17 @@ export {
   selectedBottle
 } from './drinkWine';
 export type { DrinkWineState, OptionalRatingType } from './drinkWine';
+
+// Add Bottle Modal
+export {
+  addBottle,
+  isDirtyAddBottle,
+  canSubmitAddBottle,
+  bottleSizeOptions,
+  storageOptions,
+  currencyOptions
+} from './addBottle';
+export type { AddBottleState } from './addBottle';
 
 // History (Drunk Wines)
 export {

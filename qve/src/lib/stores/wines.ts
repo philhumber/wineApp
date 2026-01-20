@@ -102,6 +102,17 @@ export function decrementBottleCount(id: number): void {
 }
 
 /**
+ * Increment bottle count for a wine (after adding bottles)
+ */
+export function incrementBottleCount(id: number, count: number = 1): void {
+  wines.update(($wines) =>
+    $wines.map((wine) =>
+      wine.wineID === id ? { ...wine, bottleCount: wine.bottleCount + count } : wine
+    )
+  );
+}
+
+/**
  * Set target wine and clear after scroll
  */
 export function scrollToWine(id: number): void {

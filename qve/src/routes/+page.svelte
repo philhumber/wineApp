@@ -101,8 +101,14 @@
 
   function handleAdd(event: CustomEvent<{ wine: Wine }>) {
     const { wine } = event.detail;
-    // TODO: Open add bottle modal
-    toasts.info(`Add bottle to ${wine.wineName} - coming soon!`);
+    modal.openAddBottle(
+      wine.wineID,
+      wine.wineName,
+      wine.pictureURL,
+      wine.year,
+      wine.regionName,
+      wine.countryName
+    );
   }
 
   function handleEdit(event: CustomEvent<{ wine: Wine }>) {
