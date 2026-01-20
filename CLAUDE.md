@@ -1,7 +1,7 @@
 # Wine Collection App - Quick Start Guide
 
 **Last Updated**: 2026-01-20
-**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Phase 0 Complete ✅ | Qvé Phase 1 Complete ✅ | Qvé Phase 2 Complete ✅ | Qvé Phase 3 Add Wine ✅ | Qvé Phase 3 Drink/Rate ✅
+**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Phase 0 Complete ✅ | Qvé Phase 1 Complete ✅ | Qvé Phase 2 Complete ✅ | Qvé Phase 3 Add Wine ✅ | Qvé Phase 3 Drink/Rate ✅ | Qvé Phase 3 History ✅
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
 > **💡 For comprehensive project information, see [README.md](README.md)**
@@ -71,9 +71,18 @@
   - ✅ PHP drinkBottle.php updated for optional ratings
   - ✅ Database migration for optional rating columns
   - ✅ Scroll-to-wine with header offset after rating
+- **History page** ✅ COMPLETE
+  - ✅ HistoryCard component (collapsible wine details, drink date badge, ratings display)
+  - ✅ HistoryGrid component with stagger animations
+  - ✅ HistorySortBar component (sort by Date, Rating, Value, Name, Type)
+  - ✅ History store with filtering and sorting
+  - ✅ PHP getDrunkWines.php updated with all rating fields + bottle price/currency
+  - ✅ DrunkWine TypeScript type with optional ratings
+  - ✅ Bottle price display with currency formatting
+  - ✅ Add Bottle button on history cards
+  - ✅ Same wine appears multiple times (one entry per drunk bottle)
 - 🔲 Add Bottle modal
 - 🔲 Edit Wine/Bottle page
-- 🔲 History page
 
 ### What You Need to Know
 
@@ -88,6 +97,7 @@
 9. **✅ Qvé Phase 2 Wave 3 Complete** - Layout components in `qve/src/lib/components/layout/` + Toast
 10. **✅ Qvé Phase 3 Add Wine Complete** - Full 4-step wizard with AI enrichment, image upload, scroll-to-wine
 11. **✅ Qvé Phase 3 Drink/Rate Complete** - Modal-based rating with 10-dot + optional 5-dot ratings, scroll-to-wine
+12. **✅ Qvé Phase 3 History Complete** - History page with HistoryCard, sorting, filtering, bottle price display
 
 ### Critical Warnings
 
@@ -298,13 +308,13 @@ Run after each change:
 
 **Phase 1 Complete** ✅ - SvelteKit foundation ready
 **Phase 2 Complete** ✅ - All core UI components built (Waves 1-3)
-**Phase 3 In Progress** 🚧 - Add Wine ✅, Drink/Rate ✅
+**Phase 3 In Progress** 🚧 - Add Wine ✅, Drink/Rate ✅, History ✅
 
 **What's Built** (`/qve/` folder):
 - SvelteKit 2 + TypeScript + Vite 5
 - Design tokens extracted from mockups (light/dark themes)
 - TypeScript API client (mirrors all PHP endpoints)
-- Svelte stores (theme, wines, filters, view, toast, modal, addWine, drinkWine)
+- Svelte stores (theme, wines, filters, view, toast, modal, addWine, drinkWine, history)
 - PWA configuration (manifest, service worker caching)
 - Foundation UI components (Icon, ThemeToggle, ViewToggle, RatingDisplay, BottleIndicators)
 - Wine card components (WineImage, WineCard, WineGrid)
@@ -320,12 +330,18 @@ Run after each change:
   - Modal components (DrinkRateModal, ConfirmModal, ModalContainer)
   - Optional ratings (Complexity, Drinkability, Surprise, Food Pairing)
   - Food pairing reminder, cancel confirmation, scroll-to-wine
+- **History page** (drink history with ratings)
+  - HistoryCard component (collapsible details, ratings, bottle price)
+  - HistoryGrid with stagger animations
+  - HistorySortBar (sort by Date, Rating, Value, Name, Type)
+  - History store with filtering and sorting
 
 **Key Files**:
 - `qve/src/lib/api/client.ts` - API client
 - `qve/src/lib/stores/` - State management
 - `qve/src/lib/stores/addWine.ts` - Add Wine wizard state and validation
 - `qve/src/lib/stores/drinkWine.ts` - Drink/Rate modal state and validation
+- `qve/src/lib/stores/history.ts` - History page state, sorting, filtering
 - `qve/src/lib/styles/tokens.css` - Design tokens
 - `qve/src/lib/components/ui/` - Foundation UI components
 - `qve/src/lib/components/wine/` - Wine card components
@@ -335,8 +351,9 @@ Run after each change:
 - `qve/src/lib/components/modals/` - Modal components (DrinkRateModal, ConfirmModal)
 - `qve/src/routes/` - Page routes
 - `qve/src/routes/add/` - Add Wine wizard route
+- `qve/src/routes/history/` - History page route
 
-**Next** - Add Bottle modal, Edit page, History page
+**Next** - Add Bottle modal, Edit page
 
 **See [design/qve-rebrand/QVE_MIGRATION_PLAN.md](design/qve-rebrand/QVE_MIGRATION_PLAN.md) for full roadmap.**
 
@@ -423,11 +440,15 @@ No open bugs - all fixed!
 | WIN-106 | Prepopulate wine image when editing |
 | WIN-103 | Remove hardcoded currencies and sizes |
 | WIN-80 | Delete a bottle (drink with no rating) |
-| WIN-70 | Allow cancel 'drink Bottle' |
 | WIN-68 | Sort by buttons |
 | WIN-24 | Search |
 | WIN-34 | Filtering and Sorting |
-| WIN-69 | Add drink history |
+
+### Completed - History Page (2026-01-20)
+| Key | Summary |
+|-----|---------|
+| WIN-69 | Add drink history ✅ |
+| WIN-70 | Allow cancel 'drink Bottle' ✅ (part of Drink/Rate flow) |
 
 ### Tasks - AI Features (Post-Migration)
 | Key | Summary |

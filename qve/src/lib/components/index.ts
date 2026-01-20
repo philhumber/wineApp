@@ -30,11 +30,14 @@ export { default as ToastContainer } from './ui/ToastContainer.svelte';
 export { default as Header } from './layout/Header.svelte';
 export { default as FilterBar } from './layout/FilterBar.svelte';
 export { default as FilterPill } from './layout/FilterPill.svelte';
+export { default as HistorySortBar } from './layout/HistorySortBar.svelte';
 
 // Wine Components
 export { default as WineImage } from './wine/WineImage.svelte';
 export { default as WineCard } from './wine/WineCard.svelte';
 export { default as WineGrid } from './wine/WineGrid.svelte';
+export { default as HistoryCard } from './wine/HistoryCard.svelte';
+export { default as HistoryGrid } from './wine/HistoryGrid.svelte';
 
 // Note: IconName type is exported from Icon.svelte via context="module"
 // Import directly from ./ui/Icon.svelte if needed

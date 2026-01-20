@@ -27,11 +27,22 @@
 			country.code,
 			country.world_code,
 			wine.rating,
+			winetype.wineType,
 			bottles.bottleID,
 			bottles.bottleDrunk,
 			bottles.bottleSize,
+			bottles.price AS bottlePrice,
+			bottles.currency AS bottleCurrency,
 			ratings.avgRating,
-			ratings.Notes
+			ratings.Notes,
+			ratings.drinkDate,
+			ratings.overallRating,
+			ratings.valueRating,
+			ratings.buyAgain,
+			ratings.complexityRating,
+			ratings.drinkabilityRating,
+			ratings.surpriseRating,
+			ratings.foodPairingRating
 		FROM wine
 		JOIN producers ON wine.producerID = producers.producerID
 		JOIN region ON producers.regionID = region.regionID
