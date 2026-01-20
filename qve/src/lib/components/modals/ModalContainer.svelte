@@ -8,6 +8,7 @@
 <script lang="ts">
   import { modal } from '$lib/stores';
   import DrinkRateModal from './DrinkRateModal.svelte';
+  import AddBottleModal from './AddBottleModal.svelte';
   import ConfirmModal from './ConfirmModal.svelte';
   import type { Wine } from '$lib/api/types';
   import type { ConfirmModalData } from '$lib/stores';
@@ -38,6 +39,16 @@
 
 {#if modalType === 'drink' && modalData?.wine}
   <DrinkRateModal wine={modalData.wine as Wine} on:close={handleClose} />
+{:else if modalType === 'addBottle' && modalData?.wineID}
+  <AddBottleModal
+    wineID={modalData.wineID as number}
+    wineName={modalData.wineName as string}
+    pictureURL={modalData.pictureURL as string | null | undefined}
+    year={modalData.year as unknown as string | null | undefined}
+    regionName={modalData.regionName as string | undefined}
+    countryName={modalData.countryName as string | undefined}
+    on:close={handleClose}
+  />
 {:else if modalType === 'confirm' && modalData}
   {@const data = modalData as unknown as ConfirmModalData}
   <ConfirmModal
@@ -53,8 +64,6 @@
 
 <!--
   Future modals can be added here:
-  {:else if modalType === 'addBottle' && modalData?.wine}
-    <AddBottleModal wine={modalData.wine as Wine} on:close={handleClose} />
   {:else if modalType === 'edit' && modalData}
     <EditModal data={modalData} on:close={handleClose} />
 -->

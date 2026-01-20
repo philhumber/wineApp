@@ -29,7 +29,7 @@
 <style>
   .toast-container {
     position: fixed;
-    z-index: 1000;
+    z-index: 1200;
     display: flex;
     flex-direction: column;
     gap: var(--space-3);

@@ -81,9 +81,20 @@ function createModalStore() {
 
     /**
      * Open add bottle modal for a wine
+     * Pass optional wine details for display (pictureURL, year, region)
      */
-    openAddBottle: (wineID: number, wineName: string): void => {
-      set({ type: 'addBottle', data: { wineID, wineName } });
+    openAddBottle: (
+      wineID: number,
+      wineName: string,
+      pictureURL?: string | null,
+      year?: string | null,
+      regionName?: string,
+      countryName?: string
+    ): void => {
+      set({
+        type: 'addBottle',
+        data: { wineID, wineName, pictureURL, year, regionName, countryName }
+      });
     },
 
     /**
