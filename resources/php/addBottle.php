@@ -37,17 +37,19 @@
         
         $bottlePrice = trim($data['bottlePrice'] ?? '');
         $bottleCurrency = trim($data['bottleCurrency'] ?? '');
-        
+        $purchaseDate = !empty($data['purchaseDate']) ? trim($data['purchaseDate']) : null;
+
         $userID = $_SESSION['userID'] ?? null;
     
         //6. Prepare Statement
         $sqlQuery = "INSERT INTO bottles (
                             wineID,
-                            bottleSize, 
+                            bottleSize,
                             location,
                             source,
                             price,
                             currency,
+                            purchaseDate,
                             dateAdded)
                         VALUES (
                             :wineID,
@@ -56,6 +58,7 @@
                             :bottleSource,
                             :bottlePrice,
                             :bottleCurrency,
+                            :purchaseDate,
                             CURDATE())";
 
         $params[':wineID'] = $wineID;
@@ -64,6 +67,7 @@
         $params[':bottleSource'] = $bottleSource;
         $params[':bottlePrice'] = $bottlePrice;
         $params[':bottleCurrency'] = $bottleCurrency;
+        $params[':purchaseDate'] = $purchaseDate;
 
         // 7. Start transaction
         $pdo->beginTransaction();
@@ -82,10 +86,10 @@
                 'bottleSize' => $bottleType,
                 'location' => $storageLocation,
                 'source' => $bottleSource,
-                'price' =>$bottlePrice,
-                'currency' =>$bottleCurrency,
+                'price' => $bottlePrice,
+                'currency' => $bottleCurrency,
+                'purchaseDate' => $purchaseDate,
                 'dateAdded' => date('Y-m-d')
-
             ], $userID);
             
             // Commit transaction

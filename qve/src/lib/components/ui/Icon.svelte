@@ -10,6 +10,7 @@
     | 'chevron-left'
     | 'chevron-right'
     | 'plus'
+    | 'minus'
     | 'edit'
     | 'drink'
     | 'wine-bottle'
@@ -85,6 +86,9 @@
   {:else if name === 'plus'}
     <!-- Plus icon for add actions -->
     <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  {:else if name === 'minus'}
+    <!-- Minus icon for subtract actions -->
     <line x1="5" y1="12" x2="19" y2="12" />
   {:else if name === 'edit'}
     <!-- Edit/pencil icon -->
