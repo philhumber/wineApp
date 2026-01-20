@@ -17,7 +17,10 @@
     | 'x'
     | 'info'
     | 'warning'
-    | 'close';
+    | 'close'
+    | 'calendar'
+    | 'arrow-up'
+    | 'arrow-down';
 </script>
 
 <script lang="ts">
@@ -118,6 +121,20 @@
     <!-- Close icon (same as x) -->
     <line x1="18" y1="6" x2="6" y2="18" />
     <line x1="6" y1="6" x2="18" y2="18" />
+  {:else if name === 'calendar'}
+    <!-- Calendar icon -->
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+    <line x1="16" y1="2" x2="16" y2="6" />
+    <line x1="8" y1="2" x2="8" y2="6" />
+    <line x1="3" y1="10" x2="21" y2="10" />
+  {:else if name === 'arrow-up'}
+    <!-- Arrow up icon -->
+    <line x1="12" y1="19" x2="12" y2="5" />
+    <polyline points="5 12 12 5 19 12" />
+  {:else if name === 'arrow-down'}
+    <!-- Arrow down icon -->
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <polyline points="19 12 12 19 5 12" />
   {/if}
 </svg>
 

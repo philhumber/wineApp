@@ -75,3 +75,25 @@ export {
   selectedBottle
 } from './drinkWine';
 export type { DrinkWineState, OptionalRatingType } from './drinkWine';
+
+// History (Drunk Wines)
+export {
+  drunkWines,
+  historyLoading,
+  historyError,
+  historySortKey,
+  historySortDir,
+  historyFilters,
+  expandedHistoryKey,
+  hasHistoryFilters,
+  activeHistoryFilterCount,
+  sortedDrunkWines,
+  drunkWineCount,
+  filteredDrunkWineCount,
+  setHistorySort,
+  toggleHistorySortDir,
+  setHistoryFilter,
+  clearHistoryFilters,
+  getDrunkWineKey
+} from './history';
+export type { HistorySortKey, HistorySortDir, HistoryFilters } from './history';

@@ -50,11 +50,23 @@ export interface Bottle {
 }
 
 export interface DrunkWine extends Wine {
-  drinkDate: string;
-  overallRating: number;
-  valueRating: number;
-  buyAgain: boolean;
-  notes: string | null;
+  // Bottle info
+  bottleID: number;
+  bottleSize: string;
+  bottleDrunk: number;
+  bottlePrice: string | number | null;  // Bottle price (PHP returns decimal as string)
+  bottleCurrency: string | null;        // Currency code (EUR, GBP, USD, etc.)
+  // Rating data from ratings table
+  drinkDate: string | null;
+  overallRating: number | null;
+  valueRating: number | null;
+  buyAgain: number | null;           // PHP returns 0/1, not boolean
+  notes: string | null;              // Mapped from Notes (capital N in PHP)
+  // Optional ratings (0-5 scale, null if not provided)
+  complexityRating: number | null;
+  drinkabilityRating: number | null;
+  surpriseRating: number | null;
+  foodPairingRating: number | null;
 }
 
 // ─────────────────────────────────────────────────────────
