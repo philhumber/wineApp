@@ -184,13 +184,40 @@ class WineApiClient {
 
   /**
    * Get bottles for a specific wine (only non-drunk bottles)
+   * Maps PHP field names to TypeScript interface names
    */
   async getBottles(wineID: number): Promise<Bottle[]> {
-    const response = await this.fetchJSON<{ bottleList: Bottle[] }>(
+    interface PHPBottle {
+      bottleID: number;
+      bottleSize: string;
+      source: string;
+      price: number | null;
+      currency: string | null;
+      location: string;
+      dateAdded: string | null;
+      purchaseDate: string | null;
+    }
+    const response = await this.fetchJSON<{ bottleList: PHPBottle[] }>(
       'getBottles.php',
       { wineID }
     );
-    return response.data?.bottleList ?? [];
+    // Map PHP field names to TypeScript interface
+    // Use purchaseDate if available, otherwise fall back to dateAdded
+    return (response.data?.bottleList ?? []).map((b) => ({
+      bottleID: b.bottleID,
+      wineID: wineID,
+      bottleSize: b.bottleSize,
+      bottleLocation: b.location,
+      bottleSource: b.source,
+      bottlePrice: b.price,
+      bottleCurrency: b.currency,
+      purchaseDate: b.purchaseDate || b.dateAdded,
+      isDrunk: false,
+      drinkDate: null,
+      overallRating: null,
+      valueRating: null,
+      notes: null
+    }));
   }
 
   /**
