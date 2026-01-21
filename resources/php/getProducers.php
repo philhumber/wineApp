@@ -9,20 +9,18 @@
     try {
         // 3. Get database connection
         $pdo = getDBConnection();
-        
+
         // 4. Get and validate input
         $data = json_decode(file_get_contents('php://input'), true);
-
-        //No validation as it should return all bottles if no ID specified.
-		$wineID = $data['wineID'] ?? '%';
-
-		$userID = $_SESSION['userID'] ?? null;
 
 		$params = [];
 		$having = [];
 		$where = [];
+
 		$bottleCount = $data['bottleCount'] ?? '0';
-		$regionName = $data['regionName'] ?? '%';
+		$regionName = $data['regionName'] ?? null;
+		$typeName = $data['typeName'] ?? null;
+		$year = $data['year'] ?? null;
 
 		$sqlQuery = "SELECT
 						producers.producerID,
@@ -34,20 +32,34 @@
 					LEFT JOIN wine on wine.producerID = producers.producerID
 					LEFT JOIN bottles ON bottles.wineID = wine.wineID AND bottles.bottleDrunk = 0";
 
-		if (!empty($regionName) && $regionName !== '%') {
+		// Add JOIN for type filtering
+		if ($typeName) {
+			$sqlQuery .= " LEFT JOIN winetype ON wine.wineTypeID = winetype.wineTypeID";
+		}
+
+		// Add WHERE clauses for context-aware filtering
+		if ($regionName) {
 			$where[] = "region.regionName = :regionName";
 			$params[':regionName'] = $regionName;
 		}
-
+		if ($typeName) {
+			$where[] = "winetype.wineType = :typeName";
+			$params[':typeName'] = $typeName;
+		}
+		if ($year) {
+			$where[] = "(wine.year = :year OR (:year = 'No Year' AND wine.year IS NULL))";
+			$params[':year'] = $year;
+		}
 
 		if (!empty($where)) {
 			$sqlQuery .= " WHERE " . implode(' AND ', $where);
 		}
+
 		$sqlQuery .= " GROUP BY producers.producerID, producerName, region.regionName";
 
 		if (!empty($bottleCount) && $bottleCount !== '0') {
 			$having[] = "COUNT(bottles.bottleID) >= :bottleCount";
-			$params[':bottleCount'] = $bottleCount;			
+			$params[':bottleCount'] = $bottleCount;
 		}
 
 		if (!empty($having)) {

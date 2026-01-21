@@ -9,31 +9,62 @@
     try {
         // 3. Get database connection
         $pdo = getDBConnection();
-        
+
         // 4. Get and validate input
         $data = json_decode(file_get_contents('php://input'), true);
-	
+
 		$params = [];
+		$where = [];
 		$having = [];
 
 		$bottleCount = $data['bottleCount'] ?? '0';
 		$wineCount = $data['wineCount'] ?? '0';
+		$regionName = $data['regionName'] ?? null;
+		$producerName = $data['producerName'] ?? null;
+		$year = $data['year'] ?? null;
 
 		$sqlQuery = "SELECT
 						wineType,
 						COUNT(bottles.bottleID) AS bottleCount
 				FROM winetype
 				LEFT JOIN wine ON wine.wineTypeID = winetype.wineTypeID
-				LEFT JOIN bottles ON bottles.wineID = wine.wineID AND bottles.bottleDrunk = 0
-				GROUP BY winetype.wineTypeID";
+				LEFT JOIN bottles ON bottles.wineID = wine.wineID AND bottles.bottleDrunk = 0";
+
+		// Add JOINs for context-aware filtering
+		if ($regionName || $producerName) {
+			$sqlQuery .= " LEFT JOIN producers ON wine.producerID = producers.producerID";
+		}
+		if ($regionName) {
+			$sqlQuery .= " LEFT JOIN region ON producers.regionID = region.regionID";
+		}
+
+		// Add WHERE clauses for context-aware filtering
+		if ($regionName) {
+			$where[] = "region.regionName = :regionName";
+			$params[':regionName'] = $regionName;
+		}
+		if ($producerName) {
+			$where[] = "producers.producerName = :producerName";
+			$params[':producerName'] = $producerName;
+		}
+		if ($year) {
+			$where[] = "(wine.year = :year OR (:year = 'No Year' AND wine.year IS NULL))";
+			$params[':year'] = $year;
+		}
+
+		if (!empty($where)) {
+			$sqlQuery .= " WHERE " . implode(' AND ', $where);
+		}
+
+		$sqlQuery .= " GROUP BY winetype.wineTypeID";
 
 		if (!empty($bottleCount) && $bottleCount !== '0') {
 			$having[] = "COUNT(bottles.bottleID) >= :bottleCount";
-			$params[':bottleCount'] = $bottleCount;			
+			$params[':bottleCount'] = $bottleCount;
 		}
 		if (!empty($wineCount) && $wineCount !== '0') {
 			$having[] = "COUNT(wine.wineID) >= :wineCount";
-			$params[':wineCount'] = $wineCount;			
+			$params[':wineCount'] = $wineCount;
 		}
 
 		if (!empty($having)) {
