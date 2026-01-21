@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
+  import { goto } from '$app/navigation';
   import { base } from '$app/paths';
   import { theme, viewDensity, viewMode, wines, winesLoading, winesError, filters, toasts, targetWineID, modal } from '$stores';
   import { api } from '$api';
@@ -69,8 +70,9 @@
           // After scroll completes (~600ms), trigger the highlight animation
           setTimeout(() => {
             targetWineID.set(wineIdToHighlight);
-            // Clear the lock after highlight is done (2s animation + buffer)
+            // Clear targetWineID after animation is done (2s animation + buffer)
             setTimeout(() => {
+              targetWineID.set(null);
               scrolledToWineID = null;
             }, 2500);
           }, 600);
@@ -113,8 +115,7 @@
 
   function handleEdit(event: CustomEvent<{ wine: Wine }>) {
     const { wine } = event.detail;
-    // TODO: Navigate to edit page
-    toasts.info(`Edit: ${wine.wineName} - coming soon!`);
+    goto(`${base}/edit/${wine.wineID}`);
   }
 </script>
 

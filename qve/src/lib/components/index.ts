@@ -39,5 +39,10 @@ export { default as WineGrid } from './wine/WineGrid.svelte';
 export { default as HistoryCard } from './wine/HistoryCard.svelte';
 export { default as HistoryGrid } from './wine/HistoryGrid.svelte';
 
+// Edit Components
+export { default as BottleSelector } from './edit/BottleSelector.svelte';
+export { default as WineForm } from './edit/WineForm.svelte';
+export { default as BottleForm } from './edit/BottleForm.svelte';
+
 // Note: IconName type is exported from Icon.svelte via context="module"
 // Import directly from ./ui/Icon.svelte if needed
