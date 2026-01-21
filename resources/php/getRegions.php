@@ -9,29 +9,55 @@
     try {
         // 3. Get database connection
         $pdo = getDBConnection();
-        
+
         // 4. Get and validate input
         $data = json_decode(file_get_contents('php://input'), true);
 
 		$params = [];
+		$where = [];
 		$having = [];
-		
-		$bottleCount = $data['bottleCount'] ?? '0';
 
-		$sqlQuery = "SELECT 
+		$bottleCount = $data['bottleCount'] ?? '0';
+		$typeName = $data['typeName'] ?? null;
+		$producerName = $data['producerName'] ?? null;
+		$year = $data['year'] ?? null;
+
+		$sqlQuery = "SELECT
 						region.regionName,
 						COUNT(bottles.bottleID) AS bottleCount
 					FROM region
 					LEFT JOIN producers ON producers.regionID = region.regionID
 					LEFT JOIN wine ON wine.producerID = producers.producerID
-					LEFT JOIN bottles ON wine.wineID = bottles.wineID AND bottles.bottleDrunk = 0
-					GROUP BY region.regionName";
+					LEFT JOIN bottles ON wine.wineID = bottles.wineID AND bottles.bottleDrunk = 0";
 
-		
+		// Add JOIN for type filtering
+		if ($typeName) {
+			$sqlQuery .= " LEFT JOIN winetype ON wine.wineTypeID = winetype.wineTypeID";
+		}
+
+		// Add WHERE clauses for context-aware filtering
+		if ($typeName) {
+			$where[] = "winetype.wineType = :typeName";
+			$params[':typeName'] = $typeName;
+		}
+		if ($producerName) {
+			$where[] = "producers.producerName = :producerName";
+			$params[':producerName'] = $producerName;
+		}
+		if ($year) {
+			$where[] = "(wine.year = :year OR (:year = 'No Year' AND wine.year IS NULL))";
+			$params[':year'] = $year;
+		}
+
+		if (!empty($where)) {
+			$sqlQuery .= " WHERE " . implode(' AND ', $where);
+		}
+
+		$sqlQuery .= " GROUP BY region.regionName";
 
 		if (!empty($bottleCount) && $bottleCount !== '0') {
 			$having[] = "COUNT(bottles.bottleID) >= :bottleCount";
-			$params[':bottleCount'] = $bottleCount;			
+			$params[':bottleCount'] = $bottleCount;
 		}
 
 		if (!empty($having)) {

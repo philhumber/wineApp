@@ -10,6 +10,7 @@
   export let active: boolean = false;
   export let hasDropdown: boolean = false;
   export let disabled: boolean = false;
+  export let expanded: boolean = false;
 
   const dispatch = createEventDispatcher<{
     click: void;
@@ -32,9 +33,12 @@
 <button
   class="filter-pill"
   class:active
+  class:expanded
   {disabled}
   on:click={handleClick}
   aria-pressed={active}
+  aria-expanded={hasDropdown ? expanded : undefined}
+  aria-haspopup={hasDropdown ? 'listbox' : undefined}
 >
   {label}
   {#if hasDropdown}
@@ -94,7 +98,8 @@
     transition: transform 0.2s var(--ease-out);
   }
 
-  .filter-pill.active :global(.icon) {
+  /* Rotate chevron when dropdown is expanded */
+  .filter-pill.expanded :global(.icon) {
     transform: rotate(180deg);
   }
 </style>
