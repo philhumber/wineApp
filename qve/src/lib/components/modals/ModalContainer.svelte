@@ -10,6 +10,7 @@
   import DrinkRateModal from './DrinkRateModal.svelte';
   import AddBottleModal from './AddBottleModal.svelte';
   import ConfirmModal from './ConfirmModal.svelte';
+  import SettingsModal from './SettingsModal.svelte';
   import type { Wine } from '$lib/api/types';
   import type { ConfirmModalData } from '$lib/stores';
 
@@ -60,6 +61,8 @@
     on:confirm={handleConfirm}
     on:cancel={handleCancel}
   />
+{:else if modalType === 'settings'}
+  <SettingsModal on:close={handleClose} />
 {/if}
 
 <!--

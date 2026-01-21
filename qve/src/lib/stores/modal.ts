@@ -16,6 +16,7 @@ export type ModalType =
   | 'edit'         // Edit wine or bottle
   | 'confirm'      // Confirmation dialog
   | 'aiLoading'    // AI generation loading overlay
+  | 'settings'     // Settings modal (theme, view density)
   | null;
 
 export interface ModalState {
@@ -128,6 +129,13 @@ function createModalStore() {
         }
         return current;
       });
+    },
+
+    /**
+     * Open settings modal
+     */
+    openSettings: (): void => {
+      set({ type: 'settings', data: {} });
     }
   };
 }

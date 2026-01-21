@@ -20,8 +20,13 @@
     winesLoading.set(true);
     winesError.set(null);
     try {
-      // Always include bottleCount: '1' to show only wines with bottles
-      const wineList = await api.getWines({ ...filterValues, bottleCount: '1' });
+      // Include bottleCount filter based on viewMode
+      // 'ourWines' = only wines with bottles (bottleCount: '1')
+      // 'allWines' = all wines including those with 0 bottles (bottleCount: '0')
+      const currentViewMode = $viewMode;
+      const bottleCountFilter: '0' | '1' = currentViewMode === 'ourWines' ? '1' : '0';
+      const apiFilters = { ...filterValues, bottleCount: bottleCountFilter };
+      const wineList = await api.getWines(apiFilters);
       wines.set(wineList);
     } catch (e) {
       winesError.set(e instanceof Error ? e.message : 'Failed to connect to API');
@@ -31,9 +36,18 @@
     }
   }
 
+  // Track previous viewMode to detect changes
+  let previousViewMode = $viewMode;
+
   onMount(() => {
     fetchWines($filters);
   });
+
+  // Refetch when viewMode changes (not on initial load)
+  $: if ($viewMode !== previousViewMode) {
+    previousViewMode = $viewMode;
+    fetchWines($filters);
+  }
 
   // Refetch when filters change
   function handleFilterChange(event: CustomEvent<{ key: string; value: string | undefined }>) {
