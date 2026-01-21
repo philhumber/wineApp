@@ -4,14 +4,14 @@
    * Fixed-position header with logo, theme/view toggles, and filter bar
    */
   import { createEventDispatcher } from 'svelte';
-  import { ThemeToggle, ViewToggle, Icon } from '$lib/components';
+  import { ViewToggle, Icon } from '$lib/components';
   import FilterBar from './FilterBar.svelte';
+  import { toggleMenu } from '$lib/stores';
 
   export let showFilters: boolean = true;
 
   const dispatch = createEventDispatcher<{
     search: void;
-    menu: void;
     filterChange: { key: string; value: string | undefined };
   }>();
 
@@ -22,7 +22,7 @@
   }
 
   function handleMenu() {
-    dispatch('menu');
+    toggleMenu();
   }
 
   function handleFilterChange(event: CustomEvent<{ key: string; value: string | undefined }>) {
@@ -35,9 +35,18 @@
 <header class="header" class:scrolled={scrollY > 10}>
   <div class="header-inner">
     <div class="header-top">
-      <a href="/qve/" class="logo">Qve</a>
+      <div class="header-left">
+        <button
+          class="header-icon"
+          title="Menu"
+          aria-label="Open menu"
+          on:click={handleMenu}
+        >
+          <Icon name="menu" size={18} />
+        </button>
+        <a href="/qve/" class="logo">Qve</a>
+      </div>
       <div class="header-actions">
-        <ThemeToggle />
         <ViewToggle />
         <button
           class="header-icon"
@@ -46,14 +55,6 @@
           on:click={handleSearch}
         >
           <Icon name="search" size={18} />
-        </button>
-        <button
-          class="header-icon"
-          title="Menu"
-          aria-label="Open menu"
-          on:click={handleMenu}
-        >
-          <Icon name="menu" size={18} />
         </button>
       </div>
     </div>
@@ -126,6 +127,12 @@
 
   .logo:hover {
     color: var(--accent);
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
   }
 
   .header-actions {
@@ -210,11 +217,6 @@
   @media (max-width: 480px) {
     .header-actions {
       gap: var(--space-1);
-    }
-
-    /* Hide some icons on very small screens */
-    .header-icon[title="Menu"] {
-      display: none;
     }
   }
 </style>

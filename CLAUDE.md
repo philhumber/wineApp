@@ -1,7 +1,7 @@
 # Wine Collection App - Quick Start Guide
 
 **Last Updated**: 2026-01-21
-**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Phase 0 Complete ✅ | Qvé Phase 1 Complete ✅ | Qvé Phase 2 Complete ✅ | Qvé Phase 3 Add Wine ✅ | Qvé Phase 3 Drink/Rate ✅ | Qvé Phase 3 History ✅ | Qvé Phase 3 Add Bottle ✅ | Qvé Phase 3 Edit Wine/Bottle ✅
+**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Phase 0 Complete ✅ | Qvé Phase 1 Complete ✅ | Qvé Phase 2 Complete ✅ | Qvé Phase 3 Add Wine ✅ | Qvé Phase 3 Drink/Rate ✅ | Qvé Phase 3 History ✅ | Qvé Phase 3 Add Bottle ✅ | Qvé Phase 3 Edit Wine/Bottle ✅ | Qvé Phase 3 Navigation ✅
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
 > **💡 For comprehensive project information, see [README.md](README.md)**
@@ -25,6 +25,7 @@
 | Qvé Phase 2 Wave 3 | ✅ COMPLETE | Layout components (Header, FilterBar, FilterPill, Toast, ToastContainer) |
 | Qvé Phase 3 Add Wine | ✅ COMPLETE | Add Wine 4-step wizard with scroll-to-wine |
 | Qvé Phase 3 Drink/Rate | ✅ COMPLETE | Modal-based rating flow with optional ratings |
+| Qvé Phase 3 Navigation | ✅ COMPLETE | Slide-out menu, Settings modal, browser history |
 
 ### Current Plan: Qvé Migration
 
@@ -99,6 +100,15 @@
   - ✅ WIN-102: Wines with 0 bottles handled gracefully (bottle tab disabled)
   - ✅ PHP updateBottle.php updated for purchaseDate support
   - ✅ Scroll-to-wine with highlight after save
+- **Navigation Menu** ✅ COMPLETE
+  - ✅ SideMenu slide-out drawer component (hamburger icon triggers)
+  - ✅ 5 menu items: Cellar, Add Wine, History, Settings, All Wines
+  - ✅ SettingsModal for theme and view density toggles
+  - ✅ menu.ts store for open/close state
+  - ✅ scrollPosition.ts store for back/forward scroll restoration
+  - ✅ Cellar vs All Wines view modes (bottleCount filter)
+  - ✅ Browser history integration (back/forward buttons work)
+  - ✅ Dirty state warnings on Add Wine and Edit pages
 
 ### What You Need to Know
 
@@ -116,6 +126,7 @@
 12. **✅ Qvé Phase 3 History Complete** - History page with HistoryCard, sorting, filtering, bottle price display
 13. **✅ Qvé Phase 3 Add Bottle Complete** - Modal for adding bottles from WineCard or HistoryCard with quantity stepper
 14. **✅ Qvé Phase 3 Edit Wine/Bottle Complete** - Two-tab edit page with wine image prepopulation and 0-bottle handling
+15. **✅ Qvé Phase 3 Navigation Complete** - Slide-out menu, Settings modal, browser history back/forward, scroll restoration
 
 ### Critical Warnings
 
@@ -326,7 +337,7 @@ Run after each change:
 
 **Phase 1 Complete** ✅ - SvelteKit foundation ready
 **Phase 2 Complete** ✅ - All core UI components built (Waves 1-3)
-**Phase 3 Complete** ✅ - Add Wine ✅, Drink/Rate ✅, History ✅, Add Bottle ✅, Edit Wine/Bottle ✅
+**Phase 3 Complete** ✅ - Add Wine ✅, Drink/Rate ✅, History ✅, Add Bottle ✅, Edit Wine/Bottle ✅, Navigation ✅
 
 **What's Built** (`/qve/` folder):
 - SvelteKit 2 + TypeScript + Vite 5
@@ -364,6 +375,12 @@ Run after each change:
   - editWine store with form state, dirty checking, and validation
   - Wine image prepopulation (WIN-106)
   - 0-bottle handling (WIN-102) - bottle tab disabled with message
+- **Navigation Menu** (slide-out drawer)
+  - SideMenu component with 5 menu items (Cellar, Add Wine, History, Settings, All Wines)
+  - SettingsModal for theme and view density toggles
+  - menu.ts and scrollPosition.ts stores
+  - Browser history integration with scroll position restoration
+  - Cellar (wines with bottles) vs All Wines (all wines including 0 bottles) view modes
 
 **Key Files**:
 - `qve/src/lib/api/client.ts` - API client
@@ -373,6 +390,8 @@ Run after each change:
 - `qve/src/lib/stores/history.ts` - History page state, sorting, filtering
 - `qve/src/lib/stores/addBottle.ts` - Add Bottle modal state and validation
 - `qve/src/lib/stores/editWine.ts` - Edit Wine/Bottle page state and validation
+- `qve/src/lib/stores/menu.ts` - Navigation menu open/close state
+- `qve/src/lib/stores/scrollPosition.ts` - Scroll position for back/forward navigation
 - `qve/src/lib/styles/tokens.css` - Design tokens
 - `qve/src/lib/components/ui/` - Foundation UI components
 - `qve/src/lib/components/wine/` - Wine card components

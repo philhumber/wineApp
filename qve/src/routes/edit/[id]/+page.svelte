@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
+	import { goto, beforeNavigate } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { Icon, ThemeToggle, BottleSelector, WineForm, BottleForm } from '$lib/components';
 	import {
@@ -26,6 +26,9 @@
 	$: isLoading = state.isLoading;
 	$: isSubmitting = state.isSubmitting;
 
+	// Track if we should allow navigation
+	let allowNavigation = false;
+
 	// Initialize on mount
 	onMount(async () => {
 		if (wineID && !isNaN(wineID)) {
@@ -38,14 +41,41 @@
 		editWine.reset();
 	});
 
+	// Warn before leaving with unsaved changes
+	beforeNavigate(({ cancel }) => {
+		if (!allowNavigation && $isEditDirty && !$editWine.isSubmitting) {
+			cancel();
+			modal.confirm({
+				title: 'Discard changes?',
+				message: 'You have unsaved changes. Are you sure you want to leave?',
+				confirmLabel: 'Discard',
+				cancelLabel: 'Keep editing',
+				variant: 'danger',
+				onConfirm: () => {
+					modal.close();
+					allowNavigation = true;
+					history.back();
+				},
+				onCancel: () => {
+					modal.close();
+				}
+			});
+		}
+	});
+
 	// Tab switching
 	function handleTabClick(tab: 'wine' | 'bottle') {
 		editWine.setTab(tab);
 	}
 
-	// Navigate back to home
-	function goHome() {
-		goto(`${base}/`);
+	// Navigate back (with fallback to home)
+	function goBack() {
+		allowNavigation = true;
+		if (window.history.length > 1) {
+			history.back();
+		} else {
+			goto(`${base}/`);
+		}
 	}
 
 	// Handle cancel with dirty check
@@ -59,14 +89,14 @@
 				variant: 'danger',
 				onConfirm: () => {
 					modal.close();
-					goHome();
+					goBack();
 				},
 				onCancel: () => {
 					modal.close();
 				}
 			});
 		} else {
-			goHome();
+			goBack();
 		}
 	}
 
@@ -83,6 +113,8 @@
 		if (success) {
 			// Set target wine ID for scroll-to-wine highlight
 			targetWineID.set(wineID);
+			// Allow navigation without warning
+			allowNavigation = true;
 			goto(`${base}/`);
 		}
 	}
@@ -145,7 +177,7 @@
 	{:else if !state.wineID}
 		<div class="error-state">
 			<p>Wine not found</p>
-			<button class="btn btn-secondary" on:click={goHome}>Back to Home</button>
+			<button class="btn btn-secondary" on:click={() => goto(`${base}/`)}>Back to Home</button>
 		</div>
 	{:else}
 		<!-- Tab Switcher -->
