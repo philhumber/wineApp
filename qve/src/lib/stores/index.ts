@@ -42,6 +42,10 @@ export {
   resetFilters
 } from './filters';
 
+// Filter Options (cached dropdown options)
+export { filterOptions } from './filterOptions';
+export type { FilterOption } from './filterOptions';
+
 // Toasts
 export { toasts, hasToasts, latestToast } from './toast';
 export type { Toast, ToastType, ToastAction } from './toast';

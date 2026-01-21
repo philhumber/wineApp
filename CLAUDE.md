@@ -1,7 +1,7 @@
 # Wine Collection App - Quick Start Guide
 
 **Last Updated**: 2026-01-21
-**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Phase 0 Complete ✅ | Qvé Phase 1 Complete ✅ | Qvé Phase 2 Complete ✅ | Qvé Phase 3 Add Wine ✅ | Qvé Phase 3 Drink/Rate ✅ | Qvé Phase 3 History ✅ | Qvé Phase 3 Add Bottle ✅ | Qvé Phase 3 Edit Wine/Bottle ✅ | Qvé Phase 3 Navigation ✅
+**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Phase 0 Complete ✅ | Qvé Phase 1 Complete ✅ | Qvé Phase 2 Complete ✅ | Qvé Phase 3 Add Wine ✅ | Qvé Phase 3 Drink/Rate ✅ | Qvé Phase 3 History ✅ | Qvé Phase 3 Add Bottle ✅ | Qvé Phase 3 Edit Wine/Bottle ✅ | Qvé Phase 3 Navigation ✅ | Qvé Phase 3 Filter Dropdowns ✅
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
 > **💡 For comprehensive project information, see [README.md](README.md)**
@@ -109,6 +109,14 @@
   - ✅ Cellar vs All Wines view modes (bottleCount filter)
   - ✅ Browser history integration (back/forward buttons work)
   - ✅ Dirty state warnings on Add Wine and Edit pages
+- **Filter Dropdowns (WIN-34)** ✅ COMPLETE
+  - ✅ FilterDropdown component with keyboard navigation, viewport boundary detection
+  - ✅ filterOptions store with view-mode aware caching
+  - ✅ Type, Region, Producer, Vintage dropdowns replace old type pills
+  - ✅ Fully context-aware: each filter affects all other filters
+  - ✅ PHP endpoints updated (getTypes, getRegions, getProducers, getYears)
+  - ✅ Bottle counts shown for each option
+  - ✅ Cellar view shows only options with bottles; All Wines shows all
 
 ### What You Need to Know
 
@@ -127,6 +135,7 @@
 13. **✅ Qvé Phase 3 Add Bottle Complete** - Modal for adding bottles from WineCard or HistoryCard with quantity stepper
 14. **✅ Qvé Phase 3 Edit Wine/Bottle Complete** - Two-tab edit page with wine image prepopulation and 0-bottle handling
 15. **✅ Qvé Phase 3 Navigation Complete** - Slide-out menu, Settings modal, browser history back/forward, scroll restoration
+16. **✅ Qvé Phase 3 Filter Dropdowns Complete** - Type/Region/Producer/Vintage dropdowns, fully context-aware, view-mode aware
 
 ### Critical Warnings
 
@@ -392,6 +401,7 @@ Run after each change:
 - `qve/src/lib/stores/editWine.ts` - Edit Wine/Bottle page state and validation
 - `qve/src/lib/stores/menu.ts` - Navigation menu open/close state
 - `qve/src/lib/stores/scrollPosition.ts` - Scroll position for back/forward navigation
+- `qve/src/lib/stores/filterOptions.ts` - Filter dropdown options with view-mode aware caching
 - `qve/src/lib/styles/tokens.css` - Design tokens
 - `qve/src/lib/components/ui/` - Foundation UI components
 - `qve/src/lib/components/wine/` - Wine card components
@@ -493,7 +503,11 @@ No open bugs - all fixed!
 | WIN-80 | Delete a bottle (drink with no rating) |
 | WIN-68 | Sort by buttons |
 | WIN-24 | Search |
-| WIN-34 | Filtering and Sorting |
+
+### Completed - Filter Dropdowns (2026-01-21)
+| Key | Summary |
+|-----|---------|
+| WIN-34 | Filtering and Sorting ✅ |
 
 ### Completed - Edit Wine/Bottle Page (2026-01-21)
 | Key | Summary |

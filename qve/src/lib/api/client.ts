@@ -128,11 +128,22 @@ class WineApiClient {
   }
 
   /**
-   * Get regions, optionally filtered by country
+   * Get regions for dropdown
+   * Context-aware: can filter by typeName, producerName, and/or year
    */
-  async getRegions(filters?: { countryID?: number; withBottleCount?: boolean }): Promise<Region[]> {
+  async getRegions(options: {
+    withBottleCount?: boolean;
+    typeName?: string;
+    producerName?: string;
+    year?: string;
+  } = {}): Promise<Region[]> {
+    const { withBottleCount = false, typeName, producerName, year } = options;
     const params: Record<string, string> = {};
-    if (filters?.withBottleCount) params.bottleCount = '1';
+
+    if (withBottleCount) params.bottleCount = '1';
+    if (typeName) params.typeName = typeName;
+    if (producerName) params.producerName = producerName;
+    if (year) params.year = year;
 
     const response = await this.fetchJSON<{ wineList: Region[] }>(
       'getRegions.php',
@@ -142,12 +153,22 @@ class WineApiClient {
   }
 
   /**
-   * Get producers, optionally filtered by region
+   * Get producers for dropdown
+   * Context-aware: can filter by regionName, typeName, and/or year
    */
-  async getProducers(filters?: { regionName?: string; withBottleCount?: boolean }): Promise<Producer[]> {
+  async getProducers(options: {
+    withBottleCount?: boolean;
+    regionName?: string;
+    typeName?: string;
+    year?: string;
+  } = {}): Promise<Producer[]> {
+    const { withBottleCount = false, regionName, typeName, year } = options;
     const params: Record<string, string> = {};
-    if (filters?.regionName) params.regionName = filters.regionName;
-    if (filters?.withBottleCount) params.bottleCount = '1';
+
+    if (withBottleCount) params.bottleCount = '1';
+    if (regionName) params.regionName = regionName;
+    if (typeName) params.typeName = typeName;
+    if (year) params.year = year;
 
     const response = await this.fetchJSON<{ wineList: Producer[] }>(
       'getProducers.php',
@@ -158,11 +179,25 @@ class WineApiClient {
 
   /**
    * Get wine types for dropdown
+   * Context-aware: can filter by regionName, producerName, and/or year
    */
-  async getTypes(withBottleCount = true): Promise<WineType[]> {
+  async getTypes(options: {
+    withBottleCount?: boolean;
+    regionName?: string;
+    producerName?: string;
+    year?: string;
+  } = {}): Promise<WineType[]> {
+    const { withBottleCount = false, regionName, producerName, year } = options;
+    const params: Record<string, string> = {};
+
+    if (withBottleCount) params.bottleCount = '1';
+    if (regionName) params.regionName = regionName;
+    if (producerName) params.producerName = producerName;
+    if (year) params.year = year;
+
     const response = await this.fetchJSON<{ wineList: Array<{ wineType: string; bottleCount?: number }> }>(
       'getTypes.php',
-      withBottleCount ? { bottleCount: '1' } : {}
+      params
     );
     // Map PHP field name (wineType) to our interface (wineTypeName)
     return (response.data?.wineList ?? []).map(t => ({
@@ -173,11 +208,25 @@ class WineApiClient {
 
   /**
    * Get vintage years for dropdown
+   * Context-aware: can filter by regionName, producerName, and/or typeName
    */
-  async getYears(withBottleCount = true): Promise<Year[]> {
+  async getYears(options: {
+    withBottleCount?: boolean;
+    regionName?: string;
+    producerName?: string;
+    typeName?: string;
+  } = {}): Promise<Year[]> {
+    const { withBottleCount = true, regionName, producerName, typeName } = options;
+    const params: Record<string, string> = {};
+
+    if (withBottleCount) params.bottleCount = '1';
+    if (regionName) params.regionName = regionName;
+    if (producerName) params.producerName = producerName;
+    if (typeName) params.typeName = typeName;
+
     const response = await this.fetchJSON<{ wineList: Year[] }>(
       'getYears.php',
-      withBottleCount ? { bottleCount: '1' } : {}
+      params
     );
     return response.data?.wineList ?? [];
   }
