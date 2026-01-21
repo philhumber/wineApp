@@ -197,20 +197,20 @@ export interface AddBottlePayload {
 
 export interface UpdateWinePayload {
   wineID: number;
-  wineName?: string;
+  wineName: string;
+  wineType: string;          // PHP expects 'wineType' (name), not wineTypeID
   wineYear?: string;
-  wineTypeID?: number;
-  wineDescription?: string;
-  tastingNotes?: string;
-  pairingNotes?: string;
-  winePicture?: string;
+  wineDescription: string;
+  wineTasting: string;       // PHP expects 'wineTasting'
+  winePairing: string;       // PHP expects 'winePairing'
+  winePicture: string;
 }
 
 export interface UpdateBottlePayload {
   bottleID: number;
-  bottleSize?: string;
-  bottleLocation?: string;
-  bottleSource?: string;
+  bottleSize: string;
+  location: string;          // PHP expects 'location', not 'bottleLocation'
+  bottleSource: string;
   bottlePrice?: number;
   bottleCurrency?: string;
   purchaseDate?: string;
