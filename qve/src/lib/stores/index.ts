@@ -122,3 +122,9 @@ export {
   wineTypeOptions
 } from './editWine';
 export type { EditWineState, EditWineFormData, EditBottleFormData } from './editWine';
+
+// Navigation Menu
+export { menuOpen, openMenu, closeMenu, toggleMenu } from './menu';
+
+// Scroll Position (for back/forward navigation)
+export { saveScrollPosition, getScrollPosition, clearScrollPositions } from './scrollPosition';

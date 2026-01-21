@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { get } from 'svelte/store';
+	import { goto, beforeNavigate } from '$app/navigation';
 	import { base } from '$app/paths';
 	import {
 		addWineStore,
@@ -8,7 +9,8 @@
 		isSubmitting,
 		isAILoading,
 		canProceed,
-		scrollToWine
+		scrollToWine,
+		modal
 	} from '$lib/stores';
 	import {
 		ThemeToggle,
@@ -27,6 +29,39 @@
 	$: aiLoading = $isAILoading;
 	$: proceed = $canProceed;
 
+	// Track if user has entered data
+	let allowNavigation = false;
+
+	// Check if wizard has unsaved data
+	function hasUnsavedData(): boolean {
+		const state = get(addWineStore);
+		return !!(
+			state.region.regionName ||
+			state.producer.producerName ||
+			state.wine.wineName ||
+			state.bottle.price ||
+			state.bottle.source
+		);
+	}
+
+	// Warn before leaving with unsaved data
+	beforeNavigate(({ cancel }) => {
+		if (!allowNavigation && hasUnsavedData() && !$isSubmitting) {
+			cancel();
+			modal.confirm({
+				title: 'Leave page?',
+				message: 'You have unsaved data. Are you sure you want to leave?',
+				confirmLabel: 'Leave',
+				cancelLabel: 'Stay',
+				variant: 'danger',
+				onConfirm: () => {
+					allowNavigation = true;
+					history.back();
+				}
+			});
+		}
+	});
+
 	// Handle step navigation
 	function handleBack() {
 		addWineStore.prevStep();
@@ -34,6 +69,35 @@
 
 	function handleNext() {
 		addWineStore.nextStep();
+	}
+
+	// Handle header back button
+	function handleHeaderBack() {
+		if (hasUnsavedData()) {
+			modal.confirm({
+				title: 'Leave page?',
+				message: 'You have unsaved data. Are you sure you want to leave?',
+				confirmLabel: 'Leave',
+				cancelLabel: 'Stay',
+				variant: 'danger',
+				onConfirm: () => {
+					allowNavigation = true;
+					goBack();
+				}
+			});
+		} else {
+			goBack();
+		}
+	}
+
+	// Navigate back (with fallback to home)
+	function goBack() {
+		allowNavigation = true;
+		if (window.history.length > 1) {
+			history.back();
+		} else {
+			goto(`${base}/`);
+		}
 	}
 
 	// Handle form submission
@@ -44,6 +108,8 @@
 			scrollToWine(result.wineID);
 			// Reset wizard
 			addWineStore.reset();
+			// Allow navigation
+			allowNavigation = true;
 			// Navigate to home
 			goto(`${base}/`);
 		}
@@ -68,12 +134,12 @@
 <!-- Header -->
 <header class="header">
 	<div class="header-inner">
-		<a href="{base}/" class="header-back">
+		<button class="header-back" on:click={handleHeaderBack}>
 			<svg viewBox="0 0 24 24" width="16" height="16">
 				<path d="M19 12H5M12 19l-7-7 7-7" />
 			</svg>
 			Back
-		</a>
+		</button>
 		<h1 class="header-title">Add Wine</h1>
 		<ThemeToggle />
 	</div>
