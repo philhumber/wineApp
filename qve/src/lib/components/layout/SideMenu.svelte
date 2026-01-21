@@ -99,13 +99,13 @@
       </li>
       <li>
         <a
-          href="{base}/add"
+          href="{base}/"
           class="menu-item"
-          class:active={isAdd}
-          on:click|preventDefault={() => navigateTo('/add')}
+          class:active={isAllWines}
+          on:click|preventDefault={() => navigateTo('/', 'allWines')}
         >
-          <Icon name="plus" size={20} />
-          <span>Add Wine</span>
+          <Icon name="grid" size={20} />
+          <span>All Wines</span>
         </a>
       </li>
       <li>
@@ -120,6 +120,17 @@
         </a>
       </li>
       <li>
+        <a
+          href="{base}/add"
+          class="menu-item"
+          class:active={isAdd}
+          on:click|preventDefault={() => navigateTo('/add')}
+        >
+          <Icon name="plus" size={20} />
+          <span>Add Wine</span>
+        </a>
+      </li>
+      <li>
         <button
           class="menu-item"
           on:click={openSettings}
@@ -128,17 +139,7 @@
           <span>Settings</span>
         </button>
       </li>
-      <li>
-        <a
-          href="{base}/"
-          class="menu-item"
-          class:active={isAllWines}
-          on:click|preventDefault={() => navigateTo('/', 'allWines')}
-        >
-          <Icon name="grid" size={20} />
-          <span>All Wines</span>
-        </a>
-      </li>
+      
     </ul>
 
     <div class="menu-footer">
