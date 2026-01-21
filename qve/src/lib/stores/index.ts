@@ -109,3 +109,16 @@ export {
   getDrunkWineKey
 } from './history';
 export type { HistorySortKey, HistorySortDir, HistoryFilters } from './history';
+
+// Edit Wine
+export {
+  editWine,
+  isWineDirty,
+  isBottleDirty,
+  isEditDirty,
+  canSubmitWine,
+  canSubmitBottle,
+  hasBottles,
+  wineTypeOptions
+} from './editWine';
+export type { EditWineState, EditWineFormData, EditBottleFormData } from './editWine';

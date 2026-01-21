@@ -33,19 +33,20 @@ export interface AddBottleState {
 // OPTIONS (from BottleStep.svelte)
 // ─────────────────────────────────────────────────────────
 
+// Note: values match database storage (short names), labels include size for display
 export const bottleSizeOptions = [
-	{ value: 'Piccolo (187.5ml)', label: 'Piccolo (187.5ml)' },
-	{ value: 'Quarter (200ml)', label: 'Quarter (200ml)' },
-	{ value: 'Demi (375ml)', label: 'Demi (375ml)' },
-	{ value: 'Standard (750ml)', label: 'Standard (750ml)' },
-	{ value: 'Litre (1L)', label: 'Litre (1L)' },
-	{ value: 'Magnum (1.5L)', label: 'Magnum (1.5L)' },
-	{ value: 'Jeroboam (3L)', label: 'Jeroboam (3L)' },
-	{ value: 'Rehoboam (4.5L)', label: 'Rehoboam (4.5L)' },
-	{ value: 'Methuselah (6L)', label: 'Methuselah (6L)' },
-	{ value: 'Salmanazar (9L)', label: 'Salmanazar (9L)' },
-	{ value: 'Balthazar (12L)', label: 'Balthazar (12L)' },
-	{ value: 'Nebuchadnezzar (15L)', label: 'Nebuchadnezzar (15L)' }
+	{ value: 'Piccolo', label: 'Piccolo (187.5ml)' },
+	{ value: 'Quarter', label: 'Quarter (200ml)' },
+	{ value: 'Demi', label: 'Demi (375ml)' },
+	{ value: 'Standard', label: 'Standard (750ml)' },
+	{ value: 'Litre', label: 'Litre (1L)' },
+	{ value: 'Magnum', label: 'Magnum (1.5L)' },
+	{ value: 'Jeroboam', label: 'Jeroboam (3L)' },
+	{ value: 'Rehoboam', label: 'Rehoboam (4.5L)' },
+	{ value: 'Methuselah', label: 'Methuselah (6L)' },
+	{ value: 'Salmanazar', label: 'Salmanazar (9L)' },
+	{ value: 'Balthazar', label: 'Balthazar (12L)' },
+	{ value: 'Nebuchadnezzar', label: 'Nebuchadnezzar (15L)' }
 ];
 
 export const storageOptions = [
