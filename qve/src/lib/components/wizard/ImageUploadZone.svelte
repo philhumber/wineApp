@@ -6,10 +6,13 @@
 	export let disabled: boolean = false;
 	export let accept: string = 'image/jpeg,image/png,image/gif,image/webp';
 	export let maxSizeMB: number = 10;
+	export let label: string = 'Wine Image';
+	export let required: boolean = false;
+	export let error: string = '';
 
 	let isDragging = false;
 	let fileInput: HTMLInputElement;
-	let error: string = '';
+	let internalError: string = '';
 
 	const dispatch = createEventDispatcher<{
 		select: File;
@@ -56,21 +59,21 @@
 	}
 
 	function handleFile(file: File) {
-		error = '';
+		internalError = '';
 
 		// Validate file type
 		const validTypes = accept.split(',').map((t) => t.trim());
 		if (!validTypes.includes(file.type)) {
-			error = 'Please select a valid image file (JPG, PNG, GIF, or WebP)';
-			dispatch('error', error);
+			internalError = 'Please select a valid image file (JPG, PNG, GIF, or WebP)';
+			dispatch('error', internalError);
 			return;
 		}
 
 		// Validate file size
 		const maxSizeBytes = maxSizeMB * 1024 * 1024;
 		if (file.size > maxSizeBytes) {
-			error = `File size must be less than ${maxSizeMB}MB`;
-			dispatch('error', error);
+			internalError = `File size must be less than ${maxSizeMB}MB`;
+			dispatch('error', internalError);
 			return;
 		}
 
@@ -94,7 +97,10 @@
 </script>
 
 <div class="form-group">
-	<label class="form-label">Wine Image</label>
+	<label class="form-label">
+		{label}
+		{#if required}<span class="required">*</span>{/if}
+	</label>
 
 	<div
 		class="upload-zone"
@@ -147,8 +153,8 @@
 		/>
 	</div>
 
-	{#if error}
-		<p class="upload-error">{error}</p>
+	{#if internalError || error}
+		<p class="upload-error">{internalError || error}</p>
 	{/if}
 </div>
 
@@ -166,6 +172,10 @@
 		letter-spacing: 0.1em;
 		color: var(--text-tertiary);
 		margin-bottom: var(--space-2);
+	}
+
+	.form-label .required {
+		color: var(--error);
 	}
 
 	.upload-zone {
