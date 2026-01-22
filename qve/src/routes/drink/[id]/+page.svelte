@@ -3,6 +3,10 @@
   import { base } from '$app/paths';
 </script>
 
+<svelte:head>
+  <title>Drink & Rate | Qvé</title>
+</svelte:head>
+
 <main class="placeholder">
   <h1>Drink & Rate</h1>
   <p class="subtitle">Wine ID: {$page.params.id}</p>
