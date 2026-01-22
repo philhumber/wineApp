@@ -108,22 +108,16 @@
 	/>
 
 	<!-- Wine Image -->
-	<div class="form-group">
-		<label class="form-label">
-			Wine Image
-			<span class="required">*</span>
-		</label>
-		<ImageUploadZone
-			imagePreview={state.picturePreview}
-			fileName={state.pictureFile?.name || (state.winePicture ? 'Current image' : null)}
-			{disabled}
-			on:select={handleImageSelect}
-			on:clear={handleImageClear}
-		/>
-		{#if errors['wine.winePicture']}
-			<span class="error-text">{errors['wine.winePicture']}</span>
-		{/if}
-	</div>
+	<ImageUploadZone
+		label="Wine Image"
+		required
+		imagePreview={state.picturePreview}
+		fileName={state.pictureFile?.name || (state.winePicture ? 'Current image' : null)}
+		error={errors['wine.winePicture'] || ''}
+		{disabled}
+		on:select={handleImageSelect}
+		on:clear={handleImageClear}
+	/>
 </div>
 
 <style>
@@ -131,28 +125,5 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-4);
-	}
-
-	.form-group {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-	}
-
-	.form-label {
-		font-size: 0.6875rem;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		color: var(--text-tertiary);
-	}
-
-	.form-label .required {
-		color: var(--error);
-	}
-
-	.error-text {
-		font-size: 0.75rem;
-		color: var(--error);
 	}
 </style>
