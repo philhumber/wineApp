@@ -12,8 +12,27 @@
 # Terminal 1: PHP backend (from project root)
 php -S localhost:8000
 
-# Terminal 2: Vite dev server (from qve folder)
-cd qve && npm run dev
+# Git workflow (always work from develop)
+git checkout develop
+git pull origin develop
+git checkout -b feature/WINE-XX-description
+
+# Database connection
+mysql -h 10.0.0.16 -u username -p winelist
+
+# Deploy to production (PowerShell)
+.\deploy.ps1 -DryRun    # Preview changes
+.\deploy.ps1            # Deploy with auto-backup
+.\deploy.ps1 -ListBackups
+.\deploy.ps1 -Rollback "2026-01-18_143022"
+
+# JIRA CLI (REST API v3)
+.\scripts\jira.ps1 list                      # List open issues
+.\scripts\jira.ps1 get WIN-123               # Get issue details
+.\scripts\jira.ps1 create "Fix bug" Bug      # Create issue (Task, Bug, Story)
+.\scripts\jira.ps1 status WIN-123 "Done"     # Transition status
+.\scripts\jira.ps1 comment WIN-123 "Note"    # Add comment
+.\scripts\jira.ps1 sprint                    # Current sprint issues
 ```
 
 Open: **http://localhost:5173/qve/**
