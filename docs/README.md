@@ -224,7 +224,6 @@ A: Read [ARCHITECTURE.md](01-overview/ARCHITECTURE.md) first, then [MODULE_GUIDE
 ## 📧 Contact & Support
 
 **Developer**: Phil Humber
-**Email**: phil.humber@gmail.com
 **JIRA**: https://philhumber.atlassian.net
 
 ---

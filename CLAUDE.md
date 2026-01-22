@@ -1,7 +1,7 @@
 # Wine Collection App - Quick Start Guide
 
 **Last Updated**: 2026-01-18
-**Status**: Phase 1 Complete ✅ | Sprint 1-2 Complete ✅ | Sprint 3 In Progress 🟡
+**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Fix & Migrate Phase 🔧
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
 > **💡 For comprehensive project information, see [README.md](README.md)**
@@ -17,23 +17,36 @@
 |--------|--------|-------|
 | Sprint 1 | ✅ COMPLETE | Critical bug fixes (WIN-87, WIN-86, WIN-66, WIN-93) |
 | Sprint 2 | ✅ COMPLETE | UX improvements (toast, filters, scroll, view mode) |
-| Sprint 3 | 🟡 IN PROGRESS | Features: WIN-84, WIN-38 remaining |
-| Qvé Migration | 📋 PLANNED | Svelte/SvelteKit PWA - plan approved |
+| Sprint 3 | ✅ COMPLETE | Features (WIN-84 purchase date, WIN-38 upload, etc.) |
+| Fix & Migrate | 🔧 ACTIVE | Fix remaining bugs, then start Qvé migration |
+
+### Current Plan: Fix & Migrate (Option A)
+
+**Phase 1: Quick Bug Fixes** (current app) ✅ COMPLETE
+1. ✅ WIN-104: Edit page tab counter reset - DONE
+2. ✅ WIN-105: Median for price scale - DONE
+3. ✅ WIN-27: Right-click menu popup - DONE
+4. ✅ WIN-102: Can't edit a wine with no bottles - DONE (split Edit Wine / Edit Bottle)
+
+**Phase 2: Qvé Migration**
+- Start Svelte/SvelteKit PWA build
+- Implement remaining features in new stack
+- Defer AI features (WIN-37, WIN-42, WIN-64) to post-migration
 
 ### What You Need to Know
 
 1. **✅ Phase 1 Complete** - 17 ES6 modules, old `wineapp.js` deprecated (DO NOT LOAD)
-2. **🟡 Sprint 3 Active** - 2 remaining issues before Qvé migration
+2. **✅ Sprint 1-3 Complete** - Core app stable, ready for migration
 3. **✅ GitHub Setup Complete** - Repo at `philhumber/wineApp` with 3-branch workflow
-4. **✅ Credentials Secured** - All credentials in `../wineapp-config/config.local.php` (outside web root)
-5. **📋 Qvé Plan Ready** - Full plan at `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
+4. **✅ Credentials Secured** - All credentials in `../wineapp-config/` (outside web root)
+5. **✅ Phase 1 Bug Fixes Complete** - Ready to start Qvé migration
 
 ### Critical Warnings
 
 ⚠️ **DO NOT** load old `resources/wineapp.js` - causes conflicts with modular system
 ⚠️ **DO NOT** use `ratingManager.closeModal()` - use `modalManager.hideAll()` instead
 ⚠️ **ALWAYS** refresh dropdowns after mutations - `dropdownManager.refreshAllDropdowns()`
-⚠️ **CREDENTIALS** are in `../wineapp-config/config.local.php` (outside web root, not in repo)
+⚠️ **CREDENTIALS** are in `../wineapp-config/` (DB: `config.local.php`, JIRA: `jira.config.json`)
 
 ---
 
@@ -48,13 +61,47 @@ git checkout develop
 git pull origin develop
 git checkout -b feature/WINE-XX-description
 
-# View open JIRA issues
-curl -u "phil.humber@gmail.com:[TOKEN]" \
-  "https://philhumber.atlassian.net/rest/api/3/search?jql=project=WIN+AND+status!=Done"
-
 # Database connection
 mysql -h 10.0.0.16 -u username -p winelist
+
+# Deploy to production (PowerShell)
+.\deploy.ps1 -DryRun    # Preview changes
+.\deploy.ps1            # Deploy with auto-backup
+.\deploy.ps1 -ListBackups
+.\deploy.ps1 -Rollback "2026-01-18_143022"
 ```
+
+### Test vs Production Database
+
+The app supports environment switching via `APP_ENV` in `../wineapp-config/config.local.php`:
+
+```php
+define('APP_ENV', 'test');  // 'test' or 'prod'
+```
+
+| Environment | Database | Visual Indicator |
+|-------------|----------|------------------|
+| `test` | `winelist_test` | Orange "TEST MODE" banner |
+| `prod` | `winelist` | No banner |
+
+**To create test database** (one-time setup):
+```bash
+mysqldump -h 10.0.0.16 -u webuser -p winelist > winelist_backup.sql
+mysql -h 10.0.0.16 -u webuser -p -e "CREATE DATABASE winelist_test;"
+mysql -h 10.0.0.16 -u webuser -p winelist_test < winelist_backup.sql
+```
+
+### JIRA API Access
+
+Use **curl with Basic Auth** to query JIRA (the old `/rest/api/3/search` endpoint was deprecated):
+```bash
+# Get all open issues
+curl -s -u "email:token" "https://philhumber.atlassian.net/rest/api/3/search/jql?jql=project=WIN+AND+status!=Done+ORDER+BY+priority+DESC&fields=key,summary,status,priority,issuetype"
+```
+
+**Credentials**: Stored in `../wineapp-config/jira.config.json` (email, token, baseUrl)
+
+**Note**: The JIRA board UI requires browser login; use the REST API for programmatic access.
 
 ---
 
@@ -74,8 +121,9 @@ main (QA / testing - manual deploy to prod)
 **Workflow**: Create feature branches from `develop`, open PRs, squash merge.
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/06-reference/GITHUB_QUICK_REFERENCE.md](docs/06-reference/GITHUB_QUICK_REFERENCE.md)
 
-**Credentials**: Stored in `../wineapp-config/config.local.php` (outside repo).
-See [resources/php/config.local.php.example](resources/php/config.local.php.example) for setup.
+**Credentials**: Stored in `../wineapp-config/` (outside repo):
+- `config.local.php` - Database credentials
+- `jira.config.json` - JIRA API token (email, token, baseUrl)
 
 ---
 
@@ -145,7 +193,7 @@ resources/php/
 1. **Read this file** (CLAUDE.md) for current context
 2. **Check current sprint** - See Sprint Status table above
 3. **Check JIRA board** - https://philhumber.atlassian.net/jira/software/projects/WIN
-4. **Pick an issue** from Sprint 3 (WIN-84, WIN-38)
+4. **Check Qvé plan** - Ready to begin migration phase
 5. **Read relevant docs** if needed:
    - [docs/01-overview/ARCHITECTURE.md](docs/01-overview/ARCHITECTURE.md) - System design
    - [docs/02-development/MODULE_GUIDE.md](docs/02-development/MODULE_GUIDE.md) - Module API reference
@@ -173,25 +221,21 @@ resources/php/
 
 ---
 
-## Current Sprint Work
+## Sprint 3 Summary (Complete ✅)
 
-### Sprint 3 Remaining Issues (2 issues)
-
-**WIN-84: Add purchase date field**
-- Note: `bottles.dateAdded` field already exists in DB!
-- Files: `addwine.html`, `wine-management.js`
-
-**WIN-38: Upload button UI**
-- Hide button after success, show success/error messages
-- Files: `wine-management.js`
-
-### Sprint 3 Completed (6 issues) ✅
+### All Issues Completed (8 issues)
+- WIN-84: Add purchase date field ✅
+- WIN-38: Upload button UI - drag & drop zone with responsive thumbnail ✅
 - WIN-43: Loading UI improvements (cycling wine-themed messages during AI loading) ✅
 - WIN-88: Price scale on wine cards ($ to $$$$$, per-liter comparison, by bottle size) ✅
 - WIN-95: Picture upload (800x800px, edge-sampled backgrounds) ✅
 - WIN-27: Right-click context menu ✅
 - WIN-96: Card collapse scroll behavior ✅
 - WIN-NEW: avgRating DECIMAL overflow fix ✅
+
+### Post-Sprint Cleanup (2026-01-18)
+- WIN-104: Edit page tab counter reset ✅
+- WIN-105: Median for price scale ✅
 
 **See [README.md](README.md) for complete issue list and JIRA board for full details.**
 
@@ -218,10 +262,9 @@ Run after each change:
 
 ---
 
-## Qvé Migration Plan (Next Phase)
+## Qvé Migration Plan (Phase 2)
 
-**Status**: Plan approved (2026-01-13)
-**Timeline**: 17-24 days after Sprint 3 completion
+**Status**: Ready to start
 **Approach**: Build new Svelte/SvelteKit PWA at `/qve/` alongside existing app
 
 **Key Details**:
@@ -232,12 +275,58 @@ Run after each change:
 
 **Full plan**: `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
 
-**Next Steps**:
-1. Complete Sprint 3 remaining issues
-2. Create mockups for Add Wine and Drink/Rate flows
-3. Begin SvelteKit project initialization
+**Migration Steps**:
+1. Create mockups for Add Wine and Drink/Rate flows
+2. Begin SvelteKit project initialization
+3. Implement core components and routing
+4. Port remaining backlog features to new stack
 
 **See [README.md](README.md) for complete roadmap and migration phases.**
+
+---
+
+## Open Backlog Summary
+
+### Bugs (To Do)
+No open bugs - all fixed!
+
+### Tasks - Will migrate to Qvé
+| Key | Summary |
+|-----|---------|
+| WIN-106 | Prepopulate wine image when editing |
+| WIN-103 | Remove hardcoded currencies and sizes |
+| WIN-80 | Delete a bottle (drink with no rating) |
+| WIN-70 | Allow cancel 'drink Bottle' |
+| WIN-68 | Sort by buttons |
+| WIN-24 | Search |
+| WIN-34 | Filtering and Sorting |
+| WIN-69 | Add drink history |
+
+### Tasks - AI Features (Post-Migration)
+| Key | Summary |
+|-----|---------|
+| WIN-42 | Build Image recognition |
+| WIN-37 | Build AI chatbot (winebot) |
+| WIN-64 | Use structured output and grounding |
+
+### Tasks - Infrastructure
+| Key | Summary |
+|-----|---------|
+| WIN-97 | Add audit functions to all insert/update |
+| WIN-78 | JS/PHP Caching |
+| WIN-65 | Limit size of ownership return |
+
+### In Progress (from previous work - review status)
+| Key | Summary |
+|-----|---------|
+| WIN-79 | Check if similar region/producer/wine exists |
+| WIN-67 | Add wine dropdowns context aware |
+| WIN-57 | Add Wine Search Boxes |
+
+### Epics
+- WIN-1: AI
+- WIN-21: UX/UI
+- WIN-22: Functionality
 
 ---
 

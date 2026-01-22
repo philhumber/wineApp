@@ -136,14 +136,18 @@ export class BottleTrackingManager {
 	}
 
 	/**
-	 * Edit bottle information for a wine
+	 * Edit bottle information only (no wine editing)
 	 * @param {string|number} wineID - Wine ID
 	 */
 	async editBottle(wineID) {
 		try {
-			// Set form mode to edit
+			// Set form mode to editBottleOnly
 			if (window.formManager) {
-				window.formManager.setMode('edit');
+				// Reset to first tab
+				formManager.reset();
+
+				// Set mode AFTER reset (reset clears the mode)
+				window.formManager.setMode('editBottleOnly');
 			}
 
 			// Hide pop-ups
@@ -159,6 +163,25 @@ export class BottleTrackingManager {
 			if (wineToEdit) {
 				wineToEdit.innerHTML = wineID;
 			}
+
+			// Hide wine tab, show only bottle tab
+			const bottleTab = document.getElementById('bottleTab');
+			const wineTab = document.getElementById('wineTab');
+			if (bottleTab) bottleTab.style.display = 'grid';
+			if (wineTab) wineTab.style.display = 'none';
+
+			// Update step indicators - show only 1 step
+			const steps = document.querySelectorAll('#steps .step');
+			if (steps.length >= 2) {
+				steps[0].classList.add('active'); // Mark bottle step as active
+				steps[1].style.display = 'none'; // Hide second step (wine)
+			}
+
+			// Hide Previous button, update Next to show Submit
+			const prevBtn = document.getElementById('prevBtn');
+			const nextBtn = document.getElementById('nextBtn');
+			if (prevBtn) prevBtn.style.display = 'none';
+			if (nextBtn) nextBtn.textContent = 'Submit';
 
 			// Get bottle data
 			const bottleData = await wineAPI.fetchJSON('./resources/php/getBottles.php', { wineID: wineID });
@@ -184,9 +207,68 @@ export class BottleTrackingManager {
 				console.error("Failed to load bottle list:", bottleData);
 			}
 
+		} catch (error) {
+			console.error("Failed to load edit bottle form:", error);
+			alert("Failed to load edit bottle form. Please try again.");
+		}
+	}
+
+	/**
+	 * Edit wine information only (no bottle selection)
+	 * Used when wine has 0 bottles or user just wants to edit wine details
+	 * @param {string|number} wineID - Wine ID
+	 */
+	async editWineOnly(wineID) {
+		try {
+			// Set form mode to editWineOnly
+			if (window.formManager) {
+				// Reset to first tab
+				formManager.reset();
+
+				// Set mode AFTER reset (reset clears the mode)
+				window.formManager.setMode('editWineOnly');
+			}
+
+			// Hide pop-ups
+			if (window.hidePopUps) window.hidePopUps();
+
+			// Clear content and load edit form
+			await navigationManager.clearContentArea('./editWine.html');
+
+			hideOverlay();
+
+			// Set wine ID to edit
+			const wineToEdit = document.getElementById('wineToEdit');
+			if (wineToEdit) {
+				wineToEdit.innerHTML = wineID;
+			}
+
+			// Hide bottle tab, show wine tab directly
+			const bottleTab = document.getElementById('bottleTab');
+			const wineTab = document.getElementById('wineTab');
+			if (bottleTab) bottleTab.style.display = 'none';
+			if (wineTab) wineTab.style.display = 'grid';
+
+			// Set currentTab to wine tab (1) for correct validation
+			if (window.formManager) {
+				window.formManager.currentTab = 1;
+			}
+
+			// Update step indicators - show only 1 step
+			const steps = document.querySelectorAll('#steps .step');
+			if (steps.length >= 2) {
+				steps[0].style.display = 'none'; // Hide first step (bottle)
+				steps[1].classList.add('active'); // Mark wine step as active
+			}
+
+			// Hide Previous button, update Next to show Submit
+			const prevBtn = document.getElementById('prevBtn');
+			const nextBtn = document.getElementById('nextBtn');
+			if (prevBtn) prevBtn.style.display = 'none';
+			if (nextBtn) nextBtn.textContent = 'Submit';
+
 			// Get wine data
 			const wineData = await wineAPI.fetchJSON('./resources/php/getWines.php', { wineID: wineID });
-			console.log('Wine data:', wineData);
 
 			// Populate wine information
 			if (wineData.data && wineData.data.wineList) {
@@ -209,12 +291,21 @@ export class BottleTrackingManager {
 					if (tastingEl) tastingEl.value = tastingNotes || '';
 					if (pairingEl) pairingEl.value = pairing || '';
 					if (pictureEl) pictureEl.value = pictureURL || '';
+
+					// Auto-grow textareas after populating
+					if (window.autoGrowAllTextareas) {
+						window.autoGrowAllTextareas();
+					}
+				} else {
+					console.error('Wine not found in response for wineID:', wineID);
 				}
+			} else {
+				console.error("Failed to load wine data:", wineData);
 			}
 
 		} catch (error) {
-			console.error("Failed to load edit bottle form:", error);
-			alert("Failed to load edit bottle form. Please try again.");
+			console.error("Failed to load edit wine form:", error);
+			alert("Failed to load edit wine form. Please try again.");
 		}
 	}
 
@@ -322,7 +413,16 @@ export async function editBottle(wineID) {
 	await window.bottleTrackingManager.editBottle(wineID);
 }
 
+/**
+ * Legacy function for backward compatibility
+ * Edit wine only (no bottle selection)
+ */
+export async function editWineOnly(wineID) {
+	await window.bottleTrackingManager.editWineOnly(wineID);
+}
+
 // Export for backward compatibility
 window.drinkBottle = drinkBottle;
 window.addBottle = addBottle;
 window.editBottle = editBottle;
+window.editWineOnly = editWineOnly;
