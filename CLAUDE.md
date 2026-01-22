@@ -149,7 +149,35 @@ const data = await api.enrichWithAI('producer', 'Château Margaux');
 - WIN-125: Add/Edit screen consistency
 - WIN-99: Audit JSON display fix
 
-See [plan file](C:\Users\Phil\.claude\plans\harmonic-crafting-wombat.md) for full sprint breakdown.
+### Sprint 6: iOS + Navigation + Ratings
+- WIN-131: iOS testing/bug fixes
+- WIN-128: Back button / swipe navigation
+- WIN-122: Fix UI flashing/highlighting
+- WIN-117: Edit ratings from history
+- WIN-114: Image view enhancements
+
+### Sprint 7: Collection Features + Data Quality
+- WIN-121/126: Collection naming
+- WIN-127: Collection value data
+- WIN-113: Region parent level search
+- WIN-123: Field validation vs SQL
+
+### Sprint 8: Data Management + Infrastructure
+- WIN-97: Audit functions for all operations
+- WIN-80: Soft delete support
+- WIN-78: JS/PHP caching
+- WIN-108: AI extract region from producer
+- WIN-32: Producer/region info cards
+
+### Sprint 9: Wishlist + Grape Data
+- WIN-109: Wine wishlist
+- WIN-112: Grape data capture
+
+### Backlog: AI Features
+- WIN-42: Image recognition
+- WIN-37: AI chatbot (winebot)
+- WIN-64: Structured output and grounding
+- WIN-118: Vector database evaluation
 
 ---
 
