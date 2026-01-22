@@ -32,27 +32,16 @@ param(
 # Load config
 $configPath = Join-Path $PSScriptRoot "..\..\wineapp-config\jira.config.json"
 if (-not (Test-Path $configPath)) {
-    Write-Host "Config not found. Creating template at: $configPath" -ForegroundColor Yellow
-    $template = @{
-        host = "https://philhumber.atlassian.net"
-        email = "your-email@example.com"
-        apiToken = "your-api-token-here"
-        project = "WIN"
-    } | ConvertTo-Json -Depth 2
-
-    $configDir = Split-Path $configPath -Parent
-    if (-not (Test-Path $configDir)) {
-        New-Item -Path $configDir -ItemType Directory -Force | Out-Null
-    }
-    Set-Content -Path $configPath -Value $template
-    Write-Host "Edit the config file with your credentials, then run again." -ForegroundColor Cyan
+    Write-Host "Config not found at: $configPath" -ForegroundColor Red
+    Write-Host "Create jira.config.json with: email, token, baseUrl" -ForegroundColor Yellow
     Write-Host "Get API token from: https://id.atlassian.com/manage-profile/security/api-tokens" -ForegroundColor Gray
     exit 1
 }
 
 $config = Get-Content $configPath | ConvertFrom-Json
-$baseUrl = "$($config.host)/rest/api/3"
-$authString = "$($config.email):$($config.apiToken)"
+$project = "WIN"
+$baseUrl = "$($config.baseUrl)/rest/api/3"
+$authString = "$($config.email):$($config.token)"
 $authBytes = [System.Text.Encoding]::UTF8.GetBytes($authString)
 $authBase64 = [Convert]::ToBase64String($authBytes)
 
@@ -121,7 +110,7 @@ function Show-Help {
 function Get-Issues {
     param([string]$Status = "open")
 
-    $jql = "project = $($config.project)"
+    $jql = "project = $($project)"
 
     switch ($Status.ToLower()) {
         "open" { $jql += " AND statusCategory != Done" }
@@ -132,10 +121,10 @@ function Get-Issues {
     $jql += " ORDER BY created DESC"
     $encoded = [System.Web.HttpUtility]::UrlEncode($jql)
 
-    $result = Invoke-JiraApi -Endpoint "search?jql=$encoded&maxResults=50&fields=key,summary,status,issuetype,priority"
+    $result = Invoke-JiraApi -Endpoint "search/jql?jql=$encoded&maxResults=50&fields=key,summary,status,issuetype,priority"
 
     if ($result) {
-        Write-Host "`n$($config.project) Issues ($Status):" -ForegroundColor Cyan
+        Write-Host "`n$($project) Issues ($Status):" -ForegroundColor Cyan
         Write-Host ("-" * 80)
 
         if ($result.issues.Count -eq 0) {
@@ -210,7 +199,7 @@ function New-Issue {
 
     $body = @{
         fields = @{
-            project = @{ key = $config.project }
+            project = @{ key = $project }
             summary = $Summary
             issuetype = @{ name = $Type }
         }
@@ -300,10 +289,10 @@ function Add-Comment {
 
 function Get-Sprint {
     # Get issues in current sprint
-    $jql = "project = $($config.project) AND sprint in openSprints() ORDER BY status ASC, priority DESC"
+    $jql = "project = $($project) AND sprint in openSprints() ORDER BY status ASC, priority DESC"
     $encoded = [System.Web.HttpUtility]::UrlEncode($jql)
 
-    $result = Invoke-JiraApi -Endpoint "search?jql=$encoded&maxResults=50&fields=key,summary,status,issuetype,priority"
+    $result = Invoke-JiraApi -Endpoint "search/jql?jql=$encoded&maxResults=50&fields=key,summary,status,issuetype,priority"
 
     if ($result) {
         Write-Host "`nCurrent Sprint Issues:" -ForegroundColor Cyan
@@ -336,9 +325,9 @@ function Get-Sprint {
 Add-Type -AssemblyName System.Web
 
 switch ($Command) {
-    "list"    { Get-Issues -Status ($Arg1 ?? "open") }
+    "list"    { Get-Issues -Status $(if ($Arg1) { $Arg1 } else { "open" }) }
     "get"     { Get-Issue -Key $Arg1 }
-    "create"  { New-Issue -Summary $Arg1 -Type ($Arg2 ?? "Task") }
+    "create"  { New-Issue -Summary $Arg1 -Type $(if ($Arg2) { $Arg2 } else { "Task" }) }
     "status"  { Set-IssueStatus -Key $Arg1 -StatusName $Arg2 }
     "comment" { Add-Comment -Key $Arg1 -Text $Arg2 }
     "sprint"  { Get-Sprint }
