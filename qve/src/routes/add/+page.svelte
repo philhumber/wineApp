@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
 	import { get } from 'svelte/store';
 	import { goto, beforeNavigate } from '$app/navigation';
 	import { base } from '$app/paths';
@@ -55,6 +54,7 @@
 				cancelLabel: 'Stay',
 				variant: 'danger',
 				onConfirm: () => {
+					addWineStore.reset();
 					allowNavigation = true;
 					history.back();
 				}
@@ -81,6 +81,7 @@
 				cancelLabel: 'Stay',
 				variant: 'danger',
 				onConfirm: () => {
+					addWineStore.reset();
 					allowNavigation = true;
 					goBack();
 				}
@@ -120,11 +121,8 @@
 		addWineStore.cancelAI();
 	}
 
-	// Reset store when leaving page
-	onDestroy(() => {
-		// Keep data in case user navigates back
-		// addWineStore.reset();
-	});
+	// Note: Store is reset in modal onConfirm callbacks when user explicitly
+	// confirms leaving. We don't reset here to preserve data for back-button nav.
 </script>
 
 <svelte:head>
