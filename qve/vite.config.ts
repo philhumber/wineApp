@@ -25,8 +25,8 @@ export default defineConfig({
       strategies: 'generateSW',
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Qve Wine Collection',
-        short_name: 'Qve',
+        name: 'Qvé Wine Collection',
+        short_name: 'Qvé',
         description: 'Personal wine collection management',
         theme_color: '#FAF9F7',
         background_color: '#FAF9F7',

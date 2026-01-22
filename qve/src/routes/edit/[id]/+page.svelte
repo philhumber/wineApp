@@ -153,7 +153,7 @@
 </script>
 
 <svelte:head>
-	<title>Edit Wine - Qve</title>
+	<title>Edit Wine - Qvé</title>
 </svelte:head>
 
 <!-- Header -->

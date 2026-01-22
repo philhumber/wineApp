@@ -1,5 +1,5 @@
 /**
- * Qve API Client
+ * Qvé API Client
  * Communicates with existing PHP backend at /resources/php/
  */
 
