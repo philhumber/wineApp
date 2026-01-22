@@ -1,0 +1,507 @@
+<script lang="ts">
+	import { onMount, onDestroy } from 'svelte';
+	import { page } from '$app/stores';
+	import { goto, beforeNavigate } from '$app/navigation';
+	import { base } from '$app/paths';
+	import { Icon, ThemeToggle, BottleSelector, WineForm, BottleForm } from '$lib/components';
+	import {
+		editWine,
+		isWineDirty,
+		isBottleDirty,
+		isEditDirty,
+		canSubmitWine,
+		canSubmitBottle,
+		hasBottles,
+		wineTypeOptions,
+		modal,
+		targetWineID
+	} from '$stores';
+
+	// Get wine ID from URL
+	$: wineID = parseInt($page.params.id || '0', 10);
+
+	// Subscribe to store
+	$: state = $editWine;
+	$: activeTab = state.activeTab;
+	$: isLoading = state.isLoading;
+	$: isSubmitting = state.isSubmitting;
+
+	// Track if we should allow navigation
+	let allowNavigation = false;
+
+	// Initialize on mount
+	onMount(async () => {
+		if (wineID && !isNaN(wineID)) {
+			await editWine.init(wineID);
+		}
+	});
+
+	// Cleanup on destroy
+	onDestroy(() => {
+		editWine.reset();
+	});
+
+	// Warn before leaving with unsaved changes
+	beforeNavigate(({ cancel }) => {
+		if (!allowNavigation && $isEditDirty && !$editWine.isSubmitting) {
+			cancel();
+			modal.confirm({
+				title: 'Discard changes?',
+				message: 'You have unsaved changes. Are you sure you want to leave?',
+				confirmLabel: 'Discard',
+				cancelLabel: 'Keep editing',
+				variant: 'danger',
+				onConfirm: () => {
+					modal.close();
+					allowNavigation = true;
+					history.back();
+				},
+				onCancel: () => {
+					modal.close();
+				}
+			});
+		}
+	});
+
+	// Tab switching
+	function handleTabClick(tab: 'wine' | 'bottle') {
+		editWine.setTab(tab);
+	}
+
+	// Navigate back (with fallback to home)
+	function goBack() {
+		allowNavigation = true;
+		if (window.history.length > 1) {
+			history.back();
+		} else {
+			goto(`${base}/`);
+		}
+	}
+
+	// Handle cancel with dirty check
+	function handleCancel() {
+		if ($isEditDirty) {
+			modal.confirm({
+				title: 'Discard changes?',
+				message: 'You have unsaved changes. Are you sure you want to leave?',
+				confirmLabel: 'Discard',
+				cancelLabel: 'Keep editing',
+				variant: 'danger',
+				onConfirm: () => {
+					modal.close();
+					goBack();
+				},
+				onCancel: () => {
+					modal.close();
+				}
+			});
+		} else {
+			goBack();
+		}
+	}
+
+	// Handle save
+	async function handleSave() {
+		let success = false;
+
+		if (activeTab === 'wine') {
+			success = await editWine.submitWine();
+		} else {
+			success = await editWine.submitBottle();
+		}
+
+		if (success) {
+			// Set target wine ID for scroll-to-wine highlight
+			targetWineID.set(wineID);
+			// Allow navigation without warning
+			allowNavigation = true;
+			goto(`${base}/`);
+		}
+	}
+
+	// Bottle selection
+	function handleBottleSelect(event: CustomEvent<{ bottleID: number }>) {
+		editWine.selectBottle(event.detail.bottleID);
+	}
+
+	// Wine form input
+	function handleWineInput(event: CustomEvent<{ field: string; value: string }>) {
+		const { field, value } = event.detail;
+		editWine.setWineField(field as keyof typeof state.wine, value);
+	}
+
+	// Wine image handlers
+	function handleImageSelect(event: CustomEvent<File>) {
+		const file = event.detail;
+		// Create preview URL
+		const preview = URL.createObjectURL(file);
+		editWine.setWinePicture(file, preview);
+	}
+
+	function handleImageClear() {
+		editWine.clearWinePicture();
+	}
+
+	// Bottle form input
+	function handleBottleInput(event: CustomEvent<{ field: string; value: string }>) {
+		const { field, value } = event.detail;
+		editWine.setBottleField(field as keyof typeof state.bottle, value);
+	}
+
+	// Compute if current tab can submit
+	$: canSubmit = activeTab === 'wine' ? $canSubmitWine : $canSubmitBottle;
+</script>
+
+<svelte:head>
+	<title>Edit Wine - Qvé</title>
+</svelte:head>
+
+<!-- Header -->
+<header class="header">
+	<div class="header-inner">
+		<button class="header-back" on:click={handleCancel} type="button">
+			<Icon name="chevron-left" size={16} />
+			Back
+		</button>
+		<h1 class="header-title">Edit</h1>
+		<ThemeToggle />
+	</div>
+</header>
+
+<!-- Main -->
+<main class="main">
+	{#if isLoading}
+		<div class="loading-state">
+			<p>Loading wine details...</p>
+		</div>
+	{:else if !state.wineID}
+		<div class="error-state">
+			<p>Wine not found</p>
+			<button class="btn btn-secondary" on:click={() => goto(`${base}/`)}>Back to Home</button>
+		</div>
+	{:else}
+		<!-- Tab Switcher -->
+		<div class="tab-switcher">
+			<button
+				class="tab-btn"
+				class:active={activeTab === 'wine'}
+				on:click={() => handleTabClick('wine')}
+				type="button"
+			>
+				Wine Details
+			</button>
+			<button
+				class="tab-btn"
+				class:active={activeTab === 'bottle'}
+				class:disabled={!$hasBottles}
+				on:click={() => $hasBottles && handleTabClick('bottle')}
+				type="button"
+				disabled={!$hasBottles}
+				title={!$hasBottles ? 'No bottles to edit' : ''}
+			>
+				Bottle Details
+			</button>
+		</div>
+
+		<!-- Form Container -->
+		<div class="form-container">
+			<!-- Wine Tab -->
+			{#if activeTab === 'wine'}
+				<div class="form-section">
+					<WineForm
+						state={state.wine}
+						wineTypeOptions={$wineTypeOptions}
+						errors={state.errors}
+						disabled={isSubmitting}
+						on:input={handleWineInput}
+						on:imageSelect={handleImageSelect}
+						on:imageClear={handleImageClear}
+					/>
+				</div>
+			{/if}
+
+			<!-- Bottle Tab -->
+			{#if activeTab === 'bottle'}
+				<div class="form-section">
+					{#if !$hasBottles}
+						<div class="empty-state">
+							<Icon name="wine-bottle" size={48} />
+							<p>No bottles available to edit</p>
+							<p class="hint">Add bottles from the home page</p>
+						</div>
+					{:else}
+						<BottleSelector
+							bottles={state.bottles}
+							selectedID={state.selectedBottleID}
+							disabled={isSubmitting}
+							on:select={handleBottleSelect}
+						/>
+
+						{#if state.selectedBottleID}
+							<BottleForm
+								state={state.bottle}
+								errors={state.errors}
+								disabled={isSubmitting}
+								on:input={handleBottleInput}
+							/>
+						{/if}
+					{/if}
+				</div>
+			{/if}
+
+			<!-- Form Navigation -->
+			<div class="form-nav">
+				<button class="btn btn-secondary" on:click={handleCancel} disabled={isSubmitting}>
+					Cancel
+				</button>
+				<button
+					class="btn btn-primary"
+					on:click={handleSave}
+					disabled={!canSubmit || isSubmitting}
+				>
+					{#if isSubmitting}
+						Saving...
+					{:else}
+						<Icon name="check" size={14} />
+						Save Changes
+					{/if}
+				</button>
+			</div>
+		</div>
+	{/if}
+</main>
+
+<style>
+	/* Header */
+	.header {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		z-index: 100;
+		background: var(--bg);
+		border-bottom: 1px solid var(--divider);
+		transition: var(--theme-transition);
+	}
+
+	:global([data-theme='dark']) .header {
+		background: rgba(12, 11, 10, 0.85);
+		backdrop-filter: blur(20px);
+	}
+
+	.header-inner {
+		max-width: 800px;
+		margin: 0 auto;
+		padding: var(--space-5) var(--space-6);
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.header-back {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		font-family: var(--font-sans);
+		font-size: 0.875rem;
+		color: var(--text-secondary);
+		background: none;
+		border: none;
+		cursor: pointer;
+		transition: color 0.2s;
+	}
+
+	.header-back:hover {
+		color: var(--text-primary);
+	}
+
+	.header-title {
+		font-family: var(--font-serif);
+		font-size: 1.25rem;
+		font-weight: 400;
+		color: var(--text-primary);
+	}
+
+	/* Main */
+	.main {
+		position: relative;
+		z-index: 1;
+		max-width: 800px;
+		margin: 0 auto;
+		padding: calc(100px + var(--space-6)) var(--space-6) var(--space-10);
+	}
+
+	/* Loading & Error States */
+	.loading-state,
+	.error-state {
+		text-align: center;
+		padding: var(--space-8);
+		color: var(--text-secondary);
+	}
+
+	.error-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--space-4);
+	}
+
+	/* Tab Switcher */
+	.tab-switcher {
+		display: flex;
+		gap: var(--space-1);
+		padding: var(--space-1);
+		background: var(--bg-subtle);
+		border-radius: 12px;
+		margin-bottom: var(--space-6);
+		border: 1px solid var(--divider);
+	}
+
+	.tab-btn {
+		flex: 1;
+		padding: var(--space-3) var(--space-5);
+		font-family: var(--font-sans);
+		font-size: 0.875rem;
+		font-weight: 400;
+		color: var(--text-tertiary);
+		background: transparent;
+		border: none;
+		border-radius: 10px;
+		cursor: pointer;
+		transition: all 0.2s var(--ease-out);
+	}
+
+	.tab-btn:hover:not(.disabled) {
+		color: var(--text-secondary);
+	}
+
+	.tab-btn.active {
+		color: var(--text-primary);
+		background: var(--surface);
+		box-shadow: var(--shadow-sm);
+	}
+
+	.tab-btn.disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	/* Form Container */
+	.form-container {
+		background: var(--surface);
+		border: 1px solid var(--divider-subtle);
+		border-radius: 12px;
+		box-shadow: var(--shadow-md);
+		overflow: hidden;
+	}
+
+	.form-section {
+		padding: var(--space-6);
+		animation: fadeIn 0.3s var(--ease-out);
+	}
+
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	/* Empty State */
+	.empty-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--space-3);
+		padding: var(--space-8);
+		color: var(--text-tertiary);
+	}
+
+	.empty-state p {
+		margin: 0;
+	}
+
+	.empty-state .hint {
+		font-size: 0.875rem;
+		color: var(--text-tertiary);
+	}
+
+	/* Form Navigation */
+	.form-nav {
+		display: flex;
+		justify-content: flex-end;
+		gap: var(--space-3);
+		padding: var(--space-5) var(--space-6);
+		background: var(--bg-subtle);
+		border-top: 1px solid var(--divider-subtle);
+	}
+
+	/* Buttons */
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-3) var(--space-5);
+		font-family: var(--font-sans);
+		font-size: 0.875rem;
+		font-weight: 500;
+		border-radius: 100px;
+		cursor: pointer;
+		transition: all 0.2s var(--ease-out);
+	}
+
+	.btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.btn-secondary {
+		color: var(--text-secondary);
+		background: var(--surface);
+		border: 1px solid var(--divider);
+	}
+
+	.btn-secondary:hover:not(:disabled) {
+		border-color: var(--text-tertiary);
+		color: var(--text-primary);
+	}
+
+	.btn-primary {
+		color: var(--bg);
+		background: var(--text-primary);
+		border: 1px solid var(--text-primary);
+	}
+
+	.btn-primary:hover:not(:disabled) {
+		background: var(--text-secondary);
+		border-color: var(--text-secondary);
+	}
+
+	/* Responsive */
+	@media (max-width: 768px) {
+		.main {
+			padding: calc(90px + var(--space-4)) var(--space-4) var(--space-8);
+		}
+
+		.header-inner {
+			padding: var(--space-4);
+		}
+
+		.form-section {
+			padding: var(--space-5);
+		}
+
+		.form-nav {
+			padding: var(--space-4);
+		}
+
+		.tab-btn {
+			padding: var(--space-2) var(--space-3);
+			font-size: 0.8125rem;
+		}
+	}
+</style>

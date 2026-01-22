@@ -1,0 +1,12 @@
+/* ═══════════════════════════════════════════════════════════
+   QVE STYLES INDEX
+   Import Google Fonts and all design system styles
+   ═══════════════════════════════════════════════════════════ */
+
+/* Google Fonts - Cormorant Garamond (headings) + Outfit (body) */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500&display=swap');
+
+/* Design system imports */
+@import './tokens.css';
+@import './base.css';
+@import './animations.css';
