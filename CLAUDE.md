@@ -218,8 +218,25 @@ Key tables: wine, bottles, ratings, producers, region, country, winetype
 ## Configuration
 
 **Database credentials**: `../wineapp-config/config.local.php` (outside repo)
-**JIRA API**: `../wineapp-config/jira.config.json`
+**JIRA credentials**: `../wineapp-config/jira.config.json` (email + API token)
 **Vite proxy**: `qve/vite.config.ts` proxies `/resources/php` to PHP backend
+
+---
+
+## JIRA CLI
+
+Manage JIRA issues via REST API v3 using `scripts/jira.ps1`:
+
+```powershell
+.\scripts\jira.ps1 list                      # List open issues
+.\scripts\jira.ps1 get WIN-123               # Get issue details
+.\scripts\jira.ps1 create "Fix bug" Bug      # Create issue (Task, Bug, Story)
+.\scripts\jira.ps1 status WIN-123 "Done"     # Transition status
+.\scripts\jira.ps1 comment WIN-123 "Note"    # Add comment
+.\scripts\jira.ps1 sprint                    # Show current sprint
+```
+
+First run creates a config template. Get API token from: https://id.atlassian.com/manage-profile/security/api-tokens
 
 ---
 
