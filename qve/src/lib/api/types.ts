@@ -1,5 +1,5 @@
 /**
- * Qve API Type Definitions
+ * Qvé API Type Definitions
  * Matches the existing PHP backend response structures
  */
 
