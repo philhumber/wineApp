@@ -18,6 +18,7 @@
 		$where = [];
 
 		$bottleCount = $data['bottleCount'] ?? '0';
+		$countryName = $data['countryName'] ?? null;
 		$regionName = $data['regionName'] ?? null;
 		$typeName = $data['typeName'] ?? null;
 		$year = $data['year'] ?? null;
@@ -32,12 +33,19 @@
 					LEFT JOIN wine on wine.producerID = producers.producerID
 					LEFT JOIN bottles ON bottles.wineID = wine.wineID AND bottles.bottleDrunk = 0";
 
-		// Add JOIN for type filtering
+		// Add JOINs for context-aware filtering
+		if ($countryName) {
+			$sqlQuery .= " LEFT JOIN country ON region.countryID = country.countryID";
+		}
 		if ($typeName) {
 			$sqlQuery .= " LEFT JOIN winetype ON wine.wineTypeID = winetype.wineTypeID";
 		}
 
 		// Add WHERE clauses for context-aware filtering
+		if ($countryName) {
+			$where[] = "country.countryName = :countryName";
+			$params[':countryName'] = $countryName;
+		}
 		if ($regionName) {
 			$where[] = "region.regionName = :regionName";
 			$params[':regionName'] = $regionName;
@@ -60,11 +68,13 @@
 		if (!empty($bottleCount) && $bottleCount !== '0') {
 			$having[] = "COUNT(bottles.bottleID) >= :bottleCount";
 			$params[':bottleCount'] = $bottleCount;
+		} else {
+			// Even in "All Wines" mode, only show producers that have at least 1 wine
+			$having[] = "COUNT(DISTINCT wine.wineID) >= 1";
 		}
 
-		if (!empty($having)) {
-			$sqlQuery .= " HAVING " . implode(' AND ', $having);
-		}
+		// Always add HAVING clause since we always have at least one condition
+		$sqlQuery .= " HAVING " . implode(' AND ', $having);
 
 		$sqlQuery .= " ORDER BY producerName ASC";	
 
