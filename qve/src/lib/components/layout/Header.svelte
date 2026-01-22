@@ -46,7 +46,7 @@
         >
           <Icon name="menu" size={18} />
         </button>
-        <a href="/qve/" class="logo">Qve</a>
+        <a href="/qve/" class="logo">Qvé</a>
       </div>
       <div class="header-actions">
         <ViewToggle />
