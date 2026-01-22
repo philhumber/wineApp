@@ -31,6 +31,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>Qvé</title>
+</svelte:head>
+
 <!-- Side navigation menu -->
 <SideMenu open={$menuOpen} on:close={handleMenuClose} />
 

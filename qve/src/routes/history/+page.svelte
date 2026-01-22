@@ -51,6 +51,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>History | Qvé</title>
+</svelte:head>
+
 <!-- Header with History Filters -->
 <Header filterType="history" />
 
