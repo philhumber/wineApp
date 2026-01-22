@@ -490,7 +490,7 @@ function Show-Summary {
 
     if (-not $DryRun) {
         Write-Success "Deployment completed successfully!"
-        Write-Host "`nVerify at: http://10.0.0.16/wineApp/qve/"
+        Write-Host "`nVerify at: http://10.0.0.16/qve/"
     } else {
         Write-Host "Run without -DryRun to execute deployment"
     }
