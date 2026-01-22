@@ -18,6 +18,7 @@
 		$having = [];
 
 		$bottleCount = $data['bottleCount'] ?? '0';
+		$countryName = $data['countryName'] ?? null;
 		$regionName = $data['regionName'] ?? null;
 		$producerName = $data['producerName'] ?? null;
 		$typeName = $data['typeName'] ?? null;
@@ -29,17 +30,24 @@
 								LEFT JOIN bottles ON bottles.wineID = wine.wineID AND bottles.bottleDrunk = 0";
 
 		// Add JOINs for context-aware filtering
-		if ($regionName || $producerName) {
+		if ($countryName || $regionName || $producerName) {
 			$sqlQuery .= " LEFT JOIN producers ON wine.producerID = producers.producerID";
 		}
-		if ($regionName) {
+		if ($countryName || $regionName) {
 			$sqlQuery .= " LEFT JOIN region ON producers.regionID = region.regionID";
+		}
+		if ($countryName) {
+			$sqlQuery .= " LEFT JOIN country ON region.countryID = country.countryID";
 		}
 		if ($typeName) {
 			$sqlQuery .= " LEFT JOIN winetype ON wine.wineTypeID = winetype.wineTypeID";
 		}
 
 		// Add WHERE clauses for context-aware filtering
+		if ($countryName) {
+			$where[] = "country.countryName = :countryName";
+			$params[':countryName'] = $countryName;
+		}
 		if ($regionName) {
 			$where[] = "region.regionName = :regionName";
 			$params[':regionName'] = $regionName;

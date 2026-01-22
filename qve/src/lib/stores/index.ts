@@ -132,3 +132,13 @@ export { menuOpen, openMenu, closeMenu, toggleMenu } from './menu';
 
 // Scroll Position (for back/forward navigation)
 export { saveScrollPosition, getScrollPosition, clearScrollPositions } from './scrollPosition';
+
+// Cellar Sort
+export {
+  cellarSortKey,
+  cellarSortDir,
+  setCellarSort,
+  toggleCellarSortDir,
+  sortWines
+} from './cellarSort';
+export type { CellarSortKey, CellarSortDir } from './cellarSort';

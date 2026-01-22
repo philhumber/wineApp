@@ -10,12 +10,25 @@ import type { DrunkWine } from '$api/types';
 // TYPES
 // ─────────────────────────────────────────────────────────
 
-export type HistorySortKey = 'drinkDate' | 'overallRating' | 'valueRating' | 'wineName' | 'wineType';
+export type HistorySortKey =
+  | 'drinkDate'
+  | 'overallRating'
+  | 'valueRating'
+  | 'wineName'
+  | 'wineType'
+  | 'country'
+  | 'producer'
+  | 'region'
+  | 'year'
+  | 'price'
+  | 'buyAgain';
 export type HistorySortDir = 'asc' | 'desc';
 
 export interface HistoryFilters {
   countryDropdown?: string;
   typesDropdown?: string;
+  regionDropdown?: string;
+  producerDropdown?: string;
   yearDropdown?: string;
 }
 
@@ -64,6 +77,8 @@ export const sortedDrunkWines = derived(
     let filtered = $drunkWines.filter((wine) => {
       if ($filters.countryDropdown && wine.countryName !== $filters.countryDropdown) return false;
       if ($filters.typesDropdown && wine.wineType !== $filters.typesDropdown) return false;
+      if ($filters.regionDropdown && wine.regionName !== $filters.regionDropdown) return false;
+      if ($filters.producerDropdown && wine.producerName !== $filters.producerDropdown) return false;
       if ($filters.yearDropdown && wine.year !== $filters.yearDropdown) return false;
       return true;
     });
@@ -86,6 +101,30 @@ export const sortedDrunkWines = derived(
           return direction * a.wineName.localeCompare(b.wineName);
         case 'wineType':
           return direction * a.wineType.localeCompare(b.wineType);
+        case 'country':
+          return direction * a.countryName.localeCompare(b.countryName);
+        case 'producer':
+          return direction * a.producerName.localeCompare(b.producerName);
+        case 'region':
+          return direction * a.regionName.localeCompare(b.regionName);
+        case 'year': {
+          const yearA = a.year || '';
+          const yearB = b.year || '';
+          if (!yearA && !yearB) return 0;
+          if (!yearA) return 1;
+          if (!yearB) return -1;
+          return direction * yearA.localeCompare(yearB);
+        }
+        case 'price': {
+          const priceA = parseFloat(String(a.bottlePrice || '0')) || 0;
+          const priceB = parseFloat(String(b.bottlePrice || '0')) || 0;
+          if (priceA === 0 && priceB === 0) return 0;
+          if (priceA === 0) return 1;
+          if (priceB === 0) return -1;
+          return direction * (priceA - priceB);
+        }
+        case 'buyAgain':
+          return direction * ((a.buyAgain ?? 0) - (b.buyAgain ?? 0));
         default:
           return 0;
       }

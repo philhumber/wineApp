@@ -10,6 +10,7 @@
     sortedDrunkWines,
     drunkWineCount,
     filteredDrunkWineCount,
+    clearHistoryFilters,
     toasts,
     modal
   } from '$stores';
@@ -50,8 +51,8 @@
   }
 </script>
 
-<!-- Header -->
-<Header showFilters={false} />
+<!-- Header with History Filters -->
+<Header filterType="history" />
 
 <main class="page-container">
   <!-- History Section -->
@@ -95,7 +96,7 @@
       <div class="empty-state">
         <h3>No matches</h3>
         <p>No wines match your current filters.</p>
-        <button class="btn-secondary" on:click={() => toasts.info('Clear filters - coming soon!')}>
+        <button class="btn-secondary" on:click={clearHistoryFilters}>
           Clear Filters
         </button>
       </div>

@@ -1,6 +1,6 @@
 /**
  * Filter Options Store
- * Caches dropdown options for Type, Region, Producer, and Year filters
+ * Caches dropdown options for Country, Type, Region, Producer, and Year filters
  * Options are cached per view mode (ourWines vs allWines)
  */
 
@@ -25,11 +25,13 @@ interface CachedOptions {
 }
 
 interface FilterOptionsState {
+  countries: CachedOptions;
   types: CachedOptions;
   regions: CachedOptions;
   producers: CachedOptions;
   years: CachedOptions;
   loading: {
+    countries: boolean;
     types: boolean;
     regions: boolean;
     producers: boolean;
@@ -42,11 +44,13 @@ interface FilterOptionsState {
 // ─────────────────────────────────────────────────────────
 
 const initialState: FilterOptionsState = {
+  countries: { ourWines: null, allWines: null },
   types: { ourWines: null, allWines: null },
   regions: { ourWines: null, allWines: null },
   producers: { ourWines: null, allWines: null },
   years: { ourWines: null, allWines: null },
   loading: {
+    countries: false,
     types: false,
     regions: false,
     producers: false,
@@ -58,6 +62,17 @@ const initialState: FilterOptionsState = {
 // STORE
 // ─────────────────────────────────────────────────────────
 
+/**
+ * Convert 2-letter country code to flag emoji (e.g., "fr" → "🇫🇷")
+ */
+function countryCodeToEmoji(code: string): string {
+  if (!code || code.length !== 2) return '';
+  const codePoints = [...code.toUpperCase()].map(
+    (char) => 0x1f1e6 - 65 + char.charCodeAt(0)
+  );
+  return String.fromCodePoint(...codePoints);
+}
+
 function createFilterOptionsStore() {
   const { subscribe, update } = writable<FilterOptionsState>(initialState);
 
@@ -65,12 +80,14 @@ function createFilterOptionsStore() {
     subscribe,
 
     /**
-     * Fetch wine type options for dropdown
-     * Context-aware: filters by regionName, producerName, and/or year
+     * Fetch country options for dropdown
+     * Context-aware: filters by typeName, regionName, producerName, and/or year
      * Only caches when no filters are active (full list)
+     * Includes flag emoji in label
      */
-    async fetchTypes(
+    async fetchCountries(
       viewMode: ViewMode,
+      typeName?: string,
       regionName?: string,
       producerName?: string,
       year?: string
@@ -78,7 +95,80 @@ function createFilterOptionsStore() {
       const state = get({ subscribe });
 
       // Only use cache if no filters (full list)
-      if (!regionName && !producerName && !year) {
+      if (!typeName && !regionName && !producerName && !year) {
+        const cached = state.countries[viewMode];
+        if (cached !== null) {
+          return cached;
+        }
+      }
+
+      // Set loading
+      update((s) => ({
+        ...s,
+        loading: { ...s.loading, countries: true }
+      }));
+
+      try {
+        const withBottleCount = viewMode === 'ourWines';
+        const countries = await api.getCountries({
+          withBottleCount,
+          typeName,
+          regionName,
+          producerName,
+          year
+        });
+
+        // Map to FilterOption format with flag emoji in label
+        const options: FilterOption[] = countries.map((c) => {
+          const flag = countryCodeToEmoji(c.code);
+          return {
+            value: c.countryName,
+            label: flag ? `${flag} ${c.countryName}` : c.countryName,
+            count: c.bottleCount
+          };
+        });
+
+        // Only cache if no filters (full list)
+        if (!typeName && !regionName && !producerName && !year) {
+          update((s) => ({
+            ...s,
+            countries: { ...s.countries, [viewMode]: options },
+            loading: { ...s.loading, countries: false }
+          }));
+        } else {
+          update((s) => ({
+            ...s,
+            loading: { ...s.loading, countries: false }
+          }));
+        }
+
+        return options;
+      } catch (error) {
+        console.error('Failed to fetch countries:', error);
+        update((s) => ({
+          ...s,
+          loading: { ...s.loading, countries: false }
+        }));
+        return [];
+      }
+    },
+
+    /**
+     * Fetch wine type options for dropdown
+     * Context-aware: filters by countryName, regionName, producerName, and/or year
+     * Only caches when no filters are active (full list)
+     */
+    async fetchTypes(
+      viewMode: ViewMode,
+      countryName?: string,
+      regionName?: string,
+      producerName?: string,
+      year?: string
+    ): Promise<FilterOption[]> {
+      const state = get({ subscribe });
+
+      // Only use cache if no filters (full list)
+      if (!countryName && !regionName && !producerName && !year) {
         const cached = state.types[viewMode];
         if (cached !== null) {
           return cached;
@@ -93,7 +183,7 @@ function createFilterOptionsStore() {
 
       try {
         const withBottleCount = viewMode === 'ourWines';
-        const types = await api.getTypes({ withBottleCount, regionName, producerName, year });
+        const types = await api.getTypes({ withBottleCount, countryName, regionName, producerName, year });
 
         // Map to FilterOption format
         const options: FilterOption[] = types.map((t) => ({
@@ -103,7 +193,7 @@ function createFilterOptionsStore() {
         }));
 
         // Only cache if no filters (full list)
-        if (!regionName && !producerName && !year) {
+        if (!countryName && !regionName && !producerName && !year) {
           update((s) => ({
             ...s,
             types: { ...s.types, [viewMode]: options },
@@ -129,11 +219,12 @@ function createFilterOptionsStore() {
 
     /**
      * Fetch region options for dropdown
-     * Context-aware: filters by typeName, producerName, and/or year
+     * Context-aware: filters by countryName, typeName, producerName, and/or year
      * Only caches when no filters are active (full list)
      */
     async fetchRegions(
       viewMode: ViewMode,
+      countryName?: string,
       typeName?: string,
       producerName?: string,
       year?: string
@@ -141,7 +232,7 @@ function createFilterOptionsStore() {
       const state = get({ subscribe });
 
       // Only use cache if no filters (full list)
-      if (!typeName && !producerName && !year) {
+      if (!countryName && !typeName && !producerName && !year) {
         const cached = state.regions[viewMode];
         if (cached !== null) {
           return cached;
@@ -156,7 +247,7 @@ function createFilterOptionsStore() {
 
       try {
         const withBottleCount = viewMode === 'ourWines';
-        const regions = await api.getRegions({ withBottleCount, typeName, producerName, year });
+        const regions = await api.getRegions({ withBottleCount, countryName, typeName, producerName, year });
 
         // Map to FilterOption format
         const options: FilterOption[] = regions.map((r) => ({
@@ -166,7 +257,7 @@ function createFilterOptionsStore() {
         }));
 
         // Only cache if no filters (full list)
-        if (!typeName && !producerName && !year) {
+        if (!countryName && !typeName && !producerName && !year) {
           update((s) => ({
             ...s,
             regions: { ...s.regions, [viewMode]: options },
@@ -192,11 +283,12 @@ function createFilterOptionsStore() {
 
     /**
      * Fetch producer options for dropdown
-     * Context-aware: filters by regionName, typeName, and/or year
+     * Context-aware: filters by countryName, regionName, typeName, and/or year
      * Only caches when no filters are active (full list)
      */
     async fetchProducers(
       viewMode: ViewMode,
+      countryName?: string,
       regionName?: string,
       typeName?: string,
       year?: string
@@ -204,7 +296,7 @@ function createFilterOptionsStore() {
       const state = get({ subscribe });
 
       // Only use cache if no filters (full list)
-      if (!regionName && !typeName && !year) {
+      if (!countryName && !regionName && !typeName && !year) {
         const cached = state.producers[viewMode];
         if (cached !== null) {
           return cached;
@@ -219,7 +311,7 @@ function createFilterOptionsStore() {
 
       try {
         const withBottleCount = viewMode === 'ourWines';
-        const producers = await api.getProducers({ withBottleCount, regionName, typeName, year });
+        const producers = await api.getProducers({ withBottleCount, countryName, regionName, typeName, year });
 
         // Map to FilterOption format (include region as meta)
         const options: FilterOption[] = producers.map((p) => ({
@@ -230,7 +322,7 @@ function createFilterOptionsStore() {
         }));
 
         // Only cache if no filters (full list)
-        if (!regionName && !typeName && !year) {
+        if (!countryName && !regionName && !typeName && !year) {
           update((s) => ({
             ...s,
             producers: { ...s.producers, [viewMode]: options },
@@ -256,11 +348,12 @@ function createFilterOptionsStore() {
 
     /**
      * Fetch year options for dropdown
-     * Context-aware: filters by regionName, producerName, and/or typeName
+     * Context-aware: filters by countryName, regionName, producerName, and/or typeName
      * Only caches when no filters are active (full list)
      */
     async fetchYears(
       viewMode: ViewMode,
+      countryName?: string,
       regionName?: string,
       producerName?: string,
       typeName?: string
@@ -268,7 +361,7 @@ function createFilterOptionsStore() {
       const state = get({ subscribe });
 
       // Only use cache if no filters (full list)
-      if (!regionName && !producerName && !typeName) {
+      if (!countryName && !regionName && !producerName && !typeName) {
         const cached = state.years[viewMode];
         if (cached !== null) {
           return cached;
@@ -283,7 +376,7 @@ function createFilterOptionsStore() {
 
       try {
         const withBottleCount = viewMode === 'ourWines';
-        const years = await api.getYears({ withBottleCount, regionName, producerName, typeName });
+        const years = await api.getYears({ withBottleCount, countryName, regionName, producerName, typeName });
 
         // Map to FilterOption format
         const options: FilterOption[] = years.map((y) => ({
@@ -293,7 +386,7 @@ function createFilterOptionsStore() {
         }));
 
         // Only cache if no filters (full list)
-        if (!regionName && !producerName && !typeName) {
+        if (!countryName && !regionName && !producerName && !typeName) {
           update((s) => ({
             ...s,
             years: { ...s.years, [viewMode]: options },
@@ -320,7 +413,10 @@ function createFilterOptionsStore() {
     /**
      * Get cached options for a filter type (no fetch)
      */
-    getCached(type: 'types' | 'regions' | 'producers' | 'years', viewMode: ViewMode): FilterOption[] | null {
+    getCached(
+      type: 'countries' | 'types' | 'regions' | 'producers' | 'years',
+      viewMode: ViewMode
+    ): FilterOption[] | null {
       const state = get({ subscribe });
       return state[type][viewMode];
     },
@@ -328,7 +424,7 @@ function createFilterOptionsStore() {
     /**
      * Check if a filter type is loading
      */
-    isLoading(type: 'types' | 'regions' | 'producers' | 'years'): boolean {
+    isLoading(type: 'countries' | 'types' | 'regions' | 'producers' | 'years'): boolean {
       const state = get({ subscribe });
       return state.loading[type];
     },
@@ -336,7 +432,7 @@ function createFilterOptionsStore() {
     /**
      * Invalidate cache for a specific type or all
      */
-    invalidate(type?: 'types' | 'regions' | 'producers' | 'years') {
+    invalidate(type?: 'countries' | 'types' | 'regions' | 'producers' | 'years') {
       if (type) {
         update((s) => ({
           ...s,

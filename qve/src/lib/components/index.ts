@@ -31,6 +31,8 @@ export { default as Header } from './layout/Header.svelte';
 export { default as FilterBar } from './layout/FilterBar.svelte';
 export { default as FilterPill } from './layout/FilterPill.svelte';
 export { default as FilterDropdown } from './layout/FilterDropdown.svelte';
+export { default as CellarSortBar } from './layout/CellarSortBar.svelte';
+export { default as HistoryFilterBar } from './layout/HistoryFilterBar.svelte';
 export { default as HistorySortBar } from './layout/HistorySortBar.svelte';
 export { default as SideMenu } from './layout/SideMenu.svelte';
 

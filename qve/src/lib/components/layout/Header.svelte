@@ -6,9 +6,11 @@
   import { createEventDispatcher } from 'svelte';
   import { ViewToggle, Icon } from '$lib/components';
   import FilterBar from './FilterBar.svelte';
+  import HistoryFilterBar from './HistoryFilterBar.svelte';
   import { toggleMenu } from '$lib/stores';
 
   export let showFilters: boolean = true;
+  export let filterType: 'cellar' | 'history' | 'none' = 'cellar';
 
   const dispatch = createEventDispatcher<{
     search: void;
@@ -59,8 +61,10 @@
       </div>
     </div>
 
-    {#if showFilters}
+    {#if showFilters && filterType === 'cellar'}
       <FilterBar on:filterChange={handleFilterChange} />
+    {:else if showFilters && filterType === 'history'}
+      <HistoryFilterBar />
     {/if}
   </div>
 </header>
@@ -111,7 +115,7 @@
   }
 
   /* Remove margin if no filters */
-  .header:not(:has(.filter-bar)) .header-top {
+  .header:not(:has(.filter-bar)):not(:has(.history-filter-bar)) .header-top {
     margin-bottom: 0;
   }
 
