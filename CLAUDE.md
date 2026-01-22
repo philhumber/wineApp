@@ -1,592 +1,242 @@
-# Wine Collection App - Quick Start Guide
+# Qvé Wine App - Session Context
 
-**Last Updated**: 2026-01-21
-**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Qvé Phase 0 Complete ✅ | Qvé Phase 1 Complete ✅ | Qvé Phase 2 Complete ✅ | Qvé Phase 3 Add Wine ✅ | Qvé Phase 3 Drink/Rate ✅ | Qvé Phase 3 History ✅ | Qvé Phase 3 Add Bottle ✅ | Qvé Phase 3 Edit Wine/Bottle ✅ | Qvé Phase 3 Navigation ✅ | Qvé Phase 3 Filter Dropdowns ✅
+**Last Updated**: 2026-01-22
+**Status**: Production - Deployed and stable
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
-> **💡 For comprehensive project information, see [README.md](README.md)**
-> **📚 For detailed documentation, see [docs/README.md](docs/README.md)**
-
 ---
 
-## Current Session Context
-
-### Sprint Status
-
-| Sprint | Status | Focus |
-|--------|--------|-------|
-| Sprint 1 | ✅ COMPLETE | Critical bug fixes (WIN-87, WIN-86, WIN-66, WIN-93) |
-| Sprint 2 | ✅ COMPLETE | UX improvements (toast, filters, scroll, view mode) |
-| Sprint 3 | ✅ COMPLETE | Features (WIN-84 purchase date, WIN-38 upload, etc.) |
-| Qvé Phase 0 | ✅ COMPLETE | All 7 mockups delivered |
-| Qvé Phase 1 | ✅ COMPLETE | SvelteKit foundation in `/qve/` |
-| Qvé Phase 2 Wave 1 | ✅ COMPLETE | Foundation UI components (Icon, ThemeToggle, ViewToggle, RatingDisplay, BottleIndicators) |
-| Qvé Phase 2 Wave 2 | ✅ COMPLETE | Wine card components (WineImage, WineCard, WineGrid) |
-| Qvé Phase 2 Wave 3 | ✅ COMPLETE | Layout components (Header, FilterBar, FilterPill, Toast, ToastContainer) |
-| Qvé Phase 3 Add Wine | ✅ COMPLETE | Add Wine 4-step wizard with scroll-to-wine |
-| Qvé Phase 3 Drink/Rate | ✅ COMPLETE | Modal-based rating flow with optional ratings |
-| Qvé Phase 3 Navigation | ✅ COMPLETE | Slide-out menu, Settings modal, browser history |
-
-### Current Plan: Qvé Migration
-
-**Bug Fixes** (current app) ✅ COMPLETE
-- WIN-104, WIN-105, WIN-27, WIN-102 - All done
-
-**Phase 0: Mockup Design** ✅ COMPLETE
-- All 7 mockups delivered and reviewed
-- See: `design/qve-rebrand/README.md` for mockup inventory
-
-**Phase 1: SvelteKit Foundation** ✅ COMPLETE
-- SvelteKit project initialized in `/qve/` folder
-- Design tokens extracted (tokens.css, base.css, animations.css)
-- TypeScript API client built (mirrors PHP backend)
-- Svelte stores created (theme, wines, filters, view, toast, modal)
-- PWA configuration ready
-- Run: `cd qve && npm install && npm run dev` → http://localhost:5173/qve/
-
-**Phase 2: Core UI Components** ✅ COMPLETE
-- **Wave 1 ✅ COMPLETE** - Foundation components (Icon, ThemeToggle, ViewToggle, RatingDisplay, BottleIndicators)
-- **Wave 2 ✅ COMPLETE** - Wine card components (WineImage, WineCard, WineGrid)
-- **Wave 3 ✅ COMPLETE** - Layout components (Header, FilterBar, FilterPill, Toast, ToastContainer)
-- See: `design/qve-rebrand/QVE_MIGRATION_PLAN.md` for full roadmap
-
-**Phase 3: Page Routes** 🚧 IN PROGRESS
-- **Add Wine flow (4-step wizard)** ✅ COMPLETE
-  - ✅ Form components (FormInput, FormSelect, FormTextarea, FormRow)
-  - ✅ Wizard components (WizardStepIndicator, WizardNav, SearchDropdown)
-  - ✅ AI components (AIGenerateButton, AIExpandedSection, AILoadingOverlay)
-  - ✅ ImageUploadZone component
-  - ✅ addWine store with validation
-  - ✅ Step components (RegionStep, ProducerStep, WineStep, BottleStep)
-  - ✅ AI enrichment integration
-  - ✅ PHP purchaseDate support added to bottles table + addWine.php
-  - ✅ Scroll-to-wine with highlight after adding
-  - ✅ API integration tested and working
-- **Drink/Rate flow** ✅ COMPLETE
-  - ✅ Modal components (DrinkRateModal, ConfirmModal, ModalContainer)
-  - ✅ Rating components (RatingDots 10-dot, MiniRatingDots 5-dot, ToggleSwitch)
-  - ✅ drinkWine store with validation and submission
-  - ✅ Optional ratings (Complexity, Drinkability, Surprise, Food Pairing)
-  - ✅ Food pairing reminder when rating > 0
-  - ✅ Cancel confirmation for unsaved changes
-  - ✅ PHP drinkBottle.php updated for optional ratings
-  - ✅ Database migration for optional rating columns
-  - ✅ Scroll-to-wine with header offset after rating
-- **History page** ✅ COMPLETE
-  - ✅ HistoryCard component (collapsible wine details, drink date badge, ratings display)
-  - ✅ HistoryGrid component with stagger animations
-  - ✅ HistorySortBar component (sort by Date, Rating, Value, Name, Type)
-  - ✅ History store with filtering and sorting
-  - ✅ PHP getDrunkWines.php updated with all rating fields + bottle price/currency
-  - ✅ DrunkWine TypeScript type with optional ratings
-  - ✅ Bottle price display with currency formatting
-  - ✅ Add Bottle button on history cards
-  - ✅ Same wine appears multiple times (one entry per drunk bottle)
-- **Add Bottle modal** ✅ COMPLETE
-  - ✅ AddBottleModal component with wine info display
-  - ✅ addBottle store with form state and validation
-  - ✅ Quantity stepper with +/- buttons (add multiple bottles at once)
-  - ✅ Form fields: Size, Location, Source, Price, Currency, Purchase Date
-  - ✅ Triggered from both WineCard (Home) and HistoryCard (History)
-  - ✅ PHP addBottle.php updated for purchaseDate support
-  - ✅ incrementBottleCount helper in wines store
-- **Edit Wine/Bottle page** ✅ COMPLETE
-  - ✅ editWine store with form state, dirty checking, and validation
-  - ✅ Two-tab interface (Wine Details | Bottle Details)
-  - ✅ WineForm component (name, year, type, description, tasting, pairing, image)
-  - ✅ BottleForm component (size, location, source, price, currency, purchaseDate)
-  - ✅ BottleSelector pill-based component for selecting bottles to edit
-  - ✅ WIN-106: Wine image prepopulated from existing pictureURL
-  - ✅ WIN-102: Wines with 0 bottles handled gracefully (bottle tab disabled)
-  - ✅ PHP updateBottle.php updated for purchaseDate support
-  - ✅ Scroll-to-wine with highlight after save
-- **Navigation Menu** ✅ COMPLETE
-  - ✅ SideMenu slide-out drawer component (hamburger icon triggers)
-  - ✅ 5 menu items: Cellar, Add Wine, History, Settings, All Wines
-  - ✅ SettingsModal for theme and view density toggles
-  - ✅ menu.ts store for open/close state
-  - ✅ scrollPosition.ts store for back/forward scroll restoration
-  - ✅ Cellar vs All Wines view modes (bottleCount filter)
-  - ✅ Browser history integration (back/forward buttons work)
-  - ✅ Dirty state warnings on Add Wine and Edit pages
-- **Filter Dropdowns (WIN-34)** ✅ COMPLETE
-  - ✅ FilterDropdown component with keyboard navigation, viewport boundary detection
-  - ✅ filterOptions store with view-mode aware caching
-  - ✅ Type, Region, Producer, Vintage dropdowns replace old type pills
-  - ✅ Fully context-aware: each filter affects all other filters
-  - ✅ PHP endpoints updated (getTypes, getRegions, getProducers, getYears)
-  - ✅ Bottle counts shown for each option
-  - ✅ Cellar view shows only options with bottles; All Wines shows all
-
-### What You Need to Know
-
-1. **✅ Current App Complete** - 17 ES6 modules, old `wineapp.js` deprecated (DO NOT LOAD)
-2. **✅ Sprint 1-3 Complete** - Core app stable, ready for migration
-3. **✅ GitHub Setup Complete** - Repo at `philhumber/wineApp` with 3-branch workflow
-4. **✅ Credentials Secured** - All credentials in `../wineapp-config/` (outside web root)
-5. **✅ Qvé Phase 0 Complete** - All mockups in `design/qve-rebrand/`
-6. **✅ Qvé Phase 1 Complete** - SvelteKit foundation in `/qve/` folder (requires Node 18+)
-7. **✅ Qvé Phase 2 Wave 1 Complete** - Foundation components in `qve/src/lib/components/ui/`
-8. **✅ Qvé Phase 2 Wave 2 Complete** - Wine card components in `qve/src/lib/components/wine/`
-9. **✅ Qvé Phase 2 Wave 3 Complete** - Layout components in `qve/src/lib/components/layout/` + Toast
-10. **✅ Qvé Phase 3 Add Wine Complete** - Full 4-step wizard with AI enrichment, image upload, scroll-to-wine
-11. **✅ Qvé Phase 3 Drink/Rate Complete** - Modal-based rating with 10-dot + optional 5-dot ratings, scroll-to-wine
-12. **✅ Qvé Phase 3 History Complete** - History page with HistoryCard, sorting, filtering, bottle price display
-13. **✅ Qvé Phase 3 Add Bottle Complete** - Modal for adding bottles from WineCard or HistoryCard with quantity stepper
-14. **✅ Qvé Phase 3 Edit Wine/Bottle Complete** - Two-tab edit page with wine image prepopulation and 0-bottle handling
-15. **✅ Qvé Phase 3 Navigation Complete** - Slide-out menu, Settings modal, browser history back/forward, scroll restoration
-16. **✅ Qvé Phase 3 Filter Dropdowns Complete** - Type/Region/Producer/Vintage dropdowns, fully context-aware, view-mode aware
-
-### Critical Warnings
-
-⚠️ **DO NOT** load old `resources/wineapp.js` - causes conflicts with modular system
-⚠️ **DO NOT** use `ratingManager.closeModal()` - use `modalManager.hideAll()` instead
-⚠️ **ALWAYS** refresh dropdowns after mutations - `dropdownManager.refreshAllDropdowns()`
-⚠️ **CREDENTIALS** are in `../wineapp-config/` (DB: `config.local.php`, JIRA: `jira.config.json`)
-
----
-
-## Quick Commands
+## Quick Start
 
 ```bash
-# Run current app (PHP)
+# Terminal 1: PHP backend (from project root)
 php -S localhost:8000
 
-# Run Qvé app (SvelteKit) - requires Node 18+
-cd qve && npm run dev    # http://localhost:5173/qve/
-
-# Git workflow (always work from develop or svelte-rewrite)
-git checkout develop     # For current app fixes
-git checkout svelte-rewrite  # For Qvé migration
-git pull origin <branch>
-git checkout -b feature/WINE-XX-description
-
-# Database connection
-mysql -h 10.0.0.16 -u username -p winelist
-
-# Deploy to production (PowerShell)
-.\deploy.ps1 -DryRun    # Preview changes
-.\deploy.ps1            # Deploy with auto-backup
-.\deploy.ps1 -ListBackups
-.\deploy.ps1 -Rollback "2026-01-18_143022"
+# Terminal 2: Vite dev server (from qve folder)
+cd qve && npm run dev
 ```
 
-### JIRA API Access
-
-Use **curl with Basic Auth** to query JIRA (the old `/rest/api/3/search` endpoint was deprecated):
-```bash
-# Get all open issues
-curl -s -u "email:token" "https://philhumber.atlassian.net/rest/api/3/search/jql?jql=project=WIN+AND+status!=Done+ORDER+BY+priority+DESC&fields=key,summary,status,priority,issuetype"
-```
-
-**Credentials**: Stored in `../wineapp-config/jira.config.json` (email, token, baseUrl)
-
-**Note**: The JIRA board UI requires browser login; use the REST API for programmatic access.
+Open: **http://localhost:5173/qve/**
 
 ---
 
-## GitHub & Branching
+## Architecture Overview
 
-**Repository**: https://github.com/philhumber/wineApp
-
-**Branch Structure**:
 ```
-main (QA / testing - manual deploy to prod)
-  │
-  ├── develop (ongoing fixes & features)
-  │
-  └── svelte-rewrite (Qvé migration)
+qve/src/
+├── lib/
+│   ├── api/           # TypeScript API client
+│   │   ├── client.ts  # All API methods
+│   │   └── types.ts   # Wine, Bottle, Rating types
+│   ├── components/    # 40+ Svelte components
+│   │   ├── ui/        # Icon, ThemeToggle, Toast, RatingDisplay
+│   │   ├── wine/      # WineCard, WineGrid, HistoryCard
+│   │   ├── layout/    # Header, FilterBar, SideMenu, FilterDropdown
+│   │   ├── forms/     # FormInput, RatingDots, MiniRatingDots
+│   │   ├── wizard/    # WizardStepIndicator, SearchDropdown, AILoadingOverlay
+│   │   ├── modals/    # DrinkRateModal, AddBottleModal, ConfirmModal
+│   │   └── edit/      # WineForm, BottleForm, BottleSelector
+│   ├── stores/        # 14 Svelte stores (state management)
+│   └── styles/        # tokens.css, base.css, animations.css
+└── routes/            # SvelteKit file-based routing
+    ├── +page.svelte   # Home / Cellar view
+    ├── add/           # Add Wine wizard
+    ├── history/       # Drink history
+    ├── edit/[id]/     # Edit Wine/Bottle
+    └── drink/[id]/    # Drink/Rate flow
 ```
-
-**Workflow**: Create feature branches from `develop`, open PRs, squash merge.
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/06-reference/GITHUB_QUICK_REFERENCE.md](docs/06-reference/GITHUB_QUICK_REFERENCE.md)
-
-**Credentials**: Stored in `../wineapp-config/` (outside repo):
-- `config.local.php` - Database credentials
-- `jira.config.json` - JIRA API token (email, token, baseUrl)
 
 ---
 
-## Technology Stack (Quick Reference)
+## Key Stores
 
-- **Frontend**: Vanilla JavaScript ES6+ modules (17 modules, no frameworks)
-- **Backend**: PHP 7+ with PDO
-- **Database**: MySQL 8.0 on 10.0.0.16 (database: `winelist`)
-- **AI**: Google Gemini AI API
-- **Architecture**: Observable state, event delegation, template cloning
-
-**See [README.md](README.md) for complete stack details and project structure.**
-
----
-
-## Key Files to Know
-
-### JavaScript Modules (17 total)
-```
-resources/js/
-├── app.js                          # Main entry, event delegation, init
-├── core/
-│   ├── api.js                      # WineAPI class, all backend calls
-│   ├── state.js                    # AppState, viewMode, filters
-│   └── modals.js                   # Modal overlay management
-├── ui/
-│   ├── cards.js                    # Card rendering, scrollToCard
-│   ├── toast.js                    # Toast notifications
-│   ├── loading.js                  # AI loading text cycler
-│   ├── dropdowns.js                # Filter dropdowns
-│   └── navigation.js               # Sidebar navigation
-├── features/
-│   ├── rating.js                   # 10-star rating system
-│   ├── wine-management.js          # Add/edit wines
-│   └── bottle-tracking.js          # Add/drink bottles
-└── utils/                          # DOM helpers, validation
-```
-
-### PHP Backend (17 files)
-```
-resources/php/
-├── getWines.php                    # Complex JOIN query with filters
-├── addWine.php                     # Transaction-based insert (4 tables)
-├── drinkBottle.php                 # Mark drunk, add rating
-├── upload.php                      # 800x800px image processing
-├── audit_log.php                   # Change tracking
-└── ... (12 more)
-```
-
-### HTML Pages
-- `index.html` - Main SPA entry
-- `addwine.html` - 4-tab wine add form
-- `rating.html` - Rating interface (has `#wineToRate`)
-- `addBottle.html` - Add bottle form (has `#wineToAdd`)
-
-### Database
-- `resources/sql/DBStructure.sql` - Complete schema
-- 11 tables: wine, bottles, ratings, producers, region, country, winetype, grapes, grapemix, worlds, audit_log
-- **See [README.md](README.md) for complete schema and relationships**
+| Store | File | Purpose |
+|-------|------|---------|
+| wines | `stores/wines.ts` | Wine list, loading state, fetchWines() |
+| filters | `stores/filters.ts` | Active filter values (type, region, producer, year) |
+| filterOptions | `stores/filterOptions.ts` | Available options, context-aware caching |
+| view | `stores/view.ts` | Cellar vs All Wines mode |
+| addWine | `stores/addWine.ts` | 4-step wizard state, validation |
+| drinkWine | `stores/drinkWine.ts` | Drink/Rate modal state |
+| editWine | `stores/editWine.ts` | Edit page form state, dirty checking |
+| addBottle | `stores/addBottle.ts` | Add Bottle modal state |
+| history | `stores/history.ts` | Drink history, sorting |
+| toast | `stores/toast.ts` | Toast notifications |
+| modal | `stores/modal.ts` | Modal container state |
+| menu | `stores/menu.ts` | Side menu open/close |
+| theme | `stores/theme.ts` | Light/dark theme |
+| scrollPosition | `stores/scrollPosition.ts` | Scroll restoration |
 
 ---
 
-## Development Workflow
+## API Client
 
-### Starting a New Session
+All backend calls go through `lib/api/client.ts`:
 
-1. **Read this file** (CLAUDE.md) for current context
-2. **Check current sprint** - See Sprint Status table above
-3. **Check JIRA board** - https://philhumber.atlassian.net/jira/software/projects/WIN
-4. **Check Qvé plan** - Ready to begin migration phase
-5. **Read relevant docs** if needed:
-   - [docs/01-overview/ARCHITECTURE.md](docs/01-overview/ARCHITECTURE.md) - System design
-   - [docs/02-development/MODULE_GUIDE.md](docs/02-development/MODULE_GUIDE.md) - Module API reference
-   - Recent sprint summaries in [docs/04-sprints/](docs/04-sprints/)
-
-### Making Changes
-
-1. **Create a feature branch** - Always create a branch from `develop` before starting work: `git checkout develop && git pull origin develop && git checkout -b feature/WIN-XX-description`
-2. **Read files first** - Never modify code you haven't read
-3. **Follow existing patterns** - Maintain consistency with modular architecture
-4. **Test thoroughly** - Run 10-point regression test (see [docs/03-testing/TESTING_GUIDE.md](docs/03-testing/TESTING_GUIDE.md))
-5. **Update JIRA** - Mark issues as Done when complete
-6. **Update docs** - Update CLAUDE.md or relevant sprint docs if needed
-
-### Common Pitfalls to Avoid
-
-1. **Loading old wineapp.js** → Causes conflicts
-2. **Wrong modal close function** → Use `modalManager.hideAll()` not `ratingManager.closeModal()`
-3. **Not parsing JSON** → Always parse JSON in API responses
-4. **Forgetting dropdown refresh** → Call `dropdownManager.refreshAllDropdowns()` after mutations
-5. **No transactions** → Always use PDO transactions for multi-table operations
-6. **No element checks** → Always check `if (element)` before accessing
-
-**See [README.md](README.md) for detailed pitfall descriptions and solutions.**
-
----
-
-## Sprint 3 Summary (Complete ✅)
-
-### All Issues Completed (8 issues)
-- WIN-84: Add purchase date field ✅
-- WIN-38: Upload button UI - drag & drop zone with responsive thumbnail ✅
-- WIN-43: Loading UI improvements (cycling wine-themed messages during AI loading) ✅
-- WIN-88: Price scale on wine cards ($ to $$$$$, per-liter comparison, by bottle size) ✅
-- WIN-95: Picture upload (800x800px, edge-sampled backgrounds) ✅
-- WIN-27: Right-click context menu ✅
-- WIN-96: Card collapse scroll behavior ✅
-- WIN-NEW: avgRating DECIMAL overflow fix ✅
-
-### Post-Sprint Cleanup (2026-01-18)
-- WIN-104: Edit page tab counter reset ✅
-- WIN-105: Median for price scale ✅
-
-**See [README.md](README.md) for complete issue list and JIRA board for full details.**
-
----
-
-## Testing
-
-### Quick Regression Test (10 tests)
-
-Run after each change:
-
-1. Initial page load & initialization
-2. Sidebar navigation
-3. Filter dropdowns (5 filters)
-4. Add wine workflow (4-tab form + AI)
-5. Drink bottle & rate wine
-6. Add bottle to existing wine
-7. Edit wine details
-8. Card expand/collapse
-9. AI data generation
-10. Drunk wines history
-
-**See [docs/03-testing/TESTING_GUIDE.md](docs/03-testing/TESTING_GUIDE.md) for detailed test procedures.**
-
----
-
-## Qvé Migration Status
-
-**Phase 1 Complete** ✅ - SvelteKit foundation ready
-**Phase 2 Complete** ✅ - All core UI components built (Waves 1-3)
-**Phase 3 Complete** ✅ - Add Wine ✅, Drink/Rate ✅, History ✅, Add Bottle ✅, Edit Wine/Bottle ✅, Navigation ✅
-
-**What's Built** (`/qve/` folder):
-- SvelteKit 2 + TypeScript + Vite 5
-- Design tokens extracted from mockups (light/dark themes)
-- TypeScript API client (mirrors all PHP endpoints)
-- Svelte stores (theme, wines, filters, view, toast, modal, addWine, drinkWine, history, addBottle, editWine)
-- PWA configuration (manifest, service worker caching)
-- Foundation UI components (Icon, ThemeToggle, ViewToggle, RatingDisplay, BottleIndicators)
-- Wine card components (WineImage, WineCard, WineGrid)
-- Layout components (Header, FilterBar, FilterPill, Toast, ToastContainer)
-- Home page with live API data, filtering, and toast notifications
-- **Add Wine wizard** (4-step: Region → Producer → Wine → Bottle)
-  - Form components (FormInput, FormSelect, FormTextarea, FormRow)
-  - Wizard components (WizardStepIndicator, WizardNav, SearchDropdown)
-  - AI components (AIGenerateButton, AIExpandedSection, AILoadingOverlay)
-  - ImageUploadZone with drag-drop and preview
-- **Drink/Rate modal** (modal-based rating flow)
-  - Rating components (RatingDots 10-dot, MiniRatingDots 5-dot, ToggleSwitch)
-  - Modal components (DrinkRateModal, ConfirmModal, ModalContainer)
-  - Optional ratings (Complexity, Drinkability, Surprise, Food Pairing)
-  - Food pairing reminder, cancel confirmation, scroll-to-wine
-- **History page** (drink history with ratings)
-  - HistoryCard component (collapsible details, ratings, bottle price)
-  - HistoryGrid with stagger animations
-  - HistorySortBar (sort by Date, Rating, Value, Name, Type)
-  - History store with filtering and sorting
-- **Add Bottle modal** (add bottles to existing wines)
-  - AddBottleModal component with wine thumbnail and metadata display
-  - addBottle store with form state, validation, and multi-bottle submission
-  - Quantity stepper with +/- buttons (add 1-24 bottles at once)
-  - Triggered from WineCard (Home page) and HistoryCard (History page)
-- **Edit Wine/Bottle page** (full edit capability)
-  - Two-tab interface (Wine Details | Bottle Details)
-  - WineForm, BottleForm, BottleSelector components
-  - editWine store with form state, dirty checking, and validation
-  - Wine image prepopulation (WIN-106)
-  - 0-bottle handling (WIN-102) - bottle tab disabled with message
-- **Navigation Menu** (slide-out drawer)
-  - SideMenu component with 5 menu items (Cellar, Add Wine, History, Settings, All Wines)
-  - SettingsModal for theme and view density toggles
-  - menu.ts and scrollPosition.ts stores
-  - Browser history integration with scroll position restoration
-  - Cellar (wines with bottles) vs All Wines (all wines including 0 bottles) view modes
-
-**Key Files**:
-- `qve/src/lib/api/client.ts` - API client
-- `qve/src/lib/stores/` - State management
-- `qve/src/lib/stores/addWine.ts` - Add Wine wizard state and validation
-- `qve/src/lib/stores/drinkWine.ts` - Drink/Rate modal state and validation
-- `qve/src/lib/stores/history.ts` - History page state, sorting, filtering
-- `qve/src/lib/stores/addBottle.ts` - Add Bottle modal state and validation
-- `qve/src/lib/stores/editWine.ts` - Edit Wine/Bottle page state and validation
-- `qve/src/lib/stores/menu.ts` - Navigation menu open/close state
-- `qve/src/lib/stores/scrollPosition.ts` - Scroll position for back/forward navigation
-- `qve/src/lib/stores/filterOptions.ts` - Filter dropdown options with view-mode aware caching
-- `qve/src/lib/styles/tokens.css` - Design tokens
-- `qve/src/lib/components/ui/` - Foundation UI components
-- `qve/src/lib/components/wine/` - Wine card components
-- `qve/src/lib/components/layout/` - Layout components (Header, FilterBar, FilterPill)
-- `qve/src/lib/components/forms/` - Form and rating components
-- `qve/src/lib/components/wizard/` - Wizard components
-- `qve/src/lib/components/modals/` - Modal components (DrinkRateModal, ConfirmModal, AddBottleModal)
-- `qve/src/lib/components/edit/` - Edit page components (WineForm, BottleForm, BottleSelector)
-- `qve/src/routes/` - Page routes
-- `qve/src/routes/add/` - Add Wine wizard route
-- `qve/src/routes/history/` - History page route
-- `qve/src/routes/edit/[id]/` - Edit Wine/Bottle page route
-
-**Phase 3 Complete** - All page routes implemented
-
-**See [design/qve-rebrand/QVE_MIGRATION_PLAN.md](design/qve-rebrand/QVE_MIGRATION_PLAN.md) for full roadmap.**
-
----
-
-## Qvé Development Setup
-
-### Prerequisites
-
-- **Node.js 18+** (tested with v24.13.0) - SvelteKit requires Node 18 or higher
-- **PHP 7+** with PDO extension
-- **MySQL 8.0** on 10.0.0.16
-
-### Running the Development Environment
-
-The Qvé app requires **two servers running simultaneously**:
-
-```bash
-# Terminal 1: Start PHP backend (from wineapp root)
-cd "c:\Users\Phil\Google Drive\dev\wineapp"
-php -S localhost:8000
-
-# Terminal 2: Start Vite dev server (from qve folder)
-cd "c:\Users\Phil\Google Drive\dev\wineapp\qve"
-npm install    # First time only
-npm run dev
-```
-
-Then open: **http://localhost:5173/qve/**
-
-### How the Proxy Works
-
-The Vite dev server proxies API requests to the PHP backend:
-
-```
-Browser → localhost:5173/qve/           (SvelteKit app)
-       → localhost:5173/resources/php/  (proxied to PHP)
-                ↓
-       → localhost:8000/resources/php/  (PHP backend)
-```
-
-This is configured in [qve/vite.config.ts](qve/vite.config.ts):
 ```typescript
-server: {
-  proxy: {
-    '/resources/php': {
-      target: 'http://localhost:8000',
-      changeOrigin: true
-    }
-  }
-}
+import { api } from '$lib/api';
+
+// Fetch wines with filters
+const wines = await api.getWines({ type: 'Red', cellarOnly: true });
+
+// Add wine (4-table transaction)
+const result = await api.addWine(wineData);
+
+// Drink bottle with rating
+await api.drinkBottle(bottleId, { rating: 8, notes: '...' });
+
+// AI enrichment
+const data = await api.enrichWithAI('producer', 'Château Margaux');
 ```
 
-### Troubleshooting Common Errors
+---
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| **404 Not Found** for API | Vite proxy not configured or PHP server not running | Ensure PHP server is running at localhost:8000 |
-| **500 Internal Server Error** | PHP running from wrong directory | Run `php -S localhost:8000` from wineapp root (not qve folder) |
-| **ECONNREFUSED** | PHP server not running | Start PHP server: `php -S localhost:8000` |
-| **TypeScript errors** | Missing types or dependencies | Run `npm install` then `npm run check` |
-| **Node version error** | Node.js < 18 | Upgrade Node.js to v18 or higher |
+## Component Patterns
 
-### Verification Checklist
+### Form Components
+```svelte
+<FormInput bind:value={name} label="Wine Name" required />
+<FormSelect bind:value={type} options={typeOptions} label="Type" />
+<FormTextarea bind:value={notes} label="Notes" rows={3} />
+```
 
-After starting both servers, verify:
+### Rating Components
+```svelte
+<!-- 10-dot main rating -->
+<RatingDots bind:value={rating} />
 
-1. ✅ Open http://localhost:5173/qve/ - should load the home page
-2. ✅ Check "API Connection" card shows "connected - X wines"
-3. ✅ Theme toggle works (persists on refresh)
-4. ✅ Navigate to /qve/add, /qve/history, /qve/edit/{id} routes
-5. ✅ DevTools > Application > Manifest shows PWA config
+<!-- 5-dot mini ratings (optional) -->
+<MiniRatingDots bind:value={complexity} label="Complexity" />
+```
+
+### Modal Pattern
+```svelte
+<DrinkRateModal wineId={id} on:close={handleClose} on:rated={handleRated} />
+<ConfirmModal message="Discard changes?" on:confirm={discard} on:cancel={stay} />
+```
 
 ---
 
-## Open Backlog Summary
+## Routes
 
-### Bugs (To Do)
-No open bugs - all fixed!
-
-### Tasks - Will migrate to Qvé
-| Key | Summary |
-|-----|---------|
-| WIN-103 | Remove hardcoded currencies and sizes |
-| WIN-80 | Delete a bottle (drink with no rating) |
-| WIN-68 | Sort by buttons |
-| WIN-24 | Search |
-
-### Completed - Filter Dropdowns (2026-01-21)
-| Key | Summary |
-|-----|---------|
-| WIN-34 | Filtering and Sorting ✅ |
-
-### Completed - Edit Wine/Bottle Page (2026-01-21)
-| Key | Summary |
-|-----|---------|
-| WIN-102 | Can't edit wine with no bottles ✅ |
-| WIN-106 | Prepopulate wine image when editing ✅ |
-
-### Completed - History Page (2026-01-20)
-| Key | Summary |
-|-----|---------|
-| WIN-69 | Add drink history ✅ |
-| WIN-70 | Allow cancel 'drink Bottle' ✅ (part of Drink/Rate flow) |
-
-### Tasks - AI Features (Post-Migration)
-| Key | Summary |
-|-----|---------|
-| WIN-42 | Build Image recognition |
-| WIN-37 | Build AI chatbot (winebot) |
-| WIN-64 | Use structured output and grounding |
-
-### Tasks - Infrastructure
-| Key | Summary |
-|-----|---------|
-| WIN-97 | Add audit functions to all insert/update |
-| WIN-78 | JS/PHP Caching |
-| WIN-65 | Limit size of ownership return |
-
-### Completed - Add Wine Wizard (2026-01-20)
-| Key | Summary |
-|-----|---------|
-| WIN-57 | Add Wine Search Boxes ✅ |
-| WIN-59 | When no results, let user reveal core details ✅ |
-| WIN-60 | Prompt user to add data manually or with AI ✅ |
-| WIN-61 | Show populated or blank forms ✅ |
-| WIN-62 | Grey next button until complete ✅ |
-| WIN-63 | Check field validation ✅ |
-| WIN-67 | Add wine dropdowns context aware ✅ |
-| WIN-79 | Check if similar region/producer/wine exists ✅ |
-
-### Epics
-- WIN-1: AI
-- WIN-21: UX/UI
-- WIN-22: Functionality
+| Route | Component | Description |
+|-------|-----------|-------------|
+| `/qve/` | `+page.svelte` | Home with WineGrid, filters |
+| `/qve/add` | `add/+page.svelte` | 4-step wizard |
+| `/qve/history` | `history/+page.svelte` | HistoryGrid with sorting |
+| `/qve/edit/[id]` | `edit/[id]/+page.svelte` | Two-tab edit (Wine/Bottle) |
+| `/qve/drink/[id]` | `drink/[id]/+page.svelte` | DrinkRateModal page |
 
 ---
 
-## Documentation
+## Current Sprint Backlog
 
-### Quick Links
+### Sprint 4: Security + Quick Wins
+| Key | Summary | Status |
+|-----|---------|--------|
+| WIN-119 | Secure wineapp-config directory | To Do |
+| WIN-34 | Finish filtering/sorting | In Progress |
+| WIN-79 | Finish duplicate checking | In Progress |
+| WIN-124 | Double field label bug | To Do |
+| WIN-129 | Form not clearing bug | To Do |
+| WIN-115 | Browser tab titles | To Do |
+| WIN-116 | Qve to Qvé branding | To Do |
 
-**Must-Read**:
-- [README.md](README.md) - Comprehensive project reference
-- [docs/README.md](docs/README.md) - Documentation hub
+### Sprint 5: Currency + Card Details
+- WIN-103: Remove hardcoded currencies/sizes
+- WIN-130: Allow currency display setting
+- WIN-111: Additional wine card details
+- WIN-125: Add/Edit screen consistency
+- WIN-99: Audit JSON display fix
 
-**Architecture & Development**:
-- [docs/01-overview/ARCHITECTURE.md](docs/01-overview/ARCHITECTURE.md) - Complete system architecture
-- [docs/02-development/MODULE_GUIDE.md](docs/02-development/MODULE_GUIDE.md) - Module API reference
+See [plan file](C:\Users\Phil\.claude\plans\harmonic-crafting-wombat.md) for full sprint breakdown.
 
-**Testing**:
-- [docs/03-testing/TESTING_GUIDE.md](docs/03-testing/TESTING_GUIDE.md) - Testing procedures
+---
 
-**Sprint Work**:
-- [docs/04-sprints/README.md](docs/04-sprints/README.md) - Sprint index
-- [docs/04-sprints/sprint-01/SPRINT1_SUMMARY.md](docs/04-sprints/sprint-01/SPRINT1_SUMMARY.md) - Sprint 1 (critical bugs)
-- [docs/04-sprints/sprint-02/](docs/04-sprints/sprint-02/) - Sprint 2 (UX improvements)
+## PHP Backend
 
-**Design**:
-- [design/qve-rebrand/README.md](design/qve-rebrand/README.md) - Qvé rebrand overview
-- [design/qve-rebrand/qve-mockup.html](design/qve-rebrand/qve-mockup.html) - Live mockup
+Endpoints in `resources/php/`:
+
+| File | Purpose |
+|------|---------|
+| `getWines.php` | Main query with JOINs and filters |
+| `addWine.php` | 4-table transaction insert |
+| `updateWine.php` | Update wine details |
+| `drinkBottle.php` | Mark drunk + add rating |
+| `addBottle.php` | Add bottle to wine |
+| `updateBottle.php` | Update bottle details |
+| `getDrunkWines.php` | History with ratings |
+| `getTypes.php` | Types with bottle counts |
+| `getRegions.php` | Regions with bottle counts |
+| `getProducers.php` | Producers with bottle counts |
+| `getYears.php` | Vintages with bottle counts |
+| `upload.php` | Image upload (800x800) |
+| `geminiAPI.php` | AI enrichment |
+
+---
+
+## Database
+
+**Host**: 10.0.0.16
+**Database**: winelist
+**Schema**: `resources/sql/DBStructure.sql`
+
+Key tables: wine, bottles, ratings, producers, region, country, winetype
+
+---
+
+## Configuration
+
+**Database credentials**: `../wineapp-config/config.local.php` (outside repo)
+**JIRA API**: `../wineapp-config/jira.config.json`
+**Vite proxy**: `qve/vite.config.ts` proxies `/resources/php` to PHP backend
+
+---
+
+## Common Tasks
+
+### Add a new component
+1. Create in `qve/src/lib/components/<category>/`
+2. Export from `qve/src/lib/components/index.ts`
+3. Import: `import { MyComponent } from '$lib/components'`
+
+### Add a new store
+1. Create in `qve/src/lib/stores/`
+2. Export from `qve/src/lib/stores/index.ts`
+3. Import: `import { myStore } from '$lib/stores'`
+
+### Add a new API endpoint
+1. Add method to `qve/src/lib/api/client.ts`
+2. Add types to `qve/src/lib/api/types.ts`
+
+### Modify PHP endpoint
+1. Edit file in `resources/php/`
+2. Test with both old and new app if needed
+
+---
+
+## Deployment
+
+```powershell
+.\deploy.ps1 -DryRun    # Preview
+.\deploy.ps1            # Deploy with backup
+.\deploy.ps1 -Rollback "2026-01-22_143022"
+```
+
+---
+
+## Archive Reference
+
+V1 app files preserved in `archive/`:
+- `v1-html/` - Old HTML pages, CSS
+- `v1-js/` - ES6 modules (17 files)
+- `v1-docs/` - Sprint docs, MODULE_GUIDE
+- `design-mockups/` - Qvé mockups and design system
 
 ---
 
 ## Resources
 
-**GitHub**: https://github.com/philhumber/wineApp
-**JIRA Board**: https://philhumber.atlassian.net/jira/software/projects/WIN
-**Database**: MySQL 8.0 on 10.0.0.16 (database: `winelist`)
-**Developer**: Phil Humber (phil.humber@gmail.com)
-
----
-
-*This file serves as a concise quick-start guide for new Claude sessions. For detailed information, see [README.md](README.md) and [docs/](docs/).*
+- **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
+- **GitHub**: https://github.com/philhumber/wineApp
+- **Developer**: Phil Humber (phil.humber@gmail.com)
