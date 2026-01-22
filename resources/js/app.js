@@ -69,6 +69,10 @@ class WineApp {
 			await this.loadInitialData(); // Then populate them
 
 			this.initialized = true;
+
+			// Show test mode banner if in test environment
+			this.showTestModeBanner();
+
 			console.log('✅ Wine Collection App initialized successfully');
 		} catch (error) {
 			console.error('❌ Failed to initialize application:', error);
@@ -566,6 +570,19 @@ class WineApp {
 	async reload() {
 		console.log('Reloading application...');
 		await this.loadInitialData();
+	}
+
+	/**
+	 * Show test mode banner if in test environment
+	 */
+	showTestModeBanner() {
+		if (window.WINE_APP_CONFIG?.environment === 'test') {
+			const banner = document.createElement('div');
+			banner.className = 'test-mode-banner';
+			banner.textContent = 'TEST MODE';
+			document.body.prepend(banner);
+			console.log('🧪 Running in TEST environment');
+		}
 	}
 }
 
