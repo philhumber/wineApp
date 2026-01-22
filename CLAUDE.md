@@ -139,7 +139,7 @@ const data = await api.enrichWithAI('producer', 'Château Margaux');
 | WIN-34 | Finish filtering/sorting | Done |
 | WIN-79 | Finish duplicate checking | In Progress |
 | WIN-124 | Double field label bug | To Do |
-| WIN-129 | Form not clearing bug | To Do |
+| WIN-129 | Form not clearing bug | Done |
 | WIN-115 | Browser tab titles | To Do |
 | WIN-116 | Qve to Qvé branding | To Do |
 
