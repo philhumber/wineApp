@@ -69,6 +69,14 @@ mysql -h 10.0.0.16 -u username -p winelist
 .\deploy.ps1            # Deploy with auto-backup
 .\deploy.ps1 -ListBackups
 .\deploy.ps1 -Rollback "2026-01-18_143022"
+
+# JIRA CLI (REST API v3)
+.\scripts\jira.ps1 list                      # List open issues
+.\scripts\jira.ps1 get WIN-123               # Get issue details
+.\scripts\jira.ps1 create "Fix bug" Bug      # Create issue (Task, Bug, Story)
+.\scripts\jira.ps1 status WIN-123 "Done"     # Transition status
+.\scripts\jira.ps1 comment WIN-123 "Note"    # Add comment
+.\scripts\jira.ps1 sprint                    # Current sprint issues
 ```
 
 ### Test vs Production Database
