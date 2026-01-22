@@ -2,8 +2,8 @@
 
 A personal wine collection management application with AI-powered data entry, bottle tracking, and rating system.
 
-**Last Updated**: 2026-01-16
-**Status**: Phase 1 Complete ✅ | Sprint 1-2 Complete ✅ | Sprint 3 In Progress 🟡
+**Last Updated**: 2026-01-18
+**Status**: Phase 1 Complete ✅ | Sprint 1-3 Complete ✅ | Fix & Migrate Phase 🔧
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
 ---
@@ -311,6 +311,24 @@ Run through the 10-point regression test checklist (see [Testing](#testing) belo
    # Edit the file with your database and API credentials
    ```
 
+3. **Set up test database** (recommended for development)
+   ```bash
+   # Clone production database to test
+   mysqldump -h 10.0.0.16 -u webuser -p winelist > winelist_backup.sql
+   mysql -h 10.0.0.16 -u webuser -p -e "CREATE DATABASE winelist_test;"
+   mysql -h 10.0.0.16 -u webuser -p winelist_test < winelist_backup.sql
+   ```
+
+   Then in `config.local.php`, set `APP_ENV`:
+   ```php
+   define('APP_ENV', 'test');  // Use 'test' or 'prod'
+   ```
+
+   When `APP_ENV = 'test'`:
+   - Connects to `winelist_test` database
+   - Shows orange "TEST MODE" banner at top of page
+   - Safe to experiment without affecting production data
+
 #### Starting Work on a Feature
 
 1. **Check JIRA** - Pick an issue from the current sprint
@@ -367,7 +385,7 @@ main (QA / testing - manual deploy to prod)
         └── rewrite/*
 ```
 
-**Production deployment**: Files are manually deployed to the webserver when ready.
+**Production deployment**: Use `deploy.ps1` script to deploy to `V:\html\wineApp` with automatic backup.
 
 **Flow for features/fixes:** `feature/WIN-XX` → `develop` → `main` → manual deploy
 
@@ -490,30 +508,49 @@ Implemented major UX improvements:
 - ✅ **WIN-94**: Navigate to new wine after add
 - ✅ **WIN-XX**: Button ID collision fix
 
-### Sprint 3: Feature Enhancements 🟡 IN PROGRESS
+### Sprint 3: Feature Enhancements ✅ COMPLETE
 
-Completed:
+All Issues Completed (9 total):
+- ✅ **WIN-84**: Add purchase date field
+- ✅ **WIN-38**: Upload button UI - Modern drag & drop zone with responsive thumbnail
+- ✅ **WIN-43**: Loading UI improvements (cycling wine-themed messages)
 - ✅ **WIN-88**: Price scale on wine cards ($ to $$$$$, per-liter normalized, by bottle size)
 - ✅ **WIN-95**: Picture upload (800x800px, edge-sampled backgrounds)
 - ✅ **WIN-27**: Right-click context menu
 - ✅ **WIN-96**: Card collapse scroll behavior
 - ✅ **WIN-NEW**: avgRating DECIMAL overflow fix
+- ✅ **WIN-105**: Price scale uses median instead of average (reduces outlier skew)
 
-Remaining:
-- 🟡 **WIN-84**: Add purchase date field
-- 🟡 **WIN-38**: Upload button UI improvements
-- 🟡 **WIN-43**: Loading UI messages
+### Post-Sprint Cleanup (2026-01-18)
+- ✅ **WIN-104**: Edit page tab counter reset
+- ✅ **WIN-105**: Median for price scale (moved to Done)
+- ✅ **WIN-27**: Right-click context menu (moved to Done)
+
+### Fix & Migrate Phase 🔧 ACTIVE
+
+**Current Plan**: Fix remaining bugs in current app, then start Qvé migration
+
+**Phase 1: Bug Fixes**
+- 🔧 **WIN-102**: Can't edit a wine with no bottles - TO DO
+
+**Phase 2: Qvé Migration** - Start after WIN-102
 
 ### Open JIRA Issues
 
-**Total**: 45 open issues across various priorities
+**Bugs** (1 issue):
+- WIN-102: Can't edit a wine with no bottles
 
-**High Priority** (7 issues):
-- WIN-84, WIN-38, WIN-43 (Sprint 3)
-- WIN-80, WIN-70, WIN-79, WIN-34
+**Tasks - Will migrate to Qvé** (8 issues):
+- WIN-106, WIN-103, WIN-80, WIN-70, WIN-68, WIN-24, WIN-34, WIN-69
 
-**Medium Priority** (12 issues)
-**Low Priority** (25 issues)
+**Tasks - AI Features (Post-Migration)** (3 issues):
+- WIN-42, WIN-37, WIN-64
+
+**Tasks - Infrastructure** (3 issues):
+- WIN-97, WIN-78, WIN-65
+
+**In Progress (review status)** (3 issues):
+- WIN-79, WIN-67, WIN-57
 
 See JIRA board for complete list: https://philhumber.atlassian.net/jira/software/projects/WIN
 
@@ -521,39 +558,41 @@ See JIRA board for complete list: https://philhumber.atlassian.net/jira/software
 
 ## Roadmap
 
-### Short Term (Next 2-4 weeks)
+### Immediate: Fix & Migrate Phase
 
-1. **Complete Sprint 3** - Finish remaining 3 issues
-2. **Sprint 4**: Architecture review and polish
-3. **Create Qvé mockups** - Design Add Wine and Drink/Rate flows
+**Phase 1: Bug Fixes** (current app)
+1. Fix WIN-102: Can't edit a wine with no bottles
 
-### Medium Term (1-2 months)
+**Phase 2: Qvé Migration** (starts after Phase 1)
+1. Create Qvé mockups - Design Add Wine and Drink/Rate flows
+2. Begin SvelteKit project initialization
+3. Implement core components and routing
+4. Port remaining backlog features to new stack
+
+### Medium Term: Qvé Migration
 
 **Qvé Migration** - Full Svelte/SvelteKit PWA rebuild
 
 - **Plan**: `C:\Users\Phil\.claude\plans\recursive-petting-cat.md`
-- **Timeline**: 17-24 days
 - **Approach**: Build new app at `/qve/` alongside existing app
 - **Tech Stack**: Svelte/SvelteKit + Melt UI/Bits UI + existing PHP API
 - **Features**: PWA installable, offline support, dual themes
 
-**Phases**:
+**Migration Phases**:
 1. Phase 0: Complete mockups
 2. Phase 1: Initialize SvelteKit project
 3. Phase 2: API client + stores + PWA config
 4. Phase 3: Build UI components
 5. Phase 4: Implement page routes
-6. Phase 5: Port advanced features
-7. Phase 6: Testing and polish
-8. Phase 7: Deploy
 
-### Long Term (Phase 2+)
+### Post-Migration: AI Features
+- WIN-42: Build image recognition
+- WIN-37: Build AI chatbot (winebot)
+- WIN-64: Use structured output and grounding
 
-- **WIN-42**: Image recognition for wine labels
-- **WIN-37**: AI chatbot (winebot)
-- **WIN-32/31/30**: Producer and region info pages
-- **WIN-78**: Caching layer
-- **WIN-64**: Structured output with grounding
+### Long Term
+- WIN-32/31/30: Producer and region info pages
+- WIN-78: Caching layer
 
 ---
 
@@ -630,10 +669,6 @@ docs/
 # Run local server
 php -S localhost:8000
 
-# View JIRA issues (requires API token)
-curl -u "phil.humber@gmail.com:[TOKEN]" \
-  "https://philhumber.atlassian.net/rest/api/3/search?jql=project=WIN+AND+status!=Done"
-
 # Search for function definition
 grep -r "function functionName" resources/js/
 
@@ -646,6 +681,46 @@ wc -l resources/js/**/*.js
 # Database connection test
 mysql -h 10.0.0.16 -u username -p winelist
 ```
+
+### Deployment
+
+Deploy to production server at `V:\html\wineApp` using PowerShell:
+
+```powershell
+# Preview deployment (no changes made)
+.\deploy.ps1 -DryRun
+
+# Deploy to production (creates backup first)
+.\deploy.ps1
+
+# List available backups
+.\deploy.ps1 -ListBackups
+
+# Rollback to a specific backup
+.\deploy.ps1 -Rollback "2026-01-18_143022"
+```
+
+**Features:**
+- Auto-backup before each deployment (kept at `V:\html\wineApp-backups\`)
+- Retains 5 most recent backups, auto-cleans older ones
+- Excludes config files, docs, design, and dev files
+- Wine images use merge mode (adds new, never overwrites existing uploads)
+
+### JIRA API Access
+
+Use the **WebFetch** tool to query JIRA issues:
+```
+WebFetch URL: https://philhumber.atlassian.net/jira/software/projects/WIN/board
+Prompt: "List all open issues in the current sprint"
+```
+
+For REST API queries:
+```
+WebFetch URL: https://philhumber.atlassian.net/rest/api/3/search?jql=project=WIN+AND+status!=Done
+Prompt: "Extract issue keys, summaries, and statuses"
+```
+
+**Note**: API token stored in `../wineapp-config/jira.config.json`
 
 ### File Locations
 

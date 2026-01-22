@@ -15,11 +15,22 @@ if (basename($_SERVER['PHP_SELF'] ?? '') === basename(__FILE__)) {
     die('Direct access forbidden');
 }
 
-// Database
+// Environment: 'test' or 'prod'
+// Use 'test' for development (connects to winelist_test database)
+// Use 'prod' for production (connects to winelist database)
+define('APP_ENV', 'test');
+
+// Database credentials
 define('DB_HOST', 'your-db-host');
-define('DB_NAME', 'winelist');
 define('DB_USER', 'your-username');
 define('DB_PASS', 'your-password');
+
+// Database name based on environment
+if (APP_ENV === 'test') {
+    define('DB_NAME', 'winelist_test');
+} else {
+    define('DB_NAME', 'winelist');
+}
 
 // API Keys
 define('GEMINI_API_KEY', 'your-gemini-api-key');

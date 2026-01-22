@@ -163,7 +163,7 @@ export class WineCardRenderer {
 		this.renderCountryFlag(card, wineItem);
 
 		// Action buttons (Drink/Add/Edit)
-		this.attachActionHandlers(clone, wineItem.wineID);
+		this.attachActionHandlers(clone, wineItem.wineID, wineItem.bottleCount);
 
 		return clone;
 	}
@@ -294,17 +294,29 @@ export class WineCardRenderer {
 	 * Attach action button handlers
 	 * @param {DocumentFragment} clone - Card clone
 	 * @param {number} wineID - Wine ID
+	 * @param {number} bottleCount - Number of bottles (used to hide Edit Bottle when 0)
 	 */
-	attachActionHandlers(clone, wineID) {
+	attachActionHandlers(clone, wineID, bottleCount = 0) {
 		clone.querySelectorAll('.action-item').forEach(item => {
-			item.onmousedown = () => {
-				const action = item.dataset.action;
+			const action = item.dataset.action;
 
+			// Hide "Edit Bottle" when wine has 0 bottles
+			if (action === 'editBottle' && bottleCount === 0) {
+				item.style.display = 'none';
+			}
+
+			// Hide "Drink Bottle" when wine has 0 bottles
+			if (action === 'drink' && bottleCount === 0) {
+				item.style.display = 'none';
+			}
+
+			item.onmousedown = () => {
 				// Map actions to global functions (will be in features modules)
 				const actions = {
 					drink: window.drinkBottle,
 					add: window.addBottle,
-					edit: window.editBottle
+					editBottle: window.editBottle,
+					editWine: window.editWineOnly
 				};
 
 				if (actions[action]) {

@@ -9,6 +9,18 @@ config.local.php
 # DEPRECATED FILES
 # ===================
 resources/wineapp.js
+qve/
+
+# ===================
+# User Content
+# ===================
+images/wines/
+
+# ===================
+# DEPLOYMENT FILES
+# ===================
+deploy.ps1
+
 
 # ===================
 # OS FILES

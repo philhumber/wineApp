@@ -149,11 +149,37 @@
                         <label for="winePicture" class="form__label">Wine Picture URL</label>
                     </div>
                     <div class="form__group field" style="margin-top: 15px;">
-                        <label for="fileToUpload" class="form__label">Select image to upload:</label>
-                            <input type="file" class="button-30" name="fileToUpload" id="fileToUpload">
-                            <input type="button" class="button-30" value="Upload Image" name="submit" id="submit">
-                        
-                        <div class="form__label" id="uploadStatus" style="position:static;"></div>
+                        <label class="form__label" style="top: 0;">Wine Image</label>
+
+                        <div class="upload-dropzone" id="uploadDropzone">
+                            <input type="file" id="fileToUpload" name="fileToUpload"
+                                   accept="image/jpeg,image/png,image/gif,image/webp" class="upload-dropzone__input">
+
+                            <!-- Default State -->
+                            <div class="upload-dropzone__content" id="dropzoneContent">
+                                <svg class="upload-dropzone__icon" viewBox="0 0 24 24" width="48" height="48">
+                                    <path fill="currentColor" d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+                                </svg>
+                                <p class="upload-dropzone__text">
+                                    <span class="upload-dropzone__text-main">Drag & drop image here</span>
+                                    <span class="upload-dropzone__text-sub">or click to browse</span>
+                                </p>
+                            </div>
+
+                            <!-- Preview State (hidden) -->
+                            <div class="upload-dropzone__preview" id="dropzonePreview" style="display: none;">
+                                <img class="upload-dropzone__thumbnail" id="dropzoneThumbnail" alt="Wine image preview">
+                                <button type="button" class="upload-dropzone__replace" id="replaceImageBtn">Replace Image</button>
+                            </div>
+
+                            <!-- Loading State (hidden) -->
+                            <div class="upload-dropzone__loading" id="dropzoneLoading" style="display: none;">
+                                <div class="upload-dropzone__spinner"></div>
+                                <p>Uploading...</p>
+                            </div>
+                        </div>
+
+                        <div class="upload-dropzone__status" id="uploadStatus"></div>
                     </div>
                 </div>
                 <p></p>
