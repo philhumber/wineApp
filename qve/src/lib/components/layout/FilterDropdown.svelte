@@ -230,6 +230,7 @@
     inset: 0;
     background: rgba(0, 0, 0, 0.2);
     z-index: 200;
+    cursor: pointer; /* Required for iOS tap detection */
   }
 
   /* Dropdown container - uses fixed positioning to escape header overflow */
@@ -286,10 +287,6 @@
     transition: all 0.15s var(--ease-out);
   }
 
-  .close-btn:hover {
-    background: var(--surface);
-    color: var(--text-secondary);
-  }
 
   /* Loading state */
   .dropdown-loading {
@@ -309,6 +306,7 @@
     max-height: 280px;
     overflow-y: auto;
     overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch; /* iOS momentum scrolling */
   }
 
   /* Dropdown item */
@@ -326,7 +324,7 @@
     transition: background 0.1s var(--ease-out);
   }
 
-  .dropdown-item:hover,
+  /* Highlighted state for keyboard/touch selection */
   .dropdown-item.highlighted {
     background: var(--bg-subtle);
   }
@@ -335,7 +333,6 @@
     background: var(--accent-subtle);
   }
 
-  .dropdown-item.selected:hover,
   .dropdown-item.selected.highlighted {
     background: var(--accent-subtle);
   }
@@ -352,9 +349,6 @@
     font-size: 0.8125rem;
   }
 
-  .clear-item:hover {
-    color: var(--text-secondary);
-  }
 
   /* Item content */
   .item-content {
@@ -420,6 +414,26 @@
     font-size: 0.875rem;
     font-style: italic;
     color: var(--text-tertiary);
+  }
+
+  /* Hover styles - only on devices that support hover (not touch) */
+  @media (hover: hover) {
+    .dropdown-item:hover {
+      background: var(--bg-subtle);
+    }
+
+    .dropdown-item.selected:hover {
+      background: var(--accent-subtle);
+    }
+
+    .clear-item:hover {
+      color: var(--text-secondary);
+    }
+
+    .close-btn:hover {
+      background: var(--surface);
+      color: var(--text-secondary);
+    }
   }
 
   /* Mobile adjustments */
