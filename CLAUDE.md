@@ -36,7 +36,7 @@ qve/src/
 │   │   ├── wizard/    # WizardStepIndicator, SearchDropdown, AILoadingOverlay
 │   │   ├── modals/    # DrinkRateModal, AddBottleModal, ConfirmModal
 │   │   └── edit/      # WineForm, BottleForm, BottleSelector
-│   ├── stores/        # 14 Svelte stores (state management)
+│   ├── stores/        # 15 Svelte stores (state management)
 │   └── styles/        # tokens.css, base.css, animations.css
 └── routes/            # SvelteKit file-based routing
     ├── +page.svelte   # Home / Cellar view
@@ -53,14 +53,15 @@ qve/src/
 | Store | File | Purpose |
 |-------|------|---------|
 | wines | `stores/wines.ts` | Wine list, loading state, fetchWines() |
-| filters | `stores/filters.ts` | Active filter values (type, region, producer, year) |
-| filterOptions | `stores/filterOptions.ts` | Available options, context-aware caching |
+| filters | `stores/filters.ts` | Active filter values (country, type, region, producer, year) |
+| filterOptions | `stores/filterOptions.ts` | Available options, context-aware cascading |
+| cellarSort | `stores/cellarSort.ts` | Cellar view sorting (9 sort keys) |
 | view | `stores/view.ts` | Cellar vs All Wines mode |
 | addWine | `stores/addWine.ts` | 4-step wizard state, validation |
 | drinkWine | `stores/drinkWine.ts` | Drink/Rate modal state |
 | editWine | `stores/editWine.ts` | Edit page form state, dirty checking |
 | addBottle | `stores/addBottle.ts` | Add Bottle modal state |
-| history | `stores/history.ts` | Drink history, sorting |
+| history | `stores/history.ts` | Drink history, filtering, sorting (11 sort keys) |
 | toast | `stores/toast.ts` | Toast notifications |
 | modal | `stores/modal.ts` | Modal container state |
 | menu | `stores/menu.ts` | Side menu open/close |
@@ -135,7 +136,7 @@ const data = await api.enrichWithAI('producer', 'Château Margaux');
 | Key | Summary | Status |
 |-----|---------|--------|
 | WIN-119 | Secure wineapp-config directory | To Do |
-| WIN-34 | Finish filtering/sorting | In Progress |
+| WIN-34 | Finish filtering/sorting | Done |
 | WIN-79 | Finish duplicate checking | In Progress |
 | WIN-124 | Double field label bug | To Do |
 | WIN-129 | Form not clearing bug | To Do |
@@ -194,10 +195,11 @@ Endpoints in `resources/php/`:
 | `addBottle.php` | Add bottle to wine |
 | `updateBottle.php` | Update bottle details |
 | `getDrunkWines.php` | History with ratings |
-| `getTypes.php` | Types with bottle counts |
-| `getRegions.php` | Regions with bottle counts |
-| `getProducers.php` | Producers with bottle counts |
-| `getYears.php` | Vintages with bottle counts |
+| `getCountries.php` | Countries with bottle counts (cascading) |
+| `getTypes.php` | Types with bottle counts (cascading) |
+| `getRegions.php` | Regions with bottle counts (cascading) |
+| `getProducers.php` | Producers with bottle counts (cascading) |
+| `getYears.php` | Vintages with bottle counts (cascading) |
 | `upload.php` | Image upload (800x800) |
 | `geminiAPI.php` | AI enrichment |
 

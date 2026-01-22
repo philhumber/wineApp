@@ -1,51 +1,48 @@
 <script lang="ts">
   /**
-   * HistorySortBar component
-   * Sort and filter controls for history page
+   * CellarSortBar component
+   * Sort controls for cellar/home page
    */
   import { Icon, ViewToggle } from '$lib/components';
   import {
-    historySortKey,
-    historySortDir,
-    setHistorySort,
-    toggleHistorySortDir
+    cellarSortKey,
+    cellarSortDir,
+    setCellarSort,
+    toggleCellarSortDir
   } from '$lib/stores';
-  import type { HistorySortKey } from '$lib/stores';
+  import type { CellarSortKey } from '$lib/stores';
 
-  const sortOptions: { key: HistorySortKey; label: string }[] = [
-    { key: 'drinkDate', label: 'Date' },
-    { key: 'overallRating', label: 'Rating' },
-    { key: 'valueRating', label: 'Value' },
-    { key: 'wineName', label: 'Name' },
-    { key: 'wineType', label: 'Type' },
-    { key: 'country', label: 'Country' },
+  const sortOptions: { key: CellarSortKey; label: string }[] = [
     { key: 'producer', label: 'Producer' },
+    { key: 'wineName', label: 'Name' },
+    { key: 'country', label: 'Country' },
     { key: 'region', label: 'Region' },
     { key: 'year', label: 'Vintage' },
-    { key: 'price', label: 'Price' },
-    { key: 'buyAgain', label: 'Buy Again' }
+    { key: 'type', label: 'Type' },
+    { key: 'rating', label: 'Rating' },
+    { key: 'bottles', label: 'Bottles' },
+    { key: 'price', label: 'Price' }
   ];
-
-  // Text fields default to ascending (A-Z)
-  // Numeric fields (date, ratings, price, buyAgain) default to descending (newest/highest first)
-  const textFields: HistorySortKey[] = ['wineName', 'wineType', 'country', 'producer', 'region', 'year'];
 
   function handleSortChange(event: Event) {
     const target = event.target as HTMLSelectElement;
-    const key = target.value as HistorySortKey;
-    const defaultDir = textFields.includes(key) ? 'asc' : 'desc';
-    setHistorySort(key, defaultDir);
+    const key = target.value as CellarSortKey;
+    // Text fields default to ascending (A-Z)
+    // Numeric fields (rating, bottles, price) default to descending (highest first)
+    const numericFields: CellarSortKey[] = ['rating', 'bottles', 'price'];
+    const defaultDir = numericFields.includes(key) ? 'desc' : 'asc';
+    setCellarSort(key, defaultDir);
   }
 </script>
 
-<div class="history-sort-bar">
+<div class="cellar-sort-bar">
   <div class="sort-controls">
-    <label class="sort-label" for="sort-select">Sort by</label>
+    <label class="sort-label" for="cellar-sort-select">Sort by</label>
     <div class="select-wrapper">
       <select
-        id="sort-select"
+        id="cellar-sort-select"
         class="sort-select"
-        value={$historySortKey}
+        value={$cellarSortKey}
         on:change={handleSortChange}
       >
         {#each sortOptions as opt}
@@ -56,10 +53,10 @@
     </div>
     <button
       class="sort-dir-btn"
-      title={$historySortDir === 'desc' ? 'Newest first' : 'Oldest first'}
-      on:click={toggleHistorySortDir}
+      title={$cellarSortDir === 'asc' ? 'A to Z / Low to High' : 'Z to A / High to Low'}
+      on:click={toggleCellarSortDir}
     >
-      <Icon name={$historySortDir === 'desc' ? 'arrow-down' : 'arrow-up'} size={14} />
+      <Icon name={$cellarSortDir === 'desc' ? 'arrow-down' : 'arrow-up'} size={14} />
     </button>
   </div>
 
@@ -69,7 +66,7 @@
 </div>
 
 <style>
-  .history-sort-bar {
+  .cellar-sort-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -165,7 +162,7 @@
   }
 
   @media (max-width: 520px) {
-    .history-sort-bar {
+    .cellar-sort-bar {
       flex-wrap: wrap;
     }
 

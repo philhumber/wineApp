@@ -74,9 +74,8 @@ export interface DrunkWine extends Wine {
 // ─────────────────────────────────────────────────────────
 
 export interface Country {
-  countryID: number;
   countryName: string;
-  countryEmoji: string;
+  code: string;
   bottleCount?: number;
 }
 

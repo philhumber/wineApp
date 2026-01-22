@@ -4,7 +4,7 @@
    * Horizontal scrollable container for filter pills
    */
   import { createEventDispatcher } from 'svelte';
-  import { filters, setFilter, clearFilter, viewMode } from '$lib/stores';
+  import { filters, setFilter, clearFilter, clearAllFilters, hasActiveFilters, viewMode } from '$lib/stores';
   import { filterOptions } from '$lib/stores/filterOptions';
   import type { FilterOption } from '$lib/stores/filterOptions';
   import FilterPill from './FilterPill.svelte';
@@ -16,6 +16,7 @@
 
   // Dropdown filter definitions
   const dropdownFilters = [
+    { key: 'countryDropdown', label: 'Country', fetchKey: 'countries' as const },
     { key: 'typesDropdown', label: 'Type', fetchKey: 'types' as const },
     { key: 'regionDropdown', label: 'Region', fetchKey: 'regions' as const },
     { key: 'producerDropdown', label: 'Producer', fetchKey: 'producers' as const },
@@ -57,9 +58,18 @@
     // Fetch options based on filter type
     // All filters are context-aware: each filter is filtered by all other active filters
     try {
-      if (filter.fetchKey === 'types') {
+      if (filter.fetchKey === 'countries') {
+        dropdownOptions = await filterOptions.fetchCountries(
+          $viewMode,
+          $filters.typesDropdown,
+          $filters.regionDropdown,
+          $filters.producerDropdown,
+          $filters.yearDropdown
+        );
+      } else if (filter.fetchKey === 'types') {
         dropdownOptions = await filterOptions.fetchTypes(
           $viewMode,
+          $filters.countryDropdown,
           $filters.regionDropdown,
           $filters.producerDropdown,
           $filters.yearDropdown
@@ -67,6 +77,7 @@
       } else if (filter.fetchKey === 'regions') {
         dropdownOptions = await filterOptions.fetchRegions(
           $viewMode,
+          $filters.countryDropdown,
           $filters.typesDropdown,
           $filters.producerDropdown,
           $filters.yearDropdown
@@ -74,6 +85,7 @@
       } else if (filter.fetchKey === 'producers') {
         dropdownOptions = await filterOptions.fetchProducers(
           $viewMode,
+          $filters.countryDropdown,
           $filters.regionDropdown,
           $filters.typesDropdown,
           $filters.yearDropdown
@@ -81,6 +93,7 @@
       } else if (filter.fetchKey === 'years') {
         dropdownOptions = await filterOptions.fetchYears(
           $viewMode,
+          $filters.countryDropdown,
           $filters.regionDropdown,
           $filters.producerDropdown,
           $filters.typesDropdown
@@ -151,6 +164,12 @@
       {/if}
     </div>
   {/each}
+
+  {#if $hasActiveFilters}
+    <button class="clear-all-btn" on:click={clearAllFilters}>
+      Clear all
+    </button>
+  {/if}
 </div>
 
 <style>
@@ -172,6 +191,25 @@
   .dropdown-wrapper {
     position: relative;
     flex-shrink: 0;
+  }
+
+  .clear-all-btn {
+    margin-left: var(--space-2);
+    padding: var(--space-1) var(--space-3);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    background: transparent;
+    border: 1px solid var(--divider);
+    border-radius: 100px;
+    cursor: pointer;
+    transition: all 0.2s var(--ease-out);
+    flex-shrink: 0;
+  }
+
+  .clear-all-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--accent);
   }
 
   /* Responsive: add fade gradient on mobile to indicate scrollable */
