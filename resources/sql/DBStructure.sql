@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jan 11, 2026 at 10:47 PM
+-- Generation Time: Jan 20, 2026 at 09:34 PM
 -- Server version: 8.0.44-0ubuntu0.24.04.2
 -- PHP Version: 8.3.6
 
@@ -54,6 +54,7 @@ CREATE TABLE `bottles` (
   `source` varchar(50) NOT NULL,
   `price` decimal(10,2) DEFAULT NULL,
   `currency` char(3) DEFAULT NULL,
+  `purchaseDate` date DEFAULT NULL,
   `dateAdded` date NOT NULL,
   `bottleDrunk` tinyint(1) NOT NULL DEFAULT '0',
   `deleted` tinyint DEFAULT '0',
@@ -132,10 +133,14 @@ CREATE TABLE `ratings` (
   `bottleID` int NOT NULL,
   `overallRating` int NOT NULL,
   `valueRating` int NOT NULL,
+  `avgRating` decimal(4,2) GENERATED ALWAYS AS (((`overallRating` + `valueRating`) / 2)) VIRTUAL,
   `drinkDate` date NOT NULL,
   `buyAgain` tinyint(1) NOT NULL,
   `Notes` text NOT NULL,
-  `avgRating` decimal(4,2) DEFAULT NULL
+  `complexityRating` tinyint DEFAULT NULL COMMENT 'Optional 0-5: Simple to Multi-layered',
+  `drinkabilityRating` tinyint DEFAULT NULL COMMENT 'Optional 0-5: Demanding to Easy drinking',
+  `surpriseRating` tinyint DEFAULT NULL COMMENT 'Optional 0-5: Met expectations to Exceeded',
+  `foodPairingRating` tinyint DEFAULT NULL COMMENT 'Optional 0-5: Poor match to Perfect pairing'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------

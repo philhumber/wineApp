@@ -60,8 +60,9 @@
     if (empty($bottleSource)) {
         throw new Exception('Bottle source is required');
     }    
-    $bottlePrice = trim($data['bottlePrice'] ?? null);    
+    $bottlePrice = trim($data['bottlePrice'] ?? null);
     $bottleCurrency = trim($data['bottleCurrency'] ?? null);
+    $bottlePurchaseDate = !empty($data['bottlePurchaseDate']) ? trim($data['bottlePurchaseDate']) : null;
 
     if (trim($data['wineYear']) == '') {
       $wineYear = NULL;
@@ -258,15 +259,16 @@
       // Move onto the bottle \\
       //                      \\
       /////////////\\\\\\\\\\\\\
-      $stmt = $pdo->prepare("INSERT INTO bottles (wineID, bottleSize, location, source, price, currency, dateAdded)
-                            VALUES (:wineID, :bottleType, :storageLocation, :bottleSource, :bottlePrice, :bottleCurrency, CURDATE())");
+      $stmt = $pdo->prepare("INSERT INTO bottles (wineID, bottleSize, location, source, price, currency, purchaseDate, dateAdded)
+                            VALUES (:wineID, :bottleType, :storageLocation, :bottleSource, :bottlePrice, :bottleCurrency, :bottlePurchaseDate, CURDATE())");
       $stmt->execute([
                     ':wineID' => $wineID,
                     ':bottleType' => $bottleType,
                     ':storageLocation' => $storageLocation,
                     ':bottleSource' => $bottleSource,
                     ':bottlePrice' => $bottlePrice,
-                    ':bottleCurrency' => $bottleCurrency
+                    ':bottleCurrency' => $bottleCurrency,
+                    ':bottlePurchaseDate' => $bottlePurchaseDate
                     ]);
       //need much more detailed output...should be a json of the wine or json of the error.
       //Also need different try catches, maybe the region works, but the otherone doesn't

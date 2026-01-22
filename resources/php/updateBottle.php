@@ -41,6 +41,7 @@
         }
         $bottlePrice = trim($data['bottlePrice'] ?? null);
         $bottleCurrency = trim($data['bottleCurrency'] ?? null);
+        $purchaseDate = !empty($data['purchaseDate']) ? trim($data['purchaseDate']) : null;
 
         $userID = $_SESSION['userID'] ?? null;
 
@@ -50,7 +51,8 @@
                         location = :location,
                         source = :source,
                         price = :bottlePrice,
-                        currency = :bottleCurrency
+                        currency = :bottleCurrency,
+                        purchaseDate = :purchaseDate
                     WHERE bottleID = :bottleID";
 
         $params[':bottleSize'] = $bottleSize;
@@ -59,6 +61,7 @@
         $params[':bottleID'] = $bottleID;
         $params[':bottlePrice'] = $bottlePrice;
         $params[':bottleCurrency'] = $bottleCurrency;
+        $params[':purchaseDate'] = $purchaseDate;
 
         // 7. Start transaction
         $pdo->beginTransaction();
@@ -86,7 +89,8 @@
                 'location' => $location,
                 'source' => $source,
                 'price' => $bottlePrice,
-                'currency' => $bottleCurrency
+                'currency' => $bottleCurrency,
+                'purchaseDate' => $purchaseDate
             ];
 
             logUpdate($pdo, 'bottles', $bottleID, $oldData, $newData, $userID);
