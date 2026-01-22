@@ -22,28 +22,71 @@
 		$wineCount = $data['wineCount'] ?? '0';
 		$drunkCount = $data['drunkCount'] ?? '0';
 
+		// Context-aware filtering params
+		$typeName = $data['typeName'] ?? null;
+		$regionName = $data['regionName'] ?? null;
+		$producerName = $data['producerName'] ?? null;
+		$year = $data['year'] ?? null;
+
+		$where = [];
+
 		$sqlQuery = "SELECT
 						country.countryName,
 						COUNT(bottles.bottleID) AS bottleCount,
-						LOWER(country.code)
+						LOWER(country.code) AS code
 					FROM country
 					LEFT JOIN region ON region.countryID = country.countryID
 					LEFT JOIN producers ON producers.regionID = region.regionID
 					LEFT JOIN wine ON wine.producerID = producers.producerID
-					LEFT JOIN bottles ON wine.wineID = bottles.wineID AND bottles.bottleDrunk = 0
-					GROUP BY country.countryID";
+					LEFT JOIN bottles ON wine.wineID = bottles.wineID AND bottles.bottleDrunk = 0";
+
+		// Add winetype JOIN if filtering by type
+		if ($typeName) {
+			$sqlQuery .= " LEFT JOIN winetype ON wine.wineTypeID = winetype.wineTypeID";
+		}
+
+		// Context-aware WHERE clauses
+		if ($typeName) {
+			$where[] = "winetype.wineType = :typeName";
+			$params[':typeName'] = $typeName;
+		}
+		if ($regionName) {
+			$where[] = "region.regionName = :regionName";
+			$params[':regionName'] = $regionName;
+		}
+		if ($producerName) {
+			$where[] = "producers.producerName = :producerName";
+			$params[':producerName'] = $producerName;
+		}
+		if ($year) {
+			if ($year === 'No Year') {
+				$where[] = "wine.year IS NULL";
+			} else {
+				$where[] = "wine.year = :year";
+				$params[':year'] = $year;
+			}
+		}
+
+		if (!empty($where)) {
+			$sqlQuery .= " WHERE " . implode(' AND ', $where);
+		}
+
+		$sqlQuery .= " GROUP BY country.countryID";
 
 		if (!empty($bottleCount) && $bottleCount !== '0') {
 			$having[] = "COUNT(bottles.bottleID) >= :bottleCount";
-			$params[':bottleCount'] = $bottleCount;			
+			$params[':bottleCount'] = $bottleCount;
+		} else {
+			// Even in "All Wines" mode, only show countries that have at least 1 wine
+			$having[] = "COUNT(DISTINCT wine.wineID) >= 1";
 		}
 		if (!empty($wineCount) && $wineCount !== '0') {
 			$having[] = "COUNT(wine.wineID) >= :wineCount";
-			$params[':wineCount'] = $wineCount;			
+			$params[':wineCount'] = $wineCount;
 		}
 		if (!empty($drunkCount) && $drunkCount !== '0') {
 			$having[] = "COUNT(bottles.BottleDrunk) >= :drunkCount";
-			$params[':drunkCount'] = $drunkCount;			
+			$params[':drunkCount'] = $drunkCount;
 		}
 		if (!empty($having)) {
 			$sqlQuery .= " HAVING " . implode(' AND ', $having);

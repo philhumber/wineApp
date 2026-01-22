@@ -2,7 +2,7 @@
   import { onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { base } from '$app/paths';
-  import { theme, viewDensity, viewMode, wines, winesLoading, winesError, filters, toasts, targetWineID, modal } from '$stores';
+  import { theme, viewDensity, viewMode, wines, winesLoading, winesError, filters, clearAllFilters, toasts, targetWineID, modal, cellarSortKey, cellarSortDir, sortWines } from '$stores';
   import { api } from '$api';
   import type { Wine, WineFilters } from '$lib/api/types';
 
@@ -12,8 +12,12 @@
     RatingDisplay,
     BottleIndicators,
     WineGrid,
-    Header
+    Header,
+    CellarSortBar
   } from '$lib/components';
+
+  // Sort wines using cellar sort settings
+  $: sortedWines = sortWines($wines, $cellarSortKey, $cellarSortDir);
 
   // Fetch wines with current filters
   async function fetchWines(filterValues: WineFilters = {}) {
@@ -43,15 +47,31 @@
     fetchWines($filters);
   });
 
-  // Refetch when viewMode changes (not on initial load)
+  // Track previous filter state to detect changes
+  let previousFilters = JSON.stringify($filters);
+
+  // Refetch when viewMode changes (not on initial load) and clear filters
   $: if ($viewMode !== previousViewMode) {
     previousViewMode = $viewMode;
-    fetchWines($filters);
+    // Clear filters when switching between views
+    clearAllFilters();
+    // Update previousFilters to prevent double-fetch from filter change reactive
+    previousFilters = JSON.stringify({});
+    fetchWines({});
   }
 
-  // Refetch when filters change
+  // Refetch when filters change (handles both individual changes and Clear All)
+  $: {
+    const currentFilters = JSON.stringify($filters);
+    if (currentFilters !== previousFilters) {
+      previousFilters = currentFilters;
+      fetchWines($filters);
+    }
+  }
+
+  // Handle filter change event from Header (for legacy support)
   function handleFilterChange(event: CustomEvent<{ key: string; value: string | undefined }>) {
-    fetchWines($filters);
+    // Filters already updated by store, reactive block handles refetch
   }
 
   // Track if we've already handled the scroll for this target
@@ -171,8 +191,9 @@
         <a href="{base}/add" class="btn-primary">Add Wine</a>
       </div>
     {:else}
+      <CellarSortBar />
       <WineGrid
-        wines={$wines}
+        wines={sortedWines}
         on:drink={handleDrink}
         on:add={handleAdd}
         on:edit={handleEdit}
