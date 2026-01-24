@@ -1,6 +1,6 @@
 # Qvé Wine App - Session Context
 
-**Last Updated**: 2026-01-22
+**Last Updated**: 2026-01-24
 **Status**: Production - Deployed and stable
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
@@ -48,7 +48,7 @@ qve/src/
 │   │   ├── client.ts  # All API methods
 │   │   └── types.ts   # Wine, Bottle, Rating types
 │   ├── components/    # 40+ Svelte components
-│   │   ├── ui/        # Icon, ThemeToggle, Toast, RatingDisplay
+│   │   ├── ui/        # Icon, ThemeToggle, CurrencySelector, Toast, RatingDisplay
 │   │   ├── wine/      # WineCard, WineGrid, HistoryCard
 │   │   ├── layout/    # Header, FilterBar, SideMenu, FilterDropdown
 │   │   ├── forms/     # FormInput, RatingDots, MiniRatingDots
@@ -85,6 +85,7 @@ qve/src/
 | modal | `stores/modal.ts` | Modal container state |
 | menu | `stores/menu.ts` | Side menu open/close |
 | theme | `stores/theme.ts` | Light/dark theme |
+| currency | `stores/currency.ts` | Display currency preference, conversion utilities |
 | scrollPosition | `stores/scrollPosition.ts` | Scroll restoration |
 
 ---
@@ -163,8 +164,8 @@ const data = await api.enrichWithAI('producer', 'Château Margaux');
 | WIN-116 | Qve to Qvé branding | To Do |
 
 ### Sprint 5: Currency + Card Details
-- WIN-103: Remove hardcoded currencies/sizes
-- WIN-130: Allow currency display setting
+- WIN-103: Remove hardcoded currencies/sizes ✓
+- WIN-130: Allow currency display setting ✓
 - WIN-111: Additional wine card details
 - WIN-125: Add/Edit screen consistency
 - WIN-99: Audit JSON display fix
@@ -219,6 +220,7 @@ Endpoints in `resources/php/`:
 | `getRegions.php` | Regions with bottle counts (cascading) |
 | `getProducers.php` | Producers with bottle counts (cascading) |
 | `getYears.php` | Vintages with bottle counts (cascading) |
+| `getCurrencies.php` | Currencies and bottle sizes for settings |
 | `upload.php` | Image upload (800x800) |
 | `geminiAPI.php` | AI enrichment |
 
@@ -230,7 +232,7 @@ Endpoints in `resources/php/`:
 **Database**: winelist
 **Schema**: `resources/sql/DBStructure.sql`
 
-Key tables: wine, bottles, ratings, producers, region, country, winetype
+Key tables: wine, bottles, ratings, producers, region, country, winetype, currencies, bottle_sizes
 
 ---
 

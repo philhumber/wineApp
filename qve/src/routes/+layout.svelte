@@ -2,12 +2,14 @@
   import { onMount } from 'svelte';
   import { beforeNavigate, afterNavigate } from '$app/navigation';
   import { theme, menuOpen, closeMenu, saveScrollPosition, getScrollPosition } from '$stores';
+  import { displayCurrency } from '$lib/stores/currency';
   import { ToastContainer, SideMenu } from '$lib/components';
   import { ModalContainer } from '$lib/components/modals';
   import '$lib/styles/index.css';
 
   onMount(() => {
     theme.initialize();
+    displayCurrency.initialize();
   });
 
   // Save scroll position before navigating away
