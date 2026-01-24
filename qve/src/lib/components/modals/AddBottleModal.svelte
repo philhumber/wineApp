@@ -13,9 +13,9 @@
     incrementBottleCount,
     scrollToWine,
     expandedWineID,
-    bottleSizeOptions,
+    bottleSizeSelectOptions,
     storageOptions,
-    currencyOptions
+    currencySelectOptions
   } from '$lib/stores';
   import Icon from '$lib/components/ui/Icon.svelte';
 
@@ -160,7 +160,7 @@
             on:change={(e) => addBottle.setField('bottleSize', e.currentTarget.value)}
           >
             <option value="">Select size...</option>
-            {#each bottleSizeOptions as option}
+            {#each $bottleSizeSelectOptions as option}
               <option value={option.value}>{option.label}</option>
             {/each}
           </select>
@@ -237,7 +237,7 @@
             value={state.currency}
             on:change={(e) => addBottle.setField('currency', e.currentTarget.value)}
           >
-            {#each currencyOptions as option}
+            {#each $currencySelectOptions as option}
               <option value={option.value}>{option.label}</option>
             {/each}
           </select>
