@@ -6,7 +6,7 @@
 import { writable, derived, get } from 'svelte/store';
 import { api } from '$lib/api/client';
 import { toasts } from './toast';
-import type { Region, Producer, Wine, Country, WineType, AddWinePayload } from '$lib/api/types';
+import type { Region, Producer, Wine, Country, WineType, AddWinePayload, DuplicateCheckType, DuplicateMatch, DuplicateCheckResult } from '$lib/api/types';
 
 // ─────────────────────────────────────────────────────────
 // TYPES
@@ -66,6 +66,15 @@ export interface ValidationErrors {
 	bottle: Record<string, string>;
 }
 
+export interface DuplicateWarning {
+	type: DuplicateCheckType;
+	searchValue: string;
+	exactMatch: DuplicateMatch | null;
+	similarMatches: DuplicateMatch[];
+	existingBottles: number;
+	existingWineId: number | null;
+}
+
 export interface WizardState {
 	currentStep: WizardStep;
 	isSubmitting: boolean;
@@ -101,6 +110,10 @@ export interface WizardState {
 
 	// Validation errors
 	errors: ValidationErrors;
+
+	// Duplicate checking
+	duplicateWarning: DuplicateWarning | null;
+	isDuplicateChecking: boolean;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -176,7 +189,11 @@ const initialState: WizardState = {
 		producer: {},
 		wine: {},
 		bottle: {}
-	}
+	},
+
+	// Duplicate checking
+	duplicateWarning: null,
+	isDuplicateChecking: false
 };
 
 // ─────────────────────────────────────────────────────────
@@ -455,6 +472,120 @@ function createAddWineStore() {
 	};
 
 	// ─────────────────────────────────────────────────────
+	// DUPLICATE CHECKING
+	// ─────────────────────────────────────────────────────
+
+	/**
+	 * Check for duplicate/similar items when user clicks "Add new"
+	 * Returns true if duplicates were found (modal should be shown)
+	 */
+	const checkForDuplicates = async (
+		type: DuplicateCheckType,
+		name: string,
+		context?: { producerId?: number; producerName?: string; regionId?: number; regionName?: string; year?: string }
+	): Promise<boolean> => {
+		if (!name.trim()) {
+			return false;
+		}
+
+		update((s) => ({ ...s, isDuplicateChecking: true }));
+
+		try {
+			const result = await api.checkDuplicate({
+				type,
+				name,
+				...context
+			});
+
+			// Check if we found any matches
+			const hasMatches = result.exactMatch !== null || result.similarMatches.length > 0;
+
+			if (hasMatches) {
+				update((s) => ({
+					...s,
+					duplicateWarning: {
+						type,
+						searchValue: name,
+						exactMatch: result.exactMatch,
+						similarMatches: result.similarMatches,
+						existingBottles: result.existingBottles,
+						existingWineId: result.existingWineId
+					},
+					isDuplicateChecking: false
+				}));
+				return true;
+			}
+
+			update((s) => ({ ...s, isDuplicateChecking: false }));
+			return false;
+		} catch (error) {
+			console.error('Duplicate check failed:', error);
+			// On error, proceed without warning (graceful degradation)
+			update((s) => ({ ...s, isDuplicateChecking: false }));
+			return false;
+		}
+	};
+
+	/**
+	 * Dismiss the duplicate warning and proceed with creating new item
+	 */
+	const dismissDuplicateWarning = (): void => {
+		update((s) => ({ ...s, duplicateWarning: null }));
+	};
+
+	/**
+	 * Use an existing match instead of creating new
+	 * Selects the item and clears the warning
+	 */
+	const useExistingMatch = (match: DuplicateMatch): void => {
+		const state = get({ subscribe });
+		const type = state.duplicateWarning?.type;
+
+		if (!type) return;
+
+		// Select the existing item based on type
+		switch (type) {
+			case 'region':
+				selectRegion({
+					regionID: match.id,
+					regionName: match.name,
+					countryID: 0, // Will be fetched if needed
+					countryName: match.meta
+				});
+				break;
+			case 'producer':
+				selectProducer({
+					producerID: match.id,
+					producerName: match.name,
+					regionID: 0,
+					regionName: match.meta
+				});
+				break;
+			case 'wine':
+				selectWine({
+					wineID: match.id,
+					wineName: match.name,
+					year: match.meta?.split(' ').pop() || null, // Extract year from meta like "Producer 2019"
+					wineType: '',
+					producerName: '',
+					regionName: '',
+					countryName: '',
+					code: '',
+					bottleCount: match.bottleCount || 0,
+					avgRating: null,
+					rating: null,
+					pictureURL: null,
+					description: null,
+					tastingNotes: null,
+					pairing: null
+				});
+				break;
+		}
+
+		update((s) => ({ ...s, duplicateWarning: null }));
+	};
+
+	// ─────────────────────────────────────────────────────
 	// IMAGE UPLOAD
 	// ─────────────────────────────────────────────────────
 
@@ -683,6 +814,10 @@ function createAddWineStore() {
 		generateProducerAI,
 		generateWineAI,
 		cancelAI,
+		// Duplicate checking
+		checkForDuplicates,
+		dismissDuplicateWarning,
+		useExistingMatch,
 		// Image
 		setImageFile,
 		// Validation
@@ -708,6 +843,12 @@ export const isSubmitting = derived(addWineStore, ($s) => $s.isSubmitting);
 
 /** Whether AI is loading */
 export const isAILoading = derived(addWineStore, ($s) => $s.isAILoading);
+
+/** Whether duplicate checking is in progress */
+export const isDuplicateChecking = derived(addWineStore, ($s) => $s.isDuplicateChecking);
+
+/** Current duplicate warning (if any) */
+export const duplicateWarning = derived(addWineStore, ($s) => $s.duplicateWarning);
 
 /** Check if current step can proceed */
 export const canProceed = derived(addWineStore, ($s) => {

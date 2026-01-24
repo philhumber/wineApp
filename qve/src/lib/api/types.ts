@@ -264,3 +264,33 @@ export interface AIWineData {
     end?: number;
   };
 }
+
+// ─────────────────────────────────────────────────────────
+// DUPLICATE CHECK TYPES
+// ─────────────────────────────────────────────────────────
+
+export type DuplicateCheckType = 'region' | 'producer' | 'wine';
+
+export interface DuplicateCheckParams {
+  type: DuplicateCheckType;
+  name: string;
+  producerId?: number;
+  producerName?: string;
+  regionId?: number;
+  regionName?: string;
+  year?: string;
+}
+
+export interface DuplicateMatch {
+  id: number;
+  name: string;
+  meta?: string;
+  bottleCount?: number;
+}
+
+export interface DuplicateCheckResult {
+  exactMatch: DuplicateMatch | null;
+  similarMatches: DuplicateMatch[];
+  existingBottles: number;
+  existingWineId: number | null;
+}

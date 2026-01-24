@@ -50,5 +50,13 @@ export { default as BottleSelector } from './edit/BottleSelector.svelte';
 export { default as WineForm } from './edit/WineForm.svelte';
 export { default as BottleForm } from './edit/BottleForm.svelte';
 
+// Modal Components
+export {
+  ModalContainer,
+  DrinkRateModal,
+  ConfirmModal,
+  DuplicateWarningModal
+} from './modals';
+
 // Note: IconName type is exported from Icon.svelte via context="module"
 // Import directly from ./ui/Icon.svelte if needed
