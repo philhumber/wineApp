@@ -9,7 +9,10 @@
 ## Quick Start
 
 ```bash
-# Terminal 1: PHP backend (from project root)
+# Terminal 1: Frontend (from qve directory)
+cd qve && npm run dev
+
+# Terminal 2: PHP backend (from project root)
 php -S localhost:8000
 
 # Git workflow (always work from develop)
@@ -36,6 +39,19 @@ mysql -h 10.0.0.16 -u username -p winelist
 ```
 
 Open: **http://localhost:5173/qve/**
+
+---
+
+## Development Commands
+
+```bash
+cd qve
+npm run dev          # Start dev server (port 5173)
+npm run build        # Production build
+npm run check        # TypeScript + Svelte check
+npm run lint         # ESLint
+npm run format       # Prettier
+```
 
 ---
 
@@ -149,57 +165,11 @@ const data = await api.enrichWithAI('producer', 'Château Margaux');
 
 ---
 
-## Current Sprint Backlog
+## Current Work
 
-### Sprint 5: Currency + Card Details (Active)
-| Key | Summary | Status |
-|-----|---------|--------|
-| WIN-133 | Fix TypeScript error in WineStep.svelte | Done |
-| WIN-132 | Fix TypeScript error in RegionStep.svelte | Done |
-| WIN-130 | Allow Currency Setting | To Do |
-| WIN-125 | Add / Edit Screen Inconsistency | To Do |
-| WIN-111 | Additional Details on Wine Card | To Do |
-| WIN-103 | Remove hardcoded currencies and sizes | To Do |
-| WIN-99 | Audit function displays full JSON instead of new value | To Do |
+See JIRA for current sprint and backlog: https://philhumber.atlassian.net/jira/software/projects/WIN
 
-### Completed: Sprint 4 (Security + Quick Wins)
-- WIN-119: Secure wineapp-config directory
-- WIN-34: Finish filtering/sorting
-- WIN-79: Finish duplicate checking
-- WIN-124: Double field label bug
-- WIN-129: Form not clearing bug
-- WIN-115: Browser tab titles
-- WIN-116: Qve to Qvé branding
-
-### Sprint 6: iOS + Navigation + Ratings
-- WIN-131: iOS testing/bug fixes
-- WIN-128: Back button / swipe navigation
-- WIN-122: Fix UI flashing/highlighting
-- WIN-117: Edit ratings from history
-- WIN-114: Image view enhancements
-
-### Sprint 7: Collection Features + Data Quality
-- WIN-121/126: Collection naming
-- WIN-127: Collection value data
-- WIN-113: Region parent level search
-- WIN-123: Field validation vs SQL
-
-### Sprint 8: Data Management + Infrastructure
-- WIN-97: Audit functions for all operations
-- WIN-80: Soft delete support
-- WIN-78: JS/PHP caching
-- WIN-108: AI extract region from producer
-- WIN-32: Producer/region info cards
-
-### Sprint 9: Wishlist + Grape Data
-- WIN-109: Wine wishlist
-- WIN-112: Grape data capture
-
-### Backlog: AI Features
-- WIN-42: Image recognition
-- WIN-37: AI chatbot (winebot)
-- WIN-64: Structured output and grounding
-- WIN-118: Vector database evaluation
+Use `.\scripts\jira.ps1 sprint` to view current sprint issues from the command line.
 
 ---
 
@@ -245,23 +215,6 @@ Key tables: wine, bottles, ratings, producers, region, country, winetype
 
 ---
 
-## JIRA CLI
-
-Manage JIRA issues via REST API v3 using `scripts/jira.ps1`:
-
-```powershell
-.\scripts\jira.ps1 list                      # List open issues
-.\scripts\jira.ps1 get WIN-123               # Get issue details
-.\scripts\jira.ps1 create "Fix bug" Bug      # Create issue (Task, Bug, Story)
-.\scripts\jira.ps1 status WIN-123 "Done"     # Transition status
-.\scripts\jira.ps1 comment WIN-123 "Note"    # Add comment
-.\scripts\jira.ps1 sprint                    # Show current sprint
-```
-
-First run creates a config template. Get API token from: https://id.atlassian.com/manage-profile/security/api-tokens
-
----
-
 ## Common Tasks
 
 ### Add a new component
@@ -281,16 +234,6 @@ First run creates a config template. Get API token from: https://id.atlassian.co
 ### Modify PHP endpoint
 1. Edit file in `resources/php/`
 2. Test with both old and new app if needed
-
----
-
-## Deployment
-
-```powershell
-.\deploy.ps1 -DryRun    # Preview
-.\deploy.ps1            # Deploy with backup
-.\deploy.ps1 -Rollback "2026-01-22_143022"
-```
 
 ---
 
