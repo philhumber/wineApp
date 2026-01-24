@@ -5,7 +5,7 @@
    */
   import { createEventDispatcher } from 'svelte';
   import type { Wine } from '$lib/api/types';
-  import { Icon, RatingDisplay, BottleIndicators } from '$lib/components';
+  import { Icon, RatingDisplay, BottleIndicators, PriceScale, BuyAgainIndicator } from '$lib/components';
   import WineImage from './WineImage.svelte';
 
   export let wine: Wine;
@@ -57,6 +57,21 @@
 
   // Country flag emoji from code
   $: countryEmoji = countryCodeToEmoji(wine.code);
+
+  // Format price with currency symbol
+  function formatPrice(price: string | null | undefined, currency: string | null | undefined): string | null {
+    if (!price) return null;
+    const numPrice = parseFloat(price);
+    if (isNaN(numPrice) || numPrice === 0) return null;
+    const symbols: Record<string, string> = {
+      EUR: '€', GBP: '£', USD: '$', SEK: 'kr ', CHF: 'CHF '
+    };
+    const symbol = currency ? (symbols[currency] || currency + ' ') : '€';
+    return `${symbol}${numPrice.toFixed(2)}`;
+  }
+
+  // Check if any price data exists
+  $: hasPriceData = wine.standardPrice || wine.magnumPrice || wine.demiPrice || wine.smallPrice;
 </script>
 
 <article
@@ -98,7 +113,17 @@
 
     <div class="wine-meta">
       <BottleIndicators count={wine.bottleCount} compact={compact && !expanded} />
+      <PriceScale
+        avgPricePerLiterEUR={wine.avgPricePerLiterEUR}
+        typeAvgPricePerLiterEUR={wine.typeAvgPricePerLiterEUR}
+        compact={compact && !expanded}
+      />
       <RatingDisplay rating={wine.avgRating} compact={compact && !expanded} />
+      <BuyAgainIndicator
+        percent={wine.buyAgainPercent}
+        ratingCount={wine.ratingCount || 0}
+        compact={compact && !expanded}
+      />
     </div>
   </div>
 
@@ -130,6 +155,56 @@
   <!-- Expanded content -->
   {#if expanded}
     <div class="wine-expanded">
+      <!-- Details Row: Sources + Prices -->
+      {#if wine.bottleSources || hasPriceData}
+        <div class="expanded-details-row">
+          <!-- Bottle Sources as pills -->
+          {#if wine.bottleSources}
+            <div class="detail-group">
+              <span class="detail-label">Source</span>
+              <div class="source-pills">
+                {#each wine.bottleSources.split(', ').filter(Boolean) as source}
+                  <span class="source-pill">{source}</span>
+                {/each}
+              </div>
+            </div>
+          {/if}
+
+          <!-- Average Prices -->
+          {#if hasPriceData}
+            <div class="detail-group">
+              <span class="detail-label">Avg Price</span>
+              <div class="price-items">
+            {#if wine.standardPrice}
+              <span class="price-item">
+                <span class="size">Std</span>
+                <span class="amount">{formatPrice(wine.standardPrice, wine.currency)}</span>
+              </span>
+            {/if}
+            {#if wine.magnumPrice}
+              <span class="price-item">
+                <span class="size">Mag</span>
+                <span class="amount">{formatPrice(wine.magnumPrice, wine.currency)}</span>
+              </span>
+            {/if}
+            {#if wine.demiPrice}
+              <span class="price-item">
+                <span class="size">Half</span>
+                <span class="amount">{formatPrice(wine.demiPrice, wine.currency)}</span>
+              </span>
+            {/if}
+            {#if wine.smallPrice}
+              <span class="price-item">
+                <span class="size">Small</span>
+                <span class="amount">{formatPrice(wine.smallPrice, wine.currency)}</span>
+              </span>
+            {/if}
+              </div>
+            </div>
+          {/if}
+        </div>
+      {/if}
+
       <div class="expanded-grid">
         <div class="expanded-section">
           <h4>Description</h4>
@@ -353,6 +428,79 @@
     border-top: 1px solid var(--divider-subtle);
     margin-top: var(--space-4);
     animation: expandIn 0.35s var(--ease-out);
+  }
+
+  /* Expanded Details Row */
+  .expanded-details-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-5);
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--divider-subtle);
+  }
+
+  .detail-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .detail-label {
+    font-family: var(--font-sans);
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+  }
+
+  /* Source Pills */
+  .source-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .source-pill {
+    display: inline-block;
+    padding: var(--space-1) var(--space-2);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    background: var(--bg-subtle);
+    border-radius: 100px;
+  }
+
+  /* Price Items */
+  .price-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .price-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    background: var(--bg-subtle);
+    border-radius: 4px;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+  }
+
+  .price-item .size {
+    color: var(--text-tertiary);
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 0.625rem;
+    letter-spacing: 0.05em;
+  }
+
+  .price-item .amount {
+    color: var(--text-secondary);
+    font-weight: 500;
   }
 
   @keyframes expandIn {

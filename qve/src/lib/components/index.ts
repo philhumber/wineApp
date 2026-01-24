@@ -21,8 +21,11 @@ export {
 export { default as Icon } from './ui/Icon.svelte';
 export { default as ThemeToggle } from './ui/ThemeToggle.svelte';
 export { default as ViewToggle } from './ui/ViewToggle.svelte';
+export { default as CurrencySelector } from './ui/CurrencySelector.svelte';
 export { default as RatingDisplay } from './ui/RatingDisplay.svelte';
 export { default as BottleIndicators } from './ui/BottleIndicators.svelte';
+export { default as PriceScale } from './ui/PriceScale.svelte';
+export { default as BuyAgainIndicator } from './ui/BuyAgainIndicator.svelte';
 export { default as Toast } from './ui/Toast.svelte';
 export { default as ToastContainer } from './ui/ToastContainer.svelte';
 
@@ -47,6 +50,14 @@ export { default as HistoryGrid } from './wine/HistoryGrid.svelte';
 export { default as BottleSelector } from './edit/BottleSelector.svelte';
 export { default as WineForm } from './edit/WineForm.svelte';
 export { default as BottleForm } from './edit/BottleForm.svelte';
+
+// Modal Components
+export {
+  ModalContainer,
+  DrinkRateModal,
+  ConfirmModal,
+  DuplicateWarningModal
+} from './modals';
 
 // Note: IconName type is exported from Icon.svelte via context="module"
 // Import directly from ./ui/Icon.svelte if needed

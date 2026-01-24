@@ -153,6 +153,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>Cellar | Qvé</title>
+</svelte:head>
+
 <!-- Fixed Header with Filters -->
 <Header
   on:filterChange={handleFilterChange}

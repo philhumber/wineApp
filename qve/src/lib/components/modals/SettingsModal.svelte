@@ -5,7 +5,7 @@
    */
   import { createEventDispatcher } from 'svelte';
   import { fade, fly } from 'svelte/transition';
-  import { Icon, ThemeToggle, ViewToggle } from '$lib/components';
+  import { Icon, ThemeToggle, ViewToggle, CurrencySelector } from '$lib/components';
 
   const dispatch = createEventDispatcher<{
     close: void;
@@ -73,6 +73,14 @@
         <p class="setting-description">Compact grid or detailed cards</p>
       </div>
       <ViewToggle />
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <h3 class="setting-label">Display Currency</h3>
+        <p class="setting-description">Prices shown in your preferred currency</p>
+      </div>
+      <CurrencySelector />
     </div>
   </div>
 </div>

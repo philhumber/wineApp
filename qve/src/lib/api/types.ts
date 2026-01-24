@@ -25,12 +25,19 @@ export interface Wine {
   rating: number | null;            // Individual rating
   // Price fields from PHP
   avgPricePerLiterEUR?: string;
+  typeAvgPricePerLiterEUR?: string;  // Type average for price scale
   standardPrice?: string | null;
   magnumPrice?: string | null;
+  demiPrice?: string | null;
+  smallPrice?: string | null;
   currency?: string;
   standardBottles?: string;
   smallBottles?: string;
   largeBottles?: string;
+  // Additional details (WIN-111)
+  bottleSources?: string | null;     // Comma-separated sources
+  buyAgainPercent?: number | null;   // 0-100 percentage
+  ratingCount?: number;              // Number of ratings
 }
 
 export interface Bottle {
@@ -256,4 +263,55 @@ export interface AIWineData {
     start?: number;
     end?: number;
   };
+}
+
+// ─────────────────────────────────────────────────────────
+// CURRENCY & BOTTLE SIZE TYPES
+// ─────────────────────────────────────────────────────────
+
+export interface Currency {
+  currencyCode: string;
+  currencyName: string;
+  symbol: string;
+  rateToEUR: number;
+}
+
+export interface BottleSize {
+  sizeCode: string;
+  sizeName: string;
+  volumeLitres: number;
+}
+
+export interface CurrencyDataResponse {
+  currencies: Currency[];
+  bottleSizes: BottleSize[];
+}
+
+// DUPLICATE CHECK TYPES
+// ─────────────────────────────────────────────────────────
+
+export type DuplicateCheckType = 'region' | 'producer' | 'wine';
+
+export interface DuplicateCheckParams {
+  type: DuplicateCheckType;
+  name: string;
+  producerId?: number;
+  producerName?: string;
+  regionId?: number;
+  regionName?: string;
+  year?: string;
+}
+
+export interface DuplicateMatch {
+  id: number;
+  name: string;
+  meta?: string;
+  bottleCount?: number;
+}
+
+export interface DuplicateCheckResult {
+  exactMatch: DuplicateMatch | null;
+  similarMatches: DuplicateMatch[];
+  existingBottles: number;
+  existingWineId: number | null;
 }
