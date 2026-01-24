@@ -53,7 +53,7 @@ qve/src/
 │   │   ├── layout/    # Header, FilterBar, SideMenu, FilterDropdown
 │   │   ├── forms/     # FormInput, RatingDots, MiniRatingDots
 │   │   ├── wizard/    # WizardStepIndicator, SearchDropdown, AILoadingOverlay
-│   │   ├── modals/    # DrinkRateModal, AddBottleModal, ConfirmModal
+│   │   ├── modals/    # DrinkRateModal, ConfirmModal, DuplicateWarningModal
 │   │   └── edit/      # WineForm, BottleForm, BottleSelector
 │   ├── stores/        # 15 Svelte stores (state management)
 │   └── styles/        # tokens.css, base.css, animations.css
@@ -151,23 +151,25 @@ const data = await api.enrichWithAI('producer', 'Château Margaux');
 
 ## Current Sprint Backlog
 
-### Sprint 4: Security + Quick Wins
+### Sprint 5: Currency + Card Details (Active)
 | Key | Summary | Status |
 |-----|---------|--------|
-| WIN-119 | Secure wineapp-config directory | To Do |
-| WIN-34 | Finish filtering/sorting | Done |
-| WIN-79 | Finish duplicate checking | In Progress |
-| WIN-124 | Double field label bug | To Do |
-| WIN-129 | Form not clearing bug | Done |
-| WIN-115 | Browser tab titles | To Do |
-| WIN-116 | Qve to Qvé branding | To Do |
+| WIN-133 | Fix TypeScript error in WineStep.svelte | Done |
+| WIN-132 | Fix TypeScript error in RegionStep.svelte | Done |
+| WIN-130 | Allow Currency Setting | To Do |
+| WIN-125 | Add / Edit Screen Inconsistency | To Do |
+| WIN-111 | Additional Details on Wine Card | To Do |
+| WIN-103 | Remove hardcoded currencies and sizes | To Do |
+| WIN-99 | Audit function displays full JSON instead of new value | To Do |
 
-### Sprint 5: Currency + Card Details
-- WIN-103: Remove hardcoded currencies/sizes
-- WIN-130: Allow currency display setting
-- WIN-111: Additional wine card details ✓
-- WIN-125: Add/Edit screen consistency
-- WIN-99: Audit JSON display fix
+### Completed: Sprint 4 (Security + Quick Wins)
+- WIN-119: Secure wineapp-config directory
+- WIN-34: Finish filtering/sorting
+- WIN-79: Finish duplicate checking
+- WIN-124: Double field label bug
+- WIN-129: Form not clearing bug
+- WIN-115: Browser tab titles
+- WIN-116: Qve to Qvé branding
 
 ### Sprint 6: iOS + Navigation + Ratings
 - WIN-131: iOS testing/bug fixes
@@ -221,6 +223,7 @@ Endpoints in `resources/php/`:
 | `getYears.php` | Vintages with bottle counts (cascading) |
 | `upload.php` | Image upload (800x800) |
 | `geminiAPI.php` | AI enrichment |
+| `checkDuplicate.php` | Duplicate/similar item detection (fuzzy matching) |
 
 ---
 
