@@ -10,9 +10,10 @@
 		SearchDropdown,
 		AIGenerateButton,
 		AIExpandedSection,
-		ImageUploadZone
+		ImageUploadZone,
+		DuplicateWarningModal
 	} from '$lib/components';
-	import type { Wine, WineType } from '$lib/api/types';
+	import type { Wine, WineType, DuplicateMatch } from '$lib/api/types';
 
 	// Local state
 	let wines: Array<{ id: number; name: string; meta?: string }> = [];
@@ -24,9 +25,12 @@
 	$: wineErrors = state.errors.wine;
 	$: isCreateMode = state.mode.wine === 'create';
 	$: aiExpanded = state.aiExpanded.wine;
+	$: duplicateWarning = state.duplicateWarning;
+	$: showDuplicateModal = duplicateWarning !== null && duplicateWarning.type === 'wine';
 
 	// Get producer context for filtering
 	$: producerName = state.selected.producer?.producerName || state.producer.producerName;
+	$: producerId = state.selected.producer?.producerID;
 
 	// Wine type options for dropdown
 	$: wineTypeOptions = wineTypes.map((t) => ({
@@ -97,11 +101,36 @@
 		});
 	}
 
+	// Pending create data (stored while checking duplicates)
+	let pendingCreateValue = '';
+
 	// Switch to create mode
 	async function handleCreateNew(e: CustomEvent<{ searchValue: string }>) {
-		const hadSearchValue = e.detail.searchValue.trim() !== '';
+		const searchVal = e.detail.searchValue.trim();
+		pendingCreateValue = searchVal;
+
+		// Check for duplicates before proceeding
+		if (searchVal) {
+			const hasDuplicates = await addWineStore.checkForDuplicates('wine', searchVal, {
+				producerId,
+				producerName
+			});
+
+			if (hasDuplicates) {
+				// Modal will be shown - don't proceed to create mode yet
+				return;
+			}
+		}
+
+		// No duplicates found, proceed to create mode
+		proceedToCreateMode(searchVal);
+	}
+
+	// Actually switch to create mode (after duplicate check passes)
+	async function proceedToCreateMode(wineName: string) {
+		const hadSearchValue = wineName.trim() !== '';
 		addWineStore.setMode('wine', 'create');
-		addWineStore.updateWine('wineName', e.detail.searchValue);
+		addWineStore.updateWine('wineName', wineName);
 
 		// Wait for DOM to update, then focus appropriate field
 		await tick();
@@ -114,6 +143,36 @@
 			const nameInput = document.querySelector<HTMLInputElement>('input[name="wineName"]');
 			nameInput?.focus();
 		}
+	}
+
+	// Handle duplicate modal actions
+	function handleUseExisting(e: CustomEvent<DuplicateMatch>) {
+		// Select the existing wine and advance to bottle step
+		addWineStore.useExistingMatch(e.detail);
+		addWineStore.nextStep();
+	}
+
+	function handleCreateNewAnyway() {
+		addWineStore.dismissDuplicateWarning();
+		proceedToCreateMode(pendingCreateValue);
+	}
+
+	function handleAddBottle(e: CustomEvent<{ wineId: number }>) {
+		// Find the match to select it (could be exact or similar match)
+		const match = state.duplicateWarning?.exactMatch?.id === e.detail.wineId
+			? state.duplicateWarning.exactMatch
+			: state.duplicateWarning?.similarMatches.find(m => m.id === e.detail.wineId);
+
+		if (match) {
+			// Select the existing wine and advance to bottle step
+			addWineStore.useExistingMatch(match);
+			addWineStore.nextStep();
+		}
+	}
+
+	function handleCancelDuplicate() {
+		addWineStore.dismissDuplicateWarning();
+		pendingCreateValue = '';
 	}
 
 	// Clear selection
@@ -248,6 +307,17 @@
 	{/if}
 
 </div>
+
+<!-- Duplicate Warning Modal -->
+{#if showDuplicateModal && duplicateWarning}
+	<DuplicateWarningModal
+		warning={duplicateWarning}
+		on:useExisting={handleUseExisting}
+		on:createNew={handleCreateNewAnyway}
+		on:addBottle={handleAddBottle}
+		on:cancel={handleCancelDuplicate}
+	/>
+{/if}
 
 <style>
 	.step-content {
