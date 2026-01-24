@@ -30,45 +30,17 @@ export interface AddBottleState {
 }
 
 // ─────────────────────────────────────────────────────────
-// OPTIONS (from BottleStep.svelte)
+// OPTIONS
 // ─────────────────────────────────────────────────────────
 
-// Note: values match database storage (short names), labels include size for display
-export const bottleSizeOptions = [
-	{ value: 'Piccolo', label: 'Piccolo (187.5ml)' },
-	{ value: 'Quarter', label: 'Quarter (200ml)' },
-	{ value: 'Demi', label: 'Demi (375ml)' },
-	{ value: 'Standard', label: 'Standard (750ml)' },
-	{ value: 'Litre', label: 'Litre (1L)' },
-	{ value: 'Magnum', label: 'Magnum (1.5L)' },
-	{ value: 'Jeroboam', label: 'Jeroboam (3L)' },
-	{ value: 'Rehoboam', label: 'Rehoboam (4.5L)' },
-	{ value: 'Methuselah', label: 'Methuselah (6L)' },
-	{ value: 'Salmanazar', label: 'Salmanazar (9L)' },
-	{ value: 'Balthazar', label: 'Balthazar (12L)' },
-	{ value: 'Nebuchadnezzar', label: 'Nebuchadnezzar (15L)' }
-];
-
+// Storage locations remain hardcoded (user-specific, rarely change)
+// Note: Bottle sizes and currencies are now DB-driven via currency.ts
 export const storageOptions = [
 	{ value: 'Wine Fridge', label: 'Wine Fridge' },
 	{ value: 'Wine Cellar', label: 'Wine Cellar' },
 	{ value: 'Spirit Cupboard', label: 'Spirit Cupboard' },
 	{ value: 'Kitchen', label: 'Kitchen' },
 	{ value: 'Other', label: 'Other' }
-];
-
-export const currencyOptions = [
-	{ value: 'GBP', label: 'GBP' },
-	{ value: 'EUR', label: 'EUR' },
-	{ value: 'USD', label: 'USD' },
-	{ value: 'AUD', label: 'AUD' },
-	{ value: 'NZD', label: 'NZD' },
-	{ value: 'CHF', label: 'CHF' },
-	{ value: 'DKK', label: 'DKK' },
-	{ value: 'NOK', label: 'NOK' },
-	{ value: 'SEK', label: 'SEK' },
-	{ value: 'JPY', label: 'JPY' },
-	{ value: 'HKD', label: 'HKD' }
 ];
 
 // ─────────────────────────────────────────────────────────

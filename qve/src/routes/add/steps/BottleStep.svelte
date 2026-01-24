@@ -1,13 +1,10 @@
 <script lang="ts">
-	import { addWineStore } from '$lib/stores';
+	import { addWineStore, bottleSizeSelectOptions, currencySelectOptions, storageOptions } from '$lib/stores';
 	import { FormInput, FormSelect, FormRow } from '$lib/components';
 
 	// Subscribe to store
 	$: state = $addWineStore;
 	$: bottleErrors = state.errors.bottle;
-
-	// Import shared options from addBottle store
-	import { bottleSizeOptions, storageOptions, currencyOptions } from '$lib/stores/addBottle';
 </script>
 
 <div class="step-content">
@@ -21,7 +18,7 @@
 			label="Bottle Size"
 			name="bottleSize"
 			value={state.bottle.bottleSize}
-			options={bottleSizeOptions}
+			options={$bottleSizeSelectOptions}
 			placeholder="Select size..."
 			required
 			error={bottleErrors.bottleSize}
@@ -62,7 +59,7 @@
 			label="Currency"
 			name="currency"
 			value={state.bottle.currency}
-			options={currencyOptions}
+			options={$currencySelectOptions}
 			on:change={(e) => addWineStore.updateBottle('currency', e.detail)}
 		/>
 	</FormRow>

@@ -86,9 +86,7 @@ export {
   addBottle,
   isDirtyAddBottle,
   canSubmitAddBottle,
-  bottleSizeOptions,
-  storageOptions,
-  currencyOptions
+  storageOptions
 } from './addBottle';
 export type { AddBottleState } from './addBottle';
 
@@ -149,6 +147,8 @@ export {
   availableCurrencies,
   availableBottleSizes,
   currentCurrency,
+  bottleSizeSelectOptions,
+  currencySelectOptions,
   convertFromEUR,
   convertToEUR,
   convertCurrency,
