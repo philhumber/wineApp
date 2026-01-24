@@ -32,11 +32,23 @@
   }
 
   async function navigateTo(path: string, mode?: 'ourWines' | 'allWines') {
+    const targetPath = `${base}${path}`;
+    const isCurrentlyHome = currentPath === `${base}/` || currentPath === base;
+    const isTargetHome = path === '/';
+
     if (mode) {
-      viewMode.set(mode);
+      // If staying on home page and just changing view mode, push history
+      // Otherwise, regular navigation handles it
+      if (isCurrentlyHome && isTargetHome) {
+        viewMode.setWithHistory(mode);
+        close();
+        return; // No navigation needed, just view mode change
+      } else {
+        viewMode.set(mode);
+      }
     }
     close();
-    await goto(`${base}${path}`);
+    await goto(targetPath);
   }
 
   function openSettings() {
