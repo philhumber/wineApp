@@ -71,7 +71,7 @@ qve/src/
 │   │   ├── wizard/    # WizardStepIndicator, SearchDropdown, AILoadingOverlay
 │   │   ├── modals/    # DrinkRateModal, ConfirmModal, DuplicateWarningModal
 │   │   └── edit/      # WineForm, BottleForm, BottleSelector
-│   ├── stores/        # 15 Svelte stores (state management)
+│   ├── stores/        # 16 Svelte stores (state management)
 │   └── styles/        # tokens.css, base.css, animations.css
 └── routes/            # SvelteKit file-based routing
     ├── +page.svelte   # Home / Cellar view
@@ -168,32 +168,31 @@ const data = await api.enrichWithAI('producer', 'Château Margaux');
 
 ## Current Sprint Backlog
 
-
-### Sprint 5: Currency + Card Details
-- WIN-103: Remove hardcoded currencies/sizes ✓
-- WIN-130: Allow currency display setting ✓
-- WIN-111: Additional wine card details
-- WIN-125: Add/Edit screen consistency
-- WIN-99: Audit JSON display fix
-- WIN-133: Fix TypeScript error in WineStep.svelte | Done |
-- WIN-132: Fix TypeScript error in RegionStep.svelte | Done |
-
-
-### Completed: Sprint 4 (Security + Quick Wins)
-- WIN-119: Secure wineapp-config directory
-- WIN-34: Finish filtering/sorting
-- WIN-79: Finish duplicate checking
-- WIN-124: Double field label bug
-- WIN-129: Form not clearing bug
-- WIN-115: Browser tab titles
-- WIN-116: Qve to Qvé branding
-
-### Sprint 6: iOS + Navigation + Ratings
+### Sprint 6: iOS + Navigation + Ratings (Current)
 - WIN-131: iOS testing/bug fixes
 - WIN-128: Back button / swipe navigation
 - WIN-122: Fix UI flashing/highlighting
 - WIN-117: Edit ratings from history
 - WIN-114: Image view enhancements
+
+### Completed: Sprint 5 (Currency + Card Details)
+- WIN-134: Implement bottle_sizes and currencies tables ✓
+- WIN-133: Fix TypeScript error in WineStep.svelte ✓
+- WIN-132: Fix TypeScript error in RegionStep.svelte ✓
+- WIN-130: Allow currency display setting ✓
+- WIN-125: Add/Edit screen consistency ✓
+- WIN-111: Additional wine card details ✓
+- WIN-103: Remove hardcoded currencies/sizes ✓
+- WIN-99: Audit JSON display fix ✓
+
+### Completed: Sprint 4 (Security + Quick Wins)
+- WIN-119: Secure wineapp-config directory ✓
+- WIN-34: Finish filtering/sorting ✓
+- WIN-79: Finish duplicate checking ✓
+- WIN-124: Double field label bug ✓
+- WIN-129: Form not clearing bug ✓
+- WIN-115: Browser tab titles ✓
+- WIN-116: Qve to Qvé branding ✓
 
 ### Sprint 7: Collection Features + Data Quality
 - WIN-121/126: Collection naming
