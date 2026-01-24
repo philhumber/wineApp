@@ -3,7 +3,7 @@
 	import { page } from '$app/stores';
 	import { goto, beforeNavigate } from '$app/navigation';
 	import { base } from '$app/paths';
-	import { Icon, ThemeToggle, BottleSelector, WineForm, BottleForm } from '$lib/components';
+	import { Header, Icon, BottleSelector, WineForm, BottleForm } from '$lib/components';
 	import {
 		editWine,
 		isWineDirty,
@@ -68,16 +68,6 @@
 		editWine.setTab(tab);
 	}
 
-	// Navigate back (with fallback to home)
-	function goBack() {
-		allowNavigation = true;
-		if (window.history.length > 1) {
-			history.back();
-		} else {
-			goto(`${base}/`);
-		}
-	}
-
 	// Handle cancel with dirty check
 	function handleCancel() {
 		if ($isEditDirty) {
@@ -89,14 +79,16 @@
 				variant: 'danger',
 				onConfirm: () => {
 					modal.close();
-					goBack();
+					allowNavigation = true;
+					goto(`${base}/`);
 				},
 				onCancel: () => {
 					modal.close();
 				}
 			});
 		} else {
-			goBack();
+			allowNavigation = true;
+			goto(`${base}/`);
 		}
 	}
 
@@ -157,16 +149,7 @@
 </svelte:head>
 
 <!-- Header -->
-<header class="header">
-	<div class="header-inner">
-		<button class="header-back" on:click={handleCancel} type="button">
-			<Icon name="chevron-left" size={16} />
-			Back
-		</button>
-		<h1 class="header-title">Edit</h1>
-		<ThemeToggle />
-	</div>
-</header>
+<Header variant="edit" />
 
 <!-- Main -->
 <main class="main">
@@ -272,63 +255,13 @@
 </main>
 
 <style>
-	/* Header */
-	.header {
-		position: fixed;
-		top: 0;
-		left: 0;
-		right: 0;
-		z-index: 100;
-		background: var(--bg);
-		border-bottom: 1px solid var(--divider);
-		transition: var(--theme-transition);
-	}
-
-	:global([data-theme='dark']) .header {
-		background: rgba(12, 11, 10, 0.85);
-		backdrop-filter: blur(20px);
-	}
-
-	.header-inner {
-		max-width: 800px;
-		margin: 0 auto;
-		padding: var(--space-5) var(--space-6);
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-
-	.header-back {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		font-family: var(--font-sans);
-		font-size: 0.875rem;
-		color: var(--text-secondary);
-		background: none;
-		border: none;
-		cursor: pointer;
-		transition: color 0.2s;
-	}
-
-	.header-back:hover {
-		color: var(--text-primary);
-	}
-
-	.header-title {
-		font-family: var(--font-serif);
-		font-size: 1.25rem;
-		font-weight: 400;
-		color: var(--text-primary);
-	}
-
 	/* Main */
 	.main {
 		position: relative;
 		z-index: 1;
 		max-width: 800px;
 		margin: 0 auto;
-		padding: calc(100px + var(--space-6)) var(--space-6) var(--space-10);
+		padding: var(--space-6) var(--space-6) var(--space-10);
 	}
 
 	/* Loading & Error States */
@@ -484,11 +417,7 @@
 	/* Responsive */
 	@media (max-width: 768px) {
 		.main {
-			padding: calc(90px + var(--space-4)) var(--space-4) var(--space-8);
-		}
-
-		.header-inner {
-			padding: var(--space-4);
+			padding: var(--space-4) var(--space-4) var(--space-8);
 		}
 
 		.form-section {
