@@ -21,7 +21,8 @@ import type {
   DrinkBottlePayload,
   AIRegionData,
   AIProducerData,
-  AIWineData
+  AIWineData,
+  CurrencyDataResponse
 } from './types';
 
 class WineApiClient {
@@ -301,6 +302,16 @@ class WineApiClient {
       'getDrunkWines.php'
     );
     return response.data?.wineList ?? [];
+  }
+
+  /**
+   * Get currencies and bottle sizes reference data
+   */
+  async getCurrencies(): Promise<CurrencyDataResponse> {
+    const response = await this.fetchJSON<CurrencyDataResponse>(
+      'getCurrencies.php'
+    );
+    return response.data ?? { currencies: [], bottleSizes: [] };
   }
 
   // ─────────────────────────────────────────────────────────
