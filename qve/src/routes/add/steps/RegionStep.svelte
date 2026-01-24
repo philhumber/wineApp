@@ -9,9 +9,10 @@
 		FormRow,
 		SearchDropdown,
 		AIGenerateButton,
-		AIExpandedSection
+		AIExpandedSection,
+		DuplicateWarningModal
 	} from '$lib/components';
-	import type { Region, Country } from '$lib/api/types';
+	import type { Region, Country, DuplicateMatch } from '$lib/api/types';
 
 	// Local state
 	let regions: Array<{ id: number; name: string; meta?: string }> = [];
@@ -24,6 +25,8 @@
 	$: regionErrors = state.errors.region;
 	$: isCreateMode = state.mode.region === 'create';
 	$: aiExpanded = state.aiExpanded.region;
+	$: duplicateWarning = state.duplicateWarning;
+	$: showDuplicateModal = duplicateWarning !== null && duplicateWarning.type === 'region';
 
 	// Country options for dropdown
 	$: countryOptions = countries.map((c) => ({
@@ -76,11 +79,33 @@
 		});
 	}
 
+	// Pending create data (stored while checking duplicates)
+	let pendingCreateValue = '';
+
 	// Switch to create mode
 	async function handleCreateNew(e: CustomEvent<{ searchValue: string }>) {
-		const hadSearchValue = e.detail.searchValue.trim() !== '';
+		const searchVal = e.detail.searchValue.trim();
+		pendingCreateValue = searchVal;
+
+		// Check for duplicates before proceeding
+		if (searchVal) {
+			const hasDuplicates = await addWineStore.checkForDuplicates('region', searchVal);
+
+			if (hasDuplicates) {
+				// Modal will be shown - don't proceed to create mode yet
+				return;
+			}
+		}
+
+		// No duplicates found, proceed to create mode
+		proceedToCreateMode(searchVal);
+	}
+
+	// Actually switch to create mode (after duplicate check passes)
+	async function proceedToCreateMode(regionName: string) {
+		const hadSearchValue = regionName.trim() !== '';
 		addWineStore.setMode('region', 'create');
-		addWineStore.updateRegion('regionName', e.detail.searchValue);
+		addWineStore.updateRegion('regionName', regionName);
 
 		// Wait for DOM to update, then focus appropriate field
 		await tick();
@@ -93,6 +118,23 @@
 			const nameInput = document.querySelector<HTMLInputElement>('input[name="regionName"]');
 			nameInput?.focus();
 		}
+	}
+
+	// Handle duplicate modal actions
+	function handleUseExisting(e: CustomEvent<DuplicateMatch>) {
+		// Select the existing region and advance to next step
+		addWineStore.useExistingMatch(e.detail);
+		addWineStore.nextStep();
+	}
+
+	function handleCreateNewAnyway() {
+		addWineStore.dismissDuplicateWarning();
+		proceedToCreateMode(pendingCreateValue);
+	}
+
+	function handleCancelDuplicate() {
+		addWineStore.dismissDuplicateWarning();
+		pendingCreateValue = '';
 	}
 
 	// Clear selection
@@ -214,6 +256,16 @@
 	{/if}
 
 </div>
+
+<!-- Duplicate Warning Modal -->
+{#if showDuplicateModal && duplicateWarning}
+	<DuplicateWarningModal
+		warning={duplicateWarning}
+		on:useExisting={handleUseExisting}
+		on:createNew={handleCreateNewAnyway}
+		on:cancel={handleCancelDuplicate}
+	/>
+{/if}
 
 <style>
 	.step-content {
