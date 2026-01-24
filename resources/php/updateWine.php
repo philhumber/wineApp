@@ -108,7 +108,7 @@
             // 10. Log the change
             $newData = [
                 'wineName' => $wineName,
-                'wineTypeID' => $wineTypeID,
+                'wineTypeID' => $wineTypeID['wineTypeID'],
                 'year' => $year,
                 'description' => $description,
                 'tastingNotes' => $tastingNotes,
