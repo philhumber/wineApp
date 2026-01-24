@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
-	import { goto, beforeNavigate } from '$app/navigation';
+	import { goto, beforeNavigate, afterNavigate } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { Header, Icon, BottleSelector, WineForm, BottleForm } from '$lib/components';
 	import {
@@ -29,10 +29,20 @@
 	// Track if we should allow navigation
 	let allowNavigation = false;
 
+	// Track if we pushed history when navigating to bottle tab
+	let bottleTabPushedHistory = false;
+
 	// Initialize on mount
 	onMount(async () => {
 		if (wineID && !isNaN(wineID)) {
 			await editWine.init(wineID);
+
+			// Check for tab param in URL (deep link case - no history pushed)
+			const tabParam = $page.url.searchParams.get('tab');
+			if (tabParam === 'bottle') {
+				editWine.setTab('bottle');
+				// Don't set bottleTabPushedHistory - we're deep linking, not navigating
+			}
 		}
 	});
 
@@ -41,8 +51,34 @@
 		editWine.reset();
 	});
 
+	// Handle browser back/forward navigation
+	afterNavigate(({ type, to }) => {
+		if (type === 'popstate') {
+			// Only handle if still on this edit page
+			if (to?.url.pathname !== `${base}/edit/${wineID}`) {
+				return;
+			}
+
+			const tabParam = to.url.searchParams.get('tab');
+			if (tabParam === 'bottle') {
+				editWine.setTab('bottle');
+			} else {
+				editWine.setTab('wine');
+				// Reset flag when navigating back to wine tab
+				bottleTabPushedHistory = false;
+			}
+		}
+	});
+
 	// Warn before leaving with unsaved changes
-	beforeNavigate(({ cancel }) => {
+	beforeNavigate(({ cancel, to }) => {
+		// Allow navigation within edit page (tab changes via query params)
+		const isStayingInEditPage = to?.url.pathname === `${base}/edit/${wineID}`;
+		if (isStayingInEditPage) {
+			return; // Don't block tab-to-tab navigation
+		}
+
+		// Block navigation away from edit page if there's unsaved data
 		if (!allowNavigation && $isEditDirty && !$editWine.isSubmitting) {
 			cancel();
 			modal.confirm({
@@ -63,9 +99,29 @@
 		}
 	});
 
-	// Tab switching
+	// Tab switching with browser history
 	function handleTabClick(tab: 'wine' | 'bottle') {
-		editWine.setTab(tab);
+		const currentTab = $page.url.searchParams.get('tab') || 'wine';
+
+		if (tab === 'bottle' && currentTab !== 'bottle') {
+			// Going to bottle tab - push history
+			editWine.setTab('bottle');
+			bottleTabPushedHistory = true;
+			goto(`${base}/edit/${wineID}?tab=bottle`, { noScroll: true, keepFocus: true });
+		} else if (tab === 'wine' && currentTab === 'bottle') {
+			// Going back to wine tab
+			if (bottleTabPushedHistory) {
+				// We pushed history, so use back to clean it up
+				history.back();
+			} else {
+				// Deep linked to bottle tab - use goto instead of history.back()
+				editWine.setTab('wine');
+				goto(`${base}/edit/${wineID}`, { noScroll: true, keepFocus: true, replaceState: true });
+			}
+		} else {
+			// Already on requested tab - just update store
+			editWine.setTab(tab);
+		}
 	}
 
 	// Handle cancel with dirty check
