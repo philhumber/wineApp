@@ -46,38 +46,14 @@
 						(SELECT ROUND(AVG(normalized_price), 2)
 						FROM (
 							SELECT
-								(CASE b.currency
-									WHEN 'EUR' THEN b.price
-									WHEN 'GBP' THEN b.price * 1.17
-									WHEN 'SEK' THEN b.price * 0.087
-									WHEN 'USD' THEN b.price * 0.92
-									ELSE b.price
-								END) / (CASE b.bottleSize
-									WHEN 'Piccolo' THEN 0.187
-									WHEN 'Quarter' THEN 0.187
-									WHEN 'Demi' THEN 0.375
-									WHEN 'Standard' THEN 0.75
-									WHEN 'Magnum' THEN 1.5
-									ELSE 0.75
-								END) AS normalized_price,
+								(b.price / COALESCE(NULLIF(c.rateToEUR, 0), 1)) / COALESCE(NULLIF(bs.volumeLitres, 0), 0.75) AS normalized_price,
 								ROW_NUMBER() OVER (ORDER BY
-									(CASE b.currency
-										WHEN 'EUR' THEN b.price
-										WHEN 'GBP' THEN b.price * 1.17
-										WHEN 'SEK' THEN b.price * 0.087
-										WHEN 'USD' THEN b.price * 0.92
-										ELSE b.price
-									END) / (CASE b.bottleSize
-										WHEN 'Piccolo' THEN 0.187
-										WHEN 'Quarter' THEN 0.187
-										WHEN 'Demi' THEN 0.375
-										WHEN 'Standard' THEN 0.75
-										WHEN 'Magnum' THEN 1.5
-										ELSE 0.75
-									END)
+									(b.price / COALESCE(NULLIF(c.rateToEUR, 0), 1)) / COALESCE(NULLIF(bs.volumeLitres, 0), 0.75)
 								) AS rn,
 								COUNT(*) OVER () AS cnt
 							FROM bottles b
+							LEFT JOIN currencies c ON b.currency = c.currencyCode
+							LEFT JOIN bottle_sizes bs ON b.bottleSize = bs.sizeCode
 							WHERE b.wineID = wine.wineID
 								AND b.price IS NOT NULL
 								AND b.price > 0
@@ -86,39 +62,15 @@
 						(SELECT ROUND(AVG(normalized_price), 2)
 						FROM (
 							SELECT
-								(CASE b.currency
-									WHEN 'EUR' THEN b.price
-									WHEN 'GBP' THEN b.price * 1.17
-									WHEN 'SEK' THEN b.price * 0.087
-									WHEN 'USD' THEN b.price * 0.92
-									ELSE b.price
-								END) / (CASE b.bottleSize
-									WHEN 'Piccolo' THEN 0.187
-									WHEN 'Quarter' THEN 0.187
-									WHEN 'Demi' THEN 0.375
-									WHEN 'Standard' THEN 0.75
-									WHEN 'Magnum' THEN 1.5
-									ELSE 0.75
-								END) AS normalized_price,
+								(b.price / COALESCE(NULLIF(c.rateToEUR, 0), 1)) / COALESCE(NULLIF(bs.volumeLitres, 0), 0.75) AS normalized_price,
 								ROW_NUMBER() OVER (ORDER BY
-									(CASE b.currency
-										WHEN 'EUR' THEN b.price
-										WHEN 'GBP' THEN b.price * 1.17
-										WHEN 'SEK' THEN b.price * 0.087
-										WHEN 'USD' THEN b.price * 0.92
-										ELSE b.price
-									END) / (CASE b.bottleSize
-										WHEN 'Piccolo' THEN 0.187
-										WHEN 'Quarter' THEN 0.187
-										WHEN 'Demi' THEN 0.375
-										WHEN 'Standard' THEN 0.75
-										WHEN 'Magnum' THEN 1.5
-										ELSE 0.75
-									END)
+									(b.price / COALESCE(NULLIF(c.rateToEUR, 0), 1)) / COALESCE(NULLIF(bs.volumeLitres, 0), 0.75)
 								) AS rn,
 								COUNT(*) OVER () AS cnt
 							FROM bottles b
 							JOIN wine w2 ON b.wineID = w2.wineID
+							LEFT JOIN currencies c ON b.currency = c.currencyCode
+							LEFT JOIN bottle_sizes bs ON b.bottleSize = bs.sizeCode
 							WHERE w2.wineTypeID = wine.wineTypeID
 								AND b.price IS NOT NULL
 								AND b.price > 0

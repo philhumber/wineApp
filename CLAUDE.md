@@ -64,7 +64,7 @@ qve/src/
 │   │   ├── client.ts  # All API methods
 │   │   └── types.ts   # Wine, Bottle, Rating types
 │   ├── components/    # 40+ Svelte components
-│   │   ├── ui/        # Icon, ThemeToggle, Toast, RatingDisplay, PriceScale, BuyAgainIndicator
+│   │   ├── ui/        # Icon, ThemeToggle, CurrencySelector, Toast, RatingDisplay, PriceScale, BuyAgainIndicator
 │   │   ├── wine/      # WineCard, WineGrid, HistoryCard
 │   │   ├── layout/    # Header, FilterBar, SideMenu, FilterDropdown
 │   │   ├── forms/     # FormInput, RatingDots, MiniRatingDots
@@ -101,6 +101,7 @@ qve/src/
 | modal | `stores/modal.ts` | Modal container state |
 | menu | `stores/menu.ts` | Side menu open/close |
 | theme | `stores/theme.ts` | Light/dark theme |
+| currency | `stores/currency.ts` | Display currency preference, conversion utilities |
 | scrollPosition | `stores/scrollPosition.ts` | Scroll restoration |
 
 ---
@@ -165,11 +166,57 @@ const data = await api.enrichWithAI('producer', 'Château Margaux');
 
 ---
 
-## Current Work
+## Current Sprint Backlog
 
-See JIRA for current sprint and backlog: https://philhumber.atlassian.net/jira/software/projects/WIN
 
-Use `.\scripts\jira.ps1 sprint` to view current sprint issues from the command line.
+### Sprint 5: Currency + Card Details
+- WIN-103: Remove hardcoded currencies/sizes ✓
+- WIN-130: Allow currency display setting ✓
+- WIN-111: Additional wine card details
+- WIN-125: Add/Edit screen consistency
+- WIN-99: Audit JSON display fix
+- WIN-133: Fix TypeScript error in WineStep.svelte | Done |
+- WIN-132: Fix TypeScript error in RegionStep.svelte | Done |
+
+
+### Completed: Sprint 4 (Security + Quick Wins)
+- WIN-119: Secure wineapp-config directory
+- WIN-34: Finish filtering/sorting
+- WIN-79: Finish duplicate checking
+- WIN-124: Double field label bug
+- WIN-129: Form not clearing bug
+- WIN-115: Browser tab titles
+- WIN-116: Qve to Qvé branding
+
+### Sprint 6: iOS + Navigation + Ratings
+- WIN-131: iOS testing/bug fixes
+- WIN-128: Back button / swipe navigation
+- WIN-122: Fix UI flashing/highlighting
+- WIN-117: Edit ratings from history
+- WIN-114: Image view enhancements
+
+### Sprint 7: Collection Features + Data Quality
+- WIN-121/126: Collection naming
+- WIN-127: Collection value data
+- WIN-113: Region parent level search
+- WIN-123: Field validation vs SQL
+
+### Sprint 8: Data Management + Infrastructure
+- WIN-97: Audit functions for all operations
+- WIN-80: Soft delete support
+- WIN-78: JS/PHP caching
+- WIN-108: AI extract region from producer
+- WIN-32: Producer/region info cards
+
+### Sprint 9: Wishlist + Grape Data
+- WIN-109: Wine wishlist
+- WIN-112: Grape data capture
+
+### Backlog: AI Features
+- WIN-42: Image recognition
+- WIN-37: AI chatbot (winebot)
+- WIN-64: Structured output and grounding
+- WIN-118: Vector database evaluation
 
 ---
 
@@ -191,6 +238,7 @@ Endpoints in `resources/php/`:
 | `getRegions.php` | Regions with bottle counts (cascading) |
 | `getProducers.php` | Producers with bottle counts (cascading) |
 | `getYears.php` | Vintages with bottle counts (cascading) |
+| `getCurrencies.php` | Currencies and bottle sizes for settings |
 | `upload.php` | Image upload (800x800) |
 | `geminiAPI.php` | AI enrichment |
 | `checkDuplicate.php` | Duplicate/similar item detection (fuzzy matching) |
@@ -203,7 +251,7 @@ Endpoints in `resources/php/`:
 **Database**: winelist
 **Schema**: `resources/sql/DBStructure.sql`
 
-Key tables: wine, bottles, ratings, producers, region, country, winetype
+Key tables: wine, bottles, ratings, producers, region, country, winetype, currencies, bottle_sizes
 
 ---
 
