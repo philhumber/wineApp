@@ -2,16 +2,34 @@
   /**
    * WineImage component
    * Displays wine bottle image with graceful fallback to placeholder SVG
+   * Optionally clickable for fullscreen lightbox viewing
    */
+  import { createEventDispatcher } from 'svelte';
 
   export let src: string | null = null;
   export let alt: string = 'Wine bottle';
   export let compact: boolean = false;
+  export let clickable: boolean = false;
+
+  const dispatch = createEventDispatcher<{ click: void }>();
 
   let hasError = false;
 
   function handleError() {
     hasError = true;
+  }
+
+  function handleClick() {
+    if (clickable && src && !hasError) {
+      dispatch('click');
+    }
+  }
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (clickable && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      handleClick();
+    }
   }
 
   // Reset error state when src changes
@@ -20,7 +38,17 @@
   $: showPlaceholder = !src || hasError;
 </script>
 
-<div class="wine-image-container" class:compact>
+<!-- svelte-ignore a11y_no_static_element_interactions a11y_no_noninteractive_tabindex -->
+<div
+  class="wine-image-container"
+  class:compact
+  class:clickable
+  on:click={handleClick}
+  on:keydown={handleKeydown}
+  role={clickable ? 'button' : undefined}
+  tabindex={clickable ? 0 : undefined}
+  aria-label={clickable ? `View ${alt} fullscreen` : undefined}
+>
   {#if showPlaceholder}
     <div class="wine-image-placeholder">
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -44,17 +72,31 @@
   .wine-image-container {
     flex-shrink: 0;
     width: 120px;
-    height: 160px;
+    height: 120px;
     border-radius: 4px;
     border: 1px solid var(--divider);
     overflow: hidden;
     background: var(--bg-subtle);
-    transition: width 0.3s var(--ease-out), height 0.3s var(--ease-out);
+    transition: width 0.3s var(--ease-out), height 0.3s var(--ease-out), box-shadow 0.2s var(--ease-out);
+  }
+
+  .wine-image-container.clickable {
+    cursor: zoom-in;
+  }
+
+  .wine-image-container.clickable:hover {
+    box-shadow: var(--shadow-md);
+  }
+
+  .wine-image-container.clickable:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 
   .wine-image-container.compact {
     width: 100%;
-    height: 100px;
+    height: auto;
+    aspect-ratio: 1;
   }
 
   .wine-image-placeholder {
@@ -88,10 +130,6 @@
 
   /* Mobile adjustments for compact view */
   @media (max-width: 479px) {
-    .wine-image-container.compact {
-      height: 80px;
-    }
-
     .wine-image-placeholder svg {
       width: 32px;
       height: 32px;
