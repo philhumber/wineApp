@@ -48,7 +48,7 @@
 		try {
 			const [regionsData, countriesData] = await Promise.all([
 				api.getRegions({ withBottleCount: false }),
-				api.getCountries(false)
+				api.getCountries({ withBottleCount: false })
 			]);
 
 			regions = regionsData.map((r) => ({

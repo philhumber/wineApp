@@ -132,7 +132,7 @@ function createEditWineStore() {
 				const [wine, bottles, wineTypes] = await Promise.all([
 					api.getWine(wineID),
 					api.getBottles(wineID),
-					api.getTypes(false)
+					api.getTypes({ withBottleCount: false })
 				]);
 
 				if (!wine) {

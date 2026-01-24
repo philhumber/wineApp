@@ -42,7 +42,7 @@
 	async function loadData() {
 		try {
 			const [typesData] = await Promise.all([
-				api.getTypes(false)
+				api.getTypes({ withBottleCount: false })
 			]);
 			wineTypes = typesData;
 
