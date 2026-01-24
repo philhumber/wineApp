@@ -8,9 +8,10 @@
 		FormRow,
 		SearchDropdown,
 		AIGenerateButton,
-		AIExpandedSection
+		AIExpandedSection,
+		DuplicateWarningModal
 	} from '$lib/components';
-	import type { Producer } from '$lib/api/types';
+	import type { Producer, DuplicateMatch } from '$lib/api/types';
 
 	// Local state
 	let producers: Array<{ id: number; name: string; meta?: string }> = [];
@@ -22,9 +23,12 @@
 	$: producerErrors = state.errors.producer;
 	$: isCreateMode = state.mode.producer === 'create';
 	$: aiExpanded = state.aiExpanded.producer;
+	$: duplicateWarning = state.duplicateWarning;
+	$: showDuplicateModal = duplicateWarning !== null && duplicateWarning.type === 'producer';
 
 	// Get region context for filtering
 	$: regionName = state.selected.region?.regionName || state.region.regionName;
+	$: regionId = state.selected.region?.regionID;
 
 	// Fetch producers (filtered by region if available)
 	async function loadProducers() {
@@ -69,15 +73,57 @@
 		});
 	}
 
+	// Pending create data (stored while checking duplicates)
+	let pendingCreateValue = '';
+
 	// Switch to create mode
 	async function handleCreateNew(e: CustomEvent<{ searchValue: string }>) {
+		const searchVal = e.detail.searchValue.trim();
+		pendingCreateValue = searchVal;
+
+		// Check for duplicates before proceeding
+		if (searchVal) {
+			const hasDuplicates = await addWineStore.checkForDuplicates('producer', searchVal, {
+				regionId,
+				regionName
+			});
+
+			if (hasDuplicates) {
+				// Modal will be shown - don't proceed to create mode yet
+				return;
+			}
+		}
+
+		// No duplicates found, proceed to create mode
+		proceedToCreateMode(searchVal);
+	}
+
+	// Actually switch to create mode (after duplicate check passes)
+	async function proceedToCreateMode(producerName: string) {
 		addWineStore.setMode('producer', 'create');
-		addWineStore.updateProducer('producerName', e.detail.searchValue);
+		addWineStore.updateProducer('producerName', producerName);
 
 		// Wait for DOM to update, then focus producer name input
 		await tick();
 		const nameInput = document.querySelector<HTMLInputElement>('input[name="producerName"]');
 		nameInput?.focus();
+	}
+
+	// Handle duplicate modal actions
+	function handleUseExisting(e: CustomEvent<DuplicateMatch>) {
+		// Select the existing producer and advance to next step
+		addWineStore.useExistingMatch(e.detail);
+		addWineStore.nextStep();
+	}
+
+	function handleCreateNewAnyway() {
+		addWineStore.dismissDuplicateWarning();
+		proceedToCreateMode(pendingCreateValue);
+	}
+
+	function handleCancelDuplicate() {
+		addWineStore.dismissDuplicateWarning();
+		pendingCreateValue = '';
 	}
 
 	// Clear selection
@@ -182,6 +228,16 @@
 	{/if}
 
 </div>
+
+<!-- Duplicate Warning Modal -->
+{#if showDuplicateModal && duplicateWarning}
+	<DuplicateWarningModal
+		warning={duplicateWarning}
+		on:useExisting={handleUseExisting}
+		on:createNew={handleCreateNewAnyway}
+		on:cancel={handleCancelDuplicate}
+	/>
+{/if}
 
 <style>
 	.step-content {
