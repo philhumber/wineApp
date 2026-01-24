@@ -11,6 +11,7 @@
   import AddBottleModal from './AddBottleModal.svelte';
   import ConfirmModal from './ConfirmModal.svelte';
   import SettingsModal from './SettingsModal.svelte';
+  import ImageLightboxModal from './ImageLightboxModal.svelte';
   import type { Wine } from '$lib/api/types';
   import type { ConfirmModalData } from '$lib/stores';
 
@@ -63,6 +64,12 @@
   />
 {:else if modalType === 'settings'}
   <SettingsModal on:close={handleClose} />
+{:else if modalType === 'imageLightbox' && modalData?.src}
+  <ImageLightboxModal
+    src={modalData.src as string}
+    alt={(modalData.alt as string) || 'Wine image'}
+    on:close={handleClose}
+  />
 {/if}
 
 <!--

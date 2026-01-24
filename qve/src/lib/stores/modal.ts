@@ -11,12 +11,13 @@ import type { Wine } from '$lib/api/types';
 // ─────────────────────────────────────────────────────────
 
 export type ModalType =
-  | 'drink'        // Drink & rate bottle
-  | 'addBottle'    // Add bottle to existing wine
-  | 'edit'         // Edit wine or bottle
-  | 'confirm'      // Confirmation dialog
-  | 'aiLoading'    // AI generation loading overlay
-  | 'settings'     // Settings modal (theme, view density)
+  | 'drink'          // Drink & rate bottle
+  | 'addBottle'      // Add bottle to existing wine
+  | 'edit'           // Edit wine or bottle
+  | 'confirm'        // Confirmation dialog
+  | 'aiLoading'      // AI generation loading overlay
+  | 'settings'       // Settings modal (theme, view density)
+  | 'imageLightbox'  // Fullscreen image viewer
   | null;
 
 export interface ModalState {
@@ -179,6 +180,14 @@ function createModalStore() {
      * Open settings modal
      */
     openSettings: (): void => {
+      set({ type: 'settings', data: {} });
+    },
+
+    /**
+     * Open image lightbox for fullscreen viewing
+     */
+    openImageLightbox: (src: string, alt?: string): void => {
+      set({ type: 'imageLightbox', data: { src, alt: alt || 'Wine image' } });
       const pushed = pushHistoryForModal('settings');
       set({ type: 'settings', data: {}, pushedHistory: pushed });
     }
