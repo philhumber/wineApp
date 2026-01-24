@@ -5,7 +5,7 @@
 	 */
 	import { createEventDispatcher } from 'svelte';
 	import { FormInput, FormSelect, FormRow } from '$lib/components';
-	import { bottleSizeOptions, storageOptions, currencyOptions } from '$lib/stores/editWine';
+	import { bottleSizeSelectOptions, currencySelectOptions, storageOptions } from '$lib/stores';
 	import type { EditBottleFormData } from '$lib/stores/editWine';
 
 	export let state: EditBottleFormData;
@@ -28,7 +28,7 @@
 			label="Bottle Size"
 			name="bottleSize"
 			value={state.bottleSize}
-			options={bottleSizeOptions}
+			options={$bottleSizeSelectOptions}
 			required
 			{disabled}
 			error={errors['bottle.bottleSize'] || ''}
@@ -73,7 +73,7 @@
 			label="Currency"
 			name="currency"
 			value={state.currency}
-			options={currencyOptions}
+			options={$currencySelectOptions}
 			{disabled}
 			on:change={(e) => handleInput('currency', e.detail)}
 		/>

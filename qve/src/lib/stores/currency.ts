@@ -35,6 +35,13 @@ const FALLBACK_CURRENCIES: Currency[] = [
 	{ currencyCode: 'USD', currencyName: 'US Dollar', symbol: '$', rateToEUR: 1.087 }
 ];
 
+// Fallback bottle sizes if API fails
+const FALLBACK_BOTTLE_SIZES: BottleSize[] = [
+	{ sizeCode: 'Standard', sizeName: 'Standard (750ml)', volumeLitres: 0.75 },
+	{ sizeCode: 'Magnum', sizeName: 'Magnum (1.5L)', volumeLitres: 1.5 },
+	{ sizeCode: 'Demi', sizeName: 'Demi (375ml)', volumeLitres: 0.375 }
+];
+
 // ─────────────────────────────────────────────────────────
 // STORES
 // ─────────────────────────────────────────────────────────
@@ -43,10 +50,36 @@ const FALLBACK_CURRENCIES: Currency[] = [
 export const availableCurrencies = writable<Currency[]>(FALLBACK_CURRENCIES);
 
 // Available bottle sizes (fetched from API on init)
-export const availableBottleSizes = writable<BottleSize[]>([]);
+export const availableBottleSizes = writable<BottleSize[]>(FALLBACK_BOTTLE_SIZES);
 
 // Track initialization state
 const isInitialized = writable(false);
+
+// ─────────────────────────────────────────────────────────
+// SELECT OPTIONS (for form dropdowns)
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Bottle size options for form select dropdowns
+ * Transforms BottleSize[] to { value, label }[] format
+ */
+export const bottleSizeSelectOptions = derived(availableBottleSizes, ($sizes) =>
+	$sizes.map((s) => ({
+		value: s.sizeCode,
+		label: s.sizeName
+	}))
+);
+
+/**
+ * Currency options for form select dropdowns
+ * Transforms Currency[] to { value, label }[] format
+ */
+export const currencySelectOptions = derived(availableCurrencies, ($currencies) =>
+	$currencies.map((c) => ({
+		value: c.currencyCode,
+		label: c.currencyCode
+	}))
+);
 
 // ─────────────────────────────────────────────────────────
 // DISPLAY CURRENCY STORE
