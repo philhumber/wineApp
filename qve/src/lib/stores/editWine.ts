@@ -8,9 +8,10 @@ import { api } from '$api';
 import { toasts } from './toast';
 import type { Wine, Bottle, WineType } from '$lib/api/types';
 
-// Reuse options from addBottle store
-import { bottleSizeOptions, storageOptions, currencyOptions } from './addBottle';
-export { bottleSizeOptions, storageOptions, currencyOptions };
+// Storage options from addBottle store (hardcoded, user-specific)
+// Note: Bottle sizes and currencies are now DB-driven via currency.ts
+import { storageOptions } from './addBottle';
+export { storageOptions };
 
 // ─────────────────────────────────────────────────────────
 // TYPES
@@ -132,7 +133,7 @@ function createEditWineStore() {
 				const [wine, bottles, wineTypes] = await Promise.all([
 					api.getWine(wineID),
 					api.getBottles(wineID),
-					api.getTypes(false)
+					api.getTypes({ withBottleCount: false })
 				]);
 
 				if (!wine) {

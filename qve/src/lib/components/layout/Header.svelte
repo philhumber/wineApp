@@ -2,15 +2,26 @@
   /**
    * Header Component
    * Fixed-position header with logo, theme/view toggles, and filter bar
+   * Supports variants: 'cellar' (default), 'add', 'edit' for form pages
    */
   import { createEventDispatcher } from 'svelte';
-  import { ViewToggle, Icon } from '$lib/components';
+  import { ViewToggle, Icon, ThemeToggle } from '$lib/components';
   import FilterBar from './FilterBar.svelte';
   import HistoryFilterBar from './HistoryFilterBar.svelte';
   import { toggleMenu } from '$lib/stores';
 
+  export let variant: 'cellar' | 'add' | 'edit' = 'cellar';
   export let showFilters: boolean = true;
   export let filterType: 'cellar' | 'history' | 'none' = 'cellar';
+
+  // Computed: is this a form variant (add/edit)?
+  $: isFormVariant = variant === 'add' || variant === 'edit';
+
+  // Page titles for form variants
+  const variantTitles: Record<string, string> = {
+    add: 'Add Wine',
+    edit: 'Edit Wine'
+  };
 
   const dispatch = createEventDispatcher<{
     search: void;
@@ -47,30 +58,39 @@
           <Icon name="menu" size={18} />
         </button>
         <a href="/qve/" class="logo">Qvé</a>
+        {#if isFormVariant}
+          <h1 class="page-title">{variantTitles[variant]}</h1>
+        {/if}
       </div>
       <div class="header-actions">
-        <ViewToggle />
-        <button
-          class="header-icon"
-          title="Search"
-          aria-label="Search wines"
-          on:click={handleSearch}
-        >
-          <Icon name="search" size={18} />
-        </button>
+        {#if isFormVariant}
+          <ThemeToggle />
+        {:else}
+          <ViewToggle />
+          <button
+            class="header-icon"
+            title="Search"
+            aria-label="Search wines"
+            on:click={handleSearch}
+          >
+            <Icon name="search" size={18} />
+          </button>
+        {/if}
       </div>
     </div>
 
-    {#if showFilters && filterType === 'cellar'}
-      <FilterBar on:filterChange={handleFilterChange} />
-    {:else if showFilters && filterType === 'history'}
-      <HistoryFilterBar />
+    {#if !isFormVariant && showFilters}
+      {#if filterType === 'cellar'}
+        <FilterBar on:filterChange={handleFilterChange} />
+      {:else if filterType === 'history'}
+        <HistoryFilterBar />
+      {/if}
     {/if}
   </div>
 </header>
 
 <!-- Spacer to account for fixed header height -->
-<div class="header-spacer" class:with-filters={showFilters}></div>
+<div class="header-spacer" class:with-filters={!isFormVariant && showFilters}></div>
 
 <style>
   .header {
@@ -137,6 +157,15 @@
     display: flex;
     align-items: center;
     gap: var(--space-3);
+  }
+
+  .page-title {
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    font-weight: 400;
+    color: var(--text-primary);
+    margin: 0;
+    margin-left: var(--space-2);
   }
 
   .header-actions {
@@ -207,6 +236,10 @@
     .header-icon {
       width: 36px;
       height: 36px;
+    }
+
+    .page-title {
+      font-size: 1rem;
     }
 
     .header-spacer {

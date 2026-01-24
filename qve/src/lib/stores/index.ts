@@ -86,9 +86,7 @@ export {
   addBottle,
   isDirtyAddBottle,
   canSubmitAddBottle,
-  bottleSizeOptions,
-  storageOptions,
-  currencyOptions
+  storageOptions
 } from './addBottle';
 export type { AddBottleState } from './addBottle';
 
@@ -142,3 +140,21 @@ export {
   sortWines
 } from './cellarSort';
 export type { CellarSortKey, CellarSortDir } from './cellarSort';
+
+// Currency
+export {
+  displayCurrency,
+  availableCurrencies,
+  availableBottleSizes,
+  currentCurrency,
+  bottleSizeSelectOptions,
+  currencySelectOptions,
+  convertFromEUR,
+  convertToEUR,
+  convertCurrency,
+  formatPrice,
+  formatPriceFromEUR,
+  formatPriceConverted,
+  getCurrencyByCode
+} from './currency';
+export type { CurrencyCode } from './currency';

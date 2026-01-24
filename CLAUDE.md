@@ -1,6 +1,6 @@
 # Qvé Wine App - Session Context
 
-**Last Updated**: 2026-01-22
+**Last Updated**: 2026-01-24
 **Status**: Production - Deployed and stable
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
@@ -9,7 +9,10 @@
 ## Quick Start
 
 ```bash
-# Terminal 1: PHP backend (from project root)
+# Terminal 1: Frontend (from qve directory)
+cd qve && npm run dev
+
+# Terminal 2: PHP backend (from project root)
 php -S localhost:8000
 
 # Git workflow (always work from develop)
@@ -39,6 +42,19 @@ Open: **http://localhost:5173/qve/**
 
 ---
 
+## Development Commands
+
+```bash
+cd qve
+npm run dev          # Start dev server (port 5173)
+npm run build        # Production build
+npm run check        # TypeScript + Svelte check
+npm run lint         # ESLint
+npm run format       # Prettier
+```
+
+---
+
 ## Architecture Overview
 
 ```
@@ -48,14 +64,14 @@ qve/src/
 │   │   ├── client.ts  # All API methods
 │   │   └── types.ts   # Wine, Bottle, Rating types
 │   ├── components/    # 40+ Svelte components
-│   │   ├── ui/        # Icon, ThemeToggle, Toast, RatingDisplay
+│   │   ├── ui/        # Icon, ThemeToggle, CurrencySelector, Toast, RatingDisplay, PriceScale, BuyAgainIndicator
 │   │   ├── wine/      # WineCard, WineGrid, HistoryCard
 │   │   ├── layout/    # Header, FilterBar, SideMenu, FilterDropdown
 │   │   ├── forms/     # FormInput, RatingDots, MiniRatingDots
 │   │   ├── wizard/    # WizardStepIndicator, SearchDropdown, AILoadingOverlay
-│   │   ├── modals/    # DrinkRateModal, AddBottleModal, ConfirmModal
+│   │   ├── modals/    # DrinkRateModal, ConfirmModal, DuplicateWarningModal
 │   │   └── edit/      # WineForm, BottleForm, BottleSelector
-│   ├── stores/        # 15 Svelte stores (state management)
+│   ├── stores/        # 16 Svelte stores (state management)
 │   └── styles/        # tokens.css, base.css, animations.css
 └── routes/            # SvelteKit file-based routing
     ├── +page.svelte   # Home / Cellar view
@@ -85,6 +101,7 @@ qve/src/
 | modal | `stores/modal.ts` | Modal container state |
 | menu | `stores/menu.ts` | Side menu open/close |
 | theme | `stores/theme.ts` | Light/dark theme |
+| currency | `stores/currency.ts` | Display currency preference, conversion utilities |
 | scrollPosition | `stores/scrollPosition.ts` | Scroll restoration |
 
 ---
@@ -151,30 +168,31 @@ const data = await api.enrichWithAI('producer', 'Château Margaux');
 
 ## Current Sprint Backlog
 
-### Sprint 4: Security + Quick Wins
-| Key | Summary | Status |
-|-----|---------|--------|
-| WIN-119 | Secure wineapp-config directory | To Do |
-| WIN-34 | Finish filtering/sorting | Done |
-| WIN-79 | Finish duplicate checking | In Progress |
-| WIN-124 | Double field label bug | To Do |
-| WIN-129 | Form not clearing bug | Done |
-| WIN-115 | Browser tab titles | To Do |
-| WIN-116 | Qve to Qvé branding | To Do |
-
-### Sprint 5: Currency + Card Details
-- WIN-103: Remove hardcoded currencies/sizes
-- WIN-130: Allow currency display setting
-- WIN-111: Additional wine card details
-- WIN-125: Add/Edit screen consistency
-- WIN-99: Audit JSON display fix
-
-### Sprint 6: iOS + Navigation + Ratings
+### Sprint 6: iOS + Navigation + Ratings (Current)
 - WIN-131: iOS testing/bug fixes
 - WIN-128: Back button / swipe navigation
 - WIN-122: Fix UI flashing/highlighting
 - WIN-117: Edit ratings from history
 - WIN-114: Image view enhancements
+
+### Completed: Sprint 5 (Currency + Card Details)
+- WIN-134: Implement bottle_sizes and currencies tables ✓
+- WIN-133: Fix TypeScript error in WineStep.svelte ✓
+- WIN-132: Fix TypeScript error in RegionStep.svelte ✓
+- WIN-130: Allow currency display setting ✓
+- WIN-125: Add/Edit screen consistency ✓
+- WIN-111: Additional wine card details ✓
+- WIN-103: Remove hardcoded currencies/sizes ✓
+- WIN-99: Audit JSON display fix ✓
+
+### Completed: Sprint 4 (Security + Quick Wins)
+- WIN-119: Secure wineapp-config directory ✓
+- WIN-34: Finish filtering/sorting ✓
+- WIN-79: Finish duplicate checking ✓
+- WIN-124: Double field label bug ✓
+- WIN-129: Form not clearing bug ✓
+- WIN-115: Browser tab titles ✓
+- WIN-116: Qve to Qvé branding ✓
 
 ### Sprint 7: Collection Features + Data Quality
 - WIN-121/126: Collection naming
@@ -219,8 +237,10 @@ Endpoints in `resources/php/`:
 | `getRegions.php` | Regions with bottle counts (cascading) |
 | `getProducers.php` | Producers with bottle counts (cascading) |
 | `getYears.php` | Vintages with bottle counts (cascading) |
+| `getCurrencies.php` | Currencies and bottle sizes for settings |
 | `upload.php` | Image upload (800x800) |
 | `geminiAPI.php` | AI enrichment |
+| `checkDuplicate.php` | Duplicate/similar item detection (fuzzy matching) |
 
 ---
 
@@ -230,7 +250,7 @@ Endpoints in `resources/php/`:
 **Database**: winelist
 **Schema**: `resources/sql/DBStructure.sql`
 
-Key tables: wine, bottles, ratings, producers, region, country, winetype
+Key tables: wine, bottles, ratings, producers, region, country, winetype, currencies, bottle_sizes
 
 ---
 
@@ -239,23 +259,6 @@ Key tables: wine, bottles, ratings, producers, region, country, winetype
 **Database credentials**: `../wineapp-config/config.local.php` (outside repo)
 **JIRA credentials**: `../wineapp-config/jira.config.json` (email + API token)
 **Vite proxy**: `qve/vite.config.ts` proxies `/resources/php` to PHP backend
-
----
-
-## JIRA CLI
-
-Manage JIRA issues via REST API v3 using `scripts/jira.ps1`:
-
-```powershell
-.\scripts\jira.ps1 list                      # List open issues
-.\scripts\jira.ps1 get WIN-123               # Get issue details
-.\scripts\jira.ps1 create "Fix bug" Bug      # Create issue (Task, Bug, Story)
-.\scripts\jira.ps1 status WIN-123 "Done"     # Transition status
-.\scripts\jira.ps1 comment WIN-123 "Note"    # Add comment
-.\scripts\jira.ps1 sprint                    # Show current sprint
-```
-
-First run creates a config template. Get API token from: https://id.atlassian.com/manage-profile/security/api-tokens
 
 ---
 
@@ -278,16 +281,6 @@ First run creates a config template. Get API token from: https://id.atlassian.co
 ### Modify PHP endpoint
 1. Edit file in `resources/php/`
 2. Test with both old and new app if needed
-
----
-
-## Deployment
-
-```powershell
-.\deploy.ps1 -DryRun    # Preview
-.\deploy.ps1            # Deploy with backup
-.\deploy.ps1 -Rollback "2026-01-22_143022"
-```
 
 ---
 
