@@ -25,12 +25,19 @@ export interface Wine {
   rating: number | null;            // Individual rating
   // Price fields from PHP
   avgPricePerLiterEUR?: string;
+  typeAvgPricePerLiterEUR?: string;  // Type average for price scale
   standardPrice?: string | null;
   magnumPrice?: string | null;
+  demiPrice?: string | null;
+  smallPrice?: string | null;
   currency?: string;
   standardBottles?: string;
   smallBottles?: string;
   largeBottles?: string;
+  // Additional details (WIN-111)
+  bottleSources?: string | null;     // Comma-separated sources
+  buyAgainPercent?: number | null;   // 0-100 percentage
+  ratingCount?: number;              // Number of ratings
 }
 
 export interface Bottle {

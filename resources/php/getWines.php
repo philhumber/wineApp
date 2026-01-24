@@ -153,6 +153,26 @@
 						WHERE b.wineID = wine.wineID
 							AND b.price IS NOT NULL
 						LIMIT 1) AS currency,
+						(SELECT GROUP_CONCAT(
+							CONCAT(source_name, CASE WHEN source_count > 1 THEN CONCAT(' (', source_count, ')') ELSE '' END)
+							SEPARATOR ', ')
+						FROM (
+							SELECT b.source AS source_name, COUNT(*) AS source_count
+							FROM bottles b
+							WHERE b.wineID = wine.wineID
+								AND b.bottleDrunk = 0
+								AND b.source IS NOT NULL
+								AND b.source != ''
+							GROUP BY b.source
+						) AS sources) AS bottleSources,
+						(SELECT ROUND(
+							(SUM(CASE WHEN r.buyAgain = 1 THEN 1 ELSE 0 END) * 100.0) /
+							NULLIF(COUNT(r.ratingID), 0), 0)
+						FROM ratings r
+						WHERE r.wineID = wine.wineID) AS buyAgainPercent,
+						(SELECT COUNT(r.ratingID)
+						FROM ratings r
+						WHERE r.wineID = wine.wineID) AS ratingCount,
 						SUM(CASE WHEN bottles.bottleSize = 'Standard' THEN 1 ELSE 0 END) AS standardBottles,
 						SUM(CASE WHEN bottles.bottleSize IN ('Piccolo', 'Quarter', 'Demi') THEN 1 ELSE 0 END) AS smallBottles,
 						COUNT(bottles.bottleID) - 
