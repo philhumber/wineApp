@@ -48,7 +48,7 @@ qve/src/
 │   │   ├── client.ts  # All API methods
 │   │   └── types.ts   # Wine, Bottle, Rating types
 │   ├── components/    # 40+ Svelte components
-│   │   ├── ui/        # Icon, ThemeToggle, Toast, RatingDisplay
+│   │   ├── ui/        # Icon, ThemeToggle, Toast, RatingDisplay, PriceScale, BuyAgainIndicator
 │   │   ├── wine/      # WineCard, WineGrid, HistoryCard
 │   │   ├── layout/    # Header, FilterBar, SideMenu, FilterDropdown
 │   │   ├── forms/     # FormInput, RatingDots, MiniRatingDots
