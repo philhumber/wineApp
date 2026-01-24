@@ -6,6 +6,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { Wine } from '$lib/api/types';
   import { Icon, RatingDisplay, BottleIndicators, PriceScale, BuyAgainIndicator } from '$lib/components';
+  import { modal } from '$lib/stores';
   import WineImage from './WineImage.svelte';
 
   export let wine: Wine;
@@ -39,6 +40,14 @@
   function handleAction(action: 'drink' | 'add' | 'edit', event: MouseEvent) {
     event.stopPropagation();
     dispatch(action, { wine });
+  }
+
+  function handleImageClick(event: CustomEvent) {
+    // Stop propagation to prevent card from collapsing
+    event.stopPropagation();
+    if (expanded && imageSrc) {
+      modal.openImageLightbox(imageSrc, `${wine.wineName} ${wine.year || 'NV'}`);
+    }
   }
 
   // Convert country code to flag emoji (e.g., "FR" → "🇫🇷")
@@ -94,6 +103,8 @@
     src={imageSrc}
     alt="{wine.wineName} label"
     compact={compact && !expanded}
+    clickable={expanded && !!imageSrc}
+    on:click={handleImageClick}
   />
 
   <!-- Details -->
@@ -622,7 +633,8 @@
 
     .wine-card:not(.compact) :global(.wine-image-container) {
       width: 100%;
-      height: 200px;
+      height: auto;
+      aspect-ratio: 1;
     }
 
     .expanded-grid {
