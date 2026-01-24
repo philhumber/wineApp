@@ -21,7 +21,9 @@ import type {
   DrinkBottlePayload,
   AIRegionData,
   AIProducerData,
-  AIWineData
+  AIWineData,
+  DuplicateCheckParams,
+  DuplicateCheckResult
 } from './types';
 
 class WineApiClient {
@@ -455,6 +457,27 @@ class WineApiClient {
       { type: 'wine', prompt: `${wineName} ${year} by ${producerName}` }
     );
     return response.data ?? {};
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // DUPLICATE CHECKING
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Check for duplicate/similar entries when adding new items
+   * Used to warn users before creating duplicates
+   */
+  async checkDuplicate(params: DuplicateCheckParams): Promise<DuplicateCheckResult> {
+    const response = await this.fetchJSON<DuplicateCheckResult>(
+      'checkDuplicate.php',
+      params as unknown as Record<string, unknown>
+    );
+    return response.data ?? {
+      exactMatch: null,
+      similarMatches: [],
+      existingBottles: 0,
+      existingWineId: null
+    };
   }
 }
 

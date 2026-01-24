@@ -1,6 +1,6 @@
 # Qvé Wine App - Session Context
 
-**Last Updated**: 2026-01-22
+**Last Updated**: 2026-01-24
 **Status**: Production - Deployed and stable
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
@@ -53,7 +53,7 @@ qve/src/
 │   │   ├── layout/    # Header, FilterBar, SideMenu, FilterDropdown
 │   │   ├── forms/     # FormInput, RatingDots, MiniRatingDots
 │   │   ├── wizard/    # WizardStepIndicator, SearchDropdown, AILoadingOverlay
-│   │   ├── modals/    # DrinkRateModal, AddBottleModal, ConfirmModal
+│   │   ├── modals/    # DrinkRateModal, ConfirmModal, DuplicateWarningModal
 │   │   └── edit/      # WineForm, BottleForm, BottleSelector
 │   ├── stores/        # 15 Svelte stores (state management)
 │   └── styles/        # tokens.css, base.css, animations.css
@@ -156,7 +156,7 @@ const data = await api.enrichWithAI('producer', 'Château Margaux');
 |-----|---------|--------|
 | WIN-119 | Secure wineapp-config directory | To Do |
 | WIN-34 | Finish filtering/sorting | Done |
-| WIN-79 | Finish duplicate checking | In Progress |
+| WIN-79 | Finish duplicate checking | Done |
 | WIN-124 | Double field label bug | To Do |
 | WIN-129 | Form not clearing bug | Done |
 | WIN-115 | Browser tab titles | To Do |
@@ -221,6 +221,7 @@ Endpoints in `resources/php/`:
 | `getYears.php` | Vintages with bottle counts (cascading) |
 | `upload.php` | Image upload (800x800) |
 | `geminiAPI.php` | AI enrichment |
+| `checkDuplicate.php` | Duplicate/similar item detection (fuzzy matching) |
 
 ---
 
