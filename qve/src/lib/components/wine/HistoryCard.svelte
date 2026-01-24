@@ -9,6 +9,11 @@
   import { Icon, RatingDisplay } from '$lib/components';
   import WineImage from './WineImage.svelte';
   import MiniRatingDots from '$lib/components/forms/MiniRatingDots.svelte';
+  import {
+    currentCurrency,
+    availableCurrencies,
+    formatPriceConverted
+  } from '$lib/stores/currency';
 
   export let wine: DrunkWine;
   export let expanded: boolean = false;
@@ -63,24 +68,13 @@
     });
   }
 
-  // Format price with currency symbol
-  function formatPrice(price: number | string | null, currency: string | null): string | null {
-    if (price === null || price === '' || price === 0 || price === '0') return null;
-    // Parse price as float (PHP returns decimal as string)
-    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
-    if (isNaN(numPrice) || numPrice === 0) return null;
-    const symbols: Record<string, string> = {
-      EUR: '€',
-      GBP: '£',
-      USD: '$',
-      CHF: 'CHF '
-    };
-    const symbol = currency ? symbols[currency] || currency + ' ' : '€';
-    return `${symbol}${numPrice.toFixed(2)}`;
-  }
-
-  // Formatted price for display
-  $: formattedPrice = formatPrice(wine.bottlePrice, wine.bottleCurrency);
+  // Formatted price for display - converts from original currency to display currency
+  $: formattedPrice = formatPriceConverted(
+    wine.bottlePrice,
+    wine.bottleCurrency,
+    $availableCurrencies,
+    $currentCurrency
+  );
 
   // Check if any optional ratings exist
   $: hasOptionalRatings =
