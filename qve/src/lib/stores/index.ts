@@ -142,3 +142,19 @@ export {
   sortWines
 } from './cellarSort';
 export type { CellarSortKey, CellarSortDir } from './cellarSort';
+
+// Currency
+export {
+  displayCurrency,
+  availableCurrencies,
+  availableBottleSizes,
+  currentCurrency,
+  convertFromEUR,
+  convertToEUR,
+  convertCurrency,
+  formatPrice,
+  formatPriceFromEUR,
+  formatPriceConverted,
+  getCurrencyByCode
+} from './currency';
+export type { CurrencyCode } from './currency';

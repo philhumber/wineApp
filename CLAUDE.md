@@ -48,7 +48,7 @@ qve/src/
 │   │   ├── client.ts  # All API methods
 │   │   └── types.ts   # Wine, Bottle, Rating types
 │   ├── components/    # 40+ Svelte components
-│   │   ├── ui/        # Icon, ThemeToggle, Toast, RatingDisplay, PriceScale, BuyAgainIndicator
+│   │   ├── ui/        # Icon, ThemeToggle, CurrencySelector, Toast, RatingDisplay, PriceScale, BuyAgainIndicator
 │   │   ├── wine/      # WineCard, WineGrid, HistoryCard
 │   │   ├── layout/    # Header, FilterBar, SideMenu, FilterDropdown
 │   │   ├── forms/     # FormInput, RatingDots, MiniRatingDots
@@ -85,6 +85,7 @@ qve/src/
 | modal | `stores/modal.ts` | Modal container state |
 | menu | `stores/menu.ts` | Side menu open/close |
 | theme | `stores/theme.ts` | Light/dark theme |
+| currency | `stores/currency.ts` | Display currency preference, conversion utilities |
 | scrollPosition | `stores/scrollPosition.ts` | Scroll restoration |
 
 ---
@@ -151,16 +152,16 @@ const data = await api.enrichWithAI('producer', 'Château Margaux');
 
 ## Current Sprint Backlog
 
-### Sprint 5: Currency + Card Details (Active)
-| Key | Summary | Status |
-|-----|---------|--------|
-| WIN-133 | Fix TypeScript error in WineStep.svelte | Done |
-| WIN-132 | Fix TypeScript error in RegionStep.svelte | Done |
-| WIN-130 | Allow Currency Setting | To Do |
-| WIN-125 | Add / Edit Screen Inconsistency | To Do |
-| WIN-111 | Additional Details on Wine Card | To Do |
-| WIN-103 | Remove hardcoded currencies and sizes | To Do |
-| WIN-99 | Audit function displays full JSON instead of new value | To Do |
+
+### Sprint 5: Currency + Card Details
+- WIN-103: Remove hardcoded currencies/sizes ✓
+- WIN-130: Allow currency display setting ✓
+- WIN-111: Additional wine card details
+- WIN-125: Add/Edit screen consistency
+- WIN-99: Audit JSON display fix
+- WIN-133: Fix TypeScript error in WineStep.svelte | Done |
+- WIN-132: Fix TypeScript error in RegionStep.svelte | Done |
+
 
 ### Completed: Sprint 4 (Security + Quick Wins)
 - WIN-119: Secure wineapp-config directory
@@ -221,6 +222,7 @@ Endpoints in `resources/php/`:
 | `getRegions.php` | Regions with bottle counts (cascading) |
 | `getProducers.php` | Producers with bottle counts (cascading) |
 | `getYears.php` | Vintages with bottle counts (cascading) |
+| `getCurrencies.php` | Currencies and bottle sizes for settings |
 | `upload.php` | Image upload (800x800) |
 | `geminiAPI.php` | AI enrichment |
 | `checkDuplicate.php` | Duplicate/similar item detection (fuzzy matching) |
@@ -233,7 +235,7 @@ Endpoints in `resources/php/`:
 **Database**: winelist
 **Schema**: `resources/sql/DBStructure.sql`
 
-Key tables: wine, bottles, ratings, producers, region, country, winetype
+Key tables: wine, bottles, ratings, producers, region, country, winetype, currencies, bottle_sizes
 
 ---
 

@@ -266,6 +266,27 @@ export interface AIWineData {
 }
 
 // ─────────────────────────────────────────────────────────
+// CURRENCY & BOTTLE SIZE TYPES
+// ─────────────────────────────────────────────────────────
+
+export interface Currency {
+  currencyCode: string;
+  currencyName: string;
+  symbol: string;
+  rateToEUR: number;
+}
+
+export interface BottleSize {
+  sizeCode: string;
+  sizeName: string;
+  volumeLitres: number;
+}
+
+export interface CurrencyDataResponse {
+  currencies: Currency[];
+  bottleSizes: BottleSize[];
+}
+
 // DUPLICATE CHECK TYPES
 // ─────────────────────────────────────────────────────────
 

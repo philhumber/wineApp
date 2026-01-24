@@ -22,6 +22,7 @@ import type {
   AIRegionData,
   AIProducerData,
   AIWineData,
+  CurrencyDataResponse,
   DuplicateCheckParams,
   DuplicateCheckResult
 } from './types';
@@ -303,6 +304,16 @@ class WineApiClient {
       'getDrunkWines.php'
     );
     return response.data?.wineList ?? [];
+  }
+
+  /**
+   * Get currencies and bottle sizes reference data
+   */
+  async getCurrencies(): Promise<CurrencyDataResponse> {
+    const response = await this.fetchJSON<CurrencyDataResponse>(
+      'getCurrencies.php'
+    );
+    return response.data ?? { currencies: [], bottleSizes: [] };
   }
 
   // ─────────────────────────────────────────────────────────

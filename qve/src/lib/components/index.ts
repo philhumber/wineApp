@@ -21,6 +21,7 @@ export {
 export { default as Icon } from './ui/Icon.svelte';
 export { default as ThemeToggle } from './ui/ThemeToggle.svelte';
 export { default as ViewToggle } from './ui/ViewToggle.svelte';
+export { default as CurrencySelector } from './ui/CurrencySelector.svelte';
 export { default as RatingDisplay } from './ui/RatingDisplay.svelte';
 export { default as BottleIndicators } from './ui/BottleIndicators.svelte';
 export { default as PriceScale } from './ui/PriceScale.svelte';
