@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
 	import { goto, beforeNavigate } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { base } from '$app/paths';
 	import {
 		addWineStore,
@@ -18,18 +20,36 @@
 		AILoadingOverlay
 	} from '$lib/components';
 	import { RegionStep, ProducerStep, WineStep, BottleStep } from './steps';
+	import type { WizardStep } from '$lib/stores/addWine';
 
 	// Step labels for indicator
 	const stepLabels = ['Region', 'Producer', 'Wine', 'Bottle'];
 
-	// Subscribe to store
-	$: step = $currentStep;
+	// Get step directly from URL - no step param means step 1
+	// This ensures the display always matches the URL
+	$: urlStepParam = $page.url.searchParams.get('step');
+	$: step = (urlStepParam ? parseInt(urlStepParam, 10) : 1) as WizardStep;
+
 	$: submitting = $isSubmitting;
 	$: aiLoading = $isAILoading;
 	$: proceed = $canProceed;
 
 	// Track if user has entered data
 	let allowNavigation = false;
+
+	// Keep store in sync with URL step (step is always valid 1-4)
+	$: if (step !== $currentStep) {
+		addWineStore.goToStep(step);
+	}
+
+	// On mount: Always start at step 1 (ignore URL params for deep linking)
+	onMount(() => {
+		addWineStore.goToStep(1);
+		// Clear any step param from URL without adding history entry
+		if ($page.url.searchParams.has('step')) {
+			goto(`${base}/add`, { replaceState: true, noScroll: true });
+		}
+	});
 
 	// Check if wizard has unsaved data
 	function hasUnsavedData(): boolean {
@@ -44,7 +64,14 @@
 	}
 
 	// Warn before leaving with unsaved data
-	beforeNavigate(({ cancel }) => {
+	beforeNavigate(({ cancel, to }) => {
+		// Allow navigation within wizard (step changes via query params)
+		const isStayingInWizard = to?.url.pathname === `${base}/add`;
+		if (isStayingInWizard) {
+			return; // Don't block step-to-step navigation
+		}
+
+		// Block navigation away from wizard if there's unsaved data
 		if (!allowNavigation && hasUnsavedData() && !$isSubmitting) {
 			cancel();
 			modal.confirm({
@@ -54,9 +81,13 @@
 				cancelLabel: 'Stay',
 				variant: 'danger',
 				onConfirm: () => {
+					modal.close();
 					addWineStore.reset();
 					allowNavigation = true;
 					history.back();
+				},
+				onCancel: () => {
+					modal.close();
 				}
 			});
 		}
@@ -64,11 +95,22 @@
 
 	// Handle step navigation
 	function handleBack() {
-		addWineStore.prevStep();
+		if ($currentStep > 1) {
+			// Use browser history to go back (popstate will sync the step)
+			history.back();
+		} else {
+			// Step 1 - navigate away (dirty check in beforeNavigate will trigger)
+			goto(`${base}/`);
+		}
 	}
 
 	function handleNext() {
-		addWineStore.nextStep();
+		const success = addWineStore.nextStep();
+		if (success) {
+			// Push new history entry with step in URL
+			const newStep = get(currentStep);
+			goto(`${base}/add?step=${newStep}`, { noScroll: true, keepFocus: true });
+		}
 	}
 
 	// Handle form submission

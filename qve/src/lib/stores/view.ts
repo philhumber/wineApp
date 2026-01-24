@@ -60,12 +60,30 @@ function createViewModeStore() {
     return stored === 'allWines' ? 'allWines' : 'ourWines';
   };
 
-  const { subscribe, set } = writable<ViewMode>(getInitial());
+  const { subscribe, set, update } = writable<ViewMode>(getInitial());
 
   return {
     subscribe,
+    /**
+     * Set view mode without pushing history (used during navigation)
+     */
     set: (value: ViewMode) => {
       if (browser) {
+        localStorage.setItem(MODE_KEY, value);
+      }
+      set(value);
+    },
+    /**
+     * Set view mode and push history entry (for in-page toggling)
+     * This allows browser back to restore previous view mode
+     */
+    setWithHistory: (value: ViewMode) => {
+      if (browser) {
+        const current = localStorage.getItem(MODE_KEY) || 'ourWines';
+        if (current !== value) {
+          // Push history entry for view mode change
+          window.history.pushState({ _viewMode: current }, '');
+        }
         localStorage.setItem(MODE_KEY, value);
       }
       set(value);
@@ -77,6 +95,15 @@ function createViewModeStore() {
         localStorage.setItem(MODE_KEY, next);
       }
       set(next);
+    },
+    /**
+     * Restore view mode from history state (called on popstate)
+     */
+    restoreFromHistory: (previousMode: ViewMode) => {
+      if (browser) {
+        localStorage.setItem(MODE_KEY, previousMode);
+      }
+      set(previousMode);
     }
   };
 }
