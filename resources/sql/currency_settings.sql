@@ -40,7 +40,7 @@ ON DUPLICATE KEY UPDATE
   sortOrder = VALUES(sortOrder);
 
 -- Index for active currencies lookup (run separately, may fail if already exists)
--- ALTER TABLE currencies ADD INDEX idx_currencies_active (isActive, sortOrder);
+ALTER TABLE currencies ADD INDEX idx_currencies_active (isActive, sortOrder);
 
 -- ─────────────────────────────────────────────────────────
 -- BOTTLE SIZES TABLE
@@ -73,4 +73,4 @@ ON DUPLICATE KEY UPDATE
   sortOrder = VALUES(sortOrder);
 
 -- Index for active sizes lookup (run separately, may fail if already exists)
--- ALTER TABLE bottle_sizes ADD INDEX idx_bottle_sizes_active (isActive, sortOrder);
+ALTER TABLE bottle_sizes ADD INDEX idx_bottle_sizes_active (isActive, sortOrder);
