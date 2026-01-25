@@ -13,6 +13,7 @@
   export let expanded: boolean = false;
   export let compact: boolean = false;
   export let targetHighlight: boolean = false;
+  export let animate: boolean = true;
 
   const dispatch = createEventDispatcher<{
     expand: { wineID: number };
@@ -87,6 +88,7 @@
   class="wine-card"
   class:expanded
   class:compact
+  class:animate
   class:target-highlight={targetHighlight}
   data-wine-id={wine.wineID}
   on:click={handleCardClick}
@@ -251,6 +253,10 @@
       box-shadow 0.3s var(--ease-out),
       border-color 0.3s var(--ease-out),
       transform 0.3s var(--ease-out);
+  }
+
+  /* Only animate on initial load, not on filter changes */
+  .wine-card.animate {
     animation: fadeInUp 0.7s var(--ease-out) forwards;
   }
 
@@ -382,6 +388,8 @@
     gap: var(--space-5);
     margin-top: auto;
     padding-top: var(--space-4);
+    flex-wrap: wrap;
+    row-gap: var(--space-3);
   }
 
   /* ─────────────────────────────────────────────────────────
@@ -641,6 +649,11 @@
       width: 100%;
       height: auto;
       aspect-ratio: 1;
+    }
+
+    .wine-meta {
+      gap: var(--space-3);
+      row-gap: var(--space-2);
     }
 
     .expanded-grid {

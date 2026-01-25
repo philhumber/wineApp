@@ -108,17 +108,10 @@
     border-bottom-color: var(--divider);
   }
 
-  /* Dark mode: backdrop blur effect */
+  /* Dark mode: solid background (backdrop-filter removed to fix iOS Safari
+     stacking context bug that traps position:fixed dropdowns) */
   :global([data-theme="dark"]) .header {
-    background: rgba(12, 11, 10, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-
-  @supports not (backdrop-filter: blur(20px)) {
-    :global([data-theme="dark"]) .header {
-      background: rgba(12, 11, 10, 0.98);
-    }
+    background: rgba(12, 11, 10, 0.98);
   }
 
   .header-inner {
