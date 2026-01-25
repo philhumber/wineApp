@@ -269,24 +269,25 @@
     flex-wrap: wrap;
   }
 
-  /* Target highlight for scroll-to-wine - uses separate animation properties
-     to avoid overwriting fadeInUp and prevent re-trigger flash when class removed */
-  .wine-card.target-highlight {
-    animation: fadeInUp 0.7s var(--ease-out) forwards, highlightPulse 2s var(--ease-out) forwards;
+  /* Target highlight for scroll-to-wine - uses pseudo-element to avoid
+     modifying card's animation property, which prevents flash when class removed */
+  .wine-card.target-highlight::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    box-shadow: 0 0 0 2px var(--accent-subtle, rgba(166, 155, 138, 0.2));
+    pointer-events: none;
+    animation: highlightFadeOut 2s var(--ease-out) forwards;
   }
 
-  @keyframes highlightPulse {
-    0% {
-      border-color: var(--divider-subtle);
-      box-shadow: none;
-    }
-    15%, 85% {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px var(--accent-subtle, rgba(166, 155, 138, 0.2));
+  @keyframes highlightFadeOut {
+    0%, 70% {
+      opacity: 1;
     }
     100% {
-      border-color: var(--divider-subtle);
-      box-shadow: none;
+      opacity: 0;
     }
   }
 

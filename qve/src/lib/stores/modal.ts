@@ -196,9 +196,8 @@ function createModalStore() {
      * Open image lightbox for fullscreen viewing
      */
     openImageLightbox: (src: string, alt?: string): void => {
-      set({ type: 'imageLightbox', data: { src, alt: alt || 'Wine image' } });
-      const pushed = pushHistoryForModal('settings');
-      set({ type: 'settings', data: {}, pushedHistory: pushed });
+      const pushed = pushHistoryForModal('imageLightbox');
+      set({ type: 'imageLightbox', data: { src, alt: alt || 'Wine image' }, pushedHistory: pushed });
     }
   };
 }
