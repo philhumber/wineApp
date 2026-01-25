@@ -19,6 +19,7 @@
   export let wine: DrunkWine;
   export let expanded: boolean = false;
   export let compact: boolean = false;
+  export let animate: boolean = true;
 
   const dispatch = createEventDispatcher<{
     expand: { key: string };
@@ -112,6 +113,7 @@
   class="history-card"
   class:expanded
   class:compact
+  class:animate
   data-wine-id={wine.wineID}
   data-bottle-id={wine.bottleID}
   on:click={handleCardClick}
@@ -281,6 +283,10 @@
       box-shadow 0.3s var(--ease-out),
       border-color 0.3s var(--ease-out),
       transform 0.3s var(--ease-out);
+  }
+
+  /* Only animate on initial load, not on filter changes */
+  .history-card.animate {
     animation: fadeInUp 0.7s var(--ease-out) forwards;
   }
 
