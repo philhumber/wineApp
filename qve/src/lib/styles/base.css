@@ -6,6 +6,24 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Interactive element touch optimization */
+button,
+a,
+[role="button"],
+[tabindex="0"] {
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+/* Subtle active state feedback for touch */
+button:active:not(:disabled),
+[role="button"]:active,
+[tabindex="0"]:active {
+  opacity: 0.7;
 }
 
 html {
