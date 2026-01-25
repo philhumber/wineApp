@@ -258,19 +258,24 @@
     flex-wrap: wrap;
   }
 
-  /* Target highlight for scroll-to-wine */
+  /* Target highlight for scroll-to-wine - uses separate animation properties
+     to avoid overwriting fadeInUp and prevent re-trigger flash when class removed */
   .wine-card.target-highlight {
-    animation: highlightPulse 2s var(--ease-out);
+    animation: fadeInUp 0.7s var(--ease-out) forwards, highlightPulse 2s var(--ease-out) forwards;
   }
 
   @keyframes highlightPulse {
-    0%, 100% {
+    0% {
       border-color: var(--divider-subtle);
       box-shadow: none;
     }
-    20%, 80% {
+    15%, 85% {
       border-color: var(--accent);
       box-shadow: 0 0 0 2px var(--accent-subtle, rgba(166, 155, 138, 0.2));
+    }
+    100% {
+      border-color: var(--divider-subtle);
+      box-shadow: none;
     }
   }
 
