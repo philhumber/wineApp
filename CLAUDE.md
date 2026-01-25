@@ -12,6 +12,10 @@
 # Terminal 1: Frontend (from qve directory)
 cd qve && npm run dev
 
+# Terminal 1 (mobile testing): Expose to local network
+cd qve && npm run dev -- --host
+# Then access via Network URL (e.g., http://10.0.1.13:5173/qve/) on mobile
+
 # Terminal 2: PHP backend (from project root)
 php -S localhost:8000
 
