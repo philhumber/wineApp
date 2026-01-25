@@ -49,6 +49,12 @@
       wine.countryName
     );
   }
+
+  // Handle Edit Rating action from history card
+  function handleEditRating(event: CustomEvent<{ wine: DrunkWine }>) {
+    const { wine } = event.detail;
+    modal.openEditRating(wine);
+  }
 </script>
 
 <svelte:head>
@@ -105,7 +111,7 @@
         </button>
       </div>
     {:else}
-      <HistoryGrid wines={$sortedDrunkWines} on:addBottle={handleAddBottle} />
+      <HistoryGrid wines={$sortedDrunkWines} on:addBottle={handleAddBottle} on:editRating={handleEditRating} />
     {/if}
   </section>
 </main>
