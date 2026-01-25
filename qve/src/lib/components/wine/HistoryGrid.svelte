@@ -3,12 +3,21 @@
    * HistoryGrid component
    * Responsive container that manages history card layout and expanded state
    */
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { viewDensity, expandedHistoryKey, getDrunkWineKey } from '$lib/stores';
   import type { DrunkWine } from '$lib/api/types';
   import HistoryCard from './HistoryCard.svelte';
 
   export let wines: DrunkWine[] = [];
+
+  // Track initial mount - only animate cards on first render, not on filter changes
+  let isInitialMount = true;
+  onMount(() => {
+    // After first render completes, disable entrance animations for subsequent updates
+    requestAnimationFrame(() => {
+      isInitialMount = false;
+    });
+  });
 
   const dispatch = createEventDispatcher<{
     addBottle: { wine: DrunkWine };
@@ -51,6 +60,7 @@
       {wine}
       expanded={$expandedHistoryKey === cardKey}
       compact={$viewDensity === 'compact'}
+      animate={isInitialMount}
       on:expand={handleExpand}
       on:collapse={handleCollapse}
       on:addBottle={handleAddBottle}

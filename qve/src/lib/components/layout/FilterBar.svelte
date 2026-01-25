@@ -28,14 +28,21 @@
   let dropdownOptions: FilterOption[] = [];
   let dropdownLoading = false;
   let dropdownPosition: { top: number; left: number } = { top: 0, left: 0 };
+  let lastOpenTime = 0; // Debounce for iOS double-tap bug
 
   // Refs for pill buttons
   let pillRefs: Record<string, HTMLDivElement> = {};
 
   // Handle dropdown pill click
   async function handleDropdownClick(filter: typeof dropdownFilters[number]) {
-    // If same dropdown is open, close it
+    const now = Date.now();
+
+    // If same dropdown is open, close it (but not if just opened - iOS debounce)
     if (openDropdown === filter.key) {
+      // Ignore close if opened less than 2000ms ago (iOS ghost click protection)
+      if (now - lastOpenTime < 2000) {
+        return;
+      }
       openDropdown = null;
       return;
     }
@@ -52,6 +59,7 @@
 
     // Open new dropdown
     openDropdown = filter.key;
+    lastOpenTime = Date.now(); // Track open time for iOS debounce
     dropdownLoading = true;
     dropdownOptions = [];
 

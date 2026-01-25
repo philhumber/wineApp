@@ -3,12 +3,21 @@
    * WineGrid component
    * Responsive container that manages wine card layout and expanded state
    */
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { viewDensity, expandedWineID, targetWineID } from '$lib/stores';
   import type { Wine } from '$lib/api/types';
   import WineCard from './WineCard.svelte';
 
   export let wines: Wine[] = [];
+
+  // Track initial mount - only animate cards on first render, not on filter changes
+  let isInitialMount = true;
+  onMount(() => {
+    // After first render completes, disable entrance animations for subsequent updates
+    requestAnimationFrame(() => {
+      isInitialMount = false;
+    });
+  });
 
   const dispatch = createEventDispatcher<{
     drink: { wine: Wine };
@@ -55,6 +64,7 @@
       expanded={$expandedWineID === wine.wineID}
       compact={$viewDensity === 'compact'}
       targetHighlight={$targetWineID === wine.wineID}
+      animate={isInitialMount}
       on:expand={handleExpand}
       on:collapse={handleCollapse}
       on:drink={handleDrink}
@@ -85,10 +95,12 @@
 
   /* ─────────────────────────────────────────────────────────
    * COMPACT VIEW (Grid Layout)
+   * Mobile-first: 2 columns by default, scales up at breakpoints
+   * Uses explicit column counts to prevent overflow on mobile
    * ───────────────────────────────────────────────────────── */
   .wine-grid.view-compact {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: var(--space-4);
   }
 
@@ -98,35 +110,29 @@
   }
 
   /* ─────────────────────────────────────────────────────────
-   * RESPONSIVE COLUMN COUNTS
+   * RESPONSIVE COLUMN COUNTS (mobile-first)
    * ───────────────────────────────────────────────────────── */
-  @media (min-width: 1200px) {
-    .wine-grid.view-compact {
-      grid-template-columns: repeat(6, 1fr);
-    }
-  }
-
-  @media (min-width: 992px) and (max-width: 1199px) {
-    .wine-grid.view-compact {
-      grid-template-columns: repeat(5, 1fr);
-    }
-  }
-
-  @media (min-width: 768px) and (max-width: 991px) {
-    .wine-grid.view-compact {
-      grid-template-columns: repeat(4, 1fr);
-    }
-  }
-
-  @media (min-width: 480px) and (max-width: 767px) {
+  @media (min-width: 480px) {
     .wine-grid.view-compact {
       grid-template-columns: repeat(3, 1fr);
     }
   }
 
-  @media (max-width: 479px) {
+  @media (min-width: 768px) {
     .wine-grid.view-compact {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  @media (min-width: 992px) {
+    .wine-grid.view-compact {
+      grid-template-columns: repeat(5, 1fr);
+    }
+  }
+
+  @media (min-width: 1200px) {
+    .wine-grid.view-compact {
+      grid-template-columns: repeat(6, 1fr);
     }
   }
 
