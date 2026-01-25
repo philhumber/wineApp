@@ -131,7 +131,13 @@
         typeAvgPricePerLiterEUR={wine.typeAvgPricePerLiterEUR}
         compact={compact && !expanded}
       />
-      <RatingDisplay rating={wine.avgRating} compact={compact && !expanded} />
+      <RatingDisplay
+        rating={wine.avgRating}
+        compact={compact && !expanded}
+        showBreakdown={expanded && !!wine.avgOverallRating && !!wine.avgValueRating}
+        overallRating={wine.avgOverallRating}
+        valueRating={wine.avgValueRating}
+      />
       <BuyAgainIndicator
         percent={wine.buyAgainPercent}
         ratingCount={wine.ratingCount || 0}
@@ -649,6 +655,17 @@
       width: 100%;
       height: auto;
       aspect-ratio: 1;
+    }
+
+    .wine-header {
+      flex-wrap: wrap;
+    }
+
+    .wine-name {
+      flex: 1 1 auto;
+      min-width: 0;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
 
     .wine-meta {

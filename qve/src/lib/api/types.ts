@@ -22,6 +22,8 @@ export interface Wine {
   wineType: string;                 // PHP returns 'wineType' not 'wineTypeName'
   bottleCount: number;
   avgRating: number | null;
+  avgOverallRating?: number | null;  // Average of overallRating across all ratings
+  avgValueRating?: number | null;    // Average of valueRating across all ratings
   rating: number | null;            // Individual rating
   // Price fields from PHP
   avgPricePerLiterEUR?: string;
