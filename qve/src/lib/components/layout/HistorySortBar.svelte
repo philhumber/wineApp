@@ -14,7 +14,8 @@
 
   const sortOptions: { key: HistorySortKey; label: string }[] = [
     { key: 'drinkDate', label: 'Date' },
-    { key: 'overallRating', label: 'Rating' },
+    { key: 'combinedRating', label: 'Combined Rating' },
+    { key: 'overallRating', label: 'Overall' },
     { key: 'valueRating', label: 'Value' },
     { key: 'wineName', label: 'Name' },
     { key: 'wineType', label: 'Type' },
