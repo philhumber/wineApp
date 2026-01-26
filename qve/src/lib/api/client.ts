@@ -28,7 +28,8 @@ import type {
   DuplicateCheckResult,
   UserSettings,
   UpdateSettingsPayload,
-  CellarValue
+  CellarValue,
+  AgentIdentificationResult
 } from './types';
 
 class WineApiClient {
@@ -554,6 +555,27 @@ class WineApiClient {
       bottlesWithoutPrice: 0,
       hasIncompleteData: false
     };
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // AI AGENT (Phase 1)
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Identify wine from text using AI agent
+   * Returns parsed wine data with confidence scoring and action recommendation
+   */
+  async identifyText(text: string): Promise<AgentIdentificationResult> {
+    const response = await this.fetchJSON<AgentIdentificationResult>(
+      'agent/identifyText.php',
+      { text }
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Identification failed');
+    }
+
+    return response.data;
   }
 }
 
