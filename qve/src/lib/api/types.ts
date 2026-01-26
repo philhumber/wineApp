@@ -359,3 +359,48 @@ export interface CellarValue {
   bottlesWithoutPrice: number;
   hasIncompleteData: boolean;
 }
+
+// ─────────────────────────────────────────────────────────
+// AI AGENT TYPES (Phase 1)
+// ─────────────────────────────────────────────────────────
+
+export type AgentWineType = 'Red' | 'White' | 'Rosé' | 'Sparkling' | 'Dessert' | 'Fortified';
+export type AgentIntent = 'add' | 'advice' | 'pair';
+export type AgentAction = 'auto_populate' | 'suggest' | 'disambiguate';
+
+export interface AgentParsedWine {
+  producer: string | null;
+  wineName: string | null;
+  vintage: string | null;
+  region: string | null;
+  country: string | null;
+  wineType: AgentWineType | null;
+  grapes: string[] | null;
+  confidence: number;
+}
+
+export interface AgentCandidate {
+  source: 'collection' | 'reference';
+  confidence: number;
+  data: Record<string, unknown>;
+}
+
+export interface AgentUsage {
+  tokens: { input: number; output: number };
+  cost: number;
+  latencyMs?: number;
+}
+
+export interface AgentIdentificationResult {
+  intent: AgentIntent;
+  parsed: AgentParsedWine;
+  confidence: number;
+  action: AgentAction;
+  candidates: AgentCandidate[];
+  usage?: AgentUsage;
+}
+
+export interface AgentIdentifyTextRequest {
+  text: string;
+  userId?: number;
+}
