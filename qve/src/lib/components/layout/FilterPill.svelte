@@ -68,7 +68,7 @@
 >
   {label}
   {#if hasDropdown}
-    <Icon name="chevron-down" size={10} />
+    <Icon name="chevron-down" size={8} />
   {/if}
 </button>
 
@@ -76,11 +76,11 @@
   .filter-pill {
     flex-shrink: 0;
     white-space: nowrap;
-    padding: var(--space-2) var(--space-4);
+    padding: 4px 10px;
     font-family: var(--font-sans);
-    font-size: 0.75rem;
-    font-weight: 400;
-    letter-spacing: 0.08em;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--text-tertiary);
     background: transparent;
@@ -90,7 +90,7 @@
     transition: all 0.2s var(--ease-out);
     display: inline-flex;
     align-items: center;
-    gap: var(--space-1);
+    gap: 4px;
   }
 
   .filter-pill:hover:not(:disabled) {
