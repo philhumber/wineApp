@@ -148,19 +148,16 @@
   .header-inner {
     max-width: 1200px;
     margin: 0 auto;
-    padding: var(--space-5) var(--space-6);
+    padding: var(--space-4) var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
   }
 
   .header-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--space-3);
-  }
-
-  /* Remove margin if no filters */
-  .header:not(:has(.filter-bar)):not(:has(.history-filter-bar)) .header-top {
-    margin-bottom: 0;
   }
 
   .logo {
@@ -272,29 +269,26 @@
 
   /* Spacer to offset content below fixed header */
   .header-spacer {
-    height: calc(80px + var(--space-5));
+    height: 64px;
   }
 
   .header-spacer.with-filters {
-    height: calc(140px + var(--space-5));
+    height: 108px;
   }
 
   .header-spacer.with-collection-bar {
-    height: calc(190px + var(--space-5));
+    height: 140px;
   }
 
   .header-spacer.with-collection-bar.with-filters {
-    height: calc(240px + var(--space-5));
+    height: 180px;
   }
 
   /* Responsive adjustments */
   @media (max-width: 768px) {
     .header-inner {
-      padding: var(--space-4) var(--space-4);
-    }
-
-    .header-top {
-      margin-bottom: var(--space-4);
+      padding: var(--space-3) var(--space-4);
+      gap: var(--space-2);
     }
 
     .logo {
@@ -315,19 +309,19 @@
     }
 
     .header-spacer {
-      height: calc(70px + var(--space-4));
+      height: 56px;
     }
 
     .header-spacer.with-filters {
-      height: calc(120px + var(--space-4));
+      height: 100px;
     }
 
     .header-spacer.with-collection-bar {
-      height: calc(170px + var(--space-4));
+      height: 130px;
     }
 
     .header-spacer.with-collection-bar.with-filters {
-      height: calc(220px + var(--space-4));
+      height: 168px;
     }
   }
 

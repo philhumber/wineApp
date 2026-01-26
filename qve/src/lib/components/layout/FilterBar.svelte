@@ -185,38 +185,41 @@
 </script>
 
 <div class="filter-bar" role="toolbar" aria-label="Wine filters">
-  {#each dropdownFilters as filter}
-    <div class="dropdown-wrapper" bind:this={pillRefs[filter.key]}>
-      <FilterPill
-        label={getDropdownLabel(filter)}
-        hasDropdown
-        active={isDropdownActive(filter.key)}
-        expanded={openDropdown === filter.key}
-        on:click={() => handleDropdownClick(filter)}
-      />
-      {#if openDropdown === filter.key}
-        <FilterDropdown
-          items={dropdownOptions}
-          loading={dropdownLoading}
-          selectedValue={getDropdownValue(filter.key)}
-          label={filter.label}
-          position={dropdownPosition}
-          on:select={(e) => handleDropdownSelect(filter.key, e)}
-          on:clear={() => handleDropdownClear(filter.key)}
-          on:close={handleDropdownClose}
+  <!-- Scrollable filter pills -->
+  <div class="filter-pills">
+    {#each dropdownFilters as filter}
+      <div class="dropdown-wrapper" bind:this={pillRefs[filter.key]}>
+        <FilterPill
+          label={getDropdownLabel(filter)}
+          hasDropdown
+          active={isDropdownActive(filter.key)}
+          expanded={openDropdown === filter.key}
+          on:click={() => handleDropdownClick(filter)}
         />
-      {/if}
-    </div>
-  {/each}
+        {#if openDropdown === filter.key}
+          <FilterDropdown
+            items={dropdownOptions}
+            loading={dropdownLoading}
+            selectedValue={getDropdownValue(filter.key)}
+            label={filter.label}
+            position={dropdownPosition}
+            on:select={(e) => handleDropdownSelect(filter.key, e)}
+            on:clear={() => handleDropdownClear(filter.key)}
+            on:close={handleDropdownClose}
+          />
+        {/if}
+      </div>
+    {/each}
 
-  {#if $hasActiveFilters}
-    <button class="clear-all-btn" on:click={clearAllFilters}>
-      Clear all
-    </button>
-  {/if}
+    {#if $hasActiveFilters}
+      <button class="clear-all-btn" on:click={clearAllFilters}>
+        Clear all
+      </button>
+    {/if}
+  </div>
 
-  <!-- Sort controls: mobile only (hidden on desktop) -->
-  <div class="mobile-sort-controls">
+  <!-- Sort controls: always visible on right -->
+  <div class="sort-controls">
     <div class="select-wrapper">
       <select
         class="sort-select"
@@ -246,15 +249,41 @@
   .filter-bar {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    overflow-x: auto;
-    padding-bottom: var(--space-1);
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
+    gap: var(--space-3);
   }
 
-  .filter-bar::-webkit-scrollbar {
-    display: none; /* Chrome/Safari */
+  /* ─────────────────────────────────────────────────────────
+   * FILTER PILLS (scrollable)
+   * ───────────────────────────────────────────────────────── */
+  .filter-pills {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    flex: 1;
+    min-width: 0; /* Allow shrinking */
+    padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: var(--divider) transparent;
+  }
+
+  /* Webkit scrollbar (Chrome/Safari) */
+  .filter-pills::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .filter-pills::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .filter-pills::-webkit-scrollbar-thumb {
+    background: var(--divider);
+    border-radius: 2px;
+  }
+
+  .filter-pills::-webkit-scrollbar-thumb:hover {
+    background: var(--text-tertiary);
   }
 
   /* Wrapper for dropdown pills to position dropdown relative to pill */
@@ -264,7 +293,6 @@
   }
 
   .clear-all-btn {
-    margin-left: var(--space-2);
     padding: var(--space-1) var(--space-3);
     font-family: var(--font-sans);
     font-size: 0.75rem;
@@ -275,6 +303,7 @@
     cursor: pointer;
     transition: all 0.2s var(--ease-out);
     flex-shrink: 0;
+    white-space: nowrap;
   }
 
   .clear-all-btn:hover {
@@ -283,14 +312,12 @@
   }
 
   /* ─────────────────────────────────────────────────────────
-   * MOBILE SORT CONTROLS
-   * Hidden on desktop, visible on mobile
+   * SORT CONTROLS (always visible on right)
    * ───────────────────────────────────────────────────────── */
-  .mobile-sort-controls {
-    display: none;
+  .sort-controls {
+    display: flex;
     align-items: center;
     gap: var(--space-2);
-    margin-left: auto;
     flex-shrink: 0;
   }
 
@@ -358,19 +385,16 @@
     outline-offset: 2px;
   }
 
-  /* Responsive: show sort controls on mobile */
+  /* ─────────────────────────────────────────────────────────
+   * MOBILE RESPONSIVE
+   * ───────────────────────────────────────────────────────── */
   @media (max-width: 640px) {
-    .filter-bar {
-      -webkit-overflow-scrolling: touch;
+    .filter-pills {
       scroll-snap-type: x proximity;
     }
 
-    .filter-bar :global(.filter-pill) {
+    .filter-pills :global(.filter-pill) {
       scroll-snap-align: start;
-    }
-
-    .mobile-sort-controls {
-      display: flex;
     }
   }
 </style>
