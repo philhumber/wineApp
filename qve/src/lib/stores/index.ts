@@ -155,6 +155,10 @@ export {
   formatPrice,
   formatPriceFromEUR,
   formatPriceConverted,
-  getCurrencyByCode
+  getCurrencyByCode,
+  formatCompactValue
 } from './currency';
 export type { CurrencyCode } from './currency';
+
+// User Settings (WIN-126, WIN-127)
+export { collectionName, cellarValue } from './settings';

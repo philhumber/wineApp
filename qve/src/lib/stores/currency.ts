@@ -289,6 +289,35 @@ export function getCurrencyByCode(code: string, currencies: Currency[]): Currenc
 }
 
 /**
+ * Format a value in compact notation with currency symbol
+ * Examples: ~£45k, ~€120k, ~$1.2M
+ * @param value - Value to format
+ * @param currency - Currency object
+ * @returns Compact formatted string (e.g., "~£45k")
+ */
+export function formatCompactValue(value: number | null, currency: Currency): string | null {
+	if (value === null || value === 0) return null;
+
+	const absValue = Math.abs(value);
+	let formatted: string;
+
+	if (absValue >= 1_000_000) {
+		// Millions: 1.2M
+		const millions = value / 1_000_000;
+		formatted = millions >= 10 ? `${Math.round(millions)}M` : `${millions.toFixed(1)}M`;
+	} else if (absValue >= 1_000) {
+		// Thousands: 45k
+		const thousands = value / 1_000;
+		formatted = thousands >= 10 ? `${Math.round(thousands)}k` : `${thousands.toFixed(1)}k`;
+	} else {
+		// Under 1000: show as-is rounded
+		formatted = Math.round(value).toString();
+	}
+
+	return `~${currency.symbol}${formatted}`;
+}
+
+/**
  * Convert price from original currency to display currency and format
  * Handles full conversion flow: validate -> lookup original currency -> convert -> format
  * @param price - Price in original currency

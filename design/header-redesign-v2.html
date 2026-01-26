@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Header Redesign v2 - Qve</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ═══════════════════════════════════════════════════════════
+       DESIGN TOKENS - Matching existing app
+       ═══════════════════════════════════════════════════════════ */
+    :root {
+      --bg: #FAF9F7;
+      --bg-subtle: #F5F3F0;
+      --surface: #FFFFFF;
+      --surface-raised: #FFFFFF;
+      --text-primary: #2D2926;
+      --text-secondary: #5C5652;
+      --text-tertiary: #8A847D;
+      --accent: #A69B8A;
+      --accent-subtle: #C4BAA9;
+      --accent-muted: #D9D2C6;
+      --divider: #E8E4DE;
+      --divider-subtle: #F0EDE8;
+      --font-serif: 'Cormorant Garamond', Georgia, serif;
+      --font-sans: 'Outfit', system-ui, sans-serif;
+      --space-1: 0.25rem;
+      --space-2: 0.5rem;
+      --space-3: 0.75rem;
+      --space-4: 1rem;
+      --space-5: 1.5rem;
+      --space-6: 2rem;
+      --space-8: 3rem;
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-pill: 100px;
+      --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+      --shadow-sm: 0 1px 2px rgba(45, 41, 38, 0.03);
+      --shadow-md: 0 2px 8px rgba(45, 41, 38, 0.04), 0 1px 2px rgba(45, 41, 38, 0.03);
+    }
+
+    [data-theme="dark"] {
+      --bg: #0C0B0A;
+      --bg-subtle: #141312;
+      --surface: #1A1918;
+      --surface-raised: #222120;
+      --text-primary: #F0EDE6;
+      --text-secondary: #A8A29A;
+      --text-tertiary: #6B665F;
+      --accent: #B8AFA0;
+      --accent-subtle: #7A756C;
+      --accent-muted: #4A4640;
+      --divider: #2A2826;
+      --divider-subtle: #1F1E1C;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+      --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text-primary);
+      min-height: 100vh;
+      transition: background 0.3s var(--ease-out), color 0.3s var(--ease-out);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       REDUCED GRAIN TEXTURE - Lighter in dark mode
+       ═══════════════════════════════════════════════════════════ */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      opacity: 0.012;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* FIXED: Reduced opacity in dark mode (was 0.03, now 0.015) */
+    [data-theme="dark"] body::after {
+      opacity: 0.015;
+    }
+
+    /* Dark mode ambient glow - also reduced */
+    [data-theme="dark"] body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 50vh;
+      background: radial-gradient(
+        ellipse 80% 40% at 50% 0%,
+        rgba(180, 165, 140, 0.02) 0%,
+        transparent 60%
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       THEME TOGGLE (For demo)
+       ═══════════════════════════════════════════════════════════ */
+    .theme-toggle {
+      position: fixed;
+      top: var(--space-4);
+      right: var(--space-4);
+      padding: 8px 16px;
+      background: var(--surface);
+      border: 1px solid var(--divider);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-family: var(--font-sans);
+      color: var(--text-secondary);
+      z-index: 1000;
+      transition: all 0.2s var(--ease-out);
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--accent);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       DESIGN OPTION LABELS
+       ═══════════════════════════════════════════════════════════ */
+    .design-label {
+      font-family: var(--font-sans);
+      font-size: 0.625rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      margin: var(--space-8) var(--space-6) var(--space-3);
+      padding-bottom: var(--space-2);
+      border-bottom: 1px solid var(--divider-subtle);
+    }
+
+    .design-label:first-of-type {
+      margin-top: var(--space-6);
+    }
+
+    .design-label.recommended {
+      color: #6B8E6B;
+    }
+
+    .design-note {
+      font-size: 0.8125rem;
+      color: var(--text-tertiary);
+      margin: 0 var(--space-6) var(--space-4);
+      line-height: 1.6;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       REDESIGNED HEADER - Unified & Compact
+       ═══════════════════════════════════════════════════════════ */
+    .header {
+      background: var(--bg);
+      border-bottom: 1px solid var(--divider-subtle);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: var(--space-4) var(--space-6);
+    }
+
+    /* Top row: Logo + Actions */
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-4);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .header-icon {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--divider);
+      border-radius: 50%;
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.2s var(--ease-out);
+      color: var(--text-tertiary);
+    }
+
+    .header-icon:hover {
+      border-color: var(--accent-subtle);
+      color: var(--text-secondary);
+      background: var(--surface);
+    }
+
+    .logo {
+      font-family: var(--font-serif);
+      font-size: 2rem;
+      font-weight: 400;
+      letter-spacing: 0.04em;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       COLLECTION BAR - Tighter spacing
+       ═══════════════════════════════════════════════════════════ */
+    .collection-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      margin-bottom: var(--space-3);
+    }
+
+    .collection-primary {
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-3);
+    }
+
+    .collection-title {
+      font-family: var(--font-serif);
+      font-size: 1.25rem;
+      font-weight: 400;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    /* IMPROVED: Better wording for view toggle */
+    .view-toggle {
+      display: flex;
+      background: var(--bg-subtle);
+      border-radius: var(--radius-sm);
+      padding: 2px;
+    }
+
+    .view-toggle button {
+      padding: 4px 10px;
+      font-family: var(--font-sans);
+      font-size: 0.625rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border: none;
+      background: transparent;
+      color: var(--text-tertiary);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.2s var(--ease-out);
+      white-space: nowrap;
+    }
+
+    .view-toggle button.active {
+      background: var(--surface);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .view-toggle button:hover:not(.active) {
+      color: var(--text-secondary);
+    }
+
+    .collection-secondary {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+    }
+
+    /* Stats with IMPROVED value formatting */
+    .stats {
+      display: flex;
+      gap: var(--space-5);
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      min-width: 48px;
+    }
+
+    .stat-value {
+      font-family: var(--font-sans);
+      font-size: 1rem;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    .stat-label {
+      font-family: var(--font-sans);
+      font-size: 0.5625rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-tertiary);
+    }
+
+    .stat-note {
+      font-family: var(--font-sans);
+      font-size: 0.5rem;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    .divider {
+      width: 1px;
+      height: 28px;
+      background: var(--divider);
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .select-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .sort-select {
+      appearance: none;
+      background: var(--surface);
+      border: 1px solid var(--divider);
+      border-radius: var(--radius-md);
+      padding: 6px 28px 6px 12px;
+      font-family: var(--font-sans);
+      font-size: 0.8125rem;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: border-color 0.2s var(--ease-out);
+    }
+
+    .sort-select:hover,
+    .sort-select:focus {
+      border-color: var(--accent);
+      outline: none;
+    }
+
+    .select-wrapper svg {
+      position: absolute;
+      right: 10px;
+      pointer-events: none;
+      color: var(--text-tertiary);
+      width: 12px;
+      height: 12px;
+    }
+
+    .icon-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--divider);
+      background: var(--surface);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s var(--ease-out);
+    }
+
+    .icon-btn:hover {
+      border-color: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .density-toggle {
+      display: flex;
+      gap: 2px;
+      background: var(--bg-subtle);
+      border-radius: var(--radius-md);
+      padding: 2px;
+    }
+
+    .density-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: transparent;
+      color: var(--text-tertiary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s var(--ease-out);
+    }
+
+    .density-btn:hover {
+      color: var(--text-secondary);
+    }
+
+    .density-btn.active {
+      background: var(--surface);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       FILTER BAR - Tighter to collection bar
+       ═══════════════════════════════════════════════════════════ */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .filter-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .filter-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: 6px 12px;
+      background: var(--surface);
+      border: 1px solid var(--divider);
+      border-radius: var(--radius-pill);
+      font-family: var(--font-sans);
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s var(--ease-out);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .filter-pill:hover {
+      border-color: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .filter-pill.active {
+      background: var(--text-primary);
+      border-color: var(--text-primary);
+      color: var(--bg);
+    }
+
+    .filter-pill svg {
+      width: 10px;
+      height: 10px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       DESKTOP LAYOUT - Matching mobile Option C
+       ═══════════════════════════════════════════════════════════ */
+    .desktop-top {
+      margin-bottom: var(--space-3);
+    }
+
+    .header-right-desktop {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .collection-bar-desktop {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-3);
+    }
+
+    .collection-left-desktop {
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-3);
+    }
+
+    .stats-inline-desktop {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+    }
+
+    .stats-inline-desktop strong {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .stat-note-inline {
+      font-size: 0.6875rem;
+      color: var(--accent);
+    }
+
+    .filter-sort-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+    }
+
+    .sort-controls {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      flex-shrink: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       WINE GRID PLACEHOLDER
+       ═══════════════════════════════════════════════════════════ */
+    .wine-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: var(--space-4);
+      padding: var(--space-6);
+    }
+
+    .wine-card {
+      aspect-ratio: 3/4;
+      background: var(--surface);
+      border: 1px solid var(--divider-subtle);
+      border-radius: var(--radius-md);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .wine-card-image {
+      flex: 1;
+      background: var(--bg-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-tertiary);
+      font-size: 0.75rem;
+    }
+
+    .wine-card-info {
+      padding: var(--space-3);
+      border-top: 1px solid var(--divider-subtle);
+    }
+
+    .wine-card-name {
+      font-family: var(--font-serif);
+      font-size: 0.9375rem;
+      font-weight: 400;
+      color: var(--text-primary);
+      margin-bottom: var(--space-1);
+    }
+
+    .wine-card-meta {
+      font-size: 0.6875rem;
+      color: var(--text-tertiary);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       HISTORY PAGE HEADER - Consistent Design
+       ═══════════════════════════════════════════════════════════ */
+    .history-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      margin-bottom: var(--space-3);
+    }
+
+    .history-primary {
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-3);
+    }
+
+    .history-title {
+      font-family: var(--font-serif);
+      font-size: 1.25rem;
+      font-weight: 400;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    .history-count {
+      font-family: var(--font-sans);
+      font-size: 0.75rem;
+      color: var(--text-tertiary);
+    }
+
+    /* Icons */
+    .icon {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .icon-sm {
+      width: 10px;
+      height: 10px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       RESPONSIVE
+       ═══════════════════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      .header-inner {
+        padding: var(--space-3) var(--space-4);
+      }
+
+      .header-top {
+        margin-bottom: var(--space-3);
+      }
+
+      .logo {
+        font-size: 1.5rem;
+      }
+
+      .collection-bar {
+        flex-wrap: wrap;
+        gap: var(--space-3);
+      }
+
+      .collection-primary {
+        width: 100%;
+      }
+
+      .collection-title {
+        font-size: 1.125rem;
+      }
+
+      .collection-secondary {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .divider {
+        display: none;
+      }
+
+      .stats {
+        gap: var(--space-4);
+      }
+
+      .stat-value {
+        font-size: 0.875rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .view-toggle {
+        order: -1;
+      }
+
+      .controls {
+        gap: var(--space-1);
+      }
+
+      .sort-select {
+        padding: 6px 24px 6px 8px;
+        font-size: 0.75rem;
+      }
+
+      .icon-btn {
+        width: 28px;
+        height: 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? '' : 'dark'">
+    Toggle Dark
+  </button>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       CURRENT ISSUES
+       ═══════════════════════════════════════════════════════════ -->
+  <h2 class="design-label">Current Issues</h2>
+  <p class="design-note">
+    <strong>Problems identified:</strong><br>
+    1. Too much vertical space between Qve logo and Collection title<br>
+    2. Empty gap between header and first wine card<br>
+    3. Value display too precise (e.g., 44,819.30 should be ~45k)<br>
+    4. Paper/grain texture too prominent in dark mode<br>
+    5. "In Stock" / "All" feels like a store, not personal<br>
+    6. Inconsistent heading style vs History page
+  </p>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       REDESIGN A: Compact Unified Header
+       ═══════════════════════════════════════════════════════════ -->
+  <h2 class="design-label recommended">Recommended: Compact Unified Header</h2>
+  <p class="design-note">
+    Tighter spacing, better wording ("Cellar" vs "Available"), rounded value display (~45k instead of 44,819.30),
+    reduced grain texture, consistent with history page structure.
+  </p>
+
+  <header class="header">
+    <div class="header-inner">
+      <!-- Top: Logo + Density + Search -->
+      <div class="header-top desktop-top">
+        <div class="header-left">
+          <button class="header-icon" title="Menu">
+            <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <a href="#" class="logo">Qve</a>
+        </div>
+        <div class="header-right-desktop">
+          <div class="density-toggle">
+            <button class="density-btn active" title="Grid view">
+              <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            </button>
+            <button class="density-btn" title="List view">
+              <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+          </div>
+          <button class="header-icon" title="Search">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Collection Bar: Title + Toggle + Stats -->
+      <div class="collection-bar-desktop">
+        <div class="collection-left-desktop">
+          <h1 class="collection-title">Our Wines</h1>
+          <div class="view-toggle">
+            <button class="active">Cellar</button>
+            <button>All</button>
+          </div>
+        </div>
+        <div class="stats-inline-desktop">
+          <span><strong>50</strong> wines</span>
+          <span class="stat-sep">·</span>
+          <span><strong>~£45k</strong> <span class="stat-note-inline">*6 unpriced</span></span>
+        </div>
+      </div>
+
+      <!-- Filter Pills + Sort Controls -->
+      <div class="filter-sort-row">
+        <div class="filter-bar">
+          <button class="filter-pill">
+            Country
+            <svg class="icon-sm" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <button class="filter-pill">
+            Type
+            <svg class="icon-sm" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <button class="filter-pill active">
+            France
+          </button>
+          <button class="filter-pill">
+            Producer
+            <svg class="icon-sm" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <button class="filter-pill">
+            Vintage
+            <svg class="icon-sm" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+        </div>
+        <div class="sort-controls">
+          <div class="select-wrapper">
+            <select class="sort-select">
+              <option>Producer</option>
+              <option>Name</option>
+              <option>Vintage</option>
+              <option>Rating</option>
+              <option>Price</option>
+            </select>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+          <button class="icon-btn" title="Sort direction">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Wine Grid -->
+  <div class="wine-grid">
+    <div class="wine-card">
+      <div class="wine-card-image">Wine Image</div>
+      <div class="wine-card-info">
+        <div class="wine-card-name">Chateau Margaux</div>
+        <div class="wine-card-meta">Bordeaux, France</div>
+      </div>
+    </div>
+    <div class="wine-card">
+      <div class="wine-card-image">Wine Image</div>
+      <div class="wine-card-info">
+        <div class="wine-card-name">Dom Perignon</div>
+        <div class="wine-card-meta">Champagne, France</div>
+      </div>
+    </div>
+    <div class="wine-card">
+      <div class="wine-card-image">Wine Image</div>
+      <div class="wine-card-info">
+        <div class="wine-card-name">Opus One</div>
+        <div class="wine-card-meta">Napa Valley, USA</div>
+      </div>
+    </div>
+    <div class="wine-card">
+      <div class="wine-card-image">Wine Image</div>
+      <div class="wine-card-info">
+        <div class="wine-card-name">Sassicaia</div>
+        <div class="wine-card-meta">Tuscany, Italy</div>
+      </div>
+    </div>
+    <div class="wine-card">
+      <div class="wine-card-image">Wine Image</div>
+      <div class="wine-card-info">
+        <div class="wine-card-name">Penfolds Grange</div>
+        <div class="wine-card-meta">South Australia</div>
+      </div>
+    </div>
+    <div class="wine-card">
+      <div class="wine-card-image">Wine Image</div>
+      <div class="wine-card-info">
+        <div class="wine-card-name">Cloudy Bay</div>
+        <div class="wine-card-meta">Marlborough, NZ</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       HISTORY PAGE - Consistent Header Style
+       ═══════════════════════════════════════════════════════════ -->
+  <h2 class="design-label">History Page - Consistent Design</h2>
+  <p class="design-note">
+    Same structure as cellar page for consistency. Title + count inline, sort controls right-aligned.
+  </p>
+
+  <header class="header">
+    <div class="header-inner">
+      <!-- Top: Logo + Density + Search -->
+      <div class="header-top desktop-top">
+        <div class="header-left">
+          <button class="header-icon" title="Menu">
+            <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <a href="#" class="logo">Qve</a>
+        </div>
+        <div class="header-right-desktop">
+          <div class="density-toggle">
+            <button class="density-btn active" title="Grid view">
+              <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            </button>
+            <button class="density-btn" title="List view">
+              <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+          </div>
+          <button class="header-icon" title="Search">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- History Bar: Title + Count -->
+      <div class="collection-bar-desktop">
+        <div class="collection-left-desktop">
+          <h1 class="collection-title">Drink History</h1>
+        </div>
+        <div class="stats-inline-desktop">
+          <span><strong>127</strong> bottles</span>
+        </div>
+      </div>
+
+      <!-- Filter Pills + Sort Controls -->
+      <div class="filter-sort-row">
+        <div class="filter-bar">
+          <button class="filter-pill">
+            Year Drunk
+            <svg class="icon-sm" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <button class="filter-pill">
+            Rating
+            <svg class="icon-sm" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <button class="filter-pill">
+            Type
+            <svg class="icon-sm" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <button class="filter-pill">
+            Country
+            <svg class="icon-sm" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+        </div>
+        <div class="sort-controls">
+          <div class="select-wrapper">
+            <select class="sort-select">
+              <option>Date Drunk</option>
+              <option>Rating</option>
+              <option>Wine Name</option>
+              <option>Producer</option>
+            </select>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+          <button class="icon-btn" title="Sort direction">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       ALTERNATIVE WORDING OPTIONS
+       ═══════════════════════════════════════════════════════════ -->
+  <h2 class="design-label">Alternative Wording for View Toggle</h2>
+  <p class="design-note">
+    Options to replace "In Stock" / "All" with more personal language:
+  </p>
+
+  <div style="padding: var(--space-6); display: flex; flex-wrap: wrap; gap: var(--space-4);">
+    <!-- Option 1: Cellar / All -->
+    <div style="text-align: center;">
+      <div class="view-toggle" style="display: inline-flex;">
+        <button class="active">Cellar</button>
+        <button>All</button>
+      </div>
+      <div style="font-size: 0.6875rem; color: var(--text-tertiary); margin-top: var(--space-2);">Option 1 (Recommended)</div>
+    </div>
+
+    <!-- Option 2: Available / Complete -->
+    <div style="text-align: center;">
+      <div class="view-toggle" style="display: inline-flex;">
+        <button class="active">Available</button>
+        <button>Complete</button>
+      </div>
+      <div style="font-size: 0.6875rem; color: var(--text-tertiary); margin-top: var(--space-2);">Option 2</div>
+    </div>
+
+    <!-- Option 3: Current / Archive -->
+    <div style="text-align: center;">
+      <div class="view-toggle" style="display: inline-flex;">
+        <button class="active">Current</button>
+        <button>Archive</button>
+      </div>
+      <div style="font-size: 0.6875rem; color: var(--text-tertiary); margin-top: var(--space-2);">Option 3</div>
+    </div>
+
+    <!-- Option 4: On Hand / Library -->
+    <div style="text-align: center;">
+      <div class="view-toggle" style="display: inline-flex;">
+        <button class="active">On Hand</button>
+        <button>Library</button>
+      </div>
+      <div style="font-size: 0.6875rem; color: var(--text-tertiary); margin-top: var(--space-2);">Option 4</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       VALUE FORMATTING OPTIONS
+       ═══════════════════════════════════════════════════════════ -->
+  <h2 class="design-label">Value Formatting Examples</h2>
+  <p class="design-note">
+    Different ways to display the cellar value for better readability:
+  </p>
+
+  <div style="padding: var(--space-6); display: flex; flex-wrap: wrap; gap: var(--space-6);">
+    <!-- Current (problematic) -->
+    <div class="stat">
+      <span class="stat-value">44,819.30</span>
+      <span class="stat-label">Value</span>
+      <div style="font-size: 0.625rem; color: var(--error); margin-top: var(--space-1);">Current (too precise)</div>
+    </div>
+
+    <!-- Option 1: Abbreviated with ~ -->
+    <div class="stat">
+      <span class="stat-value">~45k</span>
+      <span class="stat-label">Value</span>
+      <div style="font-size: 0.625rem; color: #6B8E6B; margin-top: var(--space-1);">Recommended</div>
+    </div>
+
+    <!-- Option 2: Rounded to hundreds -->
+    <div class="stat">
+      <span class="stat-value">44,800</span>
+      <span class="stat-label">Value</span>
+      <div style="font-size: 0.625rem; color: var(--text-tertiary); margin-top: var(--space-1);">Rounded (100s)</div>
+    </div>
+
+    <!-- Option 3: Rounded to thousands -->
+    <div class="stat">
+      <span class="stat-value">45,000</span>
+      <span class="stat-label">Value</span>
+      <div style="font-size: 0.625rem; color: var(--text-tertiary); margin-top: var(--space-1);">Rounded (1000s)</div>
+    </div>
+
+    <!-- Option 4: Currency symbol with k -->
+    <div class="stat">
+      <span class="stat-value">~$45k</span>
+      <span class="stat-label">Value</span>
+      <div style="font-size: 0.625rem; color: var(--text-tertiary); margin-top: var(--space-1);">With currency</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       MOBILE RESPONSIVE PREVIEW
+       ═══════════════════════════════════════════════════════════ -->
+  <h2 class="design-label">Mobile Responsive Layouts</h2>
+  <p class="design-note">
+    On mobile (< 640px), the layout stacks: Title + toggle on first row, stats + controls on second row.
+    The divider hides, and elements spread to fill available width.
+  </p>
+
+  <div class="mobile-preview-container">
+    <!-- OPTION A: Current (messy second row) -->
+    <div class="mobile-frame" style="width: 375px;">
+      <div class="mobile-frame-label">Option A: Current (375px)</div>
+      <div class="mobile-content">
+        <header class="header mobile-header">
+          <div class="header-inner mobile-inner">
+            <div class="header-top mobile-top">
+              <div class="header-left">
+                <button class="header-icon mobile-icon">
+                  <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <a href="#" class="logo mobile-logo">Qve</a>
+              </div>
+              <button class="header-icon mobile-icon">
+                <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </button>
+            </div>
+
+            <div class="collection-bar mobile-collection">
+              <div class="collection-primary mobile-primary">
+                <h1 class="collection-title mobile-title">Our Wines</h1>
+                <div class="view-toggle">
+                  <button class="active">Cellar</button>
+                  <button>All</button>
+                </div>
+              </div>
+
+              <div class="collection-secondary mobile-secondary">
+                <div class="stats mobile-stats">
+                  <div class="stat">
+                    <span class="stat-value mobile-stat-value">50</span>
+                    <span class="stat-label">Wines</span>
+                  </div>
+                  <div class="stat">
+                    <span class="stat-value mobile-stat-value">~£45k</span>
+                    <span class="stat-label">Value</span>
+                  </div>
+                </div>
+
+                <div class="controls mobile-controls">
+                  <div class="select-wrapper">
+                    <select class="sort-select mobile-select">
+                      <option>Producer</option>
+                    </select>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                  </div>
+                  <button class="icon-btn mobile-btn">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
+                  </button>
+                  <div class="density-toggle">
+                    <button class="density-btn active mobile-density">
+                      <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                    </button>
+                    <button class="density-btn mobile-density">
+                      <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="filter-bar">
+              <button class="filter-pill">Country <svg class="icon-sm" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+              <button class="filter-pill">Type <svg class="icon-sm" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+              <button class="filter-pill active">France</button>
+            </div>
+          </div>
+        </header>
+        <div class="mobile-wine-grid">
+          <div class="mobile-wine-card"></div>
+          <div class="mobile-wine-card"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPTION B: Stats in title row, controls with filters -->
+    <div class="mobile-frame" style="width: 375px;">
+      <div class="mobile-frame-label" style="color: #6B8E6B;">Option B: Recommended (375px)</div>
+      <div class="mobile-content">
+        <header class="header mobile-header">
+          <div class="header-inner mobile-inner">
+            <div class="header-top mobile-top">
+              <div class="header-left">
+                <button class="header-icon mobile-icon">
+                  <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <a href="#" class="logo mobile-logo">Qve</a>
+              </div>
+              <button class="header-icon mobile-icon">
+                <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </button>
+            </div>
+
+            <!-- NEW: Single row with title, toggle, and stats -->
+            <div class="collection-row-v2">
+              <div class="collection-left-v2">
+                <h1 class="collection-title mobile-title">Our Wines</h1>
+                <div class="view-toggle">
+                  <button class="active">Cellar</button>
+                  <button>All</button>
+                </div>
+              </div>
+              <div class="stats-inline">
+                <span class="stat-inline"><strong>50</strong> wines</span>
+                <span class="stat-sep">·</span>
+                <span class="stat-inline"><strong>~£45k</strong></span>
+              </div>
+            </div>
+
+            <!-- NEW: Filters + controls on same row -->
+            <div class="filter-controls-row">
+              <div class="filter-bar-v2">
+                <button class="filter-pill">Country <svg class="icon-sm" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+                <button class="filter-pill">Type <svg class="icon-sm" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+                <button class="filter-pill active">France</button>
+              </div>
+              <div class="controls-compact">
+                <div class="select-wrapper">
+                  <select class="sort-select mobile-select">
+                    <option>Producer</option>
+                  </select>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                </div>
+                <button class="icon-btn mobile-btn">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
+                </button>
+                <div class="density-toggle">
+                  <button class="density-btn active mobile-density">
+                    <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                  </button>
+                  <button class="density-btn mobile-density">
+                    <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+        <div class="mobile-wine-grid">
+          <div class="mobile-wine-card"></div>
+          <div class="mobile-wine-card"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPTION C: Ultra compact - density toggle in header -->
+    <div class="mobile-frame" style="width: 375px;">
+      <div class="mobile-frame-label" style="color: #6B8E6B;">Option C: Revised (375px)</div>
+      <div class="mobile-content">
+        <header class="header mobile-header">
+          <div class="header-inner mobile-inner">
+            <!-- Top row: Menu, Logo, Density toggle, Search -->
+            <div class="header-top-v3">
+              <div class="header-left">
+                <button class="header-icon mobile-icon">
+                  <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <a href="#" class="logo mobile-logo">Qve</a>
+              </div>
+              <div class="header-right-v3">
+                <div class="density-toggle">
+                  <button class="density-btn active mobile-density">
+                    <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                  </button>
+                  <button class="density-btn mobile-density">
+                    <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                  </button>
+                </div>
+                <button class="header-icon mobile-icon">
+                  <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Collection row: Title, toggle, stats -->
+            <div class="collection-row-v3">
+              <h1 class="collection-title mobile-title">Our Wines</h1>
+              <div class="view-toggle">
+                <button class="active">Cellar</button>
+                <button>All</button>
+              </div>
+              <div class="stats-micro">
+                <span>50 wines</span>
+                <span class="stat-sep-small">·</span>
+                <span>~£45k</span>
+              </div>
+            </div>
+
+            <!-- Filters + sort only (no density) -->
+            <div class="filter-bar-scrollable">
+              <button class="filter-pill">Country <svg class="icon-sm" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+              <button class="filter-pill">Type <svg class="icon-sm" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+              <button class="filter-pill active">France</button>
+              <div class="controls-inline-slim">
+                <div class="select-wrapper">
+                  <select class="sort-select mobile-select">
+                    <option>Producer</option>
+                  </select>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                </div>
+                <button class="icon-btn mobile-btn">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
+        <div class="mobile-wine-grid">
+          <div class="mobile-wine-card"></div>
+          <div class="mobile-wine-card"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPTION C at 320px -->
+    <div class="mobile-frame" style="width: 320px;">
+      <div class="mobile-frame-label" style="color: #6B8E6B;">Option C at 320px</div>
+      <div class="mobile-content">
+        <header class="header mobile-header">
+          <div class="header-inner mobile-inner tiny-inner">
+            <div class="header-top-v3">
+              <div class="header-left">
+                <button class="header-icon mobile-icon tiny-icon">
+                  <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <a href="#" class="logo mobile-logo">Qve</a>
+              </div>
+              <div class="header-right-v3">
+                <div class="density-toggle">
+                  <button class="density-btn active tiny-density">
+                    <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                  </button>
+                  <button class="density-btn tiny-density">
+                    <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                  </button>
+                </div>
+                <button class="header-icon mobile-icon tiny-icon">
+                  <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="collection-row-v3">
+              <h1 class="collection-title mobile-title tiny-title">Our Wines</h1>
+              <div class="view-toggle tiny-toggle">
+                <button class="active">Cellar</button>
+                <button>All</button>
+              </div>
+              <div class="stats-micro tiny-stats-micro">
+                <span>50 wines</span>
+                <span class="stat-sep-small">·</span>
+                <span>~£45k</span>
+              </div>
+            </div>
+
+            <div class="filter-bar-scrollable">
+              <button class="filter-pill tiny-pill">Country <svg class="icon-sm" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+              <button class="filter-pill tiny-pill">Type <svg class="icon-sm" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+              <div class="controls-inline-slim">
+                <div class="select-wrapper">
+                  <select class="sort-select mobile-select tiny-select">
+                    <option>Producer</option>
+                  </select>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                </div>
+                <button class="icon-btn mobile-btn tiny-btn">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
+        <div class="mobile-wine-grid tiny-grid">
+          <div class="mobile-wine-card"></div>
+          <div class="mobile-wine-card"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <style>
+    /* Mobile preview container */
+    .mobile-preview-container {
+      display: flex;
+      gap: var(--space-6);
+      padding: var(--space-6);
+      overflow-x: auto;
+      background: var(--bg-subtle);
+    }
+
+    .mobile-frame {
+      flex-shrink: 0;
+      background: var(--bg);
+      border: 1px solid var(--divider);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .mobile-frame-label {
+      padding: var(--space-2) var(--space-3);
+      background: var(--surface-raised);
+      border-bottom: 1px solid var(--divider-subtle);
+      font-size: 0.625rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-tertiary);
+      text-align: center;
+    }
+
+    .mobile-content {
+      background: var(--bg);
+    }
+
+    /* Mobile header overrides */
+    .mobile-header {
+      position: relative;
+    }
+
+    .mobile-inner {
+      padding: var(--space-3) var(--space-4) !important;
+    }
+
+    .tiny-inner {
+      padding: var(--space-3) var(--space-3) !important;
+    }
+
+    .mobile-top {
+      margin-bottom: var(--space-3) !important;
+    }
+
+    .mobile-logo {
+      font-size: 1.5rem !important;
+    }
+
+    .mobile-icon {
+      width: 36px !important;
+      height: 36px !important;
+    }
+
+    .tiny-icon {
+      width: 32px !important;
+      height: 32px !important;
+    }
+
+    .mobile-collection {
+      flex-wrap: wrap !important;
+      gap: var(--space-3) !important;
+    }
+
+    .mobile-primary {
+      width: 100% !important;
+    }
+
+    .mobile-title {
+      font-size: 1.125rem !important;
+    }
+
+    .tiny-title {
+      font-size: 1rem !important;
+    }
+
+    .tiny-toggle button {
+      padding: 3px 8px !important;
+      font-size: 0.5625rem !important;
+    }
+
+    .mobile-secondary {
+      width: 100% !important;
+      justify-content: space-between !important;
+    }
+
+    .mobile-stats {
+      gap: var(--space-4) !important;
+    }
+
+    .mobile-stat-value {
+      font-size: 0.875rem !important;
+    }
+
+    .tiny-stat {
+      font-size: 0.8125rem !important;
+    }
+
+    .mobile-controls {
+      gap: var(--space-1) !important;
+    }
+
+    .mobile-select {
+      padding: 6px 24px 6px 8px !important;
+      font-size: 0.75rem !important;
+    }
+
+    .tiny-select {
+      padding: 5px 20px 5px 6px !important;
+      font-size: 0.6875rem !important;
+    }
+
+    .mobile-btn {
+      width: 28px !important;
+      height: 28px !important;
+    }
+
+    .tiny-btn {
+      width: 26px !important;
+      height: 26px !important;
+    }
+
+    .mobile-density {
+      width: 26px !important;
+      height: 26px !important;
+    }
+
+    .tiny-density {
+      width: 22px !important;
+      height: 22px !important;
+    }
+
+    .tiny-pill {
+      padding: 5px 10px !important;
+      font-size: 0.6875rem !important;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       OPTION B: Stats in title row, controls with filters
+       ═══════════════════════════════════════════════════════════ */
+    .collection-row-v2 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      margin-bottom: var(--space-3);
+    }
+
+    .collection-left-v2 {
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-2);
+    }
+
+    .stats-inline {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .stats-inline strong {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .stat-inline {
+      white-space: nowrap;
+    }
+
+    .stat-sep {
+      color: var(--text-tertiary);
+    }
+
+    .tiny-stats-inline {
+      font-size: 0.6875rem;
+    }
+
+    .tiny-row {
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+
+    .filter-controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-2);
+    }
+
+    .filter-bar-v2 {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      flex: 1;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .filter-bar-v2::-webkit-scrollbar {
+      display: none;
+    }
+
+    .controls-compact {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      flex-shrink: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       OPTION C: Ultra compact - inline stats, controls at end
+       ═══════════════════════════════════════════════════════════ */
+    .collection-row-v3 {
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-2);
+      margin-bottom: var(--space-3);
+      flex-wrap: wrap;
+    }
+
+    .stats-micro {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      font-size: 0.6875rem;
+      font-weight: 500;
+      color: var(--text-tertiary);
+      margin-left: auto;
+    }
+
+    .stat-sep-small {
+      opacity: 0.5;
+    }
+
+    .filter-bar-scrollable {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding-bottom: 2px;
+    }
+
+    .filter-bar-scrollable::-webkit-scrollbar {
+      display: none;
+    }
+
+    .controls-inline {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      flex-shrink: 0;
+      margin-left: var(--space-2);
+      padding-left: var(--space-2);
+      border-left: 1px solid var(--divider);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       OPTION C REVISED: Density toggle in header
+       ═══════════════════════════════════════════════════════════ */
+    .header-top-v3 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-3);
+    }
+
+    .header-right-v3 {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .controls-inline-slim {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      flex-shrink: 0;
+      margin-left: var(--space-2);
+      padding-left: var(--space-2);
+      border-left: 1px solid var(--divider);
+    }
+
+    .tiny-stats-micro {
+      font-size: 0.625rem;
+    }
+
+    /* Mobile wine grid */
+    .mobile-wine-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-3);
+      padding: var(--space-4);
+    }
+
+    .tiny-grid {
+      gap: var(--space-2);
+      padding: var(--space-3);
+    }
+
+    .mobile-wine-card {
+      aspect-ratio: 3/4;
+      background: var(--surface);
+      border: 1px solid var(--divider-subtle);
+      border-radius: var(--radius-md);
+    }
+  </style>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       IMPLEMENTATION NOTES
+       ═══════════════════════════════════════════════════════════ -->
+  <h2 class="design-label">Implementation Changes Required</h2>
+  <div style="padding: var(--space-4) var(--space-6); font-size: 0.8125rem; color: var(--text-secondary); line-height: 1.8;">
+    <strong style="color: var(--text-primary);">1. base.css:77</strong> - Reduce dark mode grain opacity from 0.03 to 0.015<br>
+    <strong style="color: var(--text-primary);">2. Header.svelte</strong> - Move density toggle from CollectionBar to header-actions (next to search)<br>
+    <strong style="color: var(--text-primary);">3. Header.svelte</strong> - Reduce margin-bottom on header-top from space-5 to space-3<br>
+    <strong style="color: var(--text-primary);">4. CollectionBar.svelte</strong> - Change view toggle wording to "Cellar" / "All"<br>
+    <strong style="color: var(--text-primary);">5. CollectionBar.svelte</strong> - Change stats to inline format: "50 wines · ~£45k"<br>
+    <strong style="color: var(--text-primary);">6. CollectionBar.svelte</strong> - Remove density toggle (moved to Header)<br>
+    <strong style="color: var(--text-primary);">7. CollectionBar.svelte</strong> - Keep only sort dropdown + direction button<br>
+    <strong style="color: var(--text-primary);">8. currency store</strong> - Add formatCompactValue(value, currency) helper with currency symbol<br>
+    <strong style="color: var(--text-primary);">9. FilterBar.svelte</strong> - Add sort controls to end of filter row on mobile<br>
+    <strong style="color: var(--text-primary);">10. Header.svelte spacer</strong> - Reduce heights to account for tighter layout<br>
+    <strong style="color: var(--text-primary);">11. history/+page.svelte</strong> - Match same header structure (density in header, sort with filters)
+  </div>
+
+</body>
+</html>

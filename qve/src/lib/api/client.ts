@@ -25,7 +25,10 @@ import type {
   AIWineData,
   CurrencyDataResponse,
   DuplicateCheckParams,
-  DuplicateCheckResult
+  DuplicateCheckResult,
+  UserSettings,
+  UpdateSettingsPayload,
+  CellarValue
 } from './types';
 
 class WineApiClient {
@@ -503,6 +506,53 @@ class WineApiClient {
       similarMatches: [],
       existingBottles: 0,
       existingWineId: null
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // USER SETTINGS (WIN-126)
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Get user settings (collection name, etc.)
+   */
+  async getUserSettings(): Promise<UserSettings> {
+    const response = await this.fetchJSON<UserSettings>('getUserSettings.php');
+    return response.data ?? { collectionName: 'Our Wines' };
+  }
+
+  /**
+   * Update user settings
+   */
+  async updateUserSettings(settings: UpdateSettingsPayload): Promise<UserSettings> {
+    const response = await this.fetchJSON<UserSettings>(
+      'updateUserSettings.php',
+      settings as Record<string, unknown>
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to update settings');
+    }
+
+    return response.data ?? { collectionName: 'Our Wines' };
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // CELLAR VALUE (WIN-127)
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Get cellar value statistics
+   * Returns total value in EUR (frontend handles currency conversion)
+   */
+  async getCellarValue(): Promise<CellarValue> {
+    const response = await this.fetchJSON<CellarValue>('getCellarValue.php');
+    return response.data ?? {
+      totalValueEUR: 0,
+      bottleCount: 0,
+      bottlesWithPrice: 0,
+      bottlesWithoutPrice: 0,
+      hasIncompleteData: false
     };
   }
 }
