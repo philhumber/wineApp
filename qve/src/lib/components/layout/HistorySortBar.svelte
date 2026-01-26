@@ -165,12 +165,9 @@
     gap: var(--space-3);
   }
 
-  @media (max-width: 520px) {
+  /* Hide entire sort bar on mobile - sort controls are in HistoryFilterBar */
+  @media (max-width: 640px) {
     .history-sort-bar {
-      flex-wrap: wrap;
-    }
-
-    .sort-label {
       display: none;
     }
   }

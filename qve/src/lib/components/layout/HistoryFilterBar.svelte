@@ -3,18 +3,50 @@
    * HistoryFilterBar Component
    * Filter controls for history page (Country, Type, Region, Producer, Vintage)
    * Uses client-side filtering via historyFilters store
+   * On mobile: also includes sort controls (hidden on desktop)
    */
+  import { Icon } from '$lib/components';
   import {
     historyFilters,
     setHistoryFilter,
     clearHistoryFilters,
     hasHistoryFilters,
-    drunkWines
+    drunkWines,
+    historySortKey,
+    historySortDir,
+    setHistorySort,
+    toggleHistorySortDir
   } from '$lib/stores';
   import FilterPill from './FilterPill.svelte';
   import FilterDropdown from './FilterDropdown.svelte';
   import type { FilterOption } from '$lib/stores/filterOptions';
   import type { DrunkWine } from '$lib/api/types';
+  import type { HistorySortKey } from '$lib/stores';
+
+  // Sort options for history (mobile controls) - matches HistorySortBar
+  const sortOptions: { key: HistorySortKey; label: string }[] = [
+    { key: 'drinkDate', label: 'Date' },
+    { key: 'combinedRating', label: 'Rating' },
+    { key: 'wineName', label: 'Name' },
+    { key: 'wineType', label: 'Type' },
+    { key: 'country', label: 'Country' },
+    { key: 'producer', label: 'Producer' },
+    { key: 'region', label: 'Region' },
+    { key: 'year', label: 'Vintage' },
+    { key: 'price', label: 'Price' }
+  ];
+
+  // Text fields default to ascending (A-Z)
+  // Numeric fields (date, ratings, price) default to descending (newest/highest first)
+  const textFields: HistorySortKey[] = ['wineName', 'wineType', 'country', 'producer', 'region', 'year'];
+
+  // Handle sort change (mobile)
+  function handleSortChange(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    const key = target.value as HistorySortKey;
+    const defaultDir = textFields.includes(key) ? 'asc' : 'desc';
+    setHistorySort(key, defaultDir);
+  }
 
   // Build filter options from drunk wines data (client-side)
   function buildOptions(wines: DrunkWine[], field: keyof DrunkWine): FilterOption[] {
@@ -161,6 +193,32 @@
       Clear all
     </button>
   {/if}
+
+  <!-- Sort controls: mobile only (hidden on desktop) -->
+  <div class="mobile-sort-controls">
+    <div class="select-wrapper">
+      <select
+        class="sort-select"
+        value={$historySortKey}
+        on:change={handleSortChange}
+        aria-label="Sort history by"
+      >
+        {#each sortOptions as opt}
+          <option value={opt.key}>{opt.label}</option>
+        {/each}
+      </select>
+      <Icon name="chevron-down" size={12} />
+    </div>
+
+    <button
+      class="sort-dir-btn"
+      title={$historySortDir === 'asc' ? 'A to Z / Low to High' : 'Z to A / High to Low'}
+      on:click={toggleHistorySortDir}
+      aria-label="Toggle sort direction"
+    >
+      <Icon name={$historySortDir === 'desc' ? 'arrow-down' : 'arrow-up'} size={14} />
+    </button>
+  </div>
 </div>
 
 <style>
@@ -199,5 +257,88 @@
   .clear-all-btn:hover {
     color: var(--text-primary);
     border-color: var(--accent);
+  }
+
+  /* ─────────────────────────────────────────────────────────
+   * MOBILE SORT CONTROLS
+   * Hidden on desktop, visible on mobile
+   * ───────────────────────────────────────────────────────── */
+  .mobile-sort-controls {
+    display: none;
+    align-items: center;
+    gap: var(--space-2);
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .select-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .sort-select {
+    appearance: none;
+    background: var(--surface);
+    border: 1px solid var(--divider);
+    border-radius: 6px;
+    padding: 6px 24px 6px 10px;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition:
+      border-color 0.2s var(--ease-out),
+      box-shadow 0.2s var(--ease-out);
+  }
+
+  .sort-select:hover {
+    border-color: var(--accent);
+  }
+
+  .sort-select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-subtle, rgba(166, 155, 138, 0.2));
+  }
+
+  .select-wrapper :global(svg) {
+    position: absolute;
+    right: 8px;
+    pointer-events: none;
+    color: var(--text-tertiary);
+  }
+
+  .sort-dir-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--divider);
+    background: var(--surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      border-color 0.2s var(--ease-out),
+      color 0.2s var(--ease-out);
+  }
+
+  .sort-dir-btn:hover {
+    border-color: var(--accent);
+    color: var(--text-primary);
+  }
+
+  .sort-dir-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Responsive: show sort controls on mobile */
+  @media (max-width: 640px) {
+    .mobile-sort-controls {
+      display: flex;
+    }
   }
 </style>

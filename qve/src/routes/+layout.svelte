@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { beforeNavigate, afterNavigate } from '$app/navigation';
   import { get } from 'svelte/store';
-  import { theme, menuOpen, closeMenu, saveScrollPosition, getScrollPosition, modal, isModalOpen, viewMode, isDirtyAddBottle, addBottle } from '$stores';
+  import { theme, menuOpen, closeMenu, saveScrollPosition, getScrollPosition, modal, isModalOpen, viewMode, isDirtyAddBottle, addBottle, collectionName } from '$stores';
   import { displayCurrency } from '$lib/stores/currency';
   import { ToastContainer, SideMenu } from '$lib/components';
   import { ModalContainer } from '$lib/components/modals';
@@ -48,6 +48,7 @@
   onMount(() => {
     theme.initialize();
     displayCurrency.initialize();
+    collectionName.initialize();
 
     // Listen for popstate to handle modal back button
     // Use capture phase to handle before SvelteKit's router
