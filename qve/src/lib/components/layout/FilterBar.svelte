@@ -2,49 +2,13 @@
   /**
    * FilterBar Component
    * Horizontal scrollable container for filter pills
-   * On mobile: also includes sort controls (hidden on desktop)
    */
   import { createEventDispatcher } from 'svelte';
-  import { Icon } from '$lib/components';
-  import {
-    filters,
-    setFilter,
-    clearFilter,
-    clearAllFilters,
-    hasActiveFilters,
-    viewMode,
-    cellarSortKey,
-    cellarSortDir,
-    setCellarSort,
-    toggleCellarSortDir
-  } from '$lib/stores';
+  import { filters, setFilter, clearFilter, clearAllFilters, hasActiveFilters, viewMode } from '$lib/stores';
   import { filterOptions } from '$lib/stores/filterOptions';
   import type { FilterOption } from '$lib/stores/filterOptions';
-  import type { CellarSortKey } from '$lib/stores';
   import FilterPill from './FilterPill.svelte';
   import FilterDropdown from './FilterDropdown.svelte';
-
-  // Sort options for mobile controls
-  const sortOptions: { key: CellarSortKey; label: string }[] = [
-    { key: 'producer', label: 'Producer' },
-    { key: 'wineName', label: 'Name' },
-    { key: 'country', label: 'Country' },
-    { key: 'region', label: 'Region' },
-    { key: 'year', label: 'Vintage' },
-    { key: 'type', label: 'Type' },
-    { key: 'rating', label: 'Rating' },
-    { key: 'bottles', label: 'Bottles' },
-    { key: 'price', label: 'Price' }
-  ];
-
-  // Handle sort change (mobile)
-  function handleSortChange(event: Event) {
-    const target = event.target as HTMLSelectElement;
-    const key = target.value as CellarSortKey;
-    const numericFields: CellarSortKey[] = ['rating', 'bottles', 'price'];
-    const defaultDir = numericFields.includes(key) ? 'desc' : 'asc';
-    setCellarSort(key, defaultDir);
-  }
 
   const dispatch = createEventDispatcher<{
     filterChange: { key: string; value: string | undefined };
@@ -64,21 +28,14 @@
   let dropdownOptions: FilterOption[] = [];
   let dropdownLoading = false;
   let dropdownPosition: { top: number; left: number } = { top: 0, left: 0 };
-  let lastOpenTime = 0; // Debounce for iOS double-tap bug
 
   // Refs for pill buttons
   let pillRefs: Record<string, HTMLDivElement> = {};
 
   // Handle dropdown pill click
   async function handleDropdownClick(filter: typeof dropdownFilters[number]) {
-    const now = Date.now();
-
-    // If same dropdown is open, close it (but not if just opened - iOS debounce)
+    // If same dropdown is open, close it
     if (openDropdown === filter.key) {
-      // Ignore close if opened less than 2000ms ago (iOS ghost click protection)
-      if (now - lastOpenTime < 2000) {
-        return;
-      }
       openDropdown = null;
       return;
     }
@@ -95,7 +52,6 @@
 
     // Open new dropdown
     openDropdown = filter.key;
-    lastOpenTime = Date.now(); // Track open time for iOS debounce
     dropdownLoading = true;
     dropdownOptions = [];
 

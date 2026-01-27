@@ -14,8 +14,7 @@
 
   const sortOptions: { key: HistorySortKey; label: string }[] = [
     { key: 'drinkDate', label: 'Date' },
-    { key: 'combinedRating', label: 'Rating' },
-    { key: 'overallRating', label: 'Overall' },
+    { key: 'overallRating', label: 'Rating' },
     { key: 'valueRating', label: 'Value' },
     { key: 'wineName', label: 'Name' },
     { key: 'wineType', label: 'Type' },
@@ -165,9 +164,12 @@
     gap: var(--space-3);
   }
 
-  /* Hide entire sort bar on mobile - sort controls are in HistoryFilterBar */
-  @media (max-width: 640px) {
+  @media (max-width: 520px) {
     .history-sort-bar {
+      flex-wrap: wrap;
+    }
+
+    .sort-label {
       display: none;
     }
   }

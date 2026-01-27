@@ -12,9 +12,7 @@
   import ConfirmModal from './ConfirmModal.svelte';
   import SettingsModal from './SettingsModal.svelte';
   import ImageLightboxModal from './ImageLightboxModal.svelte';
-  import type { Wine, DrunkWine } from '$lib/api/types';
-  import { api } from '$lib/api/client';
-  import { drunkWines } from '$lib/stores';
+  import type { Wine } from '$lib/api/types';
   import type { ConfirmModalData } from '$lib/stores';
 
   function handleClose() {
@@ -37,31 +35,12 @@
     modal.close();
   }
 
-  // Handle rated event (refresh history after edit)
-  async function handleRated(event: CustomEvent<{ isEdit: boolean }>) {
-    if (event.detail.isEdit) {
-      // Refresh the drunk wines list
-      try {
-        const wines = await api.getDrunkWines();
-        drunkWines.set(wines);
-      } catch (e) {
-        console.error('Failed to refresh history:', e);
-      }
-    }
-  }
-
   $: modalType = $modal.type;
   $: modalData = $modal.data;
 </script>
 
-{#if modalType === 'drink' && (modalData?.wine || modalData?.drunkWine)}
-  <DrinkRateModal
-    wine={modalData.wine as Wine | undefined}
-    drunkWine={modalData.drunkWine as DrunkWine | undefined}
-    isEdit={!!modalData.isEdit}
-    on:close={handleClose}
-    on:rated={handleRated}
-  />
+{#if modalType === 'drink' && modalData?.wine}
+  <DrinkRateModal wine={modalData.wine as Wine} on:close={handleClose} />
 {:else if modalType === 'addBottle' && modalData?.wineID}
   <AddBottleModal
     wineID={modalData.wineID as number}
