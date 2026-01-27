@@ -155,32 +155,30 @@
     background: var(--bg);
     transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out);
     border-bottom: 1px solid transparent;
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
   .header.scrolled {
     border-bottom-color: var(--divider);
   }
 
-  /* Dark mode: backdrop blur effect */
+  /* Dark mode: solid background (backdrop-filter removed to fix iOS Safari
+     stacking context bug that traps position:fixed dropdowns) */
   :global([data-theme="dark"]) .header {
-    background: rgba(12, 11, 10, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-
-  @supports not (backdrop-filter: blur(20px)) {
-    :global([data-theme="dark"]) .header {
-      background: rgba(12, 11, 10, 0.98);
-    }
+    background: rgba(12, 11, 10, 0.98);
   }
 
   .header-inner {
     max-width: 1200px;
+    width: 100%;
     margin: 0 auto;
     padding: var(--space-4) var(--space-6);
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
+    box-sizing: border-box;
+    overflow: hidden;
   }
 
   .header-top {
@@ -272,6 +270,12 @@
   }
 
   /* Responsive adjustments */
+  @media (max-width: 479px) {
+    .header-inner {
+      padding: var(--space-3) var(--space-4);
+    }
+  }
+
   @media (max-width: 768px) {
     .header-inner {
       padding: var(--space-3) var(--space-4);
