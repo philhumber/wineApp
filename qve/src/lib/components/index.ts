@@ -18,7 +18,7 @@ export {
 } from './wizard';
 
 // UI Components
-export { default as Icon } from './ui/Icon.svelte';
+export { default as Icon, type IconName } from './ui/Icon.svelte';
 export { default as ThemeToggle } from './ui/ThemeToggle.svelte';
 export { default as ViewToggle } from './ui/ViewToggle.svelte';
 export { default as CurrencySelector } from './ui/CurrencySelector.svelte';
@@ -60,5 +60,3 @@ export {
   DuplicateWarningModal
 } from './modals';
 
-// Note: IconName type is exported from Icon.svelte via context="module"
-// Import directly from ./ui/Icon.svelte if needed

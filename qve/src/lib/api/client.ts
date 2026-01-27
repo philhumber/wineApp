@@ -24,7 +24,9 @@ import type {
   AIWineData,
   CurrencyDataResponse,
   DuplicateCheckParams,
-  DuplicateCheckResult
+  DuplicateCheckResult,
+  AgentIdentificationResult,
+  AgentIdentificationResultWithMeta
 } from './types';
 
 class WineApiClient {
@@ -489,6 +491,102 @@ class WineApiClient {
       existingBottles: 0,
       existingWineId: null
     };
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // AI AGENT IDENTIFICATION
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Identify wine from text description
+   * Uses AI to parse wine details and match against collection/reference data
+   */
+  async identifyText(text: string): Promise<AgentIdentificationResult> {
+    const response = await this.fetchJSON<AgentIdentificationResult>(
+      'agent/identifyText.php',
+      { text }
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to identify wine from text');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Identify wine from image (label photo)
+   * Uses AI vision to extract wine details from label
+   */
+  async identifyImage(imageBase64: string, mimeType: string): Promise<AgentIdentificationResultWithMeta> {
+    const response = await this.fetchJSON<AgentIdentificationResultWithMeta>(
+      'agent/identifyImage.php',
+      { image: imageBase64, mimeType }
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to identify wine from image');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Compress and convert image file for identification API
+   * Returns base64-encoded image data with mime type
+   */
+  async compressImageForIdentification(file: File): Promise<{ imageData: string; mimeType: string }> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      const img = new Image();
+
+      reader.onload = (e) => {
+        img.onload = () => {
+          // Create canvas for compression
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+
+          if (!ctx) {
+            reject(new Error('Could not get canvas context'));
+            return;
+          }
+
+          // Max dimensions for upload
+          const MAX_WIDTH = 1200;
+          const MAX_HEIGHT = 1200;
+
+          let { width, height } = img;
+
+          // Scale down if needed
+          if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+            const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          // Draw image
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Convert to JPEG with quality
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          const base64Data = dataUrl.split(',')[1];
+
+          resolve({
+            imageData: base64Data,
+            mimeType: 'image/jpeg'
+          });
+        };
+
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = e.target?.result as string;
+      };
+
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
   }
 }
 

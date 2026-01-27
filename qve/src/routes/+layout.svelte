@@ -6,6 +6,7 @@
   import { displayCurrency } from '$lib/stores/currency';
   import { ToastContainer, SideMenu } from '$lib/components';
   import { ModalContainer } from '$lib/components/modals';
+  import { AgentBubble, AgentPanel } from '$lib/components/agent';
   import '$lib/styles/index.css';
 
   // Handle popstate for modals and view mode (SvelteKit's afterNavigate doesn't fire for same-URL history changes)
@@ -96,3 +97,7 @@
 
 <!-- Global modal container -->
 <ModalContainer />
+
+<!-- AI Wine Assistant -->
+<AgentBubble />
+<AgentPanel />

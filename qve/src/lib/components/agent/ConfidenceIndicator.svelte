@@ -24,34 +24,60 @@
 </script>
 
 <div class="confidence" class:compact>
-	<div class="bar-container">
-		<div
-			class="bar-fill"
-			class:high={level === 'high'}
-			class:good={level === 'good'}
-			class:low={level === 'low'}
-			style="width: {normalizedScore}%"
-		></div>
-	</div>
-
-	{#if showLabel}
-		<div class="label">
-			<span class="percentage">{normalizedScore}%</span>
-			<span class="level" class:high={level === 'high'} class:good={level === 'good'} class:low={level === 'low'}>
-				{levelLabel}
-			</span>
-		</div>
+	{#if showLabel && !compact}
+		<span class="confidence-label">Confidence Level</span>
 	{/if}
+	<div class="bar-row">
+		<div class="bar-container">
+			<div
+				class="bar-fill"
+				class:high={level === 'high'}
+				class:good={level === 'good'}
+				class:low={level === 'low'}
+				style="width: {normalizedScore}%"
+			></div>
+		</div>
+
+		{#if showLabel}
+			<div class="label">
+				<span class="combined" class:high={level === 'high'} class:good={level === 'good'} class:low={level === 'low'}>
+					{normalizedScore}% {levelLabel}
+				</span>
+			</div>
+		{/if}
+	</div>
 </div>
 
 <style>
 	.confidence {
 		display: flex;
 		flex-direction: column;
+		gap: var(--space-1);
+	}
+
+	.confidence-label {
+		font-family: var(--font-sans);
+		font-size: 0.6875rem;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--text-tertiary);
+	}
+
+	.bar-row {
+		display: flex;
+		flex-direction: column;
 		gap: var(--space-2);
 	}
 
 	.confidence.compact {
+		flex-direction: row;
+		align-items: center;
+		gap: var(--space-3);
+	}
+
+	.confidence.compact .bar-row {
+		flex: 1;
 		flex-direction: row;
 		align-items: center;
 		gap: var(--space-3);
@@ -98,29 +124,23 @@
 		flex-shrink: 0;
 	}
 
-	.percentage {
+	.combined {
 		font-family: var(--font-sans);
 		font-size: 0.75rem;
 		font-weight: 600;
-		color: var(--text-primary);
-	}
-
-	.level {
-		font-family: var(--font-sans);
-		font-size: 0.6875rem;
 		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		letter-spacing: 0.03em;
 	}
 
-	.level.high {
+	.combined.high {
 		color: var(--success);
 	}
 
-	.level.good {
+	.combined.good {
 		color: var(--warning);
 	}
 
-	.level.low {
+	.combined.low {
 		color: var(--error);
 	}
 </style>

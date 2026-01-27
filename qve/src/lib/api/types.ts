@@ -315,3 +315,59 @@ export interface DuplicateCheckResult {
   existingBottles: number;
   existingWineId: number | null;
 }
+
+// ─────────────────────────────────────────────────────────
+// AI AGENT TYPES
+// ─────────────────────────────────────────────────────────
+
+export type AgentWineType = 'Red' | 'White' | 'Rosé' | 'Sparkling' | 'Dessert' | 'Fortified';
+
+export interface AgentParsedWine {
+  producer: string | null;
+  wineName: string | null;
+  vintage: string | null;
+  region: string | null;
+  country: string | null;
+  wineType: AgentWineType | null;
+  grapes: string[] | null;
+  confidence: number;
+}
+
+export interface AgentCandidate {
+  source: 'collection' | 'reference';
+  confidence: number;
+  data: Record<string, unknown>;
+}
+
+export type AgentAction = 'auto_populate' | 'suggest' | 'disambiguate';
+
+export type AgentInputType = 'text' | 'image';
+
+export interface AgentIdentificationResult {
+  intent: 'add' | 'advice' | 'pair';
+  parsed: AgentParsedWine;
+  confidence: number;
+  action: AgentAction;
+  candidates: AgentCandidate[];
+  escalation?: {
+    attempted: boolean;
+    improved: boolean;
+    originalConfidence: number | null;
+  };
+  usage?: {
+    tokens: { input: number; output: number };
+    cost: number;
+    latencyMs: number;
+  };
+}
+
+export interface AgentImageQuality {
+  width: number;
+  height: number;
+  estimatedQuality: 'good' | 'acceptable' | 'poor';
+}
+
+export interface AgentIdentificationResultWithMeta extends AgentIdentificationResult {
+  inputType: 'text' | 'image';
+  quality?: AgentImageQuality;
+}
