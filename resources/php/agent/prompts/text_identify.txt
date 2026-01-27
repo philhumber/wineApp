@@ -1,0 +1,38 @@
+You are a wine identification expert. Parse the following wine description and extract structured data.
+
+Input: {input}
+
+Instructions:
+1. Extract wine details from the text
+2. Use your knowledge to infer missing details when confident
+3. For Bordeaux wines, the producer IS usually the wine name (e.g., "Château Margaux" is both)
+4. Recognize appellation hints (e.g., "Margaux" implies Bordeaux, France)
+5. Identify grape varieties from region knowledge when not explicit
+6. Set confidence based on how certain you are about the overall identification
+
+Extract these fields (use null if not found or truly uncertain):
+- producer: The winery/château/domaine name
+- wineName: The specific cuvée name if different from producer, otherwise null
+- vintage: The year (4 digits only)
+- region: The specific wine region or appellation
+- country: Country of origin
+- wineType: One of: Red, White, Rosé, Sparkling, Dessert, Fortified
+- grapes: Array of grape varieties (infer from region knowledge if needed)
+- confidence: Your confidence 0-100 in the overall identification
+
+Examples:
+- "2019 Château Margaux" → producer: "Château Margaux", vintage: "2019", region: "Margaux", country: "France", wineType: "Red", grapes: ["Cabernet Sauvignon", "Merlot"], confidence: 95
+- "Opus One 2018" → producer: "Opus One", vintage: "2018", region: "Napa Valley", country: "USA", wineType: "Red", grapes: ["Cabernet Sauvignon", "Merlot"], confidence: 90
+- "red wine" → producer: null, vintage: null, region: null, country: null, wineType: "Red", grapes: null, confidence: 20
+
+Respond ONLY with valid JSON:
+{
+  "producer": "string or null",
+  "wineName": "string or null",
+  "vintage": "string or null",
+  "region": "string or null",
+  "country": "string or null",
+  "wineType": "string or null",
+  "grapes": ["array"] or null,
+  "confidence": number
+}

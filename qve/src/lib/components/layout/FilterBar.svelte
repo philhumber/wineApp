@@ -141,50 +141,105 @@
 </script>
 
 <div class="filter-bar" role="toolbar" aria-label="Wine filters">
-  {#each dropdownFilters as filter}
-    <div class="dropdown-wrapper" bind:this={pillRefs[filter.key]}>
-      <FilterPill
-        label={getDropdownLabel(filter)}
-        hasDropdown
-        active={isDropdownActive(filter.key)}
-        expanded={openDropdown === filter.key}
-        on:click={() => handleDropdownClick(filter)}
-      />
-      {#if openDropdown === filter.key}
-        <FilterDropdown
-          items={dropdownOptions}
-          loading={dropdownLoading}
-          selectedValue={getDropdownValue(filter.key)}
-          label={filter.label}
-          position={dropdownPosition}
-          on:select={(e) => handleDropdownSelect(filter.key, e)}
-          on:clear={() => handleDropdownClear(filter.key)}
-          on:close={handleDropdownClose}
+  <!-- Scrollable filter pills -->
+  <div class="filter-pills">
+    {#each dropdownFilters as filter}
+      <div class="dropdown-wrapper" bind:this={pillRefs[filter.key]}>
+        <FilterPill
+          label={getDropdownLabel(filter)}
+          hasDropdown
+          active={isDropdownActive(filter.key)}
+          expanded={openDropdown === filter.key}
+          on:click={() => handleDropdownClick(filter)}
         />
-      {/if}
-    </div>
-  {/each}
+        {#if openDropdown === filter.key}
+          <FilterDropdown
+            items={dropdownOptions}
+            loading={dropdownLoading}
+            selectedValue={getDropdownValue(filter.key)}
+            label={filter.label}
+            position={dropdownPosition}
+            on:select={(e) => handleDropdownSelect(filter.key, e)}
+            on:clear={() => handleDropdownClear(filter.key)}
+            on:close={handleDropdownClose}
+          />
+        {/if}
+      </div>
+    {/each}
 
-  {#if $hasActiveFilters}
-    <button class="clear-all-btn" on:click={clearAllFilters}>
-      Clear all
+    {#if $hasActiveFilters}
+      <button class="clear-all-btn" on:click={clearAllFilters}>
+        Clear all
+      </button>
+    {/if}
+  </div>
+
+  <!-- Sort controls: always visible on right -->
+  <div class="sort-controls">
+    <div class="select-wrapper">
+      <select
+        class="sort-select"
+        value={$cellarSortKey}
+        on:change={handleSortChange}
+        aria-label="Sort wines by"
+      >
+        {#each sortOptions as opt}
+          <option value={opt.key}>{opt.label}</option>
+        {/each}
+      </select>
+      <Icon name="chevron-down" size={12} />
+    </div>
+
+    <button
+      class="sort-dir-btn"
+      title={$cellarSortDir === 'asc' ? 'A to Z / Low to High' : 'Z to A / High to Low'}
+      on:click={toggleCellarSortDir}
+      aria-label="Toggle sort direction"
+    >
+      <Icon name={$cellarSortDir === 'desc' ? 'arrow-down' : 'arrow-up'} size={14} />
     </button>
-  {/if}
+  </div>
 </div>
 
 <style>
   .filter-bar {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    overflow-x: auto;
-    padding-bottom: var(--space-1);
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
+    gap: var(--space-3);
   }
 
-  .filter-bar::-webkit-scrollbar {
-    display: none; /* Chrome/Safari */
+  /* ─────────────────────────────────────────────────────────
+   * FILTER PILLS (scrollable)
+   * ───────────────────────────────────────────────────────── */
+  .filter-pills {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    flex: 1;
+    min-width: 0; /* Allow shrinking */
+    padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: var(--divider) transparent;
+  }
+
+  /* Webkit scrollbar (Chrome/Safari) */
+  .filter-pills::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .filter-pills::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .filter-pills::-webkit-scrollbar-thumb {
+    background: var(--divider);
+    border-radius: 2px;
+  }
+
+  .filter-pills::-webkit-scrollbar-thumb:hover {
+    background: var(--text-tertiary);
   }
 
   /* Wrapper for dropdown pills to position dropdown relative to pill */
@@ -194,7 +249,6 @@
   }
 
   .clear-all-btn {
-    margin-left: var(--space-2);
     padding: var(--space-1) var(--space-3);
     font-family: var(--font-sans);
     font-size: 0.75rem;
@@ -205,6 +259,7 @@
     cursor: pointer;
     transition: all 0.2s var(--ease-out);
     flex-shrink: 0;
+    white-space: nowrap;
   }
 
   .clear-all-btn:hover {
@@ -212,14 +267,89 @@
     border-color: var(--accent);
   }
 
-  /* Responsive: add fade gradient on mobile to indicate scrollable */
+  /* ─────────────────────────────────────────────────────────
+   * SORT CONTROLS (always visible on right)
+   * ───────────────────────────────────────────────────────── */
+  .sort-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-shrink: 0;
+  }
+
+  .select-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .sort-select {
+    appearance: none;
+    background: var(--surface);
+    border: 1px solid var(--divider);
+    border-radius: 6px;
+    padding: 6px 24px 6px 10px;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition:
+      border-color 0.2s var(--ease-out),
+      box-shadow 0.2s var(--ease-out);
+  }
+
+  .sort-select:hover {
+    border-color: var(--accent);
+  }
+
+  .sort-select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-subtle, rgba(166, 155, 138, 0.2));
+  }
+
+  .select-wrapper :global(svg) {
+    position: absolute;
+    right: 8px;
+    pointer-events: none;
+    color: var(--text-tertiary);
+  }
+
+  .sort-dir-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--divider);
+    background: var(--surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      border-color 0.2s var(--ease-out),
+      color 0.2s var(--ease-out);
+  }
+
+  .sort-dir-btn:hover {
+    border-color: var(--accent);
+    color: var(--text-primary);
+  }
+
+  .sort-dir-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* ─────────────────────────────────────────────────────────
+   * MOBILE RESPONSIVE
+   * ───────────────────────────────────────────────────────── */
   @media (max-width: 640px) {
-    .filter-bar {
-      -webkit-overflow-scrolling: touch;
+    .filter-pills {
       scroll-snap-type: x proximity;
     }
 
-    .filter-bar :global(.filter-pill) {
+    .filter-pills :global(.filter-pill) {
       scroll-snap-align: start;
     }
   }
