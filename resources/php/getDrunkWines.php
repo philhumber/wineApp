@@ -33,7 +33,6 @@
 			bottles.bottleSize,
 			bottles.price AS bottlePrice,
 			bottles.currency AS bottleCurrency,
-			ratings.ratingID,
 			ratings.avgRating,
 			ratings.Notes,
 			ratings.drinkDate,
@@ -56,7 +55,7 @@
 		try {
             // 8. Perform database operation
             $stmt = $pdo->prepare($sqlQuery);
-            $stmt->execute();
+            $stmt->execute($params);
             $bottleList = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             // 12. Set success response

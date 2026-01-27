@@ -1,16 +1,14 @@
 <script lang="ts">
   /**
    * Header Component
-   * Fixed-position header with logo, density toggle, and filter bar
+   * Fixed-position header with logo, theme/view toggles, and filter bar
    * Supports variants: 'cellar' (default), 'add', 'edit' for form pages
    */
   import { createEventDispatcher } from 'svelte';
-  import { Icon, ThemeToggle } from '$lib/components';
+  import { ViewToggle, Icon, ThemeToggle } from '$lib/components';
   import FilterBar from './FilterBar.svelte';
   import HistoryFilterBar from './HistoryFilterBar.svelte';
-  import CollectionBar from './CollectionBar.svelte';
-  import { toggleMenu, viewDensity } from '$lib/stores';
-  import type { ViewDensity } from '$lib/stores';
+  import { toggleMenu } from '$lib/stores';
 
   export let variant: 'cellar' | 'add' | 'edit' = 'cellar';
   export let showFilters: boolean = true;
@@ -43,11 +41,6 @@
   function handleFilterChange(event: CustomEvent<{ key: string; value: string | undefined }>) {
     dispatch('filterChange', event.detail);
   }
-
-  // Handle density change
-  function handleDensityChange(density: ViewDensity) {
-    viewDensity.set(density);
-  }
 </script>
 
 <svelte:window bind:scrollY />
@@ -73,27 +66,7 @@
         {#if isFormVariant}
           <ThemeToggle />
         {:else}
-          <!-- Density toggle (grid/list) -->
-          <div class="density-toggle">
-            <button
-              class="density-btn"
-              class:active={$viewDensity === 'compact'}
-              on:click={() => handleDensityChange('compact')}
-              title="Grid view"
-              aria-label="Grid view"
-            >
-              <Icon name="grid" size={14} />
-            </button>
-            <button
-              class="density-btn"
-              class:active={$viewDensity === 'medium'}
-              on:click={() => handleDensityChange('medium')}
-              title="List view"
-              aria-label="List view"
-            >
-              <Icon name="list" size={14} />
-            </button>
-          </div>
+          <ViewToggle />
           <button
             class="header-icon"
             title="Search"
@@ -106,10 +79,6 @@
       </div>
     </div>
 
-    {#if !isFormVariant && filterType === 'cellar'}
-      <CollectionBar />
-    {/if}
-
     {#if !isFormVariant && showFilters}
       {#if filterType === 'cellar'}
         <FilterBar on:filterChange={handleFilterChange} />
@@ -121,7 +90,7 @@
 </header>
 
 <!-- Spacer to account for fixed header height -->
-<div class="header-spacer" class:with-filters={!isFormVariant && showFilters} class:with-collection-bar={!isFormVariant && filterType === 'cellar'}></div>
+<div class="header-spacer" class:with-filters={!isFormVariant && showFilters}></div>
 
 <style>
   .header {
@@ -139,10 +108,17 @@
     border-bottom-color: var(--divider);
   }
 
-  /* Dark mode: solid background (backdrop-filter removed to fix iOS Safari
-     stacking context bug that traps position:fixed dropdowns) */
+  /* Dark mode: backdrop blur effect */
   :global([data-theme="dark"]) .header {
-    background: rgba(12, 11, 10, 0.98);
+    background: rgba(12, 11, 10, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  @supports not (backdrop-filter: blur(20px)) {
+    :global([data-theme="dark"]) .header {
+      background: rgba(12, 11, 10, 0.98);
+    }
   }
 
   .header-inner {
@@ -155,7 +131,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--space-3);
+    margin-bottom: var(--space-5);
   }
 
   /* Remove margin if no filters */
@@ -230,46 +206,6 @@
     outline-offset: 2px;
   }
 
-  /* Density toggle (grid/list view) */
-  .density-toggle {
-    display: flex;
-    gap: 2px;
-    background: var(--bg-subtle);
-    border-radius: 6px;
-    padding: 2px;
-  }
-
-  .density-btn {
-    width: 28px;
-    height: 28px;
-    border-radius: 4px;
-    border: none;
-    background: transparent;
-    color: var(--text-tertiary);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition:
-      background 0.2s var(--ease-out),
-      color 0.2s var(--ease-out);
-  }
-
-  .density-btn:hover {
-    color: var(--text-secondary);
-  }
-
-  .density-btn.active {
-    background: var(--surface);
-    color: var(--text-primary);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-  }
-
-  .density-btn:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-
   /* Spacer to offset content below fixed header */
   .header-spacer {
     height: calc(80px + var(--space-5));
@@ -277,14 +213,6 @@
 
   .header-spacer.with-filters {
     height: calc(140px + var(--space-5));
-  }
-
-  .header-spacer.with-collection-bar {
-    height: calc(190px + var(--space-5));
-  }
-
-  .header-spacer.with-collection-bar.with-filters {
-    height: calc(240px + var(--space-5));
   }
 
   /* Responsive adjustments */
@@ -320,14 +248,6 @@
 
     .header-spacer.with-filters {
       height: calc(120px + var(--space-4));
-    }
-
-    .header-spacer.with-collection-bar {
-      height: calc(170px + var(--space-4));
-    }
-
-    .header-spacer.with-collection-bar.with-filters {
-      height: calc(220px + var(--space-4));
     }
   }
 
