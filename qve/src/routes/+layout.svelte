@@ -4,7 +4,7 @@
   import { get } from 'svelte/store';
   import { theme, menuOpen, closeMenu, saveScrollPosition, getScrollPosition, modal, isModalOpen, viewMode, isDirtyAddBottle, addBottle, collectionName } from '$stores';
   import { displayCurrency } from '$lib/stores/currency';
-  import { ToastContainer, SideMenu } from '$lib/components';
+  import { ToastContainer, SideMenu, AgentBubble, AgentPanel } from '$lib/components';
   import { ModalContainer } from '$lib/components/modals';
   import '$lib/styles/index.css';
 
@@ -97,3 +97,7 @@
 
 <!-- Global modal container -->
 <ModalContainer />
+
+<!-- AI Wine Assistant -->
+<AgentBubble />
+<AgentPanel />
