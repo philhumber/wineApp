@@ -170,6 +170,65 @@ Header.svelte
 
 ---
 
+## Mobile & iOS Safari
+
+### Responsive Grid (WineGrid.svelte)
+Mobile-first approach with fixed column counts:
+```css
+.wine-grid.view-compact {
+  grid-template-columns: repeat(2, 1fr);  /* Default: 2 columns */
+}
+@media (min-width: 560px)  { repeat(3, 1fr); }
+@media (min-width: 768px)  { repeat(4, 1fr); }
+@media (min-width: 992px)  { repeat(5, 1fr); }
+@media (min-width: 1200px) { repeat(6, 1fr); }
+```
+**Note**: Avoid `auto-fill, minmax()` on mobile - causes overflow when minimum exceeds available space.
+
+### Overflow Prevention (base.css)
+Required for iOS Safari horizontal scroll prevention:
+```css
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;  /* Prevents fixed elements from extending viewport */
+}
+```
+Also add to fixed-position containers like `.header`:
+```css
+.header {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+```
+
+### Touch Scroll vs Tap Detection (FilterPill.svelte)
+Prevent scroll gestures from triggering click handlers:
+```typescript
+let touchStartX = 0, touchStartY = 0;
+const SCROLL_THRESHOLD = 10; // pixels
+
+function handleTouchStart(e: TouchEvent) {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}
+
+function handleTouchEnd(e: TouchEvent) {
+  const deltaX = Math.abs(e.changedTouches[0].clientX - touchStartX);
+  const deltaY = Math.abs(e.changedTouches[0].clientY - touchStartY);
+  if (deltaX > SCROLL_THRESHOLD || deltaY > SCROLL_THRESHOLD) return; // Was scroll
+  // Handle tap...
+}
+```
+
+### iOS Safari Utility Classes (base.css)
+```css
+.scroll-momentum { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.no-overscroll { overscroll-behavior: none; }
+```
+
+---
+
 ## Routes
 
 | Route | Component | Description |
