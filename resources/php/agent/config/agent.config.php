@@ -135,12 +135,32 @@ return [
     ],
 
     // ===========================================
+    // Model Tiers (for smart escalation)
+    // ===========================================
+    'model_tiers' => [
+        'fast' => [
+            'provider' => 'gemini',
+            'model' => 'gemini-2.0-flash',
+            'description' => 'Quick identification',
+        ],
+        'detailed' => [
+            'provider' => 'gemini',
+            'model' => 'gemini-2.0-flash', // Could use gemini-1.5-pro when available
+            'description' => 'Deep analysis',
+            // Use higher temperature and more tokens for detailed analysis
+            'temperature' => 0.4,
+            'max_tokens' => 800,
+        ],
+    ],
+
+    // ===========================================
     // Confidence Thresholds
     // ===========================================
     'confidence' => [
         'auto_populate' => 85,     // ≥85%: Fill form automatically
         'suggest' => 60,           // 60-84%: Show suggestion
         'disambiguate' => 0,       // <60%: Show multiple options
+        'escalation_threshold' => 70, // <70%: Try detailed model
         'weights' => [
             'producer' => 0.30,
             'wine_name' => 0.20,

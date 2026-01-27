@@ -6,7 +6,7 @@
 import { writable, derived, get } from 'svelte/store';
 import { api } from '$lib/api/client';
 import { toasts } from './toast';
-import type { Region, Producer, Wine, Country, WineType, AddWinePayload, DuplicateCheckType, DuplicateMatch, DuplicateCheckResult } from '$lib/api/types';
+import type { Region, Producer, Wine, Country, WineType, AddWinePayload, DuplicateCheckType, DuplicateMatch, DuplicateCheckResult, AgentParsedWine } from '$lib/api/types';
 
 // ─────────────────────────────────────────────────────────
 // TYPES
@@ -782,6 +782,47 @@ function createAddWineStore() {
 	};
 
 	// ─────────────────────────────────────────────────────
+	// POPULATE FROM AGENT (AI Wine Identification)
+	// ─────────────────────────────────────────────────────
+
+	/**
+	 * Pre-fill wizard from AI-identified wine data
+	 * Sets all modes to 'create' and populates form fields
+	 * User can then review and modify before submitting
+	 */
+	const populateFromAgent = (parsed: AgentParsedWine): void => {
+		set({
+			...initialState,
+			// Set to create mode for all steps (user can switch to search if they find existing)
+			mode: {
+				region: 'create',
+				producer: 'create',
+				wine: 'create'
+			},
+			// Pre-fill region data
+			region: {
+				...initialState.region,
+				regionName: parsed.region || '',
+				country: parsed.country || ''
+			},
+			// Pre-fill producer data
+			producer: {
+				...initialState.producer,
+				producerName: parsed.producer || ''
+			},
+			// Pre-fill wine data
+			wine: {
+				...initialState.wine,
+				wineName: parsed.wineName || parsed.producer || '', // Use producer as wine name if no specific name
+				wineYear: parsed.vintage || '',
+				wineType: parsed.wineType || ''
+			},
+			// Start at step 1 for user to review
+			currentStep: 1
+		});
+	};
+
+	// ─────────────────────────────────────────────────────
 	// RESET
 	// ─────────────────────────────────────────────────────
 
@@ -824,6 +865,8 @@ function createAddWineStore() {
 		validateStep,
 		// Submit
 		submit,
+		// Agent integration
+		populateFromAgent,
 		// Reset
 		reset
 	};
