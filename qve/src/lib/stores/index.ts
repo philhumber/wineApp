@@ -159,3 +159,35 @@ export {
   formatCompactValue
 } from './currency';
 export type { CurrencyCode } from './currency';
+
+// Agent (AI Wine Identification)
+export {
+  agent,
+  agentParsed,
+  agentAction,
+  agentCandidates,
+  agentConfidence,
+  agentLoading,
+  agentIdentifying,
+  agentEnriching,
+  agentError,
+  agentPanelOpen,
+  agentInputType,
+  agentImageQuality,
+  agentHasResult,
+  // Conversation stores
+  agentPhase,
+  agentMessages,
+  agentIsTyping,
+  agentHasAugmentationContext,
+  agentAugmentationContext,
+  agentHasStarted
+} from './agent';
+export type {
+  AgentState,
+  AgentPhase,
+  AgentMessageType,
+  AgentChip,
+  AgentMessage,
+  AgentAugmentationContext
+} from './agent';

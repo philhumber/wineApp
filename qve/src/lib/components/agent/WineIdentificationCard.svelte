@@ -21,8 +21,23 @@
 	// Format grape list
 	$: grapeList = parsed.grapes?.length ? parsed.grapes.join(', ') : null;
 
-	// Build metadata string
-	$: metadata = [parsed.vintage, parsed.region, parsed.country].filter(Boolean).join(' \u00B7 ');
+	// Determine display name - prefer wine name over producer
+	$: displayName = (parsed.wineName && parsed.wineName !== 'Unknown Wine')
+		? parsed.wineName
+		: parsed.producer || 'Unknown Wine';
+
+	// Detect when we're showing only the producer (no wine name available)
+	$: showingProducerOnly = displayName === parsed.producer &&
+		(!parsed.wineName || parsed.wineName === 'Unknown Wine');
+
+	// Show producer subtitle if we have both wine name and producer
+	$: showProducer = parsed.producer &&
+		parsed.wineName &&
+		parsed.wineName !== 'Unknown Wine' &&
+		parsed.wineName !== parsed.producer;
+
+	// Build metadata string (region · country)
+	$: metadata = [parsed.region, parsed.country].filter(Boolean).join(' · ');
 
 	// Get country flag emoji (basic mapping)
 	function getCountryFlag(country: string | null): string {
@@ -63,17 +78,25 @@
 </script>
 
 <div class="wine-card" class:suggest={action === 'suggest'}>
-	<!-- Wine Name -->
-	<h3 class="wine-name">
-		{parsed.producer || parsed.wineName || 'Unknown Wine'}
-	</h3>
+	<!-- Wine Name or Producer -->
+	{#if showingProducerOnly}
+		<span class="producer-label">Producer</span>
+	{/if}
+	<h3 class="wine-name">{displayName}</h3>
+
+	<!-- Producer (if different from wine name) -->
+	{#if showProducer}
+		<p class="producer-name">From {parsed.producer}</p>
+	{/if}
 
 	<!-- Accent divider -->
 	<div class="divider"></div>
 
-	<!-- Metadata line -->
-	{#if metadata}
+	<!-- Metadata line (vintage · region · country) -->
+	{#if parsed.vintage || metadata}
 		<p class="metadata">
+			{#if parsed.vintage}{parsed.vintage}{/if}
+			{#if parsed.vintage && metadata} · {/if}
 			{metadata}
 			{#if countryFlag}
 				<span class="flag">{countryFlag}</span>
@@ -139,13 +162,32 @@
 		}
 	}
 
+	.producer-label {
+		display: block;
+		font-family: var(--font-sans);
+		font-size: 0.625rem;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--text-tertiary);
+		margin-bottom: var(--space-1);
+	}
+
 	.wine-name {
 		font-family: var(--font-serif);
 		font-size: 1.5rem;
 		font-weight: 500;
 		color: var(--text-primary);
-		margin: 0 0 var(--space-2) 0;
+		margin: 0;
 		line-height: 1.2;
+	}
+
+	.producer-name {
+		font-family: var(--font-sans);
+		font-size: 0.8125rem;
+		font-weight: 400;
+		color: var(--text-tertiary);
+		margin: var(--space-1) 0 0 0;
 	}
 
 	.divider {
