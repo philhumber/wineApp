@@ -13,6 +13,7 @@
   export let expanded: boolean = false;
   export let compact: boolean = false;
   export let targetHighlight: boolean = false;
+  export let animate: boolean = true;
 
   const dispatch = createEventDispatcher<{
     expand: { wineID: number };
@@ -87,6 +88,7 @@
   class="wine-card"
   class:expanded
   class:compact
+  class:animate
   class:target-highlight={targetHighlight}
   data-wine-id={wine.wineID}
   on:click={handleCardClick}
@@ -129,7 +131,13 @@
         typeAvgPricePerLiterEUR={wine.typeAvgPricePerLiterEUR}
         compact={compact && !expanded}
       />
-      <RatingDisplay rating={wine.avgRating} compact={compact && !expanded} />
+      <RatingDisplay
+        rating={wine.avgRating}
+        compact={compact && !expanded}
+        showBreakdown={expanded && !!wine.avgOverallRating && !!wine.avgValueRating}
+        overallRating={wine.avgOverallRating}
+        valueRating={wine.avgValueRating}
+      />
       <BuyAgainIndicator
         percent={wine.buyAgainPercent}
         ratingCount={wine.ratingCount || 0}
@@ -251,6 +259,10 @@
       box-shadow 0.3s var(--ease-out),
       border-color 0.3s var(--ease-out),
       transform 0.3s var(--ease-out);
+  }
+
+  /* Only animate on initial load, not on filter changes */
+  .wine-card.animate {
     animation: fadeInUp 0.7s var(--ease-out) forwards;
   }
 
@@ -269,24 +281,25 @@
     flex-wrap: wrap;
   }
 
-  /* Target highlight for scroll-to-wine - uses separate animation properties
-     to avoid overwriting fadeInUp and prevent re-trigger flash when class removed */
-  .wine-card.target-highlight {
-    animation: fadeInUp 0.7s var(--ease-out) forwards, highlightPulse 2s var(--ease-out) forwards;
+  /* Target highlight for scroll-to-wine - uses pseudo-element to avoid
+     modifying card's animation property, which prevents flash when class removed */
+  .wine-card.target-highlight::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    box-shadow: 0 0 0 2px var(--accent-subtle, rgba(166, 155, 138, 0.2));
+    pointer-events: none;
+    animation: highlightFadeOut 2s var(--ease-out) forwards;
   }
 
-  @keyframes highlightPulse {
-    0% {
-      border-color: var(--divider-subtle);
-      box-shadow: none;
-    }
-    15%, 85% {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px var(--accent-subtle, rgba(166, 155, 138, 0.2));
+  @keyframes highlightFadeOut {
+    0%, 70% {
+      opacity: 1;
     }
     100% {
-      border-color: var(--divider-subtle);
-      box-shadow: none;
+      opacity: 0;
     }
   }
 
@@ -381,6 +394,8 @@
     gap: var(--space-5);
     margin-top: auto;
     padding-top: var(--space-4);
+    flex-wrap: wrap;
+    row-gap: var(--space-3);
   }
 
   /* ─────────────────────────────────────────────────────────
@@ -640,6 +655,22 @@
       width: 100%;
       height: auto;
       aspect-ratio: 1;
+    }
+
+    .wine-header {
+      flex-wrap: wrap;
+    }
+
+    .wine-name {
+      flex: 1 1 auto;
+      min-width: 0;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .wine-meta {
+      gap: var(--space-3);
+      row-gap: var(--space-2);
     }
 
     .expanded-grid {

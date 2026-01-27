@@ -19,12 +19,18 @@ import type {
   UpdateWinePayload,
   UpdateBottlePayload,
   DrinkBottlePayload,
+  UpdateRatingPayload,
   AIRegionData,
   AIProducerData,
   AIWineData,
   CurrencyDataResponse,
   DuplicateCheckParams,
-  DuplicateCheckResult
+  DuplicateCheckResult,
+  UserSettings,
+  UpdateSettingsPayload,
+  CellarValue,
+  AgentIdentificationResult,
+  AgentIdentificationResultWithMeta
 } from './types';
 
 class WineApiClient {
@@ -406,6 +412,20 @@ class WineApiClient {
     }
   }
 
+  /**
+   * Update an existing rating
+   */
+  async updateRating(data: UpdateRatingPayload): Promise<void> {
+    const response = await this.fetchJSON<void>(
+      'updateRating.php',
+      data as unknown as Record<string, unknown>
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to update rating');
+    }
+  }
+
   // ─────────────────────────────────────────────────────────
   // FILE UPLOAD
   // ─────────────────────────────────────────────────────────
@@ -489,6 +509,145 @@ class WineApiClient {
       existingBottles: 0,
       existingWineId: null
     };
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // USER SETTINGS (WIN-126)
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Get user settings (collection name, etc.)
+   */
+  async getUserSettings(): Promise<UserSettings> {
+    const response = await this.fetchJSON<UserSettings>('getUserSettings.php');
+    return response.data ?? { collectionName: 'Our Wines' };
+  }
+
+  /**
+   * Update user settings
+   */
+  async updateUserSettings(settings: UpdateSettingsPayload): Promise<UserSettings> {
+    const response = await this.fetchJSON<UserSettings>(
+      'updateUserSettings.php',
+      settings as Record<string, unknown>
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to update settings');
+    }
+
+    return response.data ?? { collectionName: 'Our Wines' };
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // CELLAR VALUE (WIN-127)
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Get cellar value statistics
+   * Returns total value in EUR (frontend handles currency conversion)
+   */
+  async getCellarValue(): Promise<CellarValue> {
+    const response = await this.fetchJSON<CellarValue>('getCellarValue.php');
+    return response.data ?? {
+      totalValueEUR: 0,
+      bottleCount: 0,
+      bottlesWithPrice: 0,
+      bottlesWithoutPrice: 0,
+      hasIncompleteData: false
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // AI AGENT (Phase 1)
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Identify wine from text using AI agent
+   * Returns parsed wine data with confidence scoring and action recommendation
+   */
+  async identifyText(text: string): Promise<AgentIdentificationResult> {
+    const response = await this.fetchJSON<AgentIdentificationResult>(
+      'agent/identifyText.php',
+      { text }
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Identification failed');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Identify wine from image using AI agent (Phase 2)
+   * Accepts base64-encoded image data with MIME type
+   * Returns parsed wine data with confidence scoring, action recommendation, and image quality info
+   */
+  async identifyImage(imageData: string, mimeType: string): Promise<AgentIdentificationResultWithMeta> {
+    const response = await this.fetchJSON<AgentIdentificationResultWithMeta>(
+      'agent/identifyImage.php',
+      { image: imageData, mimeType }
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Image identification failed');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Helper: Compress image file before uploading for identification
+   * Resizes to max 1200px width and converts to JPEG at 80% quality
+   * @param file Image file from input or camera
+   * @param maxWidth Maximum width in pixels (default 1200)
+   * @returns Base64-encoded compressed image data
+   */
+  async compressImageForIdentification(file: File, maxWidth = 1200): Promise<{ imageData: string; mimeType: string }> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = async (e) => {
+        try {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            if (!ctx) {
+              reject(new Error('Could not get canvas context'));
+              return;
+            }
+
+            // Calculate new dimensions maintaining aspect ratio
+            const scale = Math.min(1, maxWidth / img.width);
+            canvas.width = Math.floor(img.width * scale);
+            canvas.height = Math.floor(img.height * scale);
+
+            // Draw image to canvas
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            // Convert to JPEG base64 at 80% quality
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            const base64Data = dataUrl.split(',')[1];
+
+            resolve({
+              imageData: base64Data,
+              mimeType: 'image/jpeg'
+            });
+          };
+
+          img.onerror = () => reject(new Error('Failed to load image'));
+          img.src = e.target?.result as string;
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
   }
 }
 

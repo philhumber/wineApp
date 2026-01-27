@@ -19,11 +19,13 @@
   export let wine: DrunkWine;
   export let expanded: boolean = false;
   export let compact: boolean = false;
+  export let animate: boolean = true;
 
   const dispatch = createEventDispatcher<{
     expand: { key: string };
     collapse: { key: string };
     addBottle: { wine: DrunkWine };
+    editRating: { wine: DrunkWine };
   }>();
 
   // Unique key for this drunk wine entry (wineID + bottleID)
@@ -47,6 +49,11 @@
   function handleAddBottle(event: MouseEvent) {
     event.stopPropagation();
     dispatch('addBottle', { wine });
+  }
+
+  function handleEditRating(event: MouseEvent) {
+    event.stopPropagation();
+    dispatch('editRating', { wine });
   }
 
   function handleImageClick(event: CustomEvent) {
@@ -100,12 +107,18 @@
 
   // Buy again as boolean (PHP returns 0/1 as number)
   $: buyAgain = wine.buyAgain === 1;
+
+  // Calculate combined rating for this specific bottle
+  $: combinedRating = wine.overallRating !== null && wine.valueRating !== null
+    ? (wine.overallRating + wine.valueRating) / 2
+    : wine.overallRating ?? wine.valueRating ?? null;
 </script>
 
 <article
   class="history-card"
   class:expanded
   class:compact
+  class:animate
   data-wine-id={wine.wineID}
   data-bottle-id={wine.bottleID}
   on:click={handleCardClick}
@@ -141,16 +154,15 @@
 
     <div class="wine-divider"></div>
 
-    <!-- Rating display (always visible) -->
+    <!-- Rating display - combined rating, with breakdown when expanded -->
     <div class="rating-section">
-      <div class="rating-row">
-        <span class="rating-label">Overall</span>
-        <RatingDisplay rating={wine.overallRating} compact={compact && !expanded} />
-      </div>
-      <div class="rating-row">
-        <span class="rating-label">Value</span>
-        <RatingDisplay rating={wine.valueRating} compact={compact && !expanded} />
-      </div>
+      <RatingDisplay
+        rating={combinedRating}
+        compact={compact && !expanded}
+        showBreakdown={expanded && wine.overallRating !== null && wine.valueRating !== null}
+        overallRating={wine.overallRating}
+        valueRating={wine.valueRating}
+      />
     </div>
 
     <!-- Bottle size, price, and Buy Again -->
@@ -166,8 +178,12 @@
     </div>
   </div>
 
-  <!-- Add Bottle action button -->
+  <!-- Action buttons -->
   <div class="card-actions">
+    <button class="action-btn" title="Edit rating" on:click={handleEditRating}>
+      <Icon name="edit" size={14} />
+      <span class="btn-text">Edit Rating</span>
+    </button>
     <button class="action-btn" title="Add another bottle" on:click={handleAddBottle}>
       <Icon name="plus" size={14} />
       <span class="btn-text">Add Bottle</span>
@@ -271,6 +287,10 @@
       box-shadow 0.3s var(--ease-out),
       border-color 0.3s var(--ease-out),
       transform 0.3s var(--ease-out);
+  }
+
+  /* Only animate on initial load, not on filter changes */
+  .history-card.animate {
     animation: fadeInUp 0.7s var(--ease-out) forwards;
   }
 
@@ -372,26 +392,7 @@
    * RATING SECTION
    * ───────────────────────────────────────────────────────── */
   .rating-section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
     margin-bottom: var(--space-3);
-  }
-
-  .rating-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-  }
-
-  .rating-label {
-    font-family: var(--font-sans);
-    font-size: 0.6875rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-tertiary);
-    min-width: 50px;
   }
 
   /* ─────────────────────────────────────────────────────────
@@ -403,6 +404,8 @@
     gap: var(--space-4);
     margin-top: auto;
     padding-top: var(--space-3);
+    flex-wrap: wrap;
+    row-gap: var(--space-2);
   }
 
   .bottle-size {
@@ -434,6 +437,7 @@
     padding: 2px 8px;
     border-radius: 4px;
     background: var(--bg-subtle);
+    white-space: nowrap;
   }
 
   .buy-again.yes {
@@ -653,14 +657,6 @@
     font-size: 0.75rem;
   }
 
-  .history-card.compact .rating-section {
-    gap: var(--space-1);
-  }
-
-  .history-card.compact .rating-label {
-    display: none;
-  }
-
   .history-card.compact .wine-meta {
     padding-top: var(--space-2);
     gap: var(--space-2);
@@ -704,14 +700,6 @@
     font-size: 0.875rem;
   }
 
-  .history-card.compact.expanded .rating-label {
-    display: inline;
-  }
-
-  .history-card.compact.expanded .rating-section {
-    gap: var(--space-2);
-  }
-
   .history-card.compact.expanded .wine-meta {
     padding-top: var(--space-3);
     gap: var(--space-4);
@@ -736,6 +724,17 @@
       width: 100%;
       height: auto;
       aspect-ratio: 1;
+    }
+
+    .wine-header {
+      flex-wrap: wrap;
+    }
+
+    .wine-name {
+      flex: 1 1 auto;
+      min-width: 0;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
 
     .expanded-grid {
