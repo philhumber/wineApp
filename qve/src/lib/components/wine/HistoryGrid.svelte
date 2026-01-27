@@ -3,15 +3,25 @@
    * HistoryGrid component
    * Responsive container that manages history card layout and expanded state
    */
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { viewDensity, expandedHistoryKey, getDrunkWineKey } from '$lib/stores';
   import type { DrunkWine } from '$lib/api/types';
   import HistoryCard from './HistoryCard.svelte';
 
   export let wines: DrunkWine[] = [];
 
+  // Track initial mount - only animate cards on first render, not on filter changes
+  let isInitialMount = true;
+  onMount(() => {
+    // After first render completes, disable entrance animations for subsequent updates
+    requestAnimationFrame(() => {
+      isInitialMount = false;
+    });
+  });
+
   const dispatch = createEventDispatcher<{
     addBottle: { wine: DrunkWine };
+    editRating: { wine: DrunkWine };
   }>();
 
   function handleExpand(event: CustomEvent<{ key: string }>) {
@@ -26,6 +36,11 @@
   // Forward addBottle event from HistoryCard
   function handleAddBottle(event: CustomEvent<{ wine: DrunkWine }>) {
     dispatch('addBottle', event.detail);
+  }
+
+  // Forward editRating event from HistoryCard
+  function handleEditRating(event: CustomEvent<{ wine: DrunkWine }>) {
+    dispatch('editRating', event.detail);
   }
 
   // Calculate stagger delay (max 350ms for smoother UX)
@@ -45,9 +60,11 @@
       {wine}
       expanded={$expandedHistoryKey === cardKey}
       compact={$viewDensity === 'compact'}
+      animate={isInitialMount}
       on:expand={handleExpand}
       on:collapse={handleCollapse}
       on:addBottle={handleAddBottle}
+      on:editRating={handleEditRating}
       --animation-delay={getStaggerDelay(index)}
     />
   {/each}
