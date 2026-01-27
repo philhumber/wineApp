@@ -156,3 +156,28 @@ input, textarea, select {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   iOS SAFARI OPTIMIZATIONS
+   ═══════════════════════════════════════════════════════════ */
+
+/* Momentum scrolling for scroll containers */
+.scroll-momentum {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Safe area padding for bottom content (iPhone notch) */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Safe area padding for bottom with existing padding */
+.safe-area-bottom-pad {
+  padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+}
+
+/* Prevent iOS rubber-band scroll on fixed elements */
+.no-overscroll {
+  overscroll-behavior: none;
+}

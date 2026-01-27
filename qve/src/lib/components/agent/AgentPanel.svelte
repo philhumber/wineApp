@@ -2,6 +2,7 @@
 	/**
 	 * AgentPanel
 	 * Bottom sheet (mobile) / Side panel (desktop) for Wine Assistant
+	 * Conversational flow with sommelier-style messaging
 	 *
 	 * Mobile: Fixed bottom, slides up, max-height 80vh
 	 * Desktop: Fixed right side, 400px width, slides in
@@ -9,6 +10,7 @@
 	import { fly, fade } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { goto } from '$app/navigation';
+	import { onMount, tick } from 'svelte';
 	import {
 		agent,
 		agentPanelOpen,
@@ -18,25 +20,76 @@
 		agentConfidence,
 		agentCandidates,
 		agentError,
+		agentMessages,
+		agentPhase,
+		agentIsTyping,
+		agentHasStarted,
+		agentAugmentationContext,
 		addWineStore
 	} from '$lib/stores';
+	import type { AgentPhase, AgentMessage, AgentChip } from '$lib/stores';
 	import CommandInput from './CommandInput.svelte';
-	import WineIdentificationCard from './WineIdentificationCard.svelte';
-	import DisambiguationList from './DisambiguationList.svelte';
-	import AgentLoadingState from './AgentLoadingState.svelte';
+	import ChatMessage from './ChatMessage.svelte';
+	import TypingIndicator from './TypingIndicator.svelte';
 	import type { AgentParsedWine, AgentCandidate } from '$lib/api/types';
 
+	// Reactive bindings
 	$: isOpen = $agentPanelOpen;
 	$: isLoading = $agentLoading;
+	$: messages = $agentMessages;
+	$: phase = $agentPhase;
+	$: isTyping = $agentIsTyping;
+	$: hasStarted = $agentHasStarted;
 	$: parsed = $agentParsed;
-	$: action = $agentAction;
-	$: confidence = $agentConfidence;
-	$: candidates = $agentCandidates;
-	$: error = $agentError;
 
-	// Determine what to show in the result area
-	$: hasResult = parsed !== null;
-	$: showDisambiguation = action === 'disambiguate' && candidates.length > 0;
+	// Auto-scroll logic
+	let messageContainer: HTMLElement;
+	let userScrolledUp = false;
+
+	// Typing indicator text based on phase
+	$: typingText = phase === 'identifying' ? 'Consulting the cellar...' : 'Thinking...';
+
+	// Show input based on phase
+	$: showInput = ['await_input', 'augment_input'].includes(phase);
+
+	// Input placeholder based on phase
+	$: inputPlaceholder =
+		phase === 'augment_input' ? 'Tell me more about this wine...' : 'Type wine name...';
+
+	// Initialize conversation when panel opens
+	onMount(() => {
+		// Panel is now visible - start session if no messages exist
+		console.log('[Agent] Panel mounted. Messages:', $agentMessages.length, 'hasStarted:', $agentHasStarted);
+		if ($agentMessages.length === 0) {
+			console.log('[Agent] Starting session...');
+			agent.startSession();
+		}
+	});
+
+	// Debug: log when messages change
+	$: console.log('[Agent] Messages updated:', messages.length, messages.map(m => m.type));
+
+	// Scroll to bottom when new messages arrive
+	$: if (messages.length > 0) {
+		scrollToBottom();
+	}
+
+	function handleScroll(e: Event) {
+		const el = e.target as HTMLElement;
+		const isAtBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 50;
+		userScrolledUp = !isAtBottom;
+	}
+
+	async function scrollToBottom() {
+		if (!userScrolledUp && messageContainer) {
+			await tick();
+			requestAnimationFrame(() => {
+				if (messageContainer) {
+					messageContainer.scrollTop = messageContainer.scrollHeight;
+				}
+			});
+		}
+	}
 
 	function handleClose() {
 		agent.closePanel();
@@ -53,46 +106,384 @@
 		}
 	}
 
+	function handleStartOver() {
+		agent.resetConversation();
+	}
+
+	// ─────────────────────────────────────────────────────
+	// CHIP ACTION HANDLERS
+	// ─────────────────────────────────────────────────────
+
+	async function handleChipAction(e: CustomEvent<{ action: string }>) {
+		const { action } = e.detail;
+
+		switch (action) {
+			case 'identify':
+				agent.setPhase('await_input');
+				agent.addMessage({
+					role: 'agent',
+					type: 'text',
+					content: 'Share an image of the label, or tell me what you know about it.'
+				});
+				break;
+
+			case 'recommend':
+				agent.addMessage({
+					role: 'agent',
+					type: 'coming_soon',
+					content: 'Recommendations are being prepared for a future vintage.'
+				});
+				// Re-prompt with choices after a moment
+				setTimeout(() => {
+					agent.addMessage({
+						role: 'agent',
+						type: 'chips',
+						content: 'What else can I help you with?',
+						chips: [
+							{ id: 'identify', label: 'Identify', icon: 'search', action: 'identify' },
+							{ id: 'recommend', label: 'Recommend', icon: 'sparkle', action: 'recommend' }
+						]
+					});
+					agent.setPhase('path_selection');
+				}, 800);
+				break;
+
+			case 'correct':
+				agent.setPhase('action_select');
+				agent.addMessage({
+					role: 'agent',
+					type: 'chips',
+					content: 'Excellent. What would you like to do?',
+					chips: [
+						{ id: 'add', label: 'Add to Cellar', icon: 'plus', action: 'add' },
+						{ id: 'learn', label: 'Learn More', icon: 'info', action: 'learn' },
+						{ id: 'remember', label: 'Remember', icon: 'bookmark', action: 'remember' }
+					]
+				});
+				break;
+
+			case 'not_correct':
+				handleIncorrectResult();
+				break;
+
+			case 'add':
+				await handleAddToCellar();
+				break;
+
+			case 'learn':
+			case 'remember':
+				agent.addMessage({
+					role: 'agent',
+					type: 'coming_soon',
+					content: 'This feature is being prepared for a future vintage.'
+				});
+				break;
+		}
+	}
+
+	function handleIncorrectResult() {
+		const candidates = $agentCandidates;
+
+		// Debug logging
+		console.log('[Agent] Not Correct clicked. Candidates:', candidates);
+
+		if (candidates.length > 0) {
+			// Show alternatives
+			agent.setPhase('handle_incorrect');
+			agent.addMessage({
+				role: 'agent',
+				type: 'disambiguation',
+				content: 'Perhaps one of these?',
+				candidates
+			});
+		} else {
+			// Ask for more details
+			agent.setPhase('augment_input');
+			agent.addMessage({
+				role: 'agent',
+				type: 'text',
+				content: "I'd like to understand better. Could you tell me more about this wine? (e.g., producer, region, or grape variety)"
+			});
+			// Store augmentation context
+			if (parsed) {
+				agent.setAugmentationContext({
+					originalInput: '', // We don't have this stored, could enhance later
+					originalInputType: 'text',
+					originalResult: {
+						intent: 'add',
+						parsed,
+						confidence: $agentConfidence ?? 0,
+						action: $agentAction ?? 'suggest',
+						candidates: []
+					}
+				});
+			}
+		}
+	}
+
+	async function handleAddToCellar() {
+		if (!parsed) return;
+
+		// Pre-fill the add wine wizard with identified data
+		await addWineStore.populateFromAgent(parsed);
+
+		// Add completion message
+		agent.addMessage({
+			role: 'agent',
+			type: 'text',
+			content: 'Opening the cellar for you...'
+		});
+
+		agent.setPhase('complete');
+
+		// Brief delay for message to appear
+		await tick();
+		setTimeout(() => {
+			agent.closePanel();
+			goto('/qve/add');
+		}, 500);
+	}
+
+	// ─────────────────────────────────────────────────────
+	// INPUT HANDLERS
+	// ─────────────────────────────────────────────────────
+
 	async function handleTextSubmit(e: CustomEvent<{ text: string }>) {
-		await agent.identify(e.detail.text);
+		const text = e.detail.text;
+		const augContext = $agentAugmentationContext;
+
+		// Add user message
+		agent.addMessage({
+			role: 'user',
+			type: 'text',
+			content: text
+		});
+
+		// Set identifying phase
+		agent.setPhase('identifying');
+		agent.setTyping(true);
+
+		// Build the query - combine with augmentation context if available
+		let queryText = text;
+		if (phase === 'augment_input' && augContext?.originalResult?.parsed) {
+			// Combine original wine info with new user input for better identification
+			const orig = augContext.originalResult.parsed;
+			const parts: string[] = [];
+
+			// Add any known info from original result
+			if (orig.producer) parts.push(`Producer: ${orig.producer}`);
+			if (orig.wineName && orig.wineName !== 'Unknown Wine') parts.push(`Wine: ${orig.wineName}`);
+			if (orig.vintage) parts.push(`Vintage: ${orig.vintage}`);
+			if (orig.region) parts.push(`Region: ${orig.region}`);
+			if (orig.country) parts.push(`Country: ${orig.country}`);
+			if (orig.wineType) parts.push(`Type: ${orig.wineType}`);
+
+			// Add user's additional context
+			parts.push(`Additional info: ${text}`);
+
+			queryText = parts.join('. ');
+			console.log('[Agent] Augmented query:', queryText);
+		}
+
+		try {
+			const result = await agent.identify(queryText);
+			agent.setTyping(false);
+
+			// Debug logging
+			console.log('[Agent] Text identification result:', JSON.stringify(result, null, 2));
+
+			if (result) {
+				// Clear augmentation context after retry
+				agent.setAugmentationContext(null);
+
+				// Check if this is a valid result (not "Unknown Wine")
+				const isValidWine = result.parsed &&
+					(result.parsed.wineName || result.parsed.producer) &&
+					result.parsed.wineName !== 'Unknown Wine' &&
+					result.parsed.producer !== 'Unknown';
+
+				// Add result message with conditional confirmation chips
+				agent.addMessage({
+					role: 'agent',
+					type: 'wine_result',
+					content: isValidWine ? 'Is this the wine you\'re seeking?' : 'I couldn\'t identify this wine clearly.',
+					wineResult: result.parsed,
+					confidence: result.confidence,
+					chips: isValidWine ? [
+						{ id: 'correct', label: 'Correct', icon: 'check', action: 'correct' },
+						{ id: 'not_correct', label: 'Not Correct', icon: 'x', action: 'not_correct' }
+					] : [
+						{ id: 'not_correct', label: 'Try Again', icon: 'x', action: 'not_correct' }
+					]
+				});
+				agent.setPhase('result_confirm');
+			} else {
+				// Error occurred - re-prompt with options
+				agent.addMessage({
+					role: 'agent',
+					type: 'error',
+					content: $agentError || 'I couldn\'t identify that wine.'
+				});
+				// Re-prompt with choices
+				setTimeout(() => {
+					agent.addMessage({
+						role: 'agent',
+						type: 'chips',
+						content: 'Would you like to try again?',
+						chips: [
+							{ id: 'identify', label: 'Identify', icon: 'search', action: 'identify' },
+							{ id: 'recommend', label: 'Recommend', icon: 'sparkle', action: 'recommend' }
+						]
+					});
+					agent.setPhase('path_selection');
+				}, 500);
+			}
+		} catch (err) {
+			agent.setTyping(false);
+			agent.addMessage({
+				role: 'agent',
+				type: 'error',
+				content: 'Something went wrong.'
+			});
+			// Re-prompt with choices
+			setTimeout(() => {
+				agent.addMessage({
+					role: 'agent',
+					type: 'chips',
+					content: 'Would you like to try again?',
+					chips: [
+						{ id: 'identify', label: 'Identify', icon: 'search', action: 'identify' },
+						{ id: 'recommend', label: 'Recommend', icon: 'sparkle', action: 'recommend' }
+					]
+				});
+				agent.setPhase('path_selection');
+			}, 500);
+		}
 	}
 
 	async function handleImageSubmit(e: CustomEvent<{ file: File }>) {
-		await agent.identifyImage(e.detail.file);
+		const file = e.detail.file;
+
+		// Create preview URL for user message
+		const imageUrl = URL.createObjectURL(file);
+
+		// Add user message with image preview
+		agent.addMessage({
+			role: 'user',
+			type: 'image_preview',
+			content: 'Wine label image',
+			imageUrl
+		});
+
+		// Set identifying phase
+		agent.setPhase('identifying');
+		agent.setTyping(true);
+
+		try {
+			const result = await agent.identifyImage(file);
+			agent.setTyping(false);
+
+			// Debug logging
+			console.log('[Agent] Image identification result:', JSON.stringify(result, null, 2));
+
+			if (result) {
+				// Check if this is a valid result (not "Unknown Wine")
+				const isValidWine = result.parsed &&
+					(result.parsed.wineName || result.parsed.producer) &&
+					result.parsed.wineName !== 'Unknown Wine' &&
+					result.parsed.producer !== 'Unknown';
+
+				// Add result message with conditional confirmation chips
+				agent.addMessage({
+					role: 'agent',
+					type: 'wine_result',
+					content: isValidWine ? 'Is this the wine you\'re seeking?' : 'I couldn\'t identify this wine clearly.',
+					wineResult: result.parsed,
+					confidence: result.confidence,
+					chips: isValidWine ? [
+						{ id: 'correct', label: 'Correct', icon: 'check', action: 'correct' },
+						{ id: 'not_correct', label: 'Not Correct', icon: 'x', action: 'not_correct' }
+					] : [
+						{ id: 'not_correct', label: 'Try Again', icon: 'x', action: 'not_correct' }
+					]
+				});
+				agent.setPhase('result_confirm');
+			} else {
+				// Error occurred - re-prompt with options
+				agent.addMessage({
+					role: 'agent',
+					type: 'error',
+					content: $agentError || 'I couldn\'t identify the wine from this image.'
+				});
+				// Re-prompt with choices
+				setTimeout(() => {
+					agent.addMessage({
+						role: 'agent',
+						type: 'chips',
+						content: 'Would you like to try again?',
+						chips: [
+							{ id: 'identify', label: 'Identify', icon: 'search', action: 'identify' },
+							{ id: 'recommend', label: 'Recommend', icon: 'sparkle', action: 'recommend' }
+						]
+					});
+					agent.setPhase('path_selection');
+				}, 500);
+			}
+		} catch (err) {
+			agent.setTyping(false);
+			agent.addMessage({
+				role: 'agent',
+				type: 'error',
+				content: 'Something went wrong processing the image.'
+			});
+			// Re-prompt with choices
+			setTimeout(() => {
+				agent.addMessage({
+					role: 'agent',
+					type: 'chips',
+					content: 'Would you like to try again?',
+					chips: [
+						{ id: 'identify', label: 'Identify', icon: 'search', action: 'identify' },
+						{ id: 'recommend', label: 'Recommend', icon: 'sparkle', action: 'recommend' }
+					]
+				});
+				agent.setPhase('path_selection');
+			}, 500);
+		}
 	}
 
-	function handleAddToCellar(e: CustomEvent<{ parsed: AgentParsedWine }>) {
-		// Pre-fill the add wine wizard with identified data
-		addWineStore.populateFromAgent(e.detail.parsed);
-		// Close the panel (it will persist state, user can reopen)
-		agent.closePanel();
-		// Reset agent state since we're proceeding
+	// ─────────────────────────────────────────────────────
+	// WINE RESULT HANDLERS
+	// ─────────────────────────────────────────────────────
+
+	function handleWineAddToCellar(e: CustomEvent<{ parsed: AgentParsedWine }>) {
+		handleAddToCellar();
+	}
+
+	function handleWineTryAgain() {
+		agent.addMessage({
+			role: 'agent',
+			type: 'text',
+			content: 'Let\'s try again. Share an image or tell me about the wine.'
+		});
+		agent.setPhase('await_input');
 		agent.reset();
-		// Navigate to the add wine wizard
-		goto('/qve/add');
 	}
 
-	function handleTryAgain() {
-		agent.reset();
+	function handleWineConfirm(e: CustomEvent<{ parsed: AgentParsedWine }>) {
+		handleAddToCellar();
 	}
 
-	function handleConfirm(e: CustomEvent<{ parsed: AgentParsedWine }>) {
-		// Same as add to cellar - user confirmed the identification
-		handleAddToCellar(e);
-	}
-
-	function handleEdit(e: CustomEvent<{ parsed: AgentParsedWine }>) {
-		// Same as add to cellar - user wants to edit in the wizard
-		// The wizard allows editing all fields, so this is the same flow
-		handleAddToCellar(e);
+	function handleWineEdit(e: CustomEvent<{ parsed: AgentParsedWine }>) {
+		handleAddToCellar();
 	}
 
 	function handleCandidateSelect(e: CustomEvent<{ candidate: AgentCandidate }>) {
-		// Build AgentParsedWine from selected candidate
 		const candidate = e.detail.candidate;
 		const data = candidate.data as Record<string, unknown>;
 
-		const parsed: AgentParsedWine = {
+		// Build AgentParsedWine from selected candidate
+		const selectedParsed: AgentParsedWine = {
 			producer: (data.producer as string) || null,
 			wineName: (data.wineName as string) || (data.name as string) || null,
 			vintage: (data.vintage as string) || null,
@@ -103,11 +494,21 @@
 			confidence: candidate.confidence
 		};
 
+		// Add confirmation message and proceed
+		agent.addMessage({
+			role: 'agent',
+			type: 'text',
+			content: 'Perfect choice. Opening the cellar for you...'
+		});
+
 		// Pre-fill and navigate
-		addWineStore.populateFromAgent(parsed);
-		agent.closePanel();
-		agent.reset();
-		goto('/qve/add');
+		addWineStore.populateFromAgent(selectedParsed);
+		agent.setPhase('complete');
+
+		setTimeout(() => {
+			agent.closePanel();
+			goto('/qve/add');
+		}, 500);
 	}
 </script>
 
@@ -144,71 +545,74 @@
 				</svg>
 				<h2 id="panel-title">Wine Assistant</h2>
 			</div>
-			<button
-				class="close-btn"
-				on:click={handleClose}
-				aria-label="Close Wine Assistant"
-			>
-				<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-					<line x1="18" y1="6" x2="6" y2="18" />
-					<line x1="6" y1="6" x2="18" y2="18" />
-				</svg>
-			</button>
+			<div class="header-actions">
+				{#if hasStarted}
+					<button
+						class="start-over-btn"
+						on:click={handleStartOver}
+						aria-label="Start new conversation"
+					>
+						Start Over
+					</button>
+				{/if}
+				<button
+					class="close-btn"
+					on:click={handleClose}
+					aria-label="Minimize Wine Assistant"
+					title="Minimize"
+				>
+					<!-- Minimize/chevron-down icon -->
+					<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+						<polyline points="6 9 12 15 18 9" />
+					</svg>
+				</button>
+			</div>
 		</header>
 
-		<!-- Content area -->
-		<div class="panel-content">
-			{#if error}
-				<!-- Error state -->
-				<div class="error-state">
-					<p class="error-message">{error}</p>
-					<button class="retry-btn" on:click={handleTryAgain}>Try Again</button>
+		<!-- Decorative flourish -->
+		<div class="header-flourish" aria-hidden="true">—◇—</div>
+
+		<!-- Message history -->
+		<div
+			class="message-history"
+			bind:this={messageContainer}
+			on:scroll={handleScroll}
+		>
+			{#if messages.length === 0}
+				<!-- Loading state while session initializes -->
+				<div class="loading-greeting">
+					<p class="agent-text">Preparing...</p>
 				</div>
-			{:else if isLoading}
-				<!-- Loading state -->
-				<AgentLoadingState />
-			{:else if showDisambiguation}
-				<!-- Multiple candidates - low confidence -->
-				<DisambiguationList
-					{candidates}
-					on:select={handleCandidateSelect}
-					on:tryAgain={handleTryAgain}
-				/>
-			{:else if hasResult && parsed && action && confidence !== null}
-				<!-- Single result -->
-				<WineIdentificationCard
-					{parsed}
-					{action}
-					{confidence}
-					on:addToCellar={handleAddToCellar}
-					on:tryAgain={handleTryAgain}
-					on:confirm={handleConfirm}
-					on:edit={handleEdit}
-				/>
 			{:else}
-				<!-- Empty state -->
-				<div class="empty-state">
-					<svg class="empty-icon" viewBox="0 0 48 48" width="64" height="64" aria-hidden="true">
-						<path
-							class="glass"
-							d="M16 4h16l2 12c0 6-4 10-9 10.5V36h6v4H17v-4h6V26.5C18 26 14 22 14 16l2-12z"
-						/>
-						<ellipse class="wine" cx="24" cy="14" rx="6" ry="3" />
-					</svg>
-					<p class="empty-text">Type a wine name or take a photo of the label to identify it.</p>
-				</div>
+				{#each messages as message (message.id)}
+					<ChatMessage
+						{message}
+						on:chipSelect={handleChipAction}
+						on:addToCellar={handleWineAddToCellar}
+						on:tryAgain={handleWineTryAgain}
+						on:confirm={handleWineConfirm}
+						on:edit={handleWineEdit}
+						on:selectCandidate={handleCandidateSelect}
+					/>
+				{/each}
+			{/if}
+
+			{#if isTyping}
+				<TypingIndicator text={typingText} />
 			{/if}
 		</div>
 
-		<!-- Input area -->
-		<div class="panel-input">
-			<CommandInput
-				disabled={isLoading}
-				placeholder="Type wine name..."
-				on:submit={handleTextSubmit}
-				on:image={handleImageSubmit}
-			/>
-		</div>
+		<!-- Input area (conditional based on phase) -->
+		{#if showInput}
+			<div class="panel-input">
+				<CommandInput
+					disabled={isLoading || isTyping}
+					placeholder={inputPlaceholder}
+					on:submit={handleTextSubmit}
+					on:image={handleImageSubmit}
+				/>
+			</div>
+		{/if}
 	</div>
 {/if}
 
@@ -311,6 +715,37 @@
 		margin: 0;
 	}
 
+	.header-actions {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	.start-over-btn {
+		font-family: var(--font-sans);
+		font-size: 0.6875rem;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		padding: var(--space-2) var(--space-3);
+		background: transparent;
+		border: 1px solid var(--divider);
+		border-radius: var(--radius-sm);
+		color: var(--text-tertiary);
+		cursor: pointer;
+		touch-action: manipulation;
+		transition:
+			background 0.15s var(--ease-out),
+			border-color 0.15s var(--ease-out),
+			color 0.15s var(--ease-out);
+	}
+
+	.start-over-btn:hover {
+		background: var(--bg-subtle);
+		border-color: var(--accent);
+		color: var(--text-secondary);
+	}
+
 	.close-btn {
 		width: 36px;
 		height: 36px;
@@ -345,98 +780,32 @@
 		stroke-linecap: round;
 	}
 
-	/* Content area */
-	.panel-content {
+	/* Decorative flourish */
+	.header-flourish {
+		text-align: center;
+		color: var(--divider);
+		font-size: 0.625rem;
+		letter-spacing: 0.5em;
+		padding: var(--space-2) 0;
+		flex-shrink: 0;
+	}
+
+	/* Message history */
+	.message-history {
 		flex: 1;
 		overflow-y: auto;
-		padding: var(--space-5);
+		-webkit-overflow-scrolling: touch;
+		overscroll-behavior: contain;
+		padding: var(--space-4);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-5);
 		min-height: 200px;
 	}
 
 	/* Input area */
 	.panel-input {
 		flex-shrink: 0;
-	}
-
-	/* Empty state */
-	.empty-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		text-align: center;
-		padding: var(--space-6);
-		height: 100%;
-		min-height: 200px;
-	}
-
-	.empty-icon {
-		margin-bottom: var(--space-4);
-		opacity: 0.4;
-	}
-
-	.empty-icon .glass {
-		fill: none;
-		stroke: var(--text-tertiary);
-		stroke-width: 1.5;
-		stroke-linecap: round;
-		stroke-linejoin: round;
-	}
-
-	.empty-icon .wine {
-		fill: var(--text-tertiary);
-		opacity: 0.3;
-	}
-
-	.empty-text {
-		font-family: var(--font-sans);
-		font-size: 0.875rem;
-		color: var(--text-tertiary);
-		margin: 0;
-		max-width: 280px;
-		line-height: 1.5;
-	}
-
-	/* Error state */
-	.error-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		text-align: center;
-		padding: var(--space-6);
-		gap: var(--space-4);
-	}
-
-	.error-message {
-		font-family: var(--font-sans);
-		font-size: 0.875rem;
-		color: var(--error);
-		margin: 0;
-		max-width: 280px;
-		line-height: 1.5;
-	}
-
-	.retry-btn {
-		padding: var(--space-3) var(--space-5);
-		background: transparent;
-		border: 1px solid var(--divider);
-		border-radius: var(--radius-pill);
-		font-family: var(--font-sans);
-		font-size: 0.75rem;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--text-secondary);
-		cursor: pointer;
-		touch-action: manipulation;
-		transition:
-			background 0.15s var(--ease-out),
-			border-color 0.15s var(--ease-out);
-	}
-
-	.retry-btn:hover {
-		background: var(--bg-subtle);
-		border-color: var(--accent);
+		padding-bottom: env(safe-area-inset-bottom);
 	}
 </style>
