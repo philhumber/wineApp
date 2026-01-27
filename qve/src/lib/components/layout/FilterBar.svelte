@@ -1,14 +1,15 @@
 <script lang="ts">
   /**
    * FilterBar Component
-   * Horizontal scrollable container for filter pills
+   * Horizontal scrollable filter pills with sort controls on the right
    */
   import { createEventDispatcher } from 'svelte';
-  import { filters, setFilter, clearFilter, clearAllFilters, hasActiveFilters, viewMode } from '$lib/stores';
+  import { filters, setFilter, clearFilter, clearAllFilters, hasActiveFilters, viewMode, cellarSortKey, cellarSortDir, setCellarSort, toggleCellarSortDir } from '$lib/stores';
   import { filterOptions } from '$lib/stores/filterOptions';
   import type { FilterOption } from '$lib/stores/filterOptions';
   import FilterPill from './FilterPill.svelte';
   import FilterDropdown from './FilterDropdown.svelte';
+  import { Icon } from '$lib/components';
 
   const dispatch = createEventDispatcher<{
     filterChange: { key: string; value: string | undefined };
@@ -22,6 +23,25 @@
     { key: 'producerDropdown', label: 'Producer', fetchKey: 'producers' as const },
     { key: 'yearDropdown', label: 'Vintage', fetchKey: 'years' as const }
   ];
+
+  // Sort options for cellar view
+  const sortOptions = [
+    { key: 'producer', label: 'Producer' },
+    { key: 'wineName', label: 'Name' },
+    { key: 'country', label: 'Country' },
+    { key: 'region', label: 'Region' },
+    { key: 'year', label: 'Vintage' },
+    { key: 'type', label: 'Type' },
+    { key: 'rating', label: 'Rating' },
+    { key: 'bottles', label: 'Bottles' },
+    { key: 'price', label: 'Price' }
+  ];
+
+  // Handle sort change
+  function handleSortChange(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    setCellarSort(target.value as typeof $cellarSortKey);
+  }
 
   // State: which dropdown is open
   let openDropdown: string | null = null;
@@ -174,6 +194,9 @@
     {/if}
   </div>
 
+  <!-- Vertical separator -->
+  <div class="sort-separator" aria-hidden="true"></div>
+
   <!-- Sort controls: always visible on right -->
   <div class="sort-controls">
     <div class="select-wrapper">
@@ -218,28 +241,15 @@
     overflow-x: auto;
     flex: 1;
     min-width: 0; /* Allow shrinking */
-    padding-bottom: 6px;
+    padding-bottom: 2px;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin; /* Firefox */
-    scrollbar-color: var(--divider) transparent;
+    touch-action: pan-x; /* Prevents vertical scroll/tap interference on mobile */
+    scrollbar-width: none; /* Firefox - hide scrollbar */
+    -ms-overflow-style: none; /* IE/Edge - hide scrollbar */
   }
 
-  /* Webkit scrollbar (Chrome/Safari) */
   .filter-pills::-webkit-scrollbar {
-    height: 4px;
-  }
-
-  .filter-pills::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .filter-pills::-webkit-scrollbar-thumb {
-    background: var(--divider);
-    border-radius: 2px;
-  }
-
-  .filter-pills::-webkit-scrollbar-thumb:hover {
-    background: var(--text-tertiary);
+    display: none; /* Chrome/Safari - hide scrollbar */
   }
 
   /* Wrapper for dropdown pills to position dropdown relative to pill */
@@ -265,6 +275,16 @@
   .clear-all-btn:hover {
     color: var(--text-primary);
     border-color: var(--accent);
+  }
+
+  /* ─────────────────────────────────────────────────────────
+   * VERTICAL SEPARATOR
+   * ───────────────────────────────────────────────────────── */
+  .sort-separator {
+    width: 1px;
+    height: 24px;
+    background: var(--divider);
+    flex-shrink: 0;
   }
 
   /* ─────────────────────────────────────────────────────────

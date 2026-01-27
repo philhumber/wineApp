@@ -155,6 +155,7 @@ export {
   formatPrice,
   formatPriceFromEUR,
   formatPriceConverted,
-  getCurrencyByCode
+  getCurrencyByCode,
+  formatCompactValue
 } from './currency';
 export type { CurrencyCode } from './currency';
