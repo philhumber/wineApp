@@ -1,14 +1,17 @@
 <script lang="ts">
   /**
    * Header Component
-   * Fixed-position header with logo, theme/view toggles, and filter bar
+   * Fixed-position header with logo, density toggle, collection row, and filter bar
    * Supports variants: 'cellar' (default), 'add', 'edit' for form pages
    */
   import { createEventDispatcher } from 'svelte';
   import { ViewToggle, Icon, ThemeToggle } from '$lib/components';
   import FilterBar from './FilterBar.svelte';
   import HistoryFilterBar from './HistoryFilterBar.svelte';
-  import { toggleMenu } from '$lib/stores';
+  import CollectionRow from './CollectionRow.svelte';
+  import { toggleMenu, wines, winesLoading, viewMode, drunkWineCount, filteredDrunkWineCount, historyLoading } from '$lib/stores';
+  import { currentCurrency, formatCompactValue, availableCurrencies, convertFromEUR } from '$lib/stores/currency';
+  import type { Wine } from '$lib/api/types';
 
   export let variant: 'cellar' | 'add' | 'edit' = 'cellar';
   export let showFilters: boolean = true;
@@ -17,11 +20,42 @@
   // Computed: is this a form variant (add/edit)?
   $: isFormVariant = variant === 'add' || variant === 'edit';
 
-  // Page titles for form variants
+  // Page titles for form variants and collection row
   const variantTitles: Record<string, string> = {
     add: 'Add Wine',
     edit: 'Edit Wine'
   };
+
+  // Collection row title based on filter type
+  $: collectionTitle = filterType === 'history' ? 'Drink History' : 'Our Wines';
+
+  // Calculate total cellar value from wines (prices are stored in EUR in avgPricePerLiterEUR)
+  $: cellarStats = calculateCellarStats($wines, $currentCurrency);
+
+  function calculateCellarStats(wineList: Wine[], currency: typeof $currentCurrency) {
+    let totalValueEUR = 0;
+    let unpricedCount = 0;
+
+    for (const wine of wineList) {
+      if (wine.avgPricePerLiterEUR && wine.bottleCount > 0) {
+        // avgPricePerLiterEUR is per liter, multiply by total volume
+        // Assuming standard 750ml bottles for simplicity
+        const bottleValueEUR = parseFloat(String(wine.avgPricePerLiterEUR)) * 0.75 * wine.bottleCount;
+        totalValueEUR += bottleValueEUR;
+      } else if (wine.bottleCount > 0) {
+        unpricedCount++;
+      }
+    }
+
+    // Convert to display currency
+    const totalValueDisplay = convertFromEUR(totalValueEUR, currency);
+    const formattedValue = formatCompactValue(totalValueDisplay, currency);
+
+    return {
+      totalValue: formattedValue,
+      unpricedCount
+    };
+  }
 
   const dispatch = createEventDispatcher<{
     search: void;
@@ -47,6 +81,7 @@
 
 <header class="header" class:scrolled={scrollY > 10}>
   <div class="header-inner">
+    <!-- Top row: Menu, Logo, Density toggle, Search -->
     <div class="header-top">
       <div class="header-left">
         <button
@@ -79,6 +114,20 @@
       </div>
     </div>
 
+    <!-- Collection row: Title, View toggle (Cellar/All), Stats -->
+    {#if !isFormVariant}
+      <CollectionRow
+        title={collectionTitle}
+        showViewToggle={filterType === 'cellar'}
+        wineCount={$wines.length}
+        bottleCount={filterType === 'history' ? $filteredDrunkWineCount : undefined}
+        totalValue={filterType === 'cellar' ? cellarStats.totalValue : undefined}
+        unpricedCount={filterType === 'cellar' ? cellarStats.unpricedCount : 0}
+        isLoading={filterType === 'history' ? $historyLoading : $winesLoading}
+      />
+    {/if}
+
+    <!-- Filter bar with sort controls -->
     {#if !isFormVariant && showFilters}
       {#if filterType === 'cellar'}
         <FilterBar on:filterChange={handleFilterChange} />
@@ -90,7 +139,11 @@
 </header>
 
 <!-- Spacer to account for fixed header height -->
-<div class="header-spacer" class:with-filters={!isFormVariant && showFilters}></div>
+<div
+  class="header-spacer"
+  class:with-collection={!isFormVariant}
+  class:with-filters={!isFormVariant && showFilters}
+></div>
 
 <style>
   .header {
@@ -208,16 +261,14 @@
     height: 64px;
   }
 
-  .header-spacer.with-filters {
+  /* With collection row (title + view toggle + stats) */
+  .header-spacer.with-collection {
     height: 108px;
   }
 
-  .header-spacer.with-collection-bar {
-    height: 140px;
-  }
-
-  .header-spacer.with-collection-bar.with-filters {
-    height: 180px;
+  /* With collection row + filter bar */
+  .header-spacer.with-collection.with-filters {
+    height: 152px;
   }
 
   /* Responsive adjustments */
@@ -248,16 +299,14 @@
       height: 56px;
     }
 
-    .header-spacer.with-filters {
-      height: 100px;
+    /* With collection row (title + view toggle + stats) */
+    .header-spacer.with-collection {
+      height: 96px;
     }
 
-    .header-spacer.with-collection-bar {
-      height: 130px;
-    }
-
-    .header-spacer.with-collection-bar.with-filters {
-      height: 168px;
+    /* With collection row + filter bar */
+    .header-spacer.with-collection.with-filters {
+      height: 140px;
     }
   }
 

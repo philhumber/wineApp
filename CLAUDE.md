@@ -1,6 +1,6 @@
 # Qvé Wine App - Session Context
 
-**Last Updated**: 2026-01-24
+**Last Updated**: 2026-01-27
 **Status**: Production - Deployed and stable
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
@@ -70,7 +70,7 @@ qve/src/
 │   ├── components/    # 40+ Svelte components
 │   │   ├── ui/        # Icon, ThemeToggle, CurrencySelector, Toast, RatingDisplay, PriceScale, BuyAgainIndicator
 │   │   ├── wine/      # WineCard, WineGrid, HistoryCard
-│   │   ├── layout/    # Header, FilterBar, SideMenu, FilterDropdown
+│   │   ├── layout/    # Header, CollectionRow, FilterBar, SideMenu, FilterDropdown
 │   │   ├── forms/     # FormInput, RatingDots, MiniRatingDots
 │   │   ├── wizard/    # WizardStepIndicator, SearchDropdown, AILoadingOverlay
 │   │   ├── modals/    # DrinkRateModal, ConfirmModal, DuplicateWarningModal
@@ -105,7 +105,7 @@ qve/src/
 | modal | `stores/modal.ts` | Modal container state |
 | menu | `stores/menu.ts` | Side menu open/close |
 | theme | `stores/theme.ts` | Light/dark theme |
-| currency | `stores/currency.ts` | Display currency preference, conversion utilities |
+| currency | `stores/currency.ts` | Display currency, conversion utilities, formatCompactValue |
 | scrollPosition | `stores/scrollPosition.ts` | Scroll restoration |
 
 ---
@@ -155,6 +155,18 @@ const data = await api.enrichWithAI('producer', 'Château Margaux');
 <DrinkRateModal wineId={id} on:close={handleClose} on:rated={handleRated} />
 <ConfirmModal message="Discard changes?" on:confirm={discard} on:cancel={stay} />
 ```
+
+### Header Architecture
+Unified header structure used across Cellar, All Wines, and History pages:
+```
+Header.svelte
+├── header-top: Menu + Logo + Density Toggle + Search
+├── CollectionRow: Title + View Toggle (Cellar/All) + Stats
+└── FilterBar/HistoryFilterBar: Scrollable pills | Sort controls
+```
+- **CollectionRow**: Displays page title, Cellar/All toggle, wine count + value
+- **FilterBar**: Horizontal scroll for filter pills with `touch-action: pan-x`, fixed sort controls on right separated by `|`
+- Stats use `formatCompactValue()` for compact display (e.g., `~£45k`)
 
 ---
 
