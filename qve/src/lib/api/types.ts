@@ -391,6 +391,13 @@ export interface AgentUsage {
   latencyMs?: number;
 }
 
+/** Metadata about model escalation (when fast model had low confidence) */
+export interface AgentEscalation {
+  attempted: boolean;         // Whether escalation was tried
+  improved: boolean;          // Whether escalation improved confidence
+  originalConfidence: number | null;  // Confidence before escalation
+}
+
 export interface AgentIdentificationResult {
   intent: AgentIntent;
   parsed: AgentParsedWine;
@@ -398,9 +405,36 @@ export interface AgentIdentificationResult {
   action: AgentAction;
   candidates: AgentCandidate[];
   usage?: AgentUsage;
+  escalation?: AgentEscalation;
 }
 
 export interface AgentIdentifyTextRequest {
   text: string;
   userId?: number;
+}
+
+export interface AgentIdentifyImageRequest {
+  image: string; // base64-encoded image data
+  mimeType: string;
+  userId?: number;
+}
+
+export interface AgentImageQuality {
+  valid: boolean;
+  score: number;
+  issues: string[];
+  dimensions?: {
+    width: number;
+    height: number;
+  };
+  sizeBytes?: number;
+}
+
+export type AgentInputType = 'text' | 'image';
+
+// Extended result that includes inputType and quality info for images
+export interface AgentIdentificationResultWithMeta extends AgentIdentificationResult {
+  inputType: AgentInputType;
+  quality?: AgentImageQuality;
+  escalation?: AgentEscalation;
 }

@@ -60,5 +60,16 @@ export {
   DuplicateWarningModal
 } from './modals';
 
+// Agent Components (AI Wine Assistant)
+export {
+  AgentBubble,
+  AgentPanel,
+  CommandInput,
+  WineIdentificationCard,
+  ConfidenceIndicator,
+  DisambiguationList,
+  AgentLoadingState
+} from './agent';
+
 // Note: IconName type is exported from Icon.svelte via context="module"
 // Import directly from ./ui/Icon.svelte if needed

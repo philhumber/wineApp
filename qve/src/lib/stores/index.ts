@@ -163,7 +163,7 @@ export type { CurrencyCode } from './currency';
 // User Settings (WIN-126, WIN-127)
 export { collectionName, cellarValue } from './settings';
 
-// AI Agent (Phase 1)
+// AI Agent (Phase 1 + Phase 2)
 export {
 	agent,
 	agentParsed,
@@ -171,6 +171,12 @@ export {
 	agentCandidates,
 	agentConfidence,
 	agentLoading,
-	agentError
+	agentIdentifying,
+	agentEnriching,
+	agentError,
+	agentPanelOpen,
+	agentInputType,
+	agentImageQuality,
+	agentHasResult
 } from './agent';
 export type { AgentState } from './agent';

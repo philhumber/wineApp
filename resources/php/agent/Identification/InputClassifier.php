@@ -125,27 +125,94 @@ class InputClassifier
         ];
     }
 
+    /** @var array Supported image MIME types */
+    private array $supportedMimeTypes = [
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/webp',
+        'image/heic',
+        'image/heif',
+    ];
+
+    /** @var int Maximum image size in bytes (8MB) */
+    private int $maxImageSize = 8 * 1024 * 1024;
+
     /**
-     * Validate image input (Phase 2 - currently returns not supported)
+     * Validate image input
      *
-     * @param string $imageData Base64-encoded image or image path
+     * @param string $imageData Base64-encoded image data
      * @param string|null $mimeType Image MIME type
      * @return array Validation result
      */
     private function validateImage(string $imageData, ?string $mimeType): array
     {
-        // Phase 2: Image identification not yet implemented
+        // Check for empty input
+        if (empty($imageData)) {
+            return [
+                'type' => self::TYPE_IMAGE,
+                'valid' => false,
+                'error' => 'Image data cannot be empty.',
+            ];
+        }
+
+        // Check MIME type is provided
+        if (empty($mimeType)) {
+            return [
+                'type' => self::TYPE_IMAGE,
+                'valid' => false,
+                'error' => 'Image MIME type is required.',
+            ];
+        }
+
+        // Normalize and validate MIME type
+        $mimeType = strtolower(trim($mimeType));
+        if (!in_array($mimeType, $this->supportedMimeTypes)) {
+            return [
+                'type' => self::TYPE_IMAGE,
+                'valid' => false,
+                'error' => "Unsupported image format: {$mimeType}. Supported formats: JPEG, PNG, WebP, HEIC.",
+            ];
+        }
+
+        // Validate base64 encoding
+        $binaryData = base64_decode($imageData, true);
+        if ($binaryData === false) {
+            return [
+                'type' => self::TYPE_IMAGE,
+                'valid' => false,
+                'error' => 'Invalid base64 encoding. Please provide valid base64-encoded image data.',
+            ];
+        }
+
+        // Check file size
+        $sizeBytes = strlen($binaryData);
+        if ($sizeBytes > $this->maxImageSize) {
+            $sizeMB = round($sizeBytes / (1024 * 1024), 2);
+            $maxMB = $this->maxImageSize / (1024 * 1024);
+            return [
+                'type' => self::TYPE_IMAGE,
+                'valid' => false,
+                'error' => "Image too large ({$sizeMB}MB). Maximum size is {$maxMB}MB. Please compress the image.",
+            ];
+        }
+
+        // Check minimum size (very small images unlikely to be useful)
+        if ($sizeBytes < 1000) {
+            return [
+                'type' => self::TYPE_IMAGE,
+                'valid' => false,
+                'error' => 'Image file is too small. Please provide a higher resolution image.',
+            ];
+        }
+
         return [
             'type' => self::TYPE_IMAGE,
-            'valid' => false,
-            'error' => 'Image identification is not yet supported. Please use text input.',
+            'valid' => true,
+            'imageData' => $imageData,
+            'mimeType' => $mimeType,
+            'sizeBytes' => $sizeBytes,
         ];
-
-        // Future implementation:
-        // - Validate base64 encoding
-        // - Check MIME type (image/jpeg, image/png, image/webp)
-        // - Validate image size
-        // - Return validated image data
     }
 
     /**

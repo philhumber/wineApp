@@ -1,6 +1,6 @@
 # Qvé Wine App - Session Context
 
-**Last Updated**: 2026-01-25
+**Last Updated**: 2026-01-27
 **Status**: Production - Deployed and stable
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
@@ -223,6 +223,42 @@ Endpoints in `resources/php/`:
 
 ---
 
+## AI Agent (Phase 2)
+
+Wine identification assistant using Gemini API. Located in `resources/php/agent/`.
+
+**Architecture**:
+```
+agent/
+├── _bootstrap.php           # Autoloader and factory functions
+├── config/agent.config.php  # API keys, model tiers, thresholds
+├── identifyText.php         # POST endpoint for text identification
+├── identifyImage.php        # POST endpoint for image identification
+├── prompts/                  # LLM prompt templates
+├── Identification/           # Input processing, scoring, disambiguation
+└── LLM/                      # Gemini adapter, cost tracking, circuit breaker
+```
+
+**Key Features**:
+- Text and image-based wine identification
+- Confidence scoring with action recommendations (auto_populate, suggest, disambiguate)
+- Model escalation: fast model first, detailed model if confidence < 70%
+- Cost tracking per request in `agentUsageLog` table
+
+**Frontend Components** in `qve/src/lib/components/agent/`:
+- `AgentBubble` - Floating action button to open panel
+- `AgentPanel` - Bottom sheet (mobile) / side panel (desktop)
+- `CommandInput` - Text input with camera button for image upload
+- `AgentLoadingState` - Animated loading with "deep search" mode
+- `WineIdentificationCard` - Displays identified wine with actions
+
+**Database Tables** (run `resources/sql/agent_schema.sql`):
+- `agentUsers` - User tracking
+- `agentUsageLog` - Per-request cost/token tracking
+- `agentUsageDaily` - Daily aggregates
+
+---
+
 ## Database
 
 **Host**: 10.0.0.16
@@ -248,6 +284,7 @@ Key tables: wine, bottles, ratings, producers, region, country, winetype, curren
 - **Vite proxies**: Both `/resources/php` AND `/images` are proxied to PHP backend (port 8000)
 - **Base path**: All routes are under `/qve/` (configured in svelte.config.js)
 - **Svelte 5**: Uses runes syntax (`$state`, `$derived`, `$effect`) - not legacy reactive statements
+- **PSR-4 Autoloading**: PHP agent folders must match namespace casing exactly (e.g., `LLM/`, `Identification/`) - Linux is case-sensitive
 
 ---
 
