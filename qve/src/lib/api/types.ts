@@ -22,8 +22,6 @@ export interface Wine {
   wineType: string;                 // PHP returns 'wineType' not 'wineTypeName'
   bottleCount: number;
   avgRating: number | null;
-  avgOverallRating?: number | null;  // Average of overallRating across all ratings
-  avgValueRating?: number | null;    // Average of valueRating across all ratings
   rating: number | null;            // Individual rating
   // Price fields from PHP
   avgPricePerLiterEUR?: string;
@@ -59,8 +57,6 @@ export interface Bottle {
 }
 
 export interface DrunkWine extends Wine {
-  // Rating ID (for updates)
-  ratingID: number;
   // Bottle info
   bottleID: number;
   bottleSize: string;
@@ -241,22 +237,6 @@ export interface DrinkBottlePayload {
   foodPairingRating?: number;
 }
 
-export interface UpdateRatingPayload {
-  ratingID: number;
-  wineID: number;
-  bottleID: number;
-  overallRating: number;
-  valueRating: number;
-  drinkDate: string;
-  buyAgain?: boolean;
-  notes?: string;
-  // Optional ratings (0-5 scale)
-  complexityRating?: number;
-  drinkabilityRating?: number;
-  surpriseRating?: number;
-  foodPairingRating?: number;
-}
-
 // ─────────────────────────────────────────────────────────
 // AI RESPONSE TYPES
 // ─────────────────────────────────────────────────────────
@@ -334,107 +314,4 @@ export interface DuplicateCheckResult {
   similarMatches: DuplicateMatch[];
   existingBottles: number;
   existingWineId: number | null;
-}
-
-// ─────────────────────────────────────────────────────────
-// USER SETTINGS TYPES (WIN-126)
-// ─────────────────────────────────────────────────────────
-
-export interface UserSettings {
-  collectionName: string;
-}
-
-export interface UpdateSettingsPayload {
-  collectionName?: string;
-}
-
-// ─────────────────────────────────────────────────────────
-// CELLAR VALUE TYPES (WIN-127)
-// ─────────────────────────────────────────────────────────
-
-export interface CellarValue {
-  totalValueEUR: number;
-  bottleCount: number;
-  bottlesWithPrice: number;
-  bottlesWithoutPrice: number;
-  hasIncompleteData: boolean;
-}
-
-// ─────────────────────────────────────────────────────────
-// AI AGENT TYPES (Phase 1)
-// ─────────────────────────────────────────────────────────
-
-export type AgentWineType = 'Red' | 'White' | 'Rosé' | 'Sparkling' | 'Dessert' | 'Fortified';
-export type AgentIntent = 'add' | 'advice' | 'pair';
-export type AgentAction = 'auto_populate' | 'suggest' | 'disambiguate';
-
-export interface AgentParsedWine {
-  producer: string | null;
-  wineName: string | null;
-  vintage: string | null;
-  region: string | null;
-  country: string | null;
-  wineType: AgentWineType | null;
-  grapes: string[] | null;
-  confidence: number;
-}
-
-export interface AgentCandidate {
-  source: 'collection' | 'reference';
-  confidence: number;
-  data: Record<string, unknown>;
-}
-
-export interface AgentUsage {
-  tokens: { input: number; output: number };
-  cost: number;
-  latencyMs?: number;
-}
-
-/** Metadata about model escalation (when fast model had low confidence) */
-export interface AgentEscalation {
-  attempted: boolean;         // Whether escalation was tried
-  improved: boolean;          // Whether escalation improved confidence
-  originalConfidence: number | null;  // Confidence before escalation
-}
-
-export interface AgentIdentificationResult {
-  intent: AgentIntent;
-  parsed: AgentParsedWine;
-  confidence: number;
-  action: AgentAction;
-  candidates: AgentCandidate[];
-  usage?: AgentUsage;
-  escalation?: AgentEscalation;
-}
-
-export interface AgentIdentifyTextRequest {
-  text: string;
-  userId?: number;
-}
-
-export interface AgentIdentifyImageRequest {
-  image: string; // base64-encoded image data
-  mimeType: string;
-  userId?: number;
-}
-
-export interface AgentImageQuality {
-  valid: boolean;
-  score: number;
-  issues: string[];
-  dimensions?: {
-    width: number;
-    height: number;
-  };
-  sizeBytes?: number;
-}
-
-export type AgentInputType = 'text' | 'image';
-
-// Extended result that includes inputType and quality info for images
-export interface AgentIdentificationResultWithMeta extends AgentIdentificationResult {
-  inputType: AgentInputType;
-  quality?: AgentImageQuality;
-  escalation?: AgentEscalation;
 }

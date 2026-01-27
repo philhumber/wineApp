@@ -40,10 +40,8 @@
 						producers.producerName,
 						country.code,
 						country.world_code,
-						wine.rating,
-						(SELECT ROUND(AVG(avgRating), 2) FROM ratings WHERE ratings.wineID = wine.wineID) AS avgRating,
-						(SELECT ROUND(AVG(overallRating), 2) FROM ratings WHERE ratings.wineID = wine.wineID) AS avgOverallRating,
-						(SELECT ROUND(AVG(valueRating), 2) FROM ratings WHERE ratings.wineID = wine.wineID) AS avgValueRating,
+						wine.rating,								
+						(SELECT ROUND(AVG(overallRating), 2) FROM ratings WHERE ratings.wineID = wine.wineID) AS avgRating,
 						(SELECT GROUP_CONCAT(Notes SEPARATOR '; ') FROM ratings WHERE ratings.wineID = wine.wineID) AS allNotes,
 						(SELECT ROUND(AVG(normalized_price), 2)
 						FROM (

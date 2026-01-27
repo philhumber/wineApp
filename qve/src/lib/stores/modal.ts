@@ -4,7 +4,7 @@
  */
 
 import { writable, derived, get } from 'svelte/store';
-import type { Wine, DrunkWine } from '$lib/api/types';
+import type { Wine } from '$lib/api/types';
 
 // ─────────────────────────────────────────────────────────
 // TYPES
@@ -121,15 +121,6 @@ function createModalStore() {
     },
 
     /**
-     * Open drink/rate modal in edit mode for an existing rating
-     * Pass the full DrunkWine object with rating data
-     */
-    openEditRating: (drunkWine: DrunkWine): void => {
-      const pushed = pushHistoryForModal('drink');
-      set({ type: 'drink', data: { drunkWine, isEdit: true }, pushedHistory: pushed });
-    },
-
-    /**
      * Open add bottle modal for a wine
      * Pass optional wine details for display (pictureURL, year, region)
      */
@@ -196,8 +187,9 @@ function createModalStore() {
      * Open image lightbox for fullscreen viewing
      */
     openImageLightbox: (src: string, alt?: string): void => {
-      const pushed = pushHistoryForModal('imageLightbox');
-      set({ type: 'imageLightbox', data: { src, alt: alt || 'Wine image' }, pushedHistory: pushed });
+      set({ type: 'imageLightbox', data: { src, alt: alt || 'Wine image' } });
+      const pushed = pushHistoryForModal('settings');
+      set({ type: 'settings', data: {}, pushedHistory: pushed });
     }
   };
 }
