@@ -12,7 +12,6 @@ import type { DrunkWine } from '$api/types';
 
 export type HistorySortKey =
   | 'drinkDate'
-  | 'combinedRating'
   | 'overallRating'
   | 'valueRating'
   | 'wineName'
@@ -98,8 +97,6 @@ export const sortedDrunkWines = derived(
           return direction * ((a.overallRating ?? 0) - (b.overallRating ?? 0));
         case 'valueRating':
           return direction * ((a.valueRating ?? 0) - (b.valueRating ?? 0));
-        case 'combinedRating':
-          return direction * ((a.avgRating ?? 0) - (b.avgRating ?? 0));
         case 'wineName':
           return direction * a.wineName.localeCompare(b.wineName);
         case 'wineType':

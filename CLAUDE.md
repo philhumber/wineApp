@@ -1,6 +1,6 @@
 # Qvé Wine App - Session Context
 
-**Last Updated**: 2026-01-27
+**Last Updated**: 2026-01-24
 **Status**: Production - Deployed and stable
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
@@ -56,23 +56,6 @@ npm run check        # TypeScript + Svelte check
 npm run lint         # ESLint
 npm run format       # Prettier
 ```
-
----
-
-## Tech Stack
-
-- **Frontend**: Svelte 5, SvelteKit 2, TypeScript 5
-- **Backend**: PHP 8.x (built-in server)
-- **Database**: MySQL (remote: 10.0.0.16)
-- **Build**: Vite 5, adapter-static (SPA)
-- **PWA**: @vite-pwa/sveltekit (offline-capable)
-- **UI**: bits-ui component library
-
-**Path Aliases** (svelte.config.js):
-- `$api` → src/lib/api
-- `$stores` → src/lib/stores
-- `$styles` → src/lib/styles
-- `$components` → src/lib/components
 
 ---
 
@@ -187,14 +170,56 @@ const data = await api.enrichWithAI('producer', 'Château Margaux');
 
 ---
 
-## Current Work
+## Current Sprint Backlog
 
-See [JIRA Sprint Board](https://philhumber.atlassian.net/jira/software/projects/WIN) for current tickets.
+### Sprint 6: iOS + Navigation + Ratings (Current)
+- WIN-131: iOS testing/bug fixes
+- WIN-128: Back button / swipe navigation
+- WIN-122: Fix UI flashing/highlighting
+- WIN-117: Edit ratings from history
+- WIN-114: Image view enhancements
 
-```bash
-.\scripts\jira.ps1 sprint    # View current sprint issues
-.\scripts\jira.ps1 list      # List all open issues
-```
+### Completed: Sprint 5 (Currency + Card Details)
+- WIN-134: Implement bottle_sizes and currencies tables ✓
+- WIN-133: Fix TypeScript error in WineStep.svelte ✓
+- WIN-132: Fix TypeScript error in RegionStep.svelte ✓
+- WIN-130: Allow currency display setting ✓
+- WIN-125: Add/Edit screen consistency ✓
+- WIN-111: Additional wine card details ✓
+- WIN-103: Remove hardcoded currencies/sizes ✓
+- WIN-99: Audit JSON display fix ✓
+
+### Completed: Sprint 4 (Security + Quick Wins)
+- WIN-119: Secure wineapp-config directory ✓
+- WIN-34: Finish filtering/sorting ✓
+- WIN-79: Finish duplicate checking ✓
+- WIN-124: Double field label bug ✓
+- WIN-129: Form not clearing bug ✓
+- WIN-115: Browser tab titles ✓
+- WIN-116: Qve to Qvé branding ✓
+
+### Sprint 7: Collection Features + Data Quality
+- WIN-121/126: Collection naming
+- WIN-127: Collection value data
+- WIN-113: Region parent level search
+- WIN-123: Field validation vs SQL
+
+### Sprint 8: Data Management + Infrastructure
+- WIN-97: Audit functions for all operations
+- WIN-80: Soft delete support
+- WIN-78: JS/PHP caching
+- WIN-108: AI extract region from producer
+- WIN-32: Producer/region info cards
+
+### Sprint 9: Wishlist + Grape Data
+- WIN-109: Wine wishlist
+- WIN-112: Grape data capture
+
+### Backlog: AI Features
+- WIN-42: Image recognition
+- WIN-37: AI chatbot (winebot)
+- WIN-64: Structured output and grounding
+- WIN-118: Vector database evaluation
 
 ---
 
@@ -223,42 +248,6 @@ Endpoints in `resources/php/`:
 
 ---
 
-## AI Agent (Phase 2)
-
-Wine identification assistant using Gemini API. Located in `resources/php/agent/`.
-
-**Architecture**:
-```
-agent/
-├── _bootstrap.php           # Autoloader and factory functions
-├── config/agent.config.php  # API keys, model tiers, thresholds
-├── identifyText.php         # POST endpoint for text identification
-├── identifyImage.php        # POST endpoint for image identification
-├── prompts/                  # LLM prompt templates
-├── Identification/           # Input processing, scoring, disambiguation
-└── LLM/                      # Gemini adapter, cost tracking, circuit breaker
-```
-
-**Key Features**:
-- Text and image-based wine identification
-- Confidence scoring with action recommendations (auto_populate, suggest, disambiguate)
-- Model escalation: fast model first, detailed model if confidence < 70%
-- Cost tracking per request in `agentUsageLog` table
-
-**Frontend Components** in `qve/src/lib/components/agent/`:
-- `AgentBubble` - Floating action button to open panel
-- `AgentPanel` - Bottom sheet (mobile) / side panel (desktop)
-- `CommandInput` - Text input with camera button for image upload
-- `AgentLoadingState` - Animated loading with "deep search" mode
-- `WineIdentificationCard` - Displays identified wine with actions
-
-**Database Tables** (run `resources/sql/agent_schema.sql`):
-- `agentUsers` - User tracking
-- `agentUsageLog` - Per-request cost/token tracking
-- `agentUsageDaily` - Daily aggregates
-
----
-
 ## Database
 
 **Host**: 10.0.0.16
@@ -274,17 +263,6 @@ Key tables: wine, bottles, ratings, producers, region, country, winetype, curren
 **Database credentials**: `../wineapp-config/config.local.php` (outside repo)
 **JIRA credentials**: `../wineapp-config/jira.config.json` (email + API token)
 **Vite proxy**: `qve/vite.config.ts` proxies `/resources/php` to PHP backend
-
----
-
-## Gotchas
-
-- **iOS Safari**: Touch events require special handling; use `touch-action: manipulation` for interactive elements
-- **PWA caching**: API calls use NetworkFirst strategy with 5-min cache; force refresh may be needed during dev
-- **Vite proxies**: Both `/resources/php` AND `/images` are proxied to PHP backend (port 8000)
-- **Base path**: All routes are under `/qve/` (configured in svelte.config.js)
-- **Svelte 5**: Uses runes syntax (`$state`, `$derived`, `$effect`) - not legacy reactive statements
-- **PSR-4 Autoloading**: PHP agent folders must match namespace casing exactly (e.g., `LLM/`, `Identification/`) - Linux is case-sensitive
 
 ---
 
@@ -310,8 +288,18 @@ Key tables: wine, bottles, ratings, producers, region, country, winetype, curren
 
 ---
 
-## References
+## Archive Reference
+
+V1 app files preserved in `archive/`:
+- `v1-html/` - Old HTML pages, CSS
+- `v1-js/` - ES6 modules (17 files)
+- `v1-docs/` - Sprint docs, MODULE_GUIDE
+- `design-mockups/` - Qvé mockups and design system
+
+---
+
+## Resources
 
 - **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 - **GitHub**: https://github.com/philhumber/wineApp
-- **Legacy code**: `archive/` directory (v1 HTML/JS, design mockups)
+- **Developer**: Phil Humber (phil.humber@gmail.com)

@@ -6,7 +6,7 @@
 import { writable, derived, get } from 'svelte/store';
 import { api } from '$lib/api/client';
 import { toasts } from './toast';
-import type { Wine, Bottle, DrunkWine, DrinkBottlePayload, UpdateRatingPayload } from '$lib/api/types';
+import type { Wine, Bottle, DrinkBottlePayload } from '$lib/api/types';
 
 // ─────────────────────────────────────────────────────────
 // TYPES
@@ -47,10 +47,6 @@ export interface DrinkWineState {
   isLoading: boolean;
   isSubmitting: boolean;
   errors: Record<string, string>;
-
-  // Edit mode
-  isEditMode: boolean;
-  ratingID: number | null;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -86,10 +82,7 @@ function getInitialState(): DrinkWineState {
 
     isLoading: false,
     isSubmitting: false,
-    errors: {},
-
-    isEditMode: false,
-    ratingID: null
+    errors: {}
   };
 }
 
@@ -138,55 +131,6 @@ function createDrinkWineStore() {
           isLoading: false
         }));
       }
-    },
-
-    /**
-     * Initialize the store for editing an existing rating
-     */
-    initEdit: (drunkWine: DrunkWine): void => {
-      // Determine if optional ratings section should be expanded
-      const hasOptionalRatings =
-        (drunkWine.complexityRating && drunkWine.complexityRating > 0) ||
-        (drunkWine.drinkabilityRating && drunkWine.drinkabilityRating > 0) ||
-        (drunkWine.surpriseRating && drunkWine.surpriseRating > 0) ||
-        (drunkWine.foodPairingRating && drunkWine.foodPairingRating > 0);
-
-      // Date from DB is already in YYYY-MM-DD format, use directly
-      const drinkDate = drunkWine.drinkDate || new Date().toISOString().split('T')[0];
-
-      set({
-        wineID: drunkWine.wineID,
-        wineName: drunkWine.wineName,
-        wineRegion: drunkWine.regionName,
-        wineCountry: drunkWine.countryName,
-        wineImage: drunkWine.pictureURL,
-        wineYear: drunkWine.year,
-
-        // Bottle is already determined in edit mode
-        bottleID: drunkWine.bottleID,
-        availableBottles: [],
-
-        // Pre-populate ratings
-        overallRating: drunkWine.overallRating || 0,
-        valueRating: drunkWine.valueRating || 0,
-
-        complexityRating: drunkWine.complexityRating || 0,
-        drinkabilityRating: drunkWine.drinkabilityRating || 0,
-        surpriseRating: drunkWine.surpriseRating || 0,
-        foodPairingRating: drunkWine.foodPairingRating || 0,
-        showMoreRatings: !!hasOptionalRatings,
-
-        drinkDate,
-        buyAgain: drunkWine.buyAgain === 1,
-        notes: drunkWine.notes || '',
-
-        isLoading: false,
-        isSubmitting: false,
-        errors: {},
-
-        isEditMode: true,
-        ratingID: drunkWine.ratingID
-      });
     },
 
     /**
@@ -280,8 +224,7 @@ function createDrinkWineStore() {
       const state = get({ subscribe });
       const errors: Record<string, string> = {};
 
-      // Skip bottle validation in edit mode (bottle already determined)
-      if (!state.isEditMode && !state.bottleID) {
+      if (!state.bottleID) {
         errors.bottleID = 'Please select a bottle';
       }
 
@@ -299,14 +242,14 @@ function createDrinkWineStore() {
     },
 
     /**
-     * Submit the rating (handles both new ratings and edits)
+     * Submit the rating
      */
-    submit: async (): Promise<{ success: boolean; wineID?: number; isEdit?: boolean }> => {
+    submit: async (): Promise<{ success: boolean; wineID?: number }> => {
       const state = get({ subscribe });
       const errors: Record<string, string> = {};
 
-      // Validate required fields (skip bottleID in edit mode)
-      if (!state.isEditMode && !state.bottleID) {
+      // Validate required fields
+      if (!state.bottleID) {
         errors.bottleID = 'Please select a bottle';
       }
 
@@ -335,14 +278,13 @@ function createDrinkWineStore() {
         const [year, month, day] = state.drinkDate.split('-');
         const formattedDate = `${day}/${month}/${year}`;
 
-        // Common payload fields
-        const basePayload = {
+        const payload: DrinkBottlePayload = {
           wineID: state.wineID!,
           bottleID: state.bottleID!,
           overallRating: state.overallRating,
           valueRating: state.valueRating,
           drinkDate: formattedDate,
-          buyAgain: state.buyAgain ? 1 : 0,
+          buyAgain: state.buyAgain,
           notes: state.notes || undefined,
           // Optional ratings (only send if > 0)
           complexityRating: state.complexityRating > 0 ? state.complexityRating : undefined,
@@ -351,37 +293,24 @@ function createDrinkWineStore() {
           foodPairingRating: state.foodPairingRating > 0 ? state.foodPairingRating : undefined
         };
 
-        if (state.isEditMode) {
-          // Update existing rating
-          const updatePayload: UpdateRatingPayload = {
-            ratingID: state.ratingID!,
-            ...basePayload
-          };
-          await api.updateRating(updatePayload);
-          toasts.success('Rating updated!');
-        } else {
-          // Create new rating
-          const drinkPayload: DrinkBottlePayload = basePayload;
-          await api.drinkBottle(drinkPayload);
+        await api.drinkBottle(payload);
 
-          // Success message based on rating
-          if (state.overallRating >= 8) {
-            toasts.success('Cheers! Great wine!');
-          } else if (state.overallRating >= 5) {
-            toasts.success('Rating saved!');
-          } else {
-            toasts.success('Rating saved. Maybe try a different wine next time!');
-          }
+        // Success message based on rating
+        if (state.overallRating >= 8) {
+          toasts.success('Cheers! Great wine!');
+        } else if (state.overallRating >= 5) {
+          toasts.success('Rating saved!');
+        } else {
+          toasts.success('Rating saved. Maybe try a different wine next time!');
         }
 
         const wineID = state.wineID;
-        const isEdit = state.isEditMode;
         update((s) => ({ ...s, isSubmitting: false }));
 
-        return { success: true, wineID: wineID ?? undefined, isEdit };
+        return { success: true, wineID: wineID ?? undefined };
       } catch (error) {
         console.error('Failed to submit rating:', error);
-        toasts.error(state.isEditMode ? 'Failed to update rating.' : 'Failed to save rating. Please try again.');
+        toasts.error('Failed to save rating. Please try again.');
         update((s) => ({ ...s, isSubmitting: false }));
         return { success: false };
       }
@@ -418,10 +347,8 @@ export const isDirty = derived(drinkWine, ($state) => {
 
 /** Check if both required ratings are set */
 export const canSubmit = derived(drinkWine, ($state) => {
-  // In edit mode, bottleID is already set
-  const hasBottle = $state.isEditMode || $state.bottleID !== null;
   return (
-    hasBottle &&
+    $state.bottleID !== null &&
     $state.overallRating >= 1 &&
     $state.overallRating <= 10 &&
     $state.valueRating >= 1 &&
