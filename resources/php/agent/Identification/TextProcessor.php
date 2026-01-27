@@ -84,16 +84,22 @@ PROMPT;
      * Process text to extract wine data
      *
      * @param string $text Input text
+     * @param array $options Optional overrides (temperature, max_tokens, detailed_prompt)
      * @return array Processing result with success, parsed data, and usage
      */
-    public function process(string $text): array
+    public function process(string $text, array $options = []): array
     {
-        $prompt = str_replace('{input}', $text, $this->promptTemplate);
+        // Allow using a more detailed prompt for escalation
+        $template = $options['detailed_prompt'] ?? false
+            ? $this->getDetailedPrompt()
+            : $this->promptTemplate;
+
+        $prompt = str_replace('{input}', $text, $template);
 
         $response = $this->llmClient->complete('identify_text', $prompt, [
             'json_response' => true,
-            'temperature' => 0.3, // Lower temperature for more consistent parsing
-            'max_tokens' => 500,
+            'temperature' => $options['temperature'] ?? 0.3,
+            'max_tokens' => $options['max_tokens'] ?? 500,
         ]);
 
         if (!$response->success) {
@@ -130,6 +136,50 @@ PROMPT;
             'cost' => $response->costUSD,
             'latencyMs' => $response->latencyMs,
         ];
+    }
+
+    /**
+     * Get detailed prompt for escalated identification
+     * More thorough instructions for difficult wines
+     *
+     * @return string Detailed prompt
+     */
+    private function getDetailedPrompt(): string
+    {
+        return <<<'PROMPT'
+You are a master sommelier with expertise in wine identification. Analyze the following wine description thoroughly.
+
+Input: {input}
+
+Use your extensive knowledge to identify this wine. Consider:
+- If the input is abbreviated, expand it (e.g., "Chx" = Château, "Dom" = Domaine)
+- If the region is implied, deduce it from the wine name or producer
+- For First Growth Bordeaux or prestigious estates, recognize them by name alone
+- For New World wines, consider typical regional grape varieties
+- For European wines, consider appellation rules to deduce grape varieties
+
+Extract these fields (use null only if truly uncertain after careful consideration):
+- producer: The full winery/producer name (expand abbreviations)
+- wineName: The specific wine/cuvée name if different from producer
+- vintage: The year (4 digits)
+- region: The wine region or appellation (be specific - e.g., "Margaux" not just "Bordeaux")
+- country: Country of origin
+- wineType: Red, White, Rosé, Sparkling, Dessert, or Fortified
+- grapes: Array of likely grape varieties (can infer from region/style if not stated)
+- confidence: Your confidence score (0-100). Be confident when you have strong knowledge.
+
+Respond ONLY with valid JSON:
+{
+  "producer": "string or null",
+  "wineName": "string or null",
+  "vintage": "string or null",
+  "region": "string or null",
+  "country": "string or null",
+  "wineType": "string or null",
+  "grapes": ["array"] or null,
+  "confidence": number
+}
+PROMPT;
     }
 
     /**

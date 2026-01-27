@@ -1,22 +1,26 @@
 <?php
 /**
- * Wine Text Identification Endpoint
+ * Wine Image Identification Endpoint
  *
- * POST /resources/php/agent/identifyText.php
+ * POST /resources/php/agent/identifyImage.php
  *
  * Request:
- *   {"text": "2019 Château Margaux"}
+ *   {
+ *     "image": "base64-encoded-image-data",
+ *     "mimeType": "image/jpeg"
+ *   }
  *
  * Response:
  *   {
  *     "success": true,
- *     "message": "Wine identified successfully",
+ *     "message": "Wine identified from image",
  *     "data": {
  *       "intent": "add",
  *       "parsed": {...},
- *       "confidence": 95,
+ *       "confidence": 85,
  *       "action": "auto_populate",
- *       "candidates": []
+ *       "candidates": [],
+ *       "quality": {...}
  *     }
  *   }
  *
@@ -36,9 +40,13 @@ if (json_last_error() !== JSON_ERROR_NONE) {
     agentError('Invalid JSON body');
 }
 
-// Validate required field and type
-if (empty($input['text']) || !is_string($input['text'])) {
-    agentError('Missing or invalid field: text (string required)');
+// Validate required fields
+if (empty($input['image']) || !is_string($input['image'])) {
+    agentError('Missing or invalid field: image (base64 string required)');
+}
+
+if (empty($input['mimeType']) || !is_string($input['mimeType'])) {
+    agentError('Missing or invalid field: mimeType (string required)');
 }
 
 try {
@@ -47,27 +55,35 @@ try {
 
     // Run identification
     $service = getAgentIdentificationService($userId);
-    $result = $service->identify($input);
+    $result = $service->identify([
+        'image' => $input['image'],
+        'mimeType' => $input['mimeType'],
+    ]);
 
     if (!$result['success']) {
         $errorType = $result['errorType'] ?? 'identification_error';
-        $httpCode = $errorType === 'limit_exceeded' ? 429 : 400;
-        agentError($result['error'] ?? 'Identification failed', $httpCode);
+        $httpCode = match ($errorType) {
+            'limit_exceeded' => 429,
+            'quality_check_failed' => 422,
+            default => 400,
+        };
+        agentError($result['error'] ?? 'Image identification failed', $httpCode);
     }
 
     // Success response
-    agentResponse(true, 'Wine identified successfully', [
-        'inputType' => $result['inputType'] ?? 'text',
+    agentResponse(true, 'Wine identified from image', [
+        'inputType' => 'image',
         'intent' => $result['intent'],
         'parsed' => $result['parsed'],
         'confidence' => $result['confidence'],
         'action' => $result['action'],
         'candidates' => $result['candidates'],
         'usage' => $result['usage'] ?? null,
+        'quality' => $result['quality'] ?? null,
     ]);
 
 } catch (\Exception $e) {
     // Log error
-    error_log('Agent identification error: ' . $e->getMessage());
+    error_log('Agent image identification error: ' . $e->getMessage());
     agentError('Internal server error', 500);
 }
