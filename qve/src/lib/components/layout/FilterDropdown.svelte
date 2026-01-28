@@ -6,7 +6,6 @@
    * Automatically adjusts position to stay within viewport bounds
    */
   import { createEventDispatcher, onMount, tick } from 'svelte';
-  import { fade, fly } from 'svelte/transition';
   import { Icon } from '$lib/components';
   import type { FilterOption } from '$lib/stores/filterOptions';
 
@@ -20,6 +19,8 @@
   let highlightedIndex = -1;
   let adjustedPosition = { ...position };
   let positionReady = false;
+  let backdropReady = false; // Prevents backdrop from capturing pill click on iOS
+  let backdropTouched = false; // Track if backdrop received its own touch (not ghost click)
 
   const dispatch = createEventDispatcher<{
     select: { value: string };
@@ -30,39 +31,49 @@
   // Adjust position to keep dropdown within viewport bounds
   async function adjustPositionForViewport() {
     await tick(); // Wait for DOM to update
-    if (!containerElement) return;
 
-    const rect = containerElement.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const padding = 16; // Minimum distance from edge
+    // iOS Safari timing: containerElement may not be bound yet
+    // Use requestAnimationFrame to ensure DOM is ready
+    requestAnimationFrame(() => {
+      if (!containerElement) {
+        // Fallback: use initial position and show anyway
+        adjustedPosition = { ...position };
+        positionReady = true;
+        return;
+      }
 
-    let newLeft = position.left;
-    let newTop = position.top;
+      const rect = containerElement.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const padding = 16; // Minimum distance from edge
 
-    // Check right edge overflow
-    if (newLeft + rect.width > viewportWidth - padding) {
-      newLeft = viewportWidth - rect.width - padding;
-    }
+      let newLeft = position.left;
+      let newTop = position.top;
 
-    // Check left edge (don't go off left side)
-    if (newLeft < padding) {
-      newLeft = padding;
-    }
+      // Check right edge overflow
+      if (newLeft + rect.width > viewportWidth - padding) {
+        newLeft = viewportWidth - rect.width - padding;
+      }
 
-    // Check bottom edge overflow
-    if (newTop + rect.height > viewportHeight - padding) {
-      // Position above the trigger instead
-      newTop = position.top - rect.height - 16;
-    }
+      // Check left edge (don't go off left side)
+      if (newLeft < padding) {
+        newLeft = padding;
+      }
 
-    // Check top edge (don't go off top)
-    if (newTop < padding) {
-      newTop = padding;
-    }
+      // Check bottom edge overflow
+      if (newTop + rect.height > viewportHeight - padding) {
+        // Position above the trigger instead
+        newTop = position.top - rect.height - 16;
+      }
 
-    adjustedPosition = { top: newTop, left: newLeft };
-    positionReady = true;
+      // Check top edge (don't go off top)
+      if (newTop < padding) {
+        newTop = padding;
+      }
+
+      adjustedPosition = { top: newTop, left: newLeft };
+      positionReady = true;
+    });
   }
 
   function handleSelect(value: string) {
@@ -77,7 +88,29 @@
     dispatch('close');
   }
 
+  function handleBackdropTouchStart() {
+    // Mark that backdrop received its own touch event (not a ghost click from pill)
+    if (backdropReady) {
+      backdropTouched = true;
+    }
+  }
+
+  function handleBackdropTouchEnd(event: TouchEvent) {
+    // Only close if backdrop is ready AND received its own touch
+    if (!backdropReady || !backdropTouched) return;
+    event.preventDefault(); // Prevent click from also firing
+    handleClose();
+  }
+
   function handleBackdropClick() {
+    // Only close if backdrop is ready AND either:
+    // 1. Backdrop was touched (touch devices), or
+    // 2. This is a non-touch click (mouse devices - backdropTouched will be false but that's ok)
+    // On iOS, ghost clicks won't have backdropTouched=true, so they'll be ignored
+    if (!backdropReady) return;
+    // For touch devices, require an explicit touch on backdrop
+    // For mouse, allow click directly (backdropTouched stays false)
+    if ('ontouchstart' in window && !backdropTouched) return;
     handleClose();
   }
 
@@ -116,10 +149,16 @@
     }
   }
 
-  // Focus container on mount and adjust position for viewport
+  // Adjust position on mount
   onMount(() => {
     adjustPositionForViewport();
-    containerElement?.focus();
+    // Don't auto-focus on iOS - it can interfere with touch handling
+
+    // Delay backdrop interaction to prevent capturing pill click on iOS
+    // 300ms to ensure all touch events from pill tap have completed
+    setTimeout(() => {
+      backdropReady = true;
+    }, 300);
   });
 
   // Check if an item is the currently selected value
@@ -130,18 +169,20 @@
 
 <svelte:window on:keydown={handleKeydown} />
 
-<!-- Backdrop overlay -->
+<!-- Backdrop overlay (transitions removed for iOS compatibility) -->
 <div
   class="dropdown-backdrop"
+  class:backdrop-ready={backdropReady}
+  on:touchstart={handleBackdropTouchStart}
+  on:touchend={handleBackdropTouchEnd}
   on:click={handleBackdropClick}
   on:keydown={handleKeydown}
   role="button"
   tabindex="-1"
   aria-label="Close dropdown"
-  transition:fade={{ duration: 150 }}
 ></div>
 
-<!-- Dropdown container -->
+<!-- Dropdown container (transitions removed for iOS compatibility) -->
 <div
   class="dropdown-container"
   class:position-ready={positionReady}
@@ -150,7 +191,6 @@
   aria-label="{label} options"
   tabindex="-1"
   style="top: {adjustedPosition.top}px; left: {adjustedPosition.left}px;"
-  transition:fly={{ y: -8, duration: 200 }}
 >
   <!-- Header -->
   <div class="dropdown-header">
@@ -229,8 +269,17 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.2);
-    z-index: 200;
+    z-index: 9998;
     cursor: pointer; /* Required for iOS tap detection */
+    /* Force new compositing layer to escape header stacking context on iOS Safari */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    /* Disable pointer events initially to prevent iOS ghost clicks */
+    pointer-events: none;
+  }
+
+  .dropdown-backdrop.backdrop-ready {
+    pointer-events: auto;
   }
 
   /* Dropdown container - uses fixed positioning to escape header overflow */
@@ -242,11 +291,14 @@
     border: 1px solid var(--divider);
     border-radius: 8px;
     box-shadow: var(--shadow-lg);
-    z-index: 201;
+    z-index: 9999;
     overflow: hidden;
     outline: none;
     opacity: 0;
     visibility: hidden;
+    /* Force new compositing layer to escape header stacking context on iOS Safari */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
   }
 
   .dropdown-container.position-ready {

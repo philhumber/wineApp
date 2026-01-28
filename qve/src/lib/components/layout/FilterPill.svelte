@@ -16,10 +16,52 @@
     click: void;
   }>();
 
+  // Track touch state to distinguish taps from scrolls
+  let touchHandled = false;
+  let touchStartX = 0;
+  let touchStartY = 0;
+  const SCROLL_THRESHOLD = 10; // pixels - if moved more than this, it's a scroll
+
   function handleClick() {
+    // Ignore click if already handled by touch
+    if (touchHandled) {
+      touchHandled = false;
+      return;
+    }
+
     if (!disabled) {
       dispatch('click');
     }
+  }
+
+  function handleTouchStart(event: TouchEvent) {
+    const touch = event.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+  }
+
+  // iOS fast tap handler - only fires if touch didn't move (not a scroll)
+  function handleTouchEnd(event: TouchEvent) {
+    if (disabled || touchHandled) return;
+
+    const touch = event.changedTouches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartX);
+    const deltaY = Math.abs(touch.clientY - touchStartY);
+
+    // If touch moved significantly, it was a scroll - don't trigger click
+    if (deltaX > SCROLL_THRESHOLD || deltaY > SCROLL_THRESHOLD) {
+      return;
+    }
+
+    event.preventDefault(); // Prevent delayed click
+    event.stopImmediatePropagation(); // Stop all other handlers
+    touchHandled = true;
+    dispatch('click');
+
+    // Reset flag after potential click event (iOS can have up to 300ms delay)
+    setTimeout(() => {
+      touchHandled = false;
+    }, 500);
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -36,6 +78,9 @@
   class:expanded
   {disabled}
   on:click={handleClick}
+  on:touchstart={handleTouchStart}
+  on:touchend={handleTouchEnd}
+  on:keydown={handleKeydown}
   aria-pressed={active}
   aria-expanded={hasDropdown ? expanded : undefined}
   aria-haspopup={hasDropdown ? 'listbox' : undefined}

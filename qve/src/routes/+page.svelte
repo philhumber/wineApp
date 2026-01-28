@@ -276,9 +276,17 @@
    * ───────────────────────────────────────────────────────── */
   .page-container {
     max-width: 1200px;
+    width: 100%;
     margin: 0 auto;
     padding: var(--space-6);
     min-height: 100vh;
+    box-sizing: border-box;
+  }
+
+  @media (max-width: 479px) {
+    .page-container {
+      padding: var(--space-4);
+    }
   }
 
   /* ─────────────────────────────────────────────────────────

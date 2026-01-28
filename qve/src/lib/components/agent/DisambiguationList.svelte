@@ -30,6 +30,16 @@
 		dispatch('tryAgain');
 	}
 
+	// Detect if candidates are appellation/region references
+	$: isAppellationList = candidates.length > 0 &&
+		candidates.some((c) => !!(c.data as Record<string, unknown>)?.appellationName);
+
+	// Dynamic header text based on candidate type
+	$: headerTitle = isAppellationList ? 'Multiple appellations found' : 'Multiple matches found';
+	$: headerSubtitle = isAppellationList
+		? 'Which region best matches this wine?'
+		: 'Please select the correct wine:';
+
 	// Extract display data from candidate
 	function getCandidateDisplay(candidate: AgentCandidate): {
 		name: string;
@@ -38,7 +48,24 @@
 	} {
 		const data = candidate.data as Record<string, unknown>;
 
-		// Try to extract wine name from various possible fields
+		// Check if this is an appellation/region candidate
+		if (data.appellationName) {
+			const name = String(data.appellationName);
+
+			const parts: string[] = [];
+			if (data.subRegion) parts.push(String(data.subRegion));
+			if (data.classificationLevel) parts.push(String(data.classificationLevel));
+			if (data.primaryGrapes && Array.isArray(data.primaryGrapes)) {
+				parts.push((data.primaryGrapes as string[]).slice(0, 3).join(', '));
+			}
+
+			const metadata = parts.join(' · ') || `${data.region ?? ''} · ${data.country ?? ''}`;
+			const source = 'Appellation reference';
+
+			return { name, metadata, source };
+		}
+
+		// Wine candidate — try to extract name from various possible fields
 		const name =
 			(data.producer as string) ||
 			(data.wineName as string) ||
@@ -64,8 +91,8 @@
 
 <div class="disambiguation">
 	<header class="header">
-		<h3 class="title">Multiple matches found</h3>
-		<p class="subtitle">Please select the correct wine:</p>
+		<h3 class="title">{headerTitle}</h3>
+		<p class="subtitle">{headerSubtitle}</p>
 	</header>
 
 	<div class="candidates">
