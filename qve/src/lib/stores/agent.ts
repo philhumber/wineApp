@@ -51,6 +51,7 @@ export type AgentMessageType =
 	| 'chips'
 	| 'image_preview'
 	| 'wine_result'
+	| 'low_confidence'
 	| 'disambiguation'
 	| 'coming_soon'
 	| 'error';
@@ -291,6 +292,52 @@ function createAgentStore() {
 
 				// Call API with retry
 				const result = await withRetry(() => api.identifyImage(imageData, mimeType));
+
+				update((state) => ({
+					...state,
+					isLoading: false,
+					lastResult: result,
+					error: null,
+					imageQuality: result.quality ?? null
+				}));
+
+				return result;
+			} catch (error) {
+				const message =
+					error instanceof Error ? error.message : 'Image identification failed. Please try again.';
+				update((state) => ({
+					...state,
+					isLoading: false,
+					error: message
+				}));
+				return null;
+			}
+		},
+
+		/**
+		 * Re-identify wine from image with supplementary text context
+		 * Compresses image and sends with user-provided hints for better identification
+		 */
+		identifyImageWithSupplementaryText: async (
+			file: File,
+			supplementaryText: string
+		): Promise<AgentIdentificationResultWithMeta | null> => {
+			update((state) => ({
+				...state,
+				isLoading: true,
+				error: null,
+				currentInputType: 'image',
+				imageQuality: null
+			}));
+
+			try {
+				// Compress image for upload
+				const { imageData, mimeType } = await api.compressImageForIdentification(file);
+
+				// Call API with supplementary text and retry
+				const result = await withRetry(() =>
+					api.identifyImage(imageData, mimeType, supplementaryText)
+				);
 
 				update((state) => ({
 					...state,

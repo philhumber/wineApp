@@ -96,6 +96,18 @@ PROMPT;
 
         $prompt = str_replace('{input}', $text, $template);
 
+        // Append supplementary context from user if provided
+        if (!empty($options['supplementary_text'])) {
+            $parser = new SupplementaryContextParser();
+            $contextResult = $parser->parse($options['supplementary_text']);
+            if (!empty($contextResult['promptSnippet'])) {
+                $prompt .= "\n\n" . $contextResult['promptSnippet'];
+            } else {
+                // Fallback: append raw text if parser found no structured constraints
+                $prompt .= "\n\nUSER CONTEXT: " . $options['supplementary_text'];
+            }
+        }
+
         $response = $this->llmClient->complete('identify_text', $prompt, [
             'json_response' => true,
             'temperature' => $options['temperature'] ?? 0.3,

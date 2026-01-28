@@ -181,10 +181,21 @@ class IdentificationService
      */
     private function identifyFromImage(array $classification): array
     {
+        // Extract supplementary text for re-identification with user context
+        $supplementaryText = $classification['supplementaryText'] ?? null;
+        $processOptions = [];
+        if ($supplementaryText) {
+            agentLogInfo('Supplementary text received for image re-identification', [
+                'supplementaryText' => $supplementaryText,
+            ]);        
+            $processOptions['supplementary_text'] = $supplementaryText;
+        }
+
         // Step 2: Process image with vision LLM (fast model first)
         $processed = $this->visionProcessor->process(
             $classification['imageData'],
-            $classification['mimeType']
+            $classification['mimeType'],
+            $processOptions
         );
 
         if (!$processed['success']) {
@@ -217,6 +228,14 @@ class IdentificationService
         // Keep first quality assessment
         $quality = $processed['quality'] ?? null;
 
+        // Parse supplementary constraints for post-LLM confidence adjustment
+        $constraints = [];
+        if ($supplementaryText) {
+            $parser = new SupplementaryContextParser();
+            $contextResult = $parser->parse($supplementaryText);
+            $constraints = $contextResult['constraints'] ?? [];
+        }
+
         // Step 3a: Model escalation - if confidence is below threshold, try detailed model
         $escalationThreshold = $this->config['confidence']['escalation_threshold'] ?? 70;
         if ($scoring['score'] < $escalationThreshold) {
@@ -226,15 +245,20 @@ class IdentificationService
             // Get detailed model options
             $detailedOptions = $this->config['model_tiers']['detailed'] ?? [];
 
-            // Try with detailed prompt and options
+            // Try with detailed prompt and options (also pass supplementary text)
+            $escalationOptions = [
+                'detailed_prompt' => true,
+                'temperature' => $detailedOptions['temperature'] ?? 0.4,
+                'max_tokens' => $detailedOptions['max_tokens'] ?? 800,
+            ];
+            if ($supplementaryText) {
+                $escalationOptions['supplementary_text'] = $supplementaryText;
+            }
+
             $detailedProcessed = $this->visionProcessor->process(
                 $classification['imageData'],
                 $classification['mimeType'],
-                [
-                    'detailed_prompt' => true,
-                    'temperature' => $detailedOptions['temperature'] ?? 0.4,
-                    'max_tokens' => $detailedOptions['max_tokens'] ?? 800,
-                ]
+                $escalationOptions
             );
 
             if ($detailedProcessed['success']) {
@@ -252,6 +276,29 @@ class IdentificationService
                 $totalUsage['tokens']['output'] += $detailedProcessed['tokens']['output'] ?? 0;
                 $totalUsage['cost'] += $detailedProcessed['cost'] ?? 0;
                 $totalUsage['latencyMs'] += $detailedProcessed['latencyMs'] ?? 0;
+            }
+        }
+
+        // Step 3b: Post-LLM confidence adjustment based on supplementary constraints
+        if (!empty($constraints)) {
+            $parser = $parser ?? new SupplementaryContextParser();
+            $adjustment = $parser->validateAgainstConstraints($processed['parsed'], $constraints);
+            if ($adjustment !== 0) {
+                $scoring['score'] = max(0, min(100, $scoring['score'] + $adjustment));
+                $scoring['action'] = $this->scorer->score($processed['parsed'])['action'] ?? $scoring['action'];
+                // Re-determine action based on adjusted score
+                if ($scoring['score'] >= ($this->config['confidence']['auto_populate'] ?? 85)) {
+                    $scoring['action'] = 'auto_populate';
+                } elseif ($scoring['score'] >= ($this->config['confidence']['suggest'] ?? 60)) {
+                    $scoring['action'] = 'suggest';
+                } else {
+                    $scoring['action'] = 'disambiguate';
+                }
+                agentLogInfo('Confidence adjusted by supplementary constraints', [
+                    'adjustment' => $adjustment,
+                    'newScore' => $scoring['score'],
+                    'constraints' => $constraints,
+                ]);
             }
         }
 

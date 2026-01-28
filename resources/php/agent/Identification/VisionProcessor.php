@@ -117,6 +117,18 @@ PROMPT;
             ? $this->getDetailedPrompt()
             : $this->promptTemplate;
 
+        // Append supplementary context from user if provided
+        if (!empty($options['supplementary_text'])) {
+            $parser = new SupplementaryContextParser();
+            $contextResult = $parser->parse($options['supplementary_text']);
+            if (!empty($contextResult['promptSnippet'])) {
+                $prompt .= "\n\n" . $contextResult['promptSnippet'];
+            } else {
+                // Fallback: append raw text if parser found no structured constraints
+                $prompt .= "\n\nUSER CONTEXT: " . $options['supplementary_text'];
+            }
+        }
+
         // Step 2: Call LLM with vision
         $response = $this->llmClient->completeWithImage(
             'identify_image',
