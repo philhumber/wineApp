@@ -31,7 +31,7 @@
 	import CommandInput from './CommandInput.svelte';
 	import ChatMessage from './ChatMessage.svelte';
 	import TypingIndicator from './TypingIndicator.svelte';
-	import type { AgentParsedWine, AgentCandidate } from '$lib/api/types';
+	import type { AgentParsedWine, AgentCandidate, AgentAction } from '$lib/api/types';
 
 	// Reactive bindings
 	$: isOpen = $agentPanelOpen;
@@ -41,6 +41,10 @@
 	$: isTyping = $agentIsTyping;
 	$: hasStarted = $agentHasStarted;
 	$: parsed = $agentParsed;
+
+	// Track original image and input type for re-identification with supplementary text
+	let lastImageFile: File | null = null;
+	let lastInputType: 'text' | 'image' | null = null;
 
 	// Auto-scroll logic
 	let messageContainer: HTMLElement;
@@ -58,16 +62,10 @@
 
 	// Initialize conversation when panel opens
 	onMount(() => {
-		// Panel is now visible - start session if no messages exist
-		console.log('[Agent] Panel mounted. Messages:', $agentMessages.length, 'hasStarted:', $agentHasStarted);
 		if ($agentMessages.length === 0) {
-			console.log('[Agent] Starting session...');
 			agent.startSession();
 		}
 	});
-
-	// Debug: log when messages change
-	$: console.log('[Agent] Messages updated:', messages.length, messages.map(m => m.type));
 
 	// Scroll to bottom when new messages arrive
 	$: if (messages.length > 0) {
@@ -107,7 +105,328 @@
 	}
 
 	function handleStartOver() {
+		lastImageFile = null;
+		lastInputType = null;
 		agent.resetConversation();
+	}
+
+	// ─────────────────────────────────────────────────────
+	// LOW CONFIDENCE MESSAGE BUILDER
+	// ─────────────────────────────────────────────────────
+
+	/**
+	 * Build a conversational sommelier-style message for low-confidence results.
+	 * Mentions what was found and asks about what's missing.
+	 */
+	function buildLowConfidenceMessage(parsed: AgentParsedWine, isRetry: boolean): string {
+		const knownParts: string[] = [];
+		const missingParts: string[] = [];
+
+		// Check each field for known vs missing
+		if (parsed.wineName && parsed.wineName !== 'Unknown Wine') {
+			knownParts.push(`the name might be "${parsed.wineName}"`);
+		} else {
+			missingParts.push('the wine name');
+		}
+
+		if (parsed.producer && parsed.producer !== 'Unknown') {
+			knownParts.push(`the producer could be "${parsed.producer}"`);
+		} else {
+			missingParts.push('the producer');
+		}
+
+		if (parsed.vintage) {
+			knownParts.push(`it appears to be a ${parsed.vintage}`);
+		} else {
+			missingParts.push('the vintage');
+		}
+
+		if (parsed.region) {
+			knownParts.push(`possibly from ${parsed.region}`);
+		} else {
+			missingParts.push('the region');
+		}
+
+		if (parsed.country) {
+			knownParts.push(`from ${parsed.country}`);
+		} else if (!parsed.region) {
+			missingParts.push('the country');
+		}
+
+		if (parsed.wineType) {
+			knownParts.push(`it looks like a ${parsed.wineType.toLowerCase()}`);
+		}
+
+		// Build the message
+		let message: string;
+
+		if (knownParts.length === 0) {
+			// Nothing found at all
+			message = isRetry
+				? "I'm still having difficulty identifying this wine. Could you try describing it differently?"
+				: "I'm having difficulty identifying this wine from what I have.";
+		} else {
+			// Some data found
+			const opening = isRetry
+				? "I'm still not quite certain, but here's what I've gathered so far"
+				: "I wasn't able to identify this wine with certainty, but I have a few leads";
+
+			message = `${opening} — ${knownParts.join(', ')}.`;
+
+			if (missingParts.length > 0) {
+				const missingStr = missingParts.length === 1
+					? missingParts[0]
+					: `${missingParts.slice(0, -1).join(', ')} or ${missingParts[missingParts.length - 1]}`;
+				message += ` If you could tell me ${missingStr}, that would help me narrow it down.`;
+			}
+		}
+
+		return message;
+	}
+
+	/**
+	 * Merge new LLM result with locked-in fields from the augmentation context.
+	 * Already-confirmed fields (region, producer, etc.) are preserved;
+	 * new fields from the LLM fill in the gaps.
+	 */
+	function mergeWithAugmentationContext(
+		newParsed: AgentParsedWine,
+		augContext: { originalResult: { parsed: AgentParsedWine } }
+	): AgentParsedWine {
+		const locked = augContext.originalResult.parsed;
+		return {
+			producer: (locked.producer && locked.producer !== 'Unknown') ? locked.producer : newParsed.producer,
+			wineName: (locked.wineName && locked.wineName !== 'Unknown Wine') ? locked.wineName : newParsed.wineName,
+			vintage: locked.vintage || newParsed.vintage,
+			region: locked.region || newParsed.region,
+			country: locked.country || newParsed.country,
+			wineType: locked.wineType || newParsed.wineType,
+			grapes: locked.grapes || newParsed.grapes,
+			confidence: newParsed.confidence // Always use latest LLM confidence
+		};
+	}
+
+	/**
+	 * Check if parsed wine has all minimum required fields for add-wine.
+	 */
+	function hasMinimumFields(parsed: AgentParsedWine): boolean {
+		return !!(
+			parsed.region &&
+			parsed.producer && parsed.producer !== 'Unknown' &&
+			parsed.wineName && parsed.wineName !== 'Unknown Wine' &&
+			parsed.wineType
+		);
+	}
+
+	/**
+	 * Build a progress message for the progressive identification flow.
+	 * Summarises what's known and lists what's still needed.
+	 */
+	function buildProgressMessage(parsed: AgentParsedWine): string {
+		const known: string[] = [];
+		const missing: string[] = [];
+
+		if (parsed.region) known.push(parsed.region);
+		if (parsed.producer && parsed.producer !== 'Unknown') known.push(parsed.producer);
+		if (parsed.wineName && parsed.wineName !== 'Unknown Wine') known.push(`"${parsed.wineName}"`);
+		if (parsed.wineType) known.push(parsed.wineType.toLowerCase());
+		if (parsed.vintage) known.push(parsed.vintage);
+
+		if (!parsed.producer || parsed.producer === 'Unknown') missing.push('the producer');
+		if (!parsed.wineName || parsed.wineName === 'Unknown Wine') missing.push('the wine name');
+		if (!parsed.wineType) missing.push('the wine type');
+		if (!parsed.region) missing.push('the region');
+
+		const knownStr = known.length > 0
+			? `So far I have: ${known.join(', ')}.`
+			: '';
+
+		const missingStr = missing.length > 0
+			? `I still need ${missing.join(' and ')} to complete the identification.`
+			: '';
+
+		return `Getting closer. ${knownStr} ${missingStr}`.trim();
+	}
+
+	/**
+	 * Handle identification result with four-way branching logic.
+	 * Routes to: low_confidence conversation, disambiguation list, wine card, or error.
+	 * When in retry mode (augmentation), merges results with locked-in fields and
+	 * checks minimum required fields before allowing add-wine.
+	 */
+	function handleIdentificationResult(
+		result: { parsed: AgentParsedWine; confidence: number; candidates?: AgentCandidate[]; action?: string } | null,
+		inputText: string
+	) {
+		if (!result) return false;
+
+		const hasCandidates = (result.candidates?.length ?? 0) > 0;
+		const augContext = $agentAugmentationContext;
+		const isRetry = augContext !== null;
+
+		// ── RETRY MODE: merge with locked-in fields, enforce minimum ──
+		if (isRetry && augContext?.originalResult?.parsed) {
+			const merged = mergeWithAugmentationContext(result.parsed, augContext);
+
+			// Determine if merged result has enough data to show a card
+		const mergedIsValidWine = (merged.wineName || merged.producer) &&
+			merged.wineName !== 'Unknown Wine' &&
+			merged.producer !== 'Unknown';
+		const mergedConfidence = result.confidence ?? 0;
+
+		if (hasCandidates) {
+				// Disambiguation returned during retry — show list but keep locked fields
+				agent.setAugmentationContext({
+					...augContext,
+					originalResult: {
+						...augContext.originalResult,
+						parsed: merged,
+						confidence: result.confidence
+					}
+				});
+				agent.addMessage({
+					role: 'agent',
+					type: 'disambiguation',
+					content: 'I found a few possibilities. Does one of these look right?',
+					candidates: result.candidates!
+				});
+				agent.setPhase('result_confirm');
+
+			} else if (mergedConfidence >= 60 && mergedIsValidWine) {
+				// Confidence is reasonable — show wine card.
+				// If all minimum fields present, clear augmentation context (ready for add).
+				// If some fields missing, keep context so handleAddToCellar can redirect.
+				if (hasMinimumFields(merged)) {
+					agent.setAugmentationContext(null);
+				} else {
+					agent.setAugmentationContext({
+						...augContext,
+						originalResult: {
+							...augContext.originalResult,
+							parsed: merged,
+							confidence: result.confidence
+						}
+					});
+				}
+				agent.addMessage({
+					role: 'agent',
+					type: 'wine_result',
+					content: 'Is this the wine you\'re seeking?',
+					wineResult: merged,
+					confidence: result.confidence,
+					chips: [
+						{ id: 'correct', label: 'Correct', icon: 'check', action: 'correct' },
+						{ id: 'not_correct', label: 'Not Correct', icon: 'x', action: 'not_correct' }
+					]
+				});
+				agent.setPhase('result_confirm');
+
+			} else {
+				// Low confidence or no valid data — continue progressive identification
+				const message = buildProgressMessage(merged);
+				agent.addMessage({
+					role: 'agent',
+					type: 'low_confidence',
+					content: message,
+					wineResult: merged,
+					confidence: result.confidence,
+					chips: [
+						{ id: 'provide_more', label: 'Tell Me More', icon: 'edit', action: 'provide_more' },
+						{ id: 'see_result', label: 'See What I Found', icon: 'search', action: 'see_result' },
+						{ id: 'start_fresh', label: 'Start Fresh', icon: 'refresh', action: 'start_fresh' }
+					]
+				});
+				agent.setAugmentationContext({
+					...augContext,
+					originalResult: {
+						...augContext.originalResult,
+						parsed: merged,
+						confidence: result.confidence
+					}
+				});
+				agent.setPhase('augment_input');
+			}
+
+			return true;
+		}
+
+		// ── FIRST ATTEMPT: four-way branch ──
+		const confidence = result.confidence ?? 0;
+		const isValidWine = result.parsed &&
+			(result.parsed.wineName || result.parsed.producer) &&
+			result.parsed.wineName !== 'Unknown Wine' &&
+			result.parsed.producer !== 'Unknown';
+
+		if (confidence < 60 && !hasCandidates) {
+			// LOW CONFIDENCE: conversational message asking for more context
+			const message = buildLowConfidenceMessage(result.parsed, false);
+			agent.addMessage({
+				role: 'agent',
+				type: 'low_confidence',
+				content: message,
+				wineResult: result.parsed,
+				confidence: result.confidence,
+				candidates: result.candidates,
+				chips: [
+					{ id: 'provide_more', label: 'Tell Me More', icon: 'edit', action: 'provide_more' },
+					{ id: 'see_result', label: 'See What I Found', icon: 'search', action: 'see_result' }
+				]
+			});
+			agent.setAugmentationContext({
+				originalInput: inputText,
+				originalInputType: lastInputType || 'text',
+				originalResult: {
+					intent: 'add',
+					parsed: result.parsed,
+					confidence: result.confidence,
+					action: (result.action ?? 'disambiguate') as AgentAction,
+					candidates: result.candidates ?? []
+				}
+			});
+			agent.setPhase('augment_input');
+
+		} else if (hasCandidates && confidence < 60) {
+			// DISAMBIGUATION: multiple candidates — show list (preserved)
+			agent.setAugmentationContext(null);
+			agent.addMessage({
+				role: 'agent',
+				type: 'disambiguation',
+				content: 'I found a few possibilities. Does one of these look right?',
+				candidates: result.candidates!
+			});
+			agent.setPhase('result_confirm');
+
+		} else if (isValidWine) {
+			// CARD: medium/high confidence — show wine card (preserved)
+			agent.setAugmentationContext(null);
+			agent.addMessage({
+				role: 'agent',
+				type: 'wine_result',
+				content: 'Is this the wine you\'re seeking?',
+				wineResult: result.parsed,
+				confidence: result.confidence,
+				chips: [
+					{ id: 'correct', label: 'Correct', icon: 'check', action: 'correct' },
+					{ id: 'not_correct', label: 'Not Correct', icon: 'x', action: 'not_correct' }
+				]
+			});
+			agent.setPhase('result_confirm');
+
+		} else {
+			// ERROR: not identifiable — show error with try again (preserved)
+			agent.setAugmentationContext(null);
+			agent.addMessage({
+				role: 'agent',
+				type: 'wine_result',
+				content: 'I couldn\'t identify this wine clearly.',
+				wineResult: result.parsed,
+				confidence: result.confidence,
+				chips: [{ id: 'not_correct', label: 'Try Again', icon: 'x', action: 'not_correct' }]
+			});
+			agent.setPhase('result_confirm');
+		}
+
+		return true;
 	}
 
 	// ─────────────────────────────────────────────────────
@@ -178,14 +497,59 @@
 					content: 'This feature is being prepared for a future vintage.'
 				});
 				break;
+
+			case 'provide_more':
+				// Phase is already augment_input, input is visible — just prompt
+				agent.addMessage({
+					role: 'agent',
+					type: 'text',
+					content: 'Of course. Tell me anything more you know — the producer, country, region, grape variety, or anything on the label.'
+				});
+				break;
+
+			case 'see_result': {
+				// Show the low-confidence result as a card for the user to accept or reject
+				const augCtx = $agentAugmentationContext;
+				if (augCtx?.originalResult?.parsed) {
+					agent.addMessage({
+						role: 'agent',
+						type: 'wine_result',
+						content: "Here's what I found — is this close?",
+						wineResult: augCtx.originalResult.parsed,
+						confidence: augCtx.originalResult.confidence,
+						chips: [
+							{ id: 'correct', label: 'Correct', icon: 'check', action: 'correct' },
+							{ id: 'not_correct', label: 'Not Correct', icon: 'x', action: 'not_correct' }
+						]
+					});
+					agent.setPhase('result_confirm');
+				}
+				break;
+			}
+
+			case 'start_fresh':
+				// Clear tracking state and restart
+				lastImageFile = null;
+				lastInputType = null;
+				agent.setAugmentationContext(null);
+				agent.addMessage({
+					role: 'agent',
+					type: 'text',
+					content: 'Let\'s start fresh. Share an image or tell me about the wine.'
+				});
+				agent.setPhase('await_input');
+				break;
 		}
 	}
 
 	function handleIncorrectResult() {
 		const candidates = $agentCandidates;
 
-		// Debug logging
-		console.log('[Agent] Not Correct clicked. Candidates:', candidates);
+		// Use the most recent wine result (may contain merged data from progressive flow)
+		const lastWineMsg = [...$agentMessages].reverse().find(
+			(m) => m.type === 'wine_result' && m.wineResult
+		);
+		const wineData = lastWineMsg?.wineResult || parsed;
 
 		if (candidates.length > 0) {
 			// Show alternatives
@@ -204,14 +568,14 @@
 				type: 'text',
 				content: "I'd like to understand better. Could you tell me more about this wine? (e.g., producer, region, or grape variety)"
 			});
-			// Store augmentation context
-			if (parsed) {
+			// Store augmentation context with tracked input type
+			if (wineData) {
 				agent.setAugmentationContext({
-					originalInput: '', // We don't have this stored, could enhance later
-					originalInputType: 'text',
+					originalInput: '',
+					originalInputType: lastInputType || 'text',
 					originalResult: {
 						intent: 'add',
-						parsed,
+						parsed: wineData,
 						confidence: $agentConfidence ?? 0,
 						action: $agentAction ?? 'suggest',
 						candidates: []
@@ -222,10 +586,40 @@
 	}
 
 	async function handleAddToCellar() {
-		if (!parsed) return;
+		// Use the most recent wine result shown to the user (may contain merged data
+		// from progressive identification), falling back to the store's parsed value
+		const lastWineMsg = [...$agentMessages].reverse().find(
+			(m) => m.type === 'wine_result' && m.wineResult
+		);
+		const wineData = lastWineMsg?.wineResult || parsed;
+		if (!wineData) return;
+
+		// Check minimum required fields before navigating to add-wine
+		if (!hasMinimumFields(wineData)) {
+			// Missing required fields — redirect to augmentation
+			const message = buildProgressMessage(wineData);
+			agent.addMessage({
+				role: 'agent',
+				type: 'text',
+				content: `Almost there! ${message} Can you help fill in the gaps?`
+			});
+			agent.setAugmentationContext({
+				originalInput: '',
+				originalInputType: lastInputType || 'text',
+				originalResult: {
+					intent: 'add',
+					parsed: wineData,
+					confidence: wineData.confidence ?? 0,
+					action: 'suggest' as AgentAction,
+					candidates: []
+				}
+			});
+			agent.setPhase('augment_input');
+			return;
+		}
 
 		// Pre-fill the add wine wizard with identified data
-		await addWineStore.populateFromAgent(parsed);
+		await addWineStore.populateFromAgent(wineData);
 
 		// Add completion message
 		agent.addMessage({
@@ -263,68 +657,47 @@
 		agent.setPhase('identifying');
 		agent.setTyping(true);
 
-		// Build the query - combine with augmentation context if available
-		let queryText = text;
-		if (phase === 'augment_input' && augContext?.originalResult?.parsed) {
-			// Combine original wine info with new user input for better identification
-			const orig = augContext.originalResult.parsed;
-			const parts: string[] = [];
-
-			// Add any known info from original result
-			if (orig.producer) parts.push(`Producer: ${orig.producer}`);
-			if (orig.wineName && orig.wineName !== 'Unknown Wine') parts.push(`Wine: ${orig.wineName}`);
-			if (orig.vintage) parts.push(`Vintage: ${orig.vintage}`);
-			if (orig.region) parts.push(`Region: ${orig.region}`);
-			if (orig.country) parts.push(`Country: ${orig.country}`);
-			if (orig.wineType) parts.push(`Type: ${orig.wineType}`);
-
-			// Add user's additional context
-			parts.push(`Additional info: ${text}`);
-
-			queryText = parts.join('. ');
-			console.log('[Agent] Augmented query:', queryText);
-		}
-
 		try {
-			const result = await agent.identify(queryText);
+			let result: { parsed: AgentParsedWine; confidence: number; candidates?: AgentCandidate[]; action?: string } | null = null;
+
+			// Check if we're augmenting an image-originated flow
+			if (phase === 'augment_input' && augContext?.originalInputType === 'image' && lastImageFile) {
+				result = await agent.identifyImageWithSupplementaryText(lastImageFile, text);
+			} else {
+				// Text-based identification (possibly augmented with previous result)
+				let queryText = text;
+				if (phase === 'augment_input' && augContext?.originalResult?.parsed) {
+					// Combine original wine info with new user input
+					const orig = augContext.originalResult.parsed;
+					const parts: string[] = [];
+
+					if (orig.producer) parts.push(`Producer: ${orig.producer}`);
+					if (orig.wineName && orig.wineName !== 'Unknown Wine') parts.push(`Wine: ${orig.wineName}`);
+					if (orig.vintage) parts.push(`Vintage: ${orig.vintage}`);
+					if (orig.region) parts.push(`Region: ${orig.region}`);
+					if (orig.country) parts.push(`Country: ${orig.country}`);
+					if (orig.wineType) parts.push(`Type: ${orig.wineType}`);
+
+					parts.push(`Additional info: ${text}`);
+					queryText = parts.join('. ');
+				} else {
+					// Fresh text submission — track input type
+					lastInputType = 'text';
+				}
+
+				result = await agent.identify(queryText);
+			}
+
 			agent.setTyping(false);
 
-			// Debug logging
-			console.log('[Agent] Text identification result:', JSON.stringify(result, null, 2));
-
-			if (result) {
-				// Clear augmentation context after retry
-				agent.setAugmentationContext(null);
-
-				// Check if this is a valid result (not "Unknown Wine")
-				const isValidWine = result.parsed &&
-					(result.parsed.wineName || result.parsed.producer) &&
-					result.parsed.wineName !== 'Unknown Wine' &&
-					result.parsed.producer !== 'Unknown';
-
-				// Add result message with conditional confirmation chips
-				agent.addMessage({
-					role: 'agent',
-					type: 'wine_result',
-					content: isValidWine ? 'Is this the wine you\'re seeking?' : 'I couldn\'t identify this wine clearly.',
-					wineResult: result.parsed,
-					confidence: result.confidence,
-					chips: isValidWine ? [
-						{ id: 'correct', label: 'Correct', icon: 'check', action: 'correct' },
-						{ id: 'not_correct', label: 'Not Correct', icon: 'x', action: 'not_correct' }
-					] : [
-						{ id: 'not_correct', label: 'Try Again', icon: 'x', action: 'not_correct' }
-					]
-				});
-				agent.setPhase('result_confirm');
-			} else {
-				// Error occurred - re-prompt with options
+			// Use four-way branch handler
+			if (!handleIdentificationResult(result, text)) {
+				// Null result — error occurred
 				agent.addMessage({
 					role: 'agent',
 					type: 'error',
 					content: $agentError || 'I couldn\'t identify that wine.'
 				});
-				// Re-prompt with choices
 				setTimeout(() => {
 					agent.addMessage({
 						role: 'agent',
@@ -345,7 +718,6 @@
 				type: 'error',
 				content: 'Something went wrong.'
 			});
-			// Re-prompt with choices
 			setTimeout(() => {
 				agent.addMessage({
 					role: 'agent',
@@ -363,6 +735,10 @@
 
 	async function handleImageSubmit(e: CustomEvent<{ file: File }>) {
 		const file = e.detail.file;
+
+		// Store File object for potential re-send with supplementary text
+		lastImageFile = file;
+		lastInputType = 'image';
 
 		// Create preview URL for user message
 		const imageUrl = URL.createObjectURL(file);
@@ -383,39 +759,14 @@
 			const result = await agent.identifyImage(file);
 			agent.setTyping(false);
 
-			// Debug logging
-			console.log('[Agent] Image identification result:', JSON.stringify(result, null, 2));
-
-			if (result) {
-				// Check if this is a valid result (not "Unknown Wine")
-				const isValidWine = result.parsed &&
-					(result.parsed.wineName || result.parsed.producer) &&
-					result.parsed.wineName !== 'Unknown Wine' &&
-					result.parsed.producer !== 'Unknown';
-
-				// Add result message with conditional confirmation chips
-				agent.addMessage({
-					role: 'agent',
-					type: 'wine_result',
-					content: isValidWine ? 'Is this the wine you\'re seeking?' : 'I couldn\'t identify this wine clearly.',
-					wineResult: result.parsed,
-					confidence: result.confidence,
-					chips: isValidWine ? [
-						{ id: 'correct', label: 'Correct', icon: 'check', action: 'correct' },
-						{ id: 'not_correct', label: 'Not Correct', icon: 'x', action: 'not_correct' }
-					] : [
-						{ id: 'not_correct', label: 'Try Again', icon: 'x', action: 'not_correct' }
-					]
-				});
-				agent.setPhase('result_confirm');
-			} else {
-				// Error occurred - re-prompt with options
+			// Use four-way branch handler
+			if (!handleIdentificationResult(result, '')) {
+				// Null result — error occurred
 				agent.addMessage({
 					role: 'agent',
 					type: 'error',
 					content: $agentError || 'I couldn\'t identify the wine from this image.'
 				});
-				// Re-prompt with choices
 				setTimeout(() => {
 					agent.addMessage({
 						role: 'agent',
@@ -436,7 +787,6 @@
 				type: 'error',
 				content: 'Something went wrong processing the image.'
 			});
-			// Re-prompt with choices
 			setTimeout(() => {
 				agent.addMessage({
 					role: 'agent',
@@ -481,34 +831,94 @@
 	function handleCandidateSelect(e: CustomEvent<{ candidate: AgentCandidate }>) {
 		const candidate = e.detail.candidate;
 		const data = candidate.data as Record<string, unknown>;
+		const isAppellation = !!data.appellationName;
+		const existingContext = $agentAugmentationContext;
 
 		// Build AgentParsedWine from selected candidate
-		const selectedParsed: AgentParsedWine = {
-			producer: (data.producer as string) || null,
-			wineName: (data.wineName as string) || (data.name as string) || null,
-			vintage: (data.vintage as string) || null,
-			region: (data.region as string) || null,
-			country: (data.country as string) || null,
-			wineType: (data.wineType as AgentParsedWine['wineType']) || null,
-			grapes: (data.grapes as string[]) || null,
-			confidence: candidate.confidence
-		};
+		let selectedParsed: AgentParsedWine;
 
-		// Add confirmation message and proceed
-		agent.addMessage({
-			role: 'agent',
-			type: 'text',
-			content: 'Perfect choice. Opening the cellar for you...'
-		});
+		if (isAppellation) {
+			// Appellation candidate — map appellation fields to wine fields
+			const wineTypes = data.wineTypes as string[] | undefined;
+			selectedParsed = {
+				producer: null,
+				wineName: null,
+				vintage: null,
+				region: (data.appellationName as string) || (data.region as string) || null,
+				country: (data.country as string) || null,
+				wineType: (wineTypes?.[0] as AgentParsedWine['wineType']) || null,
+				grapes: (data.primaryGrapes as string[]) || null,
+				confidence: candidate.confidence
+			};
+		} else {
+			// Wine candidate
+			selectedParsed = {
+				producer: (data.producer as string) || null,
+				wineName: (data.wineName as string) || (data.name as string) || null,
+				vintage: (data.vintage as string) || null,
+				region: (data.region as string) || null,
+				country: (data.country as string) || null,
+				wineType: (data.wineType as AgentParsedWine['wineType']) || null,
+				grapes: (data.grapes as string[]) || null,
+				confidence: candidate.confidence
+			};
+		}
 
-		// Pre-fill and navigate
-		addWineStore.populateFromAgent(selectedParsed);
-		agent.setPhase('complete');
+		// Merge with existing augmentation context — candidate's fields take priority,
+		// but previously locked-in fields fill the gaps
+		if (existingContext?.originalResult?.parsed) {
+			const prev = existingContext.originalResult.parsed;
+			selectedParsed = {
+				producer: selectedParsed.producer || prev.producer,
+				wineName: selectedParsed.wineName || ((prev.wineName && prev.wineName !== 'Unknown Wine') ? prev.wineName : null),
+				vintage: selectedParsed.vintage || prev.vintage,
+				region: selectedParsed.region || prev.region,
+				country: selectedParsed.country || prev.country,
+				wineType: selectedParsed.wineType || prev.wineType,
+				grapes: selectedParsed.grapes || prev.grapes,
+				confidence: candidate.confidence
+			};
+		}
 
-		setTimeout(() => {
-			agent.closePanel();
-			goto('/qve/add');
-		}, 500);
+		if (hasMinimumFields(selectedParsed)) {
+			// Full wine identified — proceed to add-wine flow
+			agent.addMessage({
+				role: 'agent',
+				type: 'text',
+				content: 'Perfect choice. Opening the cellar for you...'
+			});
+			addWineStore.populateFromAgent(selectedParsed);
+			agent.setPhase('complete');
+			setTimeout(() => {
+				agent.closePanel();
+				goto('/qve/add');
+			}, 500);
+		} else {
+			// Incomplete identification — continue with augmentation
+			const message = buildProgressMessage(selectedParsed);
+
+			agent.addMessage({
+				role: 'agent',
+				type: 'text',
+				content: isAppellation
+					? `Narrowing to ${selectedParsed.region || 'this selection'}. ${message}`
+					: message
+			});
+
+			// Set augmentation context with merged data so next submission builds on it
+			agent.setAugmentationContext({
+				originalInput: '',
+				originalInputType: lastInputType || 'text',
+				originalResult: {
+					intent: 'add',
+					parsed: selectedParsed,
+					confidence: candidate.confidence,
+					action: 'disambiguate' as AgentAction,
+					candidates: []
+				}
+			});
+			agent.setPhase('augment_input');
+		}
 	}
 </script>
 

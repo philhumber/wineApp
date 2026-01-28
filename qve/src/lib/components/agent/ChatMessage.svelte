@@ -53,6 +53,7 @@
 	class:agent={message.role === 'agent'}
 	class:user={message.role === 'user'}
 	class:has-wine-result={message.type === 'wine_result'}
+	class:has-low-confidence={message.type === 'low_confidence'}
 	class:has-disambiguation={message.type === 'disambiguation'}
 >
 	{#if message.role === 'agent'}
@@ -68,6 +69,10 @@
 				on:confirm={handleConfirm}
 				on:edit={handleEdit}
 			/>
+		{:else if message.type === 'low_confidence'}
+			<!-- Low confidence conversational message -->
+			<p class="agent-text low-confidence-text">{message.content}</p>
+			<div class="accent-divider"></div>
 		{:else if message.type === 'disambiguation' && message.candidates}
 			<!-- Disambiguation list -->
 			<p class="agent-text">{message.content}</p>
@@ -140,6 +145,11 @@
 
 	.agent-text.coming-soon-text {
 		color: var(--text-tertiary);
+	}
+
+	.agent-text.low-confidence-text {
+		color: var(--text-secondary);
+		line-height: 1.7;
 	}
 
 	.accent-divider {

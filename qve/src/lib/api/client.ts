@@ -517,11 +517,21 @@ class WineApiClient {
   /**
    * Identify wine from image (label photo)
    * Uses AI vision to extract wine details from label
+   * Optionally includes supplementary text for re-identification with user context
    */
-  async identifyImage(imageBase64: string, mimeType: string): Promise<AgentIdentificationResultWithMeta> {
+  async identifyImage(
+    imageBase64: string,
+    mimeType: string,
+    supplementaryText?: string
+  ): Promise<AgentIdentificationResultWithMeta> {
+    const body: Record<string, string> = { image: imageBase64, mimeType };
+    if (supplementaryText) {
+      body.supplementaryText = supplementaryText;
+    }
+
     const response = await this.fetchJSON<AgentIdentificationResultWithMeta>(
       'agent/identifyImage.php',
-      { image: imageBase64, mimeType }
+      body
     );
 
     if (!response.success) {
