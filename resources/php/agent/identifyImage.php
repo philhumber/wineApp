@@ -7,7 +7,8 @@
  * Request:
  *   {
  *     "image": "base64-encoded-image-data",
- *     "mimeType": "image/jpeg"
+ *     "mimeType": "image/jpeg",
+ *     "supplementaryText": "optional user context for re-identification"
  *   }
  *
  * Response:
@@ -49,16 +50,34 @@ if (empty($input['mimeType']) || !is_string($input['mimeType'])) {
     agentError('Missing or invalid field: mimeType (string required)');
 }
 
+// Validate optional supplementary text (for re-identification with user context)
+$supplementaryText = null;
+if (isset($input['supplementaryText'])) {
+    if (!is_string($input['supplementaryText'])) {
+        agentError('Invalid field: supplementaryText (string expected)');
+    }
+    $supplementaryText = trim($input['supplementaryText']);
+    if ($supplementaryText === '') {
+        $supplementaryText = null;
+    }
+}
+
 try {
     // Get user ID (default to 1 for now)
     $userId = $input['userId'] ?? 1;
 
-    // Run identification
-    $service = getAgentIdentificationService($userId);
-    $result = $service->identify([
+    // Build identification input
+    $identifyInput = [
         'image' => $input['image'],
         'mimeType' => $input['mimeType'],
-    ]);
+    ];
+    if ($supplementaryText !== null) {
+        $identifyInput['supplementaryText'] = $supplementaryText;
+    }
+
+    // Run identification
+    $service = getAgentIdentificationService($userId);
+    $result = $service->identify($identifyInput);
 
     if (!$result['success']) {
         $errorType = $result['errorType'] ?? 'identification_error';

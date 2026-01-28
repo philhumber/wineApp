@@ -57,7 +57,12 @@ class InputClassifier
     {
         // Check for image input (Phase 2)
         if (isset($input['image'])) {
-            return $this->validateImage($input['image'], $input['mimeType'] ?? null);
+            $result = $this->validateImage($input['image'], $input['mimeType'] ?? null);
+            // Preserve supplementary text for re-identification with user context
+            if ($result['valid'] && isset($input['supplementaryText'])) {
+                $result['supplementaryText'] = $input['supplementaryText'];
+            }
+            return $result;
         }
 
         // Check for text input
