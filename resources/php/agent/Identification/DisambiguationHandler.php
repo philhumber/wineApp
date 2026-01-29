@@ -104,16 +104,16 @@ class DisambiguationHandler
                 SELECT
                     w.wineID,
                     w.wineName,
-                    w.vintage,
+                    w.year AS vintage,
                     p.producerName,
                     r.regionName,
                     c.countryName,
-                    t.typeName
+                    t.wineType AS typeName
                 FROM wine w
                 LEFT JOIN producers p ON w.producerID = p.producerID
-                LEFT JOIN region r ON w.regionID = r.regionID
-                LEFT JOIN country c ON w.countryID = c.countryID
-                LEFT JOIN winetype t ON w.typeID = t.typeID
+                LEFT JOIN region r ON p.regionID = r.regionID
+                LEFT JOIN country c ON r.countryID = c.countryID
+                LEFT JOIN winetype t ON w.wineTypeID = t.wineTypeID
                 WHERE {$whereClause}
                 LIMIT 10
             ");

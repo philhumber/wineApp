@@ -59,14 +59,20 @@ class VisionProcessor
 You are a wine label identification expert. Analyze this wine label image and extract structured data.
 
 Extract these fields (use null if not found or uncertain):
-- producer: The winery or producer name
+- producer: The winery or producer name (only if you can clearly read it)
 - wineName: The specific wine name (not the producer)
 - vintage: The year (4 digits)
 - region: Wine region or appellation
 - country: Country of origin
 - wineType: Red, White, Rosé, Sparkling, Dessert, or Fortified
 - grapes: Array of grape varieties
-- confidence: Your confidence in the overall identification (0-100)
+
+CRITICAL - Confidence Scoring:
+- HIGH confidence (80-100): Text is clearly readable AND you recognize this as a real wine
+- MEDIUM confidence (50-79): Text is partially readable or you're unsure if the wine exists
+- LOW confidence (0-49): Text is unclear, or the label doesn't match a wine you recognize
+
+Base confidence on BOTH readability AND whether this is a real wine you know.
 
 Respond ONLY with valid JSON:
 {
@@ -130,16 +136,31 @@ PROMPT;
         }
 
         // Step 2: Call LLM with vision
+        $llmOptions = [
+            'json_response' => true,
+            'temperature' => $options['temperature'] ?? 0.3,
+            'max_tokens' => $options['max_tokens'] ?? 1000,
+        ];
+
+        // Pass through thinking_level for Gemini 3 models
+        if (!empty($options['thinking_level'])) {
+            $llmOptions['thinking_level'] = $options['thinking_level'];
+        }
+
+        // Pass through provider/model for explicit escalation to Claude
+        if (!empty($options['provider'])) {
+            $llmOptions['provider'] = $options['provider'];
+        }
+        if (!empty($options['model'])) {
+            $llmOptions['model'] = $options['model'];
+        }
+
         $response = $this->llmClient->completeWithImage(
             'identify_image',
             $prompt,
             $imageData,
             $mimeType,
-            [
-                'json_response' => true,
-                'temperature' => $options['temperature'] ?? 0.3,
-                'max_tokens' => $options['max_tokens'] ?? 500,
-            ]
+            $llmOptions
         );
 
         if (!$response->success) {
@@ -205,15 +226,23 @@ Use your extensive knowledge to identify this wine:
 - Look for alcohol percentage which can indicate wine style
 - Consider bottle shape if visible (Burgundy, Bordeaux, Alsace, etc.)
 
-Extract these fields (use null only if truly uncertain after careful examination):
-- producer: The full winery/producer name (expand abbreviations like Chx = Château)
+CRITICAL - Confidence Scoring:
+- HIGH confidence (80-100): Text is clearly readable AND you recognize this as a real wine
+- MEDIUM confidence (50-79): Text is partially readable or you're unsure if the wine exists
+- LOW confidence (0-49): Text is unclear, or the label doesn't match a wine you recognize
+
+Base confidence on BOTH readability AND whether this is a real wine you know.
+Do NOT give high confidence just because you can fill in plausible regional data.
+
+Extract these fields (use null if uncertain):
+- producer: The full winery/producer name (only if clearly readable AND a real producer)
 - wineName: The specific wine/cuvée name if different from producer
 - vintage: The year (4 digits) - look carefully, sometimes in small print
 - region: The wine region or appellation (be specific)
 - country: Country of origin
 - wineType: Red, White, Rosé, Sparkling, Dessert, or Fortified
 - grapes: Array of likely grape varieties (infer from appellation if not stated)
-- confidence: Your confidence score (0-100). Be confident when label is clear.
+- confidence: Your confidence score (0-100) that this is a REAL, IDENTIFIABLE wine
 
 Respond ONLY with valid JSON:
 {

@@ -32,6 +32,7 @@
 	import ChatMessage from './ChatMessage.svelte';
 	import TypingIndicator from './TypingIndicator.svelte';
 	import type { AgentParsedWine, AgentCandidate, AgentAction } from '$lib/api/types';
+	import { api } from '$lib/api';
 
 	// Reactive bindings
 	$: isOpen = $agentPanelOpen;
@@ -185,23 +186,24 @@
 	}
 
 	/**
-	 * Merge new LLM result with locked-in fields from the augmentation context.
-	 * Already-confirmed fields (region, producer, etc.) are preserved;
-	 * new fields from the LLM fill in the gaps.
+	 * Merge new LLM result with previous result from augmentation context.
+	 * NEW result takes precedence (it incorporates user feedback),
+	 * previous result fills gaps where new result has no data.
 	 */
 	function mergeWithAugmentationContext(
 		newParsed: AgentParsedWine,
 		augContext: { originalResult: { parsed: AgentParsedWine } }
 	): AgentParsedWine {
-		const locked = augContext.originalResult.parsed;
+		const prev = augContext.originalResult.parsed;
 		return {
-			producer: (locked.producer && locked.producer !== 'Unknown') ? locked.producer : newParsed.producer,
-			wineName: (locked.wineName && locked.wineName !== 'Unknown Wine') ? locked.wineName : newParsed.wineName,
-			vintage: locked.vintage || newParsed.vintage,
-			region: locked.region || newParsed.region,
-			country: locked.country || newParsed.country,
-			wineType: locked.wineType || newParsed.wineType,
-			grapes: locked.grapes || newParsed.grapes,
+			// New result takes precedence (incorporates user feedback)
+			producer: newParsed.producer || ((prev.producer && prev.producer !== 'Unknown') ? prev.producer : null),
+			wineName: newParsed.wineName || ((prev.wineName && prev.wineName !== 'Unknown Wine') ? prev.wineName : null),
+			vintage: newParsed.vintage || prev.vintage,
+			region: newParsed.region || prev.region,
+			country: newParsed.country || prev.country,
+			wineType: newParsed.wineType || prev.wineType,
+			grapes: newParsed.grapes || prev.grapes,
 			confidence: newParsed.confidence // Always use latest LLM confidence
 		};
 	}
@@ -350,14 +352,72 @@
 			return true;
 		}
 
-		// ── FIRST ATTEMPT: four-way branch ──
+		// ── FIRST ATTEMPT: six-way branch ──
 		const confidence = result.confidence ?? 0;
 		const isValidWine = result.parsed &&
 			(result.parsed.wineName || result.parsed.producer) &&
 			result.parsed.wineName !== 'Unknown Wine' &&
 			result.parsed.producer !== 'Unknown';
 
-		if (confidence < 60 && !hasCandidates) {
+		// Check for producer-only result (producer identified but no specific wine)
+		// This happens when user says "Burgundy from Domaine Leroy" - we know the producer
+		// but need to ask which specific wine
+		const isProducerOnly = result.parsed &&
+			result.parsed.producer &&
+			result.parsed.producer !== 'Unknown' &&
+			(!result.parsed.wineName || result.parsed.wineName === result.parsed.producer) &&
+			!result.parsed.vintage;
+
+		// PRODUCER-ONLY: Found producer but need specific wine
+		if (isProducerOnly && confidence >= 60) {
+			const producerName = result.parsed.producer;
+			const regionInfo = result.parsed.region ? ` from ${result.parsed.region}` : '';
+			agent.addMessage({
+				role: 'agent',
+				type: 'text',
+				content: `I found ${producerName}${regionInfo}. Which wine from this producer are you looking for? (e.g., the specific cuvée, vineyard, or vintage)`
+			});
+			agent.setAugmentationContext({
+				originalInput: inputText,
+				originalInputType: lastInputType || 'text',
+				originalResult: {
+					intent: 'add',
+					parsed: result.parsed,
+					confidence: result.confidence,
+					action: 'disambiguate' as AgentAction,
+					candidates: result.candidates ?? []
+				}
+			});
+			agent.setPhase('augment_input');
+
+		// USER_CHOICE: Confidence 50-59 - let user decide: try harder (Opus) or conversational
+		} else if (result.action === 'user_choice') {
+			const message = buildLowConfidenceMessage(result.parsed, false);
+			agent.addMessage({
+				role: 'agent',
+				type: 'low_confidence',
+				content: `${message}\n\nI can try harder with our premium analysis, or we can work through this together.`,
+				wineResult: result.parsed,
+				confidence: result.confidence,
+				chips: [
+					{ id: 'try_opus', label: 'Try Harder', icon: 'sparkle', action: 'try_opus' },
+					{ id: 'use_conversation', label: 'Help Me Find It', icon: 'chat', action: 'use_conversation' }
+				]
+			});
+			agent.setAugmentationContext({
+				originalInput: inputText,
+				originalInputType: lastInputType || 'text',
+				originalResult: {
+					intent: 'add',
+					parsed: result.parsed,
+					confidence: result.confidence,
+					action: (result.action ?? 'user_choice') as AgentAction,
+					candidates: result.candidates ?? []
+				}
+			});
+			agent.setPhase('escalation_choice');
+
+		} else if (confidence < 60 && !hasCandidates) {
 			// LOW CONFIDENCE: conversational message asking for more context
 			const message = buildLowConfidenceMessage(result.parsed, false);
 			agent.addMessage({
@@ -539,7 +599,116 @@
 				});
 				agent.setPhase('await_input');
 				break;
+
+			case 'try_opus':
+				// User chose to escalate to Claude Opus
+				await handleTryOpus();
+				break;
+
+			case 'use_conversation':
+				// User chose conversational flow instead of Opus
+				handleUseConversation();
+				break;
 		}
+	}
+
+	/**
+	 * Handle user choosing to escalate to Claude Opus for premium identification
+	 */
+	async function handleTryOpus() {
+		const augContext = $agentAugmentationContext;
+		if (!augContext?.originalResult) return;
+
+		agent.addMessage({
+			role: 'agent',
+			type: 'text',
+			content: 'Consulting our premium analysis...'
+		});
+
+		agent.setPhase('identifying');
+		agent.setTyping(true);
+
+		try {
+			let input: string;
+			let mimeType: string | undefined;
+
+			// For image inputs, re-compress the stored file
+			if (augContext.originalInputType === 'image' && lastImageFile) {
+				const compressed = await api.compressImageForIdentification(lastImageFile);
+				input = compressed.imageData;
+				mimeType = compressed.mimeType;
+			} else {
+				// Text input - use original input
+				input = augContext.originalInput;
+			}
+
+			const result = await agent.identifyWithOpus(
+				input,
+				augContext.originalInputType,
+				augContext.originalResult,
+				mimeType,
+				augContext.userFeedback
+			);
+
+			agent.setTyping(false);
+
+			if (result) {
+				// Clear augmentation context since we got a new result
+				agent.setAugmentationContext(null);
+
+				// Handle the Opus result with the standard flow
+				if (!handleIdentificationResult(result, augContext.originalInput)) {
+					agent.addMessage({
+						role: 'agent',
+						type: 'error',
+						content: $agentError || 'Premium analysis could not identify the wine.'
+					});
+					agent.setPhase('augment_input');
+				}
+			} else {
+				// Opus failed - offer conversational fallback
+				agent.addMessage({
+					role: 'agent',
+					type: 'text',
+					content: "The premium analysis wasn't able to identify this wine either. Let's work through it together."
+				});
+				handleUseConversation();
+			}
+		} catch (err) {
+			agent.setTyping(false);
+			agent.addMessage({
+				role: 'agent',
+				type: 'error',
+				content: 'Something went wrong with the premium analysis.'
+			});
+			agent.setPhase('augment_input');
+		}
+	}
+
+	/**
+	 * Handle user choosing conversational flow instead of Opus escalation
+	 */
+	function handleUseConversation() {
+		const augContext = $agentAugmentationContext;
+		if (!augContext?.originalResult?.parsed) {
+			agent.setPhase('augment_input');
+			return;
+		}
+
+		const message = buildProgressMessage(augContext.originalResult.parsed);
+		agent.addMessage({
+			role: 'agent',
+			type: 'low_confidence',
+			content: `Let's work through this together. ${message}`,
+			wineResult: augContext.originalResult.parsed,
+			confidence: augContext.originalResult.confidence,
+			chips: [
+				{ id: 'provide_more', label: 'Tell Me More', icon: 'edit', action: 'provide_more' },
+				{ id: 'see_result', label: 'See What I Found', icon: 'search', action: 'see_result' },
+				{ id: 'start_fresh', label: 'Start Fresh', icon: 'refresh', action: 'start_fresh' }
+			]
+		});
+		agent.setPhase('augment_input');
 	}
 
 	function handleIncorrectResult() {

@@ -32,6 +32,12 @@ class IdentificationService
     /** @var DisambiguationHandler Disambiguation handler */
     private DisambiguationHandler $disambiguator;
 
+    /** @var InferenceEngine Inference engine for post-LLM inference */
+    private InferenceEngine $inferenceEngine;
+
+    /** @var LLMClient LLM client for multi-provider escalation */
+    private LLMClient $llmClient;
+
     /** @var array Configuration */
     private array $config;
 
@@ -45,12 +51,224 @@ class IdentificationService
     public function __construct(LLMClient $llmClient, \PDO $pdo, array $config)
     {
         $this->config = $config;
+        $this->llmClient = $llmClient;
         $this->classifier = new InputClassifier($config);
         $this->intentDetector = new IntentDetector();
         $this->textProcessor = new TextProcessor($llmClient);
         $this->visionProcessor = new VisionProcessor($llmClient);
         $this->scorer = new ConfidenceScorer($config);
         $this->disambiguator = new DisambiguationHandler($pdo);
+        $this->inferenceEngine = new InferenceEngine($pdo);
+    }
+
+    // ─────────────────────────────────────────────────────
+    // FOUR-TIER ESCALATION HELPER METHODS
+    // ─────────────────────────────────────────────────────
+
+    /**
+     * Process input with Gemini model at specified tier
+     *
+     * @param string $input Input text
+     * @param string $tier Tier name ('fast' or 'detailed')
+     * @param array|null $priorResult Previous tier result for context
+     * @return array Processing result
+     */
+    private function processWithGemini(string $input, string $tier, ?array $priorResult = null): array
+    {
+        $tierConfig = $this->config['model_tiers'][$tier] ?? $this->config['model_tiers']['fast'];
+
+        $options = [
+            'provider' => $tierConfig['provider'] ?? 'gemini',
+            'model' => $tierConfig['model'] ?? 'gemini-3-flash-preview',
+            'temperature' => $tierConfig['temperature'] ?? 0.3,
+            'max_tokens' => $tierConfig['max_tokens'] ?? 500,
+        ];
+
+        // Add thinking level for Gemini 3 models
+        if (isset($tierConfig['thinking_level'])) {
+            $options['thinking_level'] = $tierConfig['thinking_level'];
+        }
+
+        // Add prior result context for escalation
+        if ($priorResult) {
+            $options['prior_context'] = $this->buildPriorContext($priorResult);
+        }
+
+        return $this->textProcessor->process($input, $options);
+    }
+
+    /**
+     * Process input with Claude model
+     *
+     * @param string $input Input text
+     * @param string $model Claude model name
+     * @param array|null $priorResult Previous tier result for context
+     * @return array Processing result
+     */
+    private function processWithClaude(string $input, string $model, ?array $priorResult = null): array
+    {
+        $options = [
+            'provider' => 'claude',
+            'model' => $model,
+            'temperature' => 0.3,
+            'max_tokens' => 800,
+        ];
+
+        // Add prior result context for escalation
+        if ($priorResult) {
+            $options['prior_context'] = $this->buildPriorContext($priorResult);
+        }
+
+        return $this->textProcessor->process($input, $options);
+    }
+
+    /**
+     * Build context string from prior identification result
+     *
+     * @param array $priorResult Previous identification result
+     * @return string Context string for escalation
+     */
+    private function buildPriorContext(array $priorResult): string
+    {
+        $parsed = $priorResult['parsed'] ?? [];
+        return sprintf(
+            "Previous attempt found: Producer=%s, Wine=%s, Region=%s (confidence: %d%%). Please analyze more carefully and look for details that might have been missed.",
+            $parsed['producer'] ?? 'unknown',
+            $parsed['wineName'] ?? 'unknown',
+            $parsed['region'] ?? 'unknown',
+            $priorResult['confidence'] ?? 0
+        );
+    }
+
+    // ─────────────────────────────────────────────────────
+    // VISION ESCALATION HELPER METHODS
+    // ─────────────────────────────────────────────────────
+
+    /**
+     * Process image with Gemini vision at specified tier
+     *
+     * @param string $imageData Base64-encoded image
+     * @param string $mimeType Image MIME type
+     * @param string $tier Tier name ('fast' or 'detailed')
+     * @param array $options Additional options (supplementary_text, etc.)
+     * @return array Processing result
+     */
+    private function processVisionWithGemini(
+        string $imageData,
+        string $mimeType,
+        string $tier,
+        array $options = []
+    ): array {
+        $tierConfig = $this->config['model_tiers'][$tier] ?? $this->config['model_tiers']['fast'];
+
+        $processOptions = [
+            'provider' => $tierConfig['provider'] ?? 'gemini',
+            'model' => $tierConfig['model'] ?? 'gemini-3-flash-preview',
+            'temperature' => $tierConfig['temperature'] ?? 0.3,
+            'max_tokens' => $tierConfig['max_tokens'] ?? 4000,
+        ];
+
+        // Add thinking level for Gemini 3 models
+        if (isset($tierConfig['thinking_level'])) {
+            $processOptions['thinking_level'] = $tierConfig['thinking_level'];
+        }
+
+        // Use detailed prompt for higher tiers
+        if ($tier === 'detailed') {
+            $processOptions['detailed_prompt'] = true;
+        }
+
+        // Pass through supplementary text
+        if (!empty($options['supplementary_text'])) {
+            $processOptions['supplementary_text'] = $options['supplementary_text'];
+        }
+
+        return $this->visionProcessor->process($imageData, $mimeType, $processOptions);
+    }
+
+    /**
+     * Process image with Claude vision
+     *
+     * @param string $imageData Base64-encoded image
+     * @param string $mimeType Image MIME type
+     * @param string $model Claude model name
+     * @param array $options Additional options
+     * @return array Processing result
+     */
+    private function processVisionWithClaude(
+        string $imageData,
+        string $mimeType,
+        string $model,
+        array $options = []
+    ): array {
+        $processOptions = [
+            'provider' => 'claude',
+            'model' => $model,
+            'temperature' => 0.3,
+            'max_tokens' => 1000,
+            'detailed_prompt' => true, // Always use detailed for Claude escalation
+        ];
+
+        // Pass through supplementary text
+        if (!empty($options['supplementary_text'])) {
+            $processOptions['supplementary_text'] = $options['supplementary_text'];
+        }
+
+        return $this->visionProcessor->process($imageData, $mimeType, $processOptions);
+    }
+
+    /**
+     * Apply inference engine to fill missing fields
+     *
+     * @param array $result Processing result
+     * @return array Updated result with inferences applied
+     */
+    private function applyInference(array $result): array
+    {
+        if (!$result['success']) {
+            return $result;
+        }
+
+        $inferences = $this->inferenceEngine->infer($result['parsed']);
+
+        foreach ($inferences as $inference) {
+            $field = $inference['field'];
+            if (!isset($result['parsed'][$field]) || $result['parsed'][$field] === null) {
+                $result['parsed'][$field] = $inference['value'];
+                $result['inferences_applied'][] = $inference['type'];
+            }
+        }
+
+        // Re-score after inference
+        $newScoring = $this->scorer->score($result['parsed']);
+        $result['confidence'] = $newScoring['score'];
+        $result['action'] = $newScoring['action'];
+
+        return $result;
+    }
+
+    /**
+     * Finalize identification result with escalation metadata
+     *
+     * @param array $result Processing result
+     * @param string $action Determined action
+     * @param array $escalation Escalation metadata
+     * @param array $extra Extra fields to include
+     * @return array Finalized result
+     */
+    private function finalizeResult(array $result, string $action, array $escalation, array $extra = []): array
+    {
+        $finalResult = [
+            'success' => $result['success'],
+            'wine' => $result['parsed'] ?? null,
+            'parsed' => $result['parsed'] ?? null,
+            'confidence' => $result['confidence'] ?? 0,
+            'action' => $action,
+            'escalation' => $escalation,
+            'inferences_applied' => $result['inferences_applied'] ?? [],
+        ];
+
+        return array_merge($finalResult, $extra);
     }
 
     /**
@@ -80,248 +298,534 @@ class IdentificationService
     }
 
     /**
-     * Identify wine from text input
+     * Identify wine from text input using four-tier escalation
+     *
+     * Escalation tiers:
+     * - Tier 1: Gemini 3.0 Flash (low thinking) - ~80% of requests
+     * - Tier 1.5: Gemini 3.0 Flash (high thinking) - ~10% escalated
+     * - Tier 2: Claude Sonnet 4.5 - ~7% cross-provider escalation
+     * - User Choice: action='user_choice' - user decides Opus vs conversational
+     * - Tier 3: Claude Opus 4.5 - user-triggered only via identifyWithOpus()
      *
      * @param array $classification Validated text classification
      * @return array Identification result
      */
     private function identifyFromText(array $classification): array
     {
-        // Step 2: Detect intent
+        // Step 1: Detect intent
         $intent = $this->intentDetector->detect($classification['text']);
+        $inputText = $classification['text'];
 
-        // Step 3: Process text with LLM (fast model first)
-        $processed = $this->textProcessor->process($classification['text']);
-        if (!$processed['success']) {
+        // Get configurable thresholds
+        $thresholds = $this->config['confidence'] ?? [];
+        $tier1Threshold = $thresholds['tier1_threshold'] ?? 85;
+        $tier1_5Threshold = $thresholds['tier1_5_threshold'] ?? 70;
+        $tier2Threshold = $thresholds['tier2_threshold'] ?? 60;
+        $userChoiceThreshold = $thresholds['user_choice_threshold'] ?? 50;
+
+        // Track escalation metadata
+        $escalationData = [
+            'tiers' => [],
+            'final_tier' => null,
+            'total_cost' => 0,
+        ];
+
+        // ─────────────────────────────────────────────────────
+        // TIER 1: Fast (Gemini 3 Flash, low thinking)
+        // ─────────────────────────────────────────────────────
+        $result = $this->processWithGemini($inputText, 'fast');
+        if (!$result['success']) {
             return [
                 'success' => false,
-                'error' => $processed['error'],
-                'errorType' => $processed['errorType'] ?? 'processing_error',
-                'stage' => 'processing',
+                'error' => $result['error'] ?? 'Processing failed',
+                'errorType' => $result['errorType'] ?? 'processing_error',
+                'stage' => 'tier1_processing',
             ];
         }
 
-        // Step 4: Score confidence
-        $scoring = $this->scorer->score($processed['parsed']);
+        $result = $this->applyInference($result);
+        $scoring = $this->scorer->score($result['parsed']);
+        $result['confidence'] = $scoring['score'];
+        $result['action'] = $scoring['action'];
 
-        // Track escalation metadata
-        $escalation = [
-            'attempted' => false,
-            'improved' => false,
-            'originalConfidence' => null,
+        $tierConfig = $this->config['model_tiers']['fast'] ?? [];
+        $escalationData['tiers']['tier1'] = [
+            'confidence' => $result['confidence'],
+            'model' => $tierConfig['model'] ?? 'gemini-3-flash-preview',
         ];
+        $escalationData['total_cost'] += $result['cost'] ?? 0;
 
-        // Track total usage
-        $totalUsage = [
-            'tokens' => $processed['tokens'],
-            'cost' => $processed['cost'],
-            'latencyMs' => $processed['latencyMs'] ?? 0,
-        ];
+        // Check Tier 1 threshold
+        if ($result['confidence'] >= $tier1Threshold) {
+            $escalationData['final_tier'] = 'tier1';
+            return $this->buildTextResult($result, 'auto_populate', $intent, $escalationData);
+        }
 
-        // Step 4a: Model escalation - if confidence is below threshold, try detailed model
-        $escalationThreshold = $this->config['confidence']['escalation_threshold'] ?? 70;
-        if ($scoring['score'] < $escalationThreshold) {
-            $escalation['attempted'] = true;
-            $escalation['originalConfidence'] = $scoring['score'];
+        // ─────────────────────────────────────────────────────
+        // TIER 1.5: Retry (Gemini 3 Flash, high thinking)
+        // ─────────────────────────────────────────────────────
+        $tier1Result = $result; // Save for context
+        $result = $this->processWithGemini($inputText, 'detailed', $tier1Result);
 
-            // Get detailed model options
-            $detailedOptions = $this->config['model_tiers']['detailed'] ?? [];
+        if ($result['success']) {
+            $result = $this->applyInference($result);
+            $scoring = $this->scorer->score($result['parsed']);
+            $result['confidence'] = $scoring['score'];
+            $result['action'] = $scoring['action'];
 
-            // Try with detailed prompt and options
-            $detailedProcessed = $this->textProcessor->process($classification['text'], [
-                'detailed_prompt' => true,
-                'temperature' => $detailedOptions['temperature'] ?? 0.4,
-                'max_tokens' => $detailedOptions['max_tokens'] ?? 800,
-            ]);
+            $detailedTierConfig = $this->config['model_tiers']['detailed'] ?? [];
+            $escalationData['tiers']['tier1_5'] = [
+                'confidence' => $result['confidence'],
+                'model' => $detailedTierConfig['model'] ?? 'gemini-3-flash-preview',
+                'thinking_level' => $detailedTierConfig['thinking_level'] ?? 'HIGH',
+            ];
+            $escalationData['total_cost'] += $result['cost'] ?? 0;
 
-            if ($detailedProcessed['success']) {
-                $detailedScoring = $this->scorer->score($detailedProcessed['parsed']);
+            // Use better result
+            if ($result['confidence'] < $tier1Result['confidence']) {
+                $result = $tier1Result; // Keep tier 1 result if it was better
+            }
+        } else {
+            // Tier 1.5 failed, keep tier 1 result
+            $result = $tier1Result;
+        }
 
-                // Use detailed result if it improved confidence
-                if ($detailedScoring['score'] > $scoring['score']) {
-                    $escalation['improved'] = true;
-                    $processed = $detailedProcessed;
-                    $scoring = $detailedScoring;
+        // Check Tier 1.5 threshold
+        if ($result['confidence'] >= $tier1_5Threshold) {
+            $escalationData['final_tier'] = 'tier1_5';
+            return $this->buildTextResult($result, 'suggest', $intent, $escalationData);
+        }
+
+        // ─────────────────────────────────────────────────────
+        // TIER 2: Balanced (Claude Sonnet 4.5)
+        // ─────────────────────────────────────────────────────
+        // Check if Claude is available before attempting
+        if ($this->llmClient->isProviderAvailable('claude')) {
+            $tier1_5Result = $result; // Save for context
+            $claudeResult = $this->processWithClaude($inputText, 'claude-sonnet-4-5-20250929', $tier1_5Result);
+
+            if ($claudeResult['success']) {
+                $claudeResult = $this->applyInference($claudeResult);
+                $scoring = $this->scorer->score($claudeResult['parsed']);
+                $claudeResult['confidence'] = $scoring['score'];
+                $claudeResult['action'] = $scoring['action'];
+
+                $escalationData['tiers']['tier2'] = [
+                    'confidence' => $claudeResult['confidence'],
+                    'model' => 'claude-sonnet-4-5-20250929',
+                ];
+                $escalationData['total_cost'] += $claudeResult['cost'] ?? 0;
+
+                // Use better result
+                if ($claudeResult['confidence'] > $result['confidence']) {
+                    $result = $claudeResult;
                 }
-
-                // Combine usage from both attempts
-                $totalUsage['tokens']['input'] += $detailedProcessed['tokens']['input'] ?? 0;
-                $totalUsage['tokens']['output'] += $detailedProcessed['tokens']['output'] ?? 0;
-                $totalUsage['cost'] += $detailedProcessed['cost'] ?? 0;
-                $totalUsage['latencyMs'] += $detailedProcessed['latencyMs'] ?? 0;
             }
         }
 
-        // Step 5: Build result
-        $result = [
-            'success' => true,
-            'inputType' => 'text',
-            'intent' => $intent['intent'],
-            'parsed' => $processed['parsed'],
-            'confidence' => $scoring['score'],
-            'action' => $scoring['action'],
-            'candidates' => [],
-            'usage' => $totalUsage,
-            'escalation' => $escalation,
-        ];
-
-        // Step 6: Get candidates if needed for disambiguation
-        if ($scoring['action'] === 'disambiguate') {
-            $result['candidates'] = $this->disambiguator->findCandidates($processed['parsed']);
+        // Check Tier 2 threshold
+        if ($result['confidence'] >= $tier2Threshold) {
+            $escalationData['final_tier'] = 'tier2';
+            return $this->buildTextResult($result, 'suggest', $intent, $escalationData);
         }
 
-        return $result;
+        // ─────────────────────────────────────────────────────
+        // USER CHOICE: Below 60% - always offer premium model
+        // ─────────────────────────────────────────────────────
+        // Any confidence below tier2Threshold (60%) offers the premium model option
+        $escalationData['final_tier'] = 'user_choice';
+        $finalResult = $this->buildTextResult($result, 'user_choice', $intent, $escalationData, [
+            'options' => ['try_harder', 'tell_me_more'],
+        ]);
+
+        // Also get candidates for disambiguation if confidence is very low
+        if ($result['confidence'] < 30) {
+            $finalResult['candidates'] = $this->disambiguator->findCandidates($result['parsed']);
+        }
+
+        return $finalResult;
     }
 
     /**
-     * Identify wine from image input
+     * Build text identification result with standard structure
+     *
+     * @param array $result Processing result
+     * @param string $action Action to take
+     * @param array $intent Intent detection result
+     * @param array $escalation Escalation metadata
+     * @param array $extra Extra fields
+     * @return array Complete result
+     */
+    private function buildTextResult(array $result, string $action, array $intent, array $escalation, array $extra = []): array
+    {
+        $finalResult = [
+            'success' => true,
+            'inputType' => 'text',
+            'intent' => $intent['intent'] ?? 'add',
+            'parsed' => $result['parsed'],
+            'confidence' => $result['confidence'],
+            'action' => $action,
+            'candidates' => [],
+            'usage' => [
+                'tokens' => $result['tokens'] ?? ['input' => 0, 'output' => 0],
+                'cost' => $escalation['total_cost'] ?? 0,
+                'latencyMs' => $result['latencyMs'] ?? 0,
+            ],
+            'escalation' => $escalation,
+            'inferences_applied' => $result['inferences_applied'] ?? [],
+        ];
+
+        return array_merge($finalResult, $extra);
+    }
+
+    /**
+     * Identify wine with Opus (Tier 3) - User-triggered escalation
+     *
+     * Called when user clicks "Try harder" after user_choice action.
+     * Uses Claude Opus 4.5 for maximum accuracy.
+     *
+     * @param array $input Original input data
+     * @param array $priorResult Previous identification result
+     * @return array Identification result
+     */
+    public function identifyWithOpus(array $input, array $priorResult): array
+    {
+        $inputText = $input['text'] ?? '';
+
+        // Get configurable threshold
+        $tier2Threshold = $this->config['confidence']['tier2_threshold'] ?? 60;
+
+        // Check if Claude is available
+        if (!$this->llmClient->isProviderAvailable('claude')) {
+            return [
+                'success' => false,
+                'error' => 'Premium model not available',
+                'errorType' => 'provider_unavailable',
+                'stage' => 'tier3_processing',
+            ];
+        }
+
+        // Process with Opus
+        $result = $this->processWithClaude($inputText, 'claude-opus-4-5-20251101', $priorResult);
+
+        if (!$result['success']) {
+            return [
+                'success' => false,
+                'error' => $result['error'] ?? 'Premium processing failed',
+                'errorType' => $result['errorType'] ?? 'processing_error',
+                'stage' => 'tier3_processing',
+            ];
+        }
+
+        $result = $this->applyInference($result);
+        $scoring = $this->scorer->score($result['parsed']);
+        $result['confidence'] = $scoring['score'];
+        $result['action'] = $scoring['action'];
+
+        $escalation = [
+            'tiers' => [
+                'tier3' => [
+                    'confidence' => $result['confidence'],
+                    'model' => 'claude-opus-4-5-20251101',
+                ],
+            ],
+            'final_tier' => 'tier3',
+            'total_cost' => $result['cost'] ?? 0,
+        ];
+
+        // Determine action based on confidence
+        if ($result['confidence'] >= $tier2Threshold) {
+            return $this->buildTextResult($result, 'suggest', ['intent' => 'add'], $escalation);
+        }
+
+        // Even Opus couldn't identify with confidence - go to conversational
+        $finalResult = $this->buildTextResult($result, 'disambiguate', ['intent' => 'add'], $escalation);
+        $finalResult['candidates'] = $this->disambiguator->findCandidates($result['parsed']);
+
+        return $finalResult;
+    }
+
+    /**
+     * Identify wine image with Opus (Tier 3) - User-triggered escalation
+     *
+     * Called when user clicks "Try harder" after user_choice action on an image.
+     * Uses Claude Opus 4.5 with vision for maximum accuracy.
+     *
+     * @param array $input Original input data (image, mimeType, supplementaryText)
+     * @param array $priorResult Previous identification result
+     * @return array Identification result
+     */
+    public function identifyImageWithOpus(array $input, array $priorResult): array
+    {
+        $imageData = $input['image'] ?? '';
+        $mimeType = $input['mimeType'] ?? 'image/jpeg';
+        $supplementaryText = $input['supplementaryText'] ?? null;
+
+        // Get configurable threshold
+        $tier2Threshold = $this->config['confidence']['tier2_threshold'] ?? 60;
+
+        // Check if Claude is available
+        if (!$this->llmClient->isProviderAvailable('claude')) {
+            return [
+                'success' => false,
+                'error' => 'Premium model not available',
+                'errorType' => 'provider_unavailable',
+                'stage' => 'tier3_processing',
+            ];
+        }
+
+        // Process with Opus vision
+        $processOptions = [];
+        if ($supplementaryText) {
+            $processOptions['supplementary_text'] = $supplementaryText;
+        }
+
+        $result = $this->processVisionWithClaude(
+            $imageData,
+            $mimeType,
+            'claude-opus-4-5-20251101',
+            $processOptions
+        );
+
+        if (!$result['success']) {
+            return [
+                'success' => false,
+                'error' => $result['error'] ?? 'Premium processing failed',
+                'errorType' => $result['errorType'] ?? 'processing_error',
+                'stage' => 'tier3_processing',
+            ];
+        }
+
+        $result = $this->applyInference($result);
+        $scoring = $this->scorer->score($result['parsed']);
+        $result['confidence'] = $scoring['score'];
+        $result['action'] = $scoring['action'];
+
+        $escalation = [
+            'tiers' => [
+                'tier3' => [
+                    'confidence' => $result['confidence'],
+                    'model' => 'claude-opus-4-5-20251101',
+                ],
+            ],
+            'final_tier' => 'tier3',
+            'total_cost' => $result['cost'] ?? 0,
+        ];
+
+        // Determine action based on confidence
+        if ($result['confidence'] >= $tier2Threshold) {
+            return $this->buildImageResult($result, 'suggest', $escalation, null);
+        }
+
+        // Even Opus couldn't identify with confidence - go to conversational
+        $finalResult = $this->buildImageResult($result, 'disambiguate', $escalation, null);
+        $finalResult['candidates'] = $this->disambiguator->findCandidates($result['parsed']);
+
+        return $finalResult;
+    }
+
+    /**
+     * Identify wine from image input using four-tier escalation
+     *
+     * Escalation tiers (same as text):
+     * - Tier 1: Gemini 3 Flash (low thinking) - ~80% of requests
+     * - Tier 1.5: Gemini 3 Flash (high thinking) - ~10% escalated
+     * - Tier 2: Claude Sonnet 4.5 - ~7% cross-provider escalation
+     * - User Choice: action='user_choice' - user decides Opus vs conversational
+     * - Tier 3: Claude Opus 4.5 - user-triggered only
      *
      * @param array $classification Validated image classification
      * @return array Identification result
      */
     private function identifyFromImage(array $classification): array
     {
-        // Extract supplementary text for re-identification with user context
+        $imageData = $classification['imageData'];
+        $mimeType = $classification['mimeType'];
         $supplementaryText = $classification['supplementaryText'] ?? null;
+
+        // Options to pass to processors
         $processOptions = [];
         if ($supplementaryText) {
-            agentLogInfo('Supplementary text received for image re-identification', [
+            agentLogInfo('Supplementary text received for image identification', [
                 'supplementaryText' => $supplementaryText,
-            ]);        
+            ]);
             $processOptions['supplementary_text'] = $supplementaryText;
         }
 
-        // Step 2: Process image with vision LLM (fast model first)
-        $processed = $this->visionProcessor->process(
-            $classification['imageData'],
-            $classification['mimeType'],
-            $processOptions
-        );
+        // Get configurable thresholds (same as text)
+        $thresholds = $this->config['confidence'] ?? [];
+        $tier1Threshold = $thresholds['tier1_threshold'] ?? 85;
+        $tier1_5Threshold = $thresholds['tier1_5_threshold'] ?? 70;
+        $tier2Threshold = $thresholds['tier2_threshold'] ?? 60;
 
-        if (!$processed['success']) {
+        // Track escalation metadata (matches text structure)
+        $escalationData = [
+            'tiers' => [],
+            'final_tier' => null,
+            'total_cost' => 0,
+        ];
+
+        // Keep quality assessment from first attempt
+        $quality = null;
+
+        // ─────────────────────────────────────────────────────
+        // TIER 1: Fast (Gemini 3 Flash, low thinking)
+        // ─────────────────────────────────────────────────────
+        $result = $this->processVisionWithGemini($imageData, $mimeType, 'fast', $processOptions);
+
+        if (!$result['success']) {
             return [
                 'success' => false,
-                'error' => $processed['error'],
-                'errorType' => $processed['errorType'] ?? 'processing_error',
-                'stage' => 'processing',
-                'quality' => $processed['quality'] ?? null,
+                'error' => $result['error'] ?? 'Processing failed',
+                'errorType' => $result['errorType'] ?? 'processing_error',
+                'stage' => 'tier1_processing',
+                'quality' => $result['quality'] ?? null,
             ];
         }
 
-        // Step 3: Score confidence
-        $scoring = $this->scorer->score($processed['parsed']);
+        $quality = $result['quality'] ?? null;
+        $result = $this->applyInference($result);
+        $scoring = $this->scorer->score($result['parsed']);
+        $result['confidence'] = $scoring['score'];
+        $result['action'] = $scoring['action'];
 
-        // Track escalation metadata
-        $escalation = [
-            'attempted' => false,
-            'improved' => false,
-            'originalConfidence' => null,
+        $tierConfig = $this->config['model_tiers']['fast'] ?? [];
+        $escalationData['tiers']['tier1'] = [
+            'confidence' => $result['confidence'],
+            'model' => $tierConfig['model'] ?? 'gemini-3-flash-preview',
         ];
+        $escalationData['total_cost'] += $result['cost'] ?? 0;
 
-        // Track total usage
-        $totalUsage = [
-            'tokens' => $processed['tokens'],
-            'cost' => $processed['cost'],
-            'latencyMs' => $processed['latencyMs'] ?? 0,
-        ];
-
-        // Keep first quality assessment
-        $quality = $processed['quality'] ?? null;
-
-        // Parse supplementary constraints for post-LLM confidence adjustment
-        $constraints = [];
-        if ($supplementaryText) {
-            $parser = new SupplementaryContextParser();
-            $contextResult = $parser->parse($supplementaryText);
-            $constraints = $contextResult['constraints'] ?? [];
+        // Check Tier 1 threshold
+        if ($result['confidence'] >= $tier1Threshold) {
+            $escalationData['final_tier'] = 'tier1';
+            return $this->buildImageResult($result, 'auto_populate', $escalationData, $quality);
         }
 
-        // Step 3a: Model escalation - if confidence is below threshold, try detailed model
-        $escalationThreshold = $this->config['confidence']['escalation_threshold'] ?? 70;
-        if ($scoring['score'] < $escalationThreshold) {
-            $escalation['attempted'] = true;
-            $escalation['originalConfidence'] = $scoring['score'];
+        // ─────────────────────────────────────────────────────
+        // TIER 1.5: Detailed (Gemini 3 Flash, high thinking)
+        // ─────────────────────────────────────────────────────
+        $tier1Result = $result; // Save for context
+        $result = $this->processVisionWithGemini($imageData, $mimeType, 'detailed', $processOptions);
 
-            // Get detailed model options
-            $detailedOptions = $this->config['model_tiers']['detailed'] ?? [];
+        if ($result['success']) {
+            $result = $this->applyInference($result);
+            $scoring = $this->scorer->score($result['parsed']);
+            $result['confidence'] = $scoring['score'];
+            $result['action'] = $scoring['action'];
 
-            // Try with detailed prompt and options (also pass supplementary text)
-            $escalationOptions = [
-                'detailed_prompt' => true,
-                'temperature' => $detailedOptions['temperature'] ?? 0.4,
-                'max_tokens' => $detailedOptions['max_tokens'] ?? 800,
+            $detailedTierConfig = $this->config['model_tiers']['detailed'] ?? [];
+            $escalationData['tiers']['tier1_5'] = [
+                'confidence' => $result['confidence'],
+                'model' => $detailedTierConfig['model'] ?? 'gemini-3-flash-preview',
+                'thinking_level' => $detailedTierConfig['thinking_level'] ?? 'HIGH',
             ];
-            if ($supplementaryText) {
-                $escalationOptions['supplementary_text'] = $supplementaryText;
+            $escalationData['total_cost'] += $result['cost'] ?? 0;
+
+            // Use better result
+            if ($result['confidence'] < $tier1Result['confidence']) {
+                $result = $tier1Result; // Keep tier 1 result if it was better
             }
+        } else {
+            // Tier 1.5 failed, keep tier 1 result
+            $result = $tier1Result;
+        }
 
-            $detailedProcessed = $this->visionProcessor->process(
-                $classification['imageData'],
-                $classification['mimeType'],
-                $escalationOptions
+        // Check Tier 1.5 threshold
+        if ($result['confidence'] >= $tier1_5Threshold) {
+            $escalationData['final_tier'] = 'tier1_5';
+            return $this->buildImageResult($result, 'suggest', $escalationData, $quality);
+        }
+
+        // ─────────────────────────────────────────────────────
+        // TIER 2: Balanced (Claude Sonnet 4.5 with vision)
+        // ─────────────────────────────────────────────────────
+        if ($this->llmClient->isProviderAvailable('claude')) {
+            $tier1_5Result = $result; // Save for context
+            $claudeResult = $this->processVisionWithClaude(
+                $imageData,
+                $mimeType,
+                'claude-sonnet-4-5-20250929',
+                $processOptions
             );
 
-            if ($detailedProcessed['success']) {
-                $detailedScoring = $this->scorer->score($detailedProcessed['parsed']);
+            if ($claudeResult['success']) {
+                $claudeResult = $this->applyInference($claudeResult);
+                $scoring = $this->scorer->score($claudeResult['parsed']);
+                $claudeResult['confidence'] = $scoring['score'];
+                $claudeResult['action'] = $scoring['action'];
 
-                // Use detailed result if it improved confidence
-                if ($detailedScoring['score'] > $scoring['score']) {
-                    $escalation['improved'] = true;
-                    $processed = $detailedProcessed;
-                    $scoring = $detailedScoring;
+                $escalationData['tiers']['tier2'] = [
+                    'confidence' => $claudeResult['confidence'],
+                    'model' => 'claude-sonnet-4-5-20250929',
+                ];
+                $escalationData['total_cost'] += $claudeResult['cost'] ?? 0;
+
+                // Use better result
+                if ($claudeResult['confidence'] > $result['confidence']) {
+                    $result = $claudeResult;
                 }
-
-                // Combine usage from both attempts
-                $totalUsage['tokens']['input'] += $detailedProcessed['tokens']['input'] ?? 0;
-                $totalUsage['tokens']['output'] += $detailedProcessed['tokens']['output'] ?? 0;
-                $totalUsage['cost'] += $detailedProcessed['cost'] ?? 0;
-                $totalUsage['latencyMs'] += $detailedProcessed['latencyMs'] ?? 0;
             }
         }
 
-        // Step 3b: Post-LLM confidence adjustment based on supplementary constraints
-        if (!empty($constraints)) {
-            $parser = $parser ?? new SupplementaryContextParser();
-            $adjustment = $parser->validateAgainstConstraints($processed['parsed'], $constraints);
-            if ($adjustment !== 0) {
-                $scoring['score'] = max(0, min(100, $scoring['score'] + $adjustment));
-                $scoring['action'] = $this->scorer->score($processed['parsed'])['action'] ?? $scoring['action'];
-                // Re-determine action based on adjusted score
-                if ($scoring['score'] >= ($this->config['confidence']['auto_populate'] ?? 85)) {
-                    $scoring['action'] = 'auto_populate';
-                } elseif ($scoring['score'] >= ($this->config['confidence']['suggest'] ?? 60)) {
-                    $scoring['action'] = 'suggest';
-                } else {
-                    $scoring['action'] = 'disambiguate';
-                }
-                agentLogInfo('Confidence adjusted by supplementary constraints', [
-                    'adjustment' => $adjustment,
-                    'newScore' => $scoring['score'],
-                    'constraints' => $constraints,
-                ]);
-            }
+        // Check Tier 2 threshold
+        if ($result['confidence'] >= $tier2Threshold) {
+            $escalationData['final_tier'] = 'tier2';
+            return $this->buildImageResult($result, 'suggest', $escalationData, $quality);
         }
 
-        // Step 4: Build result
-        $result = [
+        // ─────────────────────────────────────────────────────
+        // USER CHOICE: Below 60% - always offer premium model
+        // ─────────────────────────────────────────────────────
+        $escalationData['final_tier'] = 'user_choice';
+        $finalResult = $this->buildImageResult($result, 'user_choice', $escalationData, $quality, [
+            'options' => ['try_harder', 'tell_me_more'],
+        ]);
+
+        // Also get candidates for disambiguation if confidence is very low
+        if ($result['confidence'] < 30) {
+            $finalResult['candidates'] = $this->disambiguator->findCandidates($result['parsed']);
+        }
+
+        return $finalResult;
+    }
+
+    /**
+     * Build image identification result with standard structure
+     *
+     * @param array $result Processing result
+     * @param string $action Action to take
+     * @param array $escalation Escalation metadata
+     * @param array|null $quality Image quality assessment
+     * @param array $extra Extra fields
+     * @return array Complete result
+     */
+    private function buildImageResult(
+        array $result,
+        string $action,
+        array $escalation,
+        ?array $quality,
+        array $extra = []
+    ): array {
+        $finalResult = [
             'success' => true,
             'inputType' => 'image',
-            'intent' => 'add', // Image input always implies "add to cellar" intent
-            'parsed' => $processed['parsed'],
-            'confidence' => $scoring['score'],
-            'action' => $scoring['action'],
+            'intent' => 'add', // Image input always implies "add to cellar"
+            'parsed' => $result['parsed'],
+            'confidence' => $result['confidence'],
+            'action' => $action,
             'candidates' => [],
-            'usage' => $totalUsage,
+            'usage' => [
+                'tokens' => $result['tokens'] ?? ['input' => 0, 'output' => 0],
+                'cost' => $escalation['total_cost'] ?? 0,
+                'latencyMs' => $result['latencyMs'] ?? 0,
+            ],
             'quality' => $quality,
             'escalation' => $escalation,
+            'inferences_applied' => $result['inferences_applied'] ?? [],
         ];
 
-        // Step 5: Get candidates if needed for disambiguation
-        if ($scoring['action'] === 'disambiguate') {
-            $result['candidates'] = $this->disambiguator->findCandidates($processed['parsed']);
-        }
-
-        return $result;
+        return array_merge($finalResult, $extra);
     }
 
     /**

@@ -47,12 +47,20 @@ try {
 
     // Run identification
     $service = getAgentIdentificationService($userId);
+    error_log('IdentifyText: Starting identification for: ' . substr($input['text'], 0, 50));
     $result = $service->identify($input);
+    error_log('IdentifyText: Result success=' . ($result['success'] ? 'true' : 'false') . ', confidence=' . ($result['confidence'] ?? 'null'));
 
     if (!$result['success']) {
         $errorType = $result['errorType'] ?? 'identification_error';
         $httpCode = $errorType === 'limit_exceeded' ? 429 : 400;
+        error_log('IdentifyText: Error - ' . ($result['error'] ?? 'unknown') . ' (type: ' . $errorType . ', stage: ' . ($result['stage'] ?? 'unknown') . ')');
         agentError($result['error'] ?? 'Identification failed', $httpCode);
+    }
+
+    // Log escalation for debugging (check PHP error log)
+    if (isset($result['escalation'])) {
+        error_log('Wine ID Escalation: ' . json_encode($result['escalation']));
     }
 
     // Success response
@@ -64,6 +72,8 @@ try {
         'action' => $result['action'],
         'candidates' => $result['candidates'],
         'usage' => $result['usage'] ?? null,
+        'escalation' => $result['escalation'] ?? null,
+        'inferences_applied' => $result['inferences_applied'] ?? [],
     ]);
 
 } catch (\Exception $e) {

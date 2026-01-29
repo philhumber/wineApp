@@ -1,9 +1,10 @@
 <?php
 /**
- * Gemini LLM Adapter
+ * Claude LLM Adapter
  *
- * Adapter for Google's Gemini API.
+ * Adapter for Anthropic's Claude API.
  * Implements the LLMProviderInterface for unified access.
+ * Supports both text completion and vision (image) requests.
  *
  * @package Agent\LLM\Adapters
  */
@@ -13,7 +14,7 @@ namespace Agent\LLM\Adapters;
 use Agent\LLM\Interfaces\LLMProviderInterface;
 use Agent\LLM\LLMResponse;
 
-class GeminiAdapter implements LLMProviderInterface
+class ClaudeAdapter implements LLMProviderInterface
 {
     /** @var string API key */
     private string $apiKey;
@@ -27,8 +28,11 @@ class GeminiAdapter implements LLMProviderInterface
     /** @var array Provider configuration */
     private array $config;
 
+    /** @var string API version header */
+    private const API_VERSION = '2023-06-01';
+
     /**
-     * Create a new Gemini adapter
+     * Create a new Claude adapter
      *
      * @param array $config Provider configuration
      */
@@ -36,8 +40,8 @@ class GeminiAdapter implements LLMProviderInterface
     {
         $this->config = $config;
         $this->apiKey = $this->loadApiKey();
-        $this->model = $config['default_model'] ?? 'gemini-3.0-flash';
-        $this->baseUrl = $config['base_url'] ?? 'https://generativelanguage.googleapis.com/v1beta';
+        $this->model = $config['default_model'] ?? 'claude-sonnet-4-5-20250929';
+        $this->baseUrl = $config['base_url'] ?? 'https://api.anthropic.com/v1';
     }
 
     /**
@@ -54,11 +58,11 @@ class GeminiAdapter implements LLMProviderInterface
             require_once $configPath;
         }
 
-        if (!\defined('GEMINI_API_KEY')) {
-            throw new \RuntimeException('GEMINI_API_KEY not configured');
+        if (!\defined('ANTHROPIC_API_KEY')) {
+            throw new \RuntimeException('ANTHROPIC_API_KEY not configured');
         }
 
-        return GEMINI_API_KEY;
+        return ANTHROPIC_API_KEY;
     }
 
     /**
@@ -70,35 +74,24 @@ class GeminiAdapter implements LLMProviderInterface
         $model = $options['model'] ?? $this->model;
 
         $payload = [
-            'contents' => [
-                ['parts' => [['text' => $prompt]]]
-            ],
-            'generationConfig' => [
-                'maxOutputTokens' => $options['max_tokens'] ?? 1000,
-                'temperature' => $options['temperature'] ?? 0.7,
+            'model' => $model,
+            'max_tokens' => $options['max_tokens'] ?? 2000,
+            'messages' => [
+                ['role' => 'user', 'content' => $prompt]
             ],
         ];
 
-        // Add thinking config for Gemini 3 models
-        if (isset($options['thinking_level']) && $this->supportsThinking($model)) {
-            $payload['generationConfig']['thinkingConfig'] = [
-                'thinkingLevel' => $options['thinking_level']
-            ];
+        // Add temperature if specified
+        if (isset($options['temperature'])) {
+            $payload['temperature'] = $options['temperature'];
         }
 
-        // Add tools if provided
-        if (!empty($options['tools'])) {
-            $payload['tools'] = $this->formatTools($options['tools']);
+        // Add system prompt if provided
+        if (!empty($options['system'])) {
+            $payload['system'] = $options['system'];
         }
 
-        // Add JSON response format if requested
-        if ($options['json_response'] ?? false) {
-            $payload['generationConfig']['responseMimeType'] = 'application/json';
-        }
-
-        $url = "{$this->baseUrl}/models/{$model}:generateContent?key={$this->apiKey}";
-
-        $response = $this->makeRequest($url, $payload);
+        $response = $this->makeRequest('/messages', $payload);
         $latencyMs = (int)((\microtime(true) - $startTime) * 1000);
 
         if ($response['error']) {
@@ -107,29 +100,13 @@ class GeminiAdapter implements LLMProviderInterface
                 'network_error',
                 [
                     'latencyMs' => $latencyMs,
-                    'provider' => 'gemini',
+                    'provider' => 'claude',
                     'model' => $model,
                 ]
             );
         }
 
         if ($response['httpCode'] !== 200) {
-            // Check for model unavailability - attempt fallback
-            if (($response['httpCode'] === 503 || $response['httpCode'] === 404) &&
-                !($options['_is_fallback'] ?? false)) {
-                $fallbackModel = $this->getFallbackModel($model);
-                if ($fallbackModel) {
-                    // Remove thinking_level for fallback models that don't support it
-                    $fallbackOptions = $options;
-                    if (!$this->supportsThinking($fallbackModel)) {
-                        unset($fallbackOptions['thinking_level']);
-                    }
-                    $fallbackOptions['model'] = $fallbackModel;
-                    $fallbackOptions['_is_fallback'] = true;
-
-                    return $this->complete($prompt, $fallbackOptions);
-                }
-            }
             return $this->handleError($response['data'], $response['httpCode'], $latencyMs, $model);
         }
 
@@ -149,39 +126,40 @@ class GeminiAdapter implements LLMProviderInterface
         $model = $options['model'] ?? $this->model;
 
         $payload = [
-            'contents' => [
+            'model' => $model,
+            'max_tokens' => $options['max_tokens'] ?? 2000,
+            'messages' => [
                 [
-                    'parts' => [
-                        ['text' => $prompt],
+                    'role' => 'user',
+                    'content' => [
                         [
-                            'inline_data' => [
-                                'mime_type' => $mimeType,
+                            'type' => 'image',
+                            'source' => [
+                                'type' => 'base64',
+                                'media_type' => $mimeType,
                                 'data' => $imageBase64,
                             ]
+                        ],
+                        [
+                            'type' => 'text',
+                            'text' => $prompt
                         ]
                     ]
                 ]
             ],
-            'generationConfig' => [
-                'maxOutputTokens' => $options['max_tokens'] ?? 1000,
-                'temperature' => $options['temperature'] ?? 0.7,
-            ],
         ];
 
-        // Add thinking config for Gemini 3 models
-        if (isset($options['thinking_level']) && $this->supportsThinking($model)) {
-            $payload['generationConfig']['thinkingConfig'] = [
-                'thinkingLevel' => $options['thinking_level']
-            ];
+        // Add temperature if specified
+        if (isset($options['temperature'])) {
+            $payload['temperature'] = $options['temperature'];
         }
 
-        if ($options['json_response'] ?? false) {
-            $payload['generationConfig']['responseMimeType'] = 'application/json';
+        // Add system prompt if provided
+        if (!empty($options['system'])) {
+            $payload['system'] = $options['system'];
         }
 
-        $url = "{$this->baseUrl}/models/{$model}:generateContent?key={$this->apiKey}";
-
-        $response = $this->makeRequest($url, $payload, $this->config['timeout'] ?? 60);
+        $response = $this->makeRequest('/messages', $payload, $this->config['timeout'] ?? 60);
         $latencyMs = (int)((\microtime(true) - $startTime) * 1000);
 
         if ($response['error']) {
@@ -190,29 +168,13 @@ class GeminiAdapter implements LLMProviderInterface
                 'network_error',
                 [
                     'latencyMs' => $latencyMs,
-                    'provider' => 'gemini',
+                    'provider' => 'claude',
                     'model' => $model,
                 ]
             );
         }
 
         if ($response['httpCode'] !== 200) {
-            // Check for model unavailability - attempt fallback
-            if (($response['httpCode'] === 503 || $response['httpCode'] === 404) &&
-                !($options['_is_fallback'] ?? false)) {
-                $fallbackModel = $this->getFallbackModel($model);
-                if ($fallbackModel) {
-                    // Remove thinking_level for fallback models that don't support it
-                    $fallbackOptions = $options;
-                    if (!$this->supportsThinking($fallbackModel)) {
-                        unset($fallbackOptions['thinking_level']);
-                    }
-                    $fallbackOptions['model'] = $fallbackModel;
-                    $fallbackOptions['_is_fallback'] = true;
-
-                    return $this->completeWithImage($prompt, $imageBase64, $mimeType, $fallbackOptions);
-                }
-            }
             return $this->handleError($response['data'], $response['httpCode'], $latencyMs, $model);
         }
 
@@ -220,20 +182,28 @@ class GeminiAdapter implements LLMProviderInterface
     }
 
     /**
-     * Make HTTP request to Gemini API
+     * Make HTTP request to Claude API
      *
-     * @param string $url Request URL
+     * @param string $endpoint API endpoint
      * @param array $payload Request payload
      * @param int $timeout Request timeout
      * @return array Response with data, httpCode, and error
      */
-    private function makeRequest(string $url, array $payload, int $timeout = 30): array
+    private function makeRequest(string $endpoint, array $payload, int $timeout = 30): array
     {
+        $url = $this->baseUrl . $endpoint;
         $ch = \curl_init($url);
+
+        $headers = [
+            'Content-Type: application/json',
+            'X-Api-Key: ' . $this->apiKey,
+            'anthropic-version: ' . self::API_VERSION,
+        ];
+
         $options = [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => \json_encode($payload),
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_HTTPHEADER => $headers,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => $timeout,
         ];
@@ -246,7 +216,6 @@ class GeminiAdapter implements LLMProviderInterface
             $options[CURLOPT_CAINFO] = $certPath;
         } else {
             // Dev fallback: disable SSL verification if no cert found
-            // TODO: Remove in production - configure curl.cainfo in php.ini instead
             $options[CURLOPT_SSL_VERIFYPEER] = false;
             $options[CURLOPT_SSL_VERIFYHOST] = 0;
         }
@@ -275,48 +244,10 @@ class GeminiAdapter implements LLMProviderInterface
      */
     private function parseSuccessResponse(array $data, int $latencyMs, string $model): LLMResponse
     {
-        $parts = $data['candidates'][0]['content']['parts'] ?? [];
-        $inputTokens = $data['usageMetadata']['promptTokenCount'] ?? 0;
-        $outputTokens = $data['usageMetadata']['candidatesTokenCount'] ?? 0;
-
-        // When thinking mode is enabled, Gemini returns multiple parts:
-        // - First part(s): thinking text (may be empty or contain reasoning)
-        // - Last part: the actual response
-        // We want the last non-empty text part, or specifically the one with JSON when json_response is set
-        $content = null;
-        $thinkingContent = null;
-
-        // Debug: log number of parts and finish reason
-        $finishReason = $data['candidates'][0]['finishReason'] ?? 'unknown';
-        $safetyRatings = $data['candidates'][0]['safetyRatings'] ?? [];
-        \error_log("GeminiAdapter: Response has " . count($parts) . " part(s), finishReason: {$finishReason}");
-        if (!empty($safetyRatings)) {
-            \error_log("GeminiAdapter: Safety ratings: " . \json_encode($safetyRatings));
-        }
-
-        foreach ($parts as $index => $part) {
-            $text = $part['text'] ?? null;
-            \error_log("GeminiAdapter: Part {$index} text (first 200 chars): " . \substr($text ?? 'null', 0, 200));
-
-            if ($text !== null && $text !== '') {
-                // Check if this looks like JSON (starts with { or [)
-                $trimmed = \ltrim($text);
-                if (\str_starts_with($trimmed, '{') || \str_starts_with($trimmed, '[')) {
-                    // This is likely the JSON response
-                    $content = $text;
-                    \error_log("GeminiAdapter: Part {$index} identified as JSON content");
-                } elseif ($content === null) {
-                    // Keep track of non-JSON content (thinking or fallback)
-                    $thinkingContent = $text;
-                    \error_log("GeminiAdapter: Part {$index} stored as thinking/fallback content");
-                }
-            }
-        }
-
-        // If no JSON found, use the last non-empty content
-        if ($content === null) {
-            $content = $thinkingContent;
-        }
+        // Claude returns content as an array of content blocks
+        $content = $this->extractContent($data);
+        $inputTokens = $data['usage']['input_tokens'] ?? 0;
+        $outputTokens = $data['usage']['output_tokens'] ?? 0;
 
         // Validate that we got actual content
         if ($content === null || $content === '') {
@@ -325,7 +256,7 @@ class GeminiAdapter implements LLMProviderInterface
                 'invalid_response',
                 [
                     'latencyMs' => $latencyMs,
-                    'provider' => 'gemini',
+                    'provider' => 'claude',
                     'model' => $model,
                 ]
             );
@@ -343,9 +274,31 @@ class GeminiAdapter implements LLMProviderInterface
             'outputTokens' => $outputTokens,
             'costUSD' => $costUSD,
             'latencyMs' => $latencyMs,
-            'provider' => 'gemini',
+            'provider' => 'claude',
             'model' => $model,
         ]);
+    }
+
+    /**
+     * Extract text content from Claude response
+     *
+     * @param array $data Response data
+     * @return string|null Extracted text content
+     */
+    private function extractContent(array $data): ?string
+    {
+        if (!isset($data['content']) || !is_array($data['content'])) {
+            return null;
+        }
+
+        // Claude returns content blocks, find the text block
+        foreach ($data['content'] as $block) {
+            if (isset($block['type']) && $block['type'] === 'text') {
+                return $block['text'] ?? null;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -367,7 +320,7 @@ class GeminiAdapter implements LLMProviderInterface
             'error' => $errorMessage,
             'errorType' => $errorType,
             'latencyMs' => $latencyMs,
-            'provider' => 'gemini',
+            'provider' => 'claude',
             'model' => $model,
         ]);
     }
@@ -382,7 +335,7 @@ class GeminiAdapter implements LLMProviderInterface
     private function classifyError(int $httpCode, string $message): string
     {
         if ($httpCode === 429) return 'rate_limit';
-        if ($httpCode === 503) return 'overloaded';
+        if ($httpCode === 529) return 'overloaded';
         if ($httpCode >= 500) return 'server_error';
         if (\stripos($message, 'timeout') !== false) return 'timeout';
         if ($httpCode === 401) return 'auth_error';
@@ -399,51 +352,11 @@ class GeminiAdapter implements LLMProviderInterface
     private function getCostConfig(string $model): array
     {
         $costs = [
-            'gemini-3-flash-preview' => ['input' => 0.15, 'output' => 0.60],
-            'gemini-3-pro-preview' => ['input' => 1.25, 'output' => 5.00],
-            'gemini-2.0-flash' => ['input' => 0.10, 'output' => 0.40],
-            'gemini-1.5-flash' => ['input' => 0.075, 'output' => 0.30],
+            'claude-sonnet-4-5-20250929' => ['input' => 3.00, 'output' => 15.00],
+            'claude-opus-4-5-20251101' => ['input' => 5.00, 'output' => 25.00],
+            'claude-haiku-4-20250514' => ['input' => 0.80, 'output' => 4.00],
         ];
-        return $costs[$model] ?? ['input' => 0.15, 'output' => 0.60];
-    }
-
-    /**
-     * Check if model supports thinking configuration
-     *
-     * @param string $model Model name
-     * @return bool True if model supports thinking levels (LOW/HIGH)
-     */
-    private function supportsThinking(string $model): bool
-    {
-        // Gemini 3 models support thinking levels (LOW/HIGH)
-        return strpos($model, 'gemini-3') === 0;
-    }
-
-    /**
-     * Get fallback model for when primary fails
-     *
-     * @param string $model Current model
-     * @return string|null Fallback model or null if none available
-     */
-    private function getFallbackModel(string $model): ?string
-    {
-        $fallbacks = [
-            'gemini-3-flash-preview' => 'gemini-2.0-flash',
-            'gemini-3-pro-preview' => 'gemini-2.0-flash',
-            'gemini-2.0-flash' => 'gemini-1.5-flash',
-        ];
-        return $fallbacks[$model] ?? null;
-    }
-
-    /**
-     * Format tools for Gemini API
-     *
-     * @param array $tools Tool definitions
-     * @return array Formatted tools
-     */
-    private function formatTools(array $tools): array
-    {
-        return [['function_declarations' => $tools]];
+        return $costs[$model] ?? ['input' => 3.00, 'output' => 15.00];
     }
 
     /**
@@ -453,8 +366,8 @@ class GeminiAdapter implements LLMProviderInterface
     {
         $modelConfig = $this->config['models'][$this->model] ?? [];
         return match ($capability) {
-            'vision' => $modelConfig['supports_vision'] ?? false,
-            'tools' => $modelConfig['supports_tools'] ?? false,
+            'vision' => $modelConfig['supports_vision'] ?? true,
+            'tools' => $modelConfig['supports_tools'] ?? true,
             'streaming' => true,
             default => false,
         };
@@ -465,7 +378,7 @@ class GeminiAdapter implements LLMProviderInterface
      */
     public function getName(): string
     {
-        return 'gemini';
+        return 'claude';
     }
 
     /**

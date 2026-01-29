@@ -542,6 +542,43 @@ class WineApiClient {
   }
 
   /**
+   * User-triggered escalation to Claude Opus for maximum accuracy
+   * Called when user clicks "Try harder" after a user_choice action
+   * Supports both text and image inputs based on inputType
+   */
+  async identifyWithOpus(
+    input: string,
+    inputType: 'text' | 'image',
+    priorResult: AgentIdentificationResult,
+    mimeType?: string,
+    supplementaryText?: string
+  ): Promise<AgentIdentificationResult> {
+    // Build request body based on input type
+    const body: Record<string, unknown> = { priorResult };
+
+    if (inputType === 'image') {
+      body.image = input;
+      body.mimeType = mimeType || 'image/jpeg';
+      if (supplementaryText) {
+        body.supplementaryText = supplementaryText;
+      }
+    } else {
+      body.text = input;
+    }
+
+    const response = await this.fetchJSON<AgentIdentificationResult>(
+      'agent/identifyWithOpus.php',
+      body
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to identify wine with premium model');
+    }
+
+    return response.data;
+  }
+
+  /**
    * Compress and convert image file for identification API
    * Returns base64-encoded image data with mime type
    */
