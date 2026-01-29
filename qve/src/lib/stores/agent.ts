@@ -42,6 +42,7 @@ export type AgentPhase =
 	| 'action_select'
 	| 'handle_incorrect'
 	| 'augment_input'
+	| 'escalation_choice' // User decides: try harder (Opus) or conversational
 	| 'complete';
 
 /** Message content types */
@@ -255,6 +256,21 @@ function createAgentStore() {
 
 			try {
 				const result = await api.identifyText(text);
+
+				// Debug: Log escalation info to console
+				if (result.escalation) {
+					console.group('🍷 Wine Identification Escalation');
+					console.log('Final Tier:', result.escalation.final_tier);
+					console.log('Confidence:', result.confidence);
+					console.log('Action:', result.action);
+					console.table(result.escalation.tiers);
+					if (result.inferences_applied?.length) {
+						console.log('Inferences Applied:', result.inferences_applied);
+					}
+					console.log('Total Cost:', result.escalation.total_cost);
+					console.groupEnd();
+				}
+
 				update((state) => ({
 					...state,
 					isLoading: false,
@@ -351,6 +367,60 @@ function createAgentStore() {
 			} catch (error) {
 				const message =
 					error instanceof Error ? error.message : 'Image identification failed. Please try again.';
+				update((state) => ({
+					...state,
+					isLoading: false,
+					error: message
+				}));
+				return null;
+			}
+		},
+
+		/**
+		 * User-triggered escalation to Claude Opus for maximum accuracy
+		 * Called when user clicks "Try Harder" after a user_choice action
+		 * Supports both text and image inputs
+		 */
+		identifyWithOpus: async (
+			input: string,
+			inputType: AgentInputType,
+			priorResult: AgentIdentificationResult,
+			mimeType?: string,
+			supplementaryText?: string
+		): Promise<AgentIdentificationResult | null> => {
+			update((state) => ({
+				...state,
+				isLoading: true,
+				error: null
+			}));
+
+			try {
+				console.log(`🚀 Escalating to Claude Opus (Tier 3) with ${inputType} input...`);
+				const result = await withRetry(() =>
+					api.identifyWithOpus(input, inputType, priorResult, mimeType, supplementaryText)
+				);
+
+				// Debug: Log Opus result
+				if (result.escalation) {
+					console.group('🍷 Opus (Tier 3) Result');
+					console.log('Confidence:', result.confidence);
+					console.log('Action:', result.action);
+					console.table(result.escalation.tiers);
+					console.log('Total Cost:', result.escalation.total_cost);
+					console.groupEnd();
+				}
+
+				update((state) => ({
+					...state,
+					isLoading: false,
+					lastResult: result,
+					error: null
+				}));
+
+				return result;
+			} catch (error) {
+				const message =
+					error instanceof Error ? error.message : 'Premium identification failed. Please try again.';
 				update((state) => ({
 					...state,
 					isLoading: false,

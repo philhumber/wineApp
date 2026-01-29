@@ -98,7 +98,7 @@ PROMPT;
 
         // Append supplementary context from user if provided
         if (!empty($options['supplementary_text'])) {
-            $parser = new SupplementaryContextParser();
+            $parser = new InferenceEngine(null); // No DB needed for parse()
             $contextResult = $parser->parse($options['supplementary_text']);
             if (!empty($contextResult['promptSnippet'])) {
                 $prompt .= "\n\n" . $contextResult['promptSnippet'];
@@ -108,11 +108,32 @@ PROMPT;
             }
         }
 
-        $response = $this->llmClient->complete('identify_text', $prompt, [
+        // Append prior context for escalation attempts
+        if (!empty($options['prior_context'])) {
+            $prompt .= "\n\n" . $options['prior_context'];
+        }
+
+        // Build LLM options
+        $llmOptions = [
             'json_response' => true,
             'temperature' => $options['temperature'] ?? 0.3,
-            'max_tokens' => $options['max_tokens'] ?? 500,
-        ]);
+            'max_tokens' => $options['max_tokens'] ?? 1000,
+        ];
+
+        // Pass through provider/model for explicit tier selection
+        if (!empty($options['provider'])) {
+            $llmOptions['provider'] = $options['provider'];
+        }
+        if (!empty($options['model'])) {
+            $llmOptions['model'] = $options['model'];
+        }
+
+        // Pass through thinking_level for Gemini 3 models
+        if (!empty($options['thinking_level'])) {
+            $llmOptions['thinking_level'] = $options['thinking_level'];
+        }
+
+        $response = $this->llmClient->complete('identify_text', $prompt, $llmOptions);
 
         if (!$response->success) {
             return [
@@ -123,13 +144,18 @@ PROMPT;
             ];
         }
 
+        // Debug log the raw response
+        error_log('TextProcessor: Raw LLM response: ' . substr($response->content ?? 'null', 0, 500));
+
         // Parse JSON response
         $parsed = $this->parseJsonResponse($response->content);
 
         if ($parsed === null) {
+            error_log('TextProcessor: JSON parse failed. Full response: ' . $response->content);
             return [
                 'success' => false,
                 'error' => 'Failed to parse LLM response as JSON',
+                'errorType' => 'json_parse_error',
                 'parsed' => null,
                 'raw' => $response->content,
             ];
@@ -170,15 +196,24 @@ Use your extensive knowledge to identify this wine. Consider:
 - For New World wines, consider typical regional grape varieties
 - For European wines, consider appellation rules to deduce grape varieties
 
-Extract these fields (use null only if truly uncertain after careful consideration):
-- producer: The full winery/producer name (expand abbreviations)
+CRITICAL - Confidence Scoring Rules:
+- HIGH confidence (80-100): ONLY for wines you actually RECOGNIZE as real, existing wines
+- MEDIUM confidence (50-79): You recognize the producer but not the specific wine, or input is ambiguous
+- LOW confidence (0-49): The producer/wine is NOT a real wine you recognize
+
+Do NOT give high confidence just because you can fill in fields with plausible regional data.
+If the producer name doesn't match a real winery you know, confidence must be LOW (<50).
+The wine must actually EXIST for high confidence - pattern matching alone is not enough.
+
+Extract these fields (use null if the wine is not recognized):
+- producer: The full winery/producer name (only if it's a REAL producer you recognize)
 - wineName: The specific wine/cuvée name if different from producer
 - vintage: The year (4 digits)
 - region: The wine region or appellation (be specific - e.g., "Margaux" not just "Bordeaux")
 - country: Country of origin
 - wineType: Red, White, Rosé, Sparkling, Dessert, or Fortified
 - grapes: Array of likely grape varieties (can infer from region/style if not stated)
-- confidence: Your confidence score (0-100). Be confident when you have strong knowledge.
+- confidence: Your confidence score (0-100) that this is a REAL, IDENTIFIABLE wine
 
 Respond ONLY with valid JSON:
 {
@@ -297,6 +332,22 @@ PROMPT;
 
         // Ensure confidence is numeric and in range
         $normalized['confidence'] = max(0, min(100, (int)($normalized['confidence'] ?? 0)));
+
+        // For single-wine estates, wineName should equal producer
+        // Only copy producer to wineName if this looks like a complete wine identification:
+        // - Has vintage (specific wine year mentioned), OR
+        // - LLM explicitly set wineName to same as producer
+        // Do NOT copy for producer-only searches like "Burgundy from Domaine Leroy"
+        $hasVintage = !empty($normalized['vintage']);
+        $hasWineType = !empty($normalized['wineType']);
+
+        if ($normalized['wineName'] === null && $normalized['producer'] !== null) {
+            // Only treat producer as wine name if we have vintage (indicates specific wine)
+            // Producers like Domaine Leroy make many wines, so don't assume producer = wine
+            if ($hasVintage) {
+                $normalized['wineName'] = $normalized['producer'];
+            }
+        }
 
         return $normalized;
     }

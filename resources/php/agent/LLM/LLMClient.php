@@ -12,6 +12,7 @@ namespace Agent\LLM;
 
 use Agent\LLM\Interfaces\LLMProviderInterface;
 use Agent\LLM\Adapters\GeminiAdapter;
+use Agent\LLM\Adapters\ClaudeAdapter;
 
 class LLMClient
 {
@@ -69,11 +70,22 @@ class LLMClient
             }
         }
 
-        // Claude adapter would be initialized here when enabled
-        // if ($this->config['providers']['claude']['enabled'] ?? false) {
-        //     $this->providers['claude'] = new ClaudeAdapter($this->config['providers']['claude']);
-        //     $this->circuitBreakers['claude'] = new CircuitBreaker('claude', $this->config['circuit_breaker'], $this->pdo);
-        // }
+        // Initialize Claude (for multi-tier escalation)
+        if ($this->config['providers']['claude']['enabled'] ?? false) {
+            try {
+                $this->providers['claude'] = new ClaudeAdapter(
+                    $this->config['providers']['claude']
+                );
+                $this->circuitBreakers['claude'] = new CircuitBreaker(
+                    'claude',
+                    $this->config['circuit_breaker'],
+                    $this->pdo
+                );
+            } catch (\Exception $e) {
+                // Provider failed to initialize, will be unavailable
+                error_log("Failed to initialize Claude adapter: " . $e->getMessage());
+            }
+        }
 
         // OpenAI embedding adapter would be initialized here when enabled
     }
@@ -108,10 +120,16 @@ class LLMClient
             );
         }
 
-        // Try primary provider
+        // Allow provider override via options (for explicit escalation to specific providers)
+        $providerName = $options['provider'] ?? $routing['primary']['provider'];
+        $modelName = $options['model'] ?? $routing['primary']['model'] ?? null;
+
+        \error_log("LLMClient: Using provider={$providerName}, model={$modelName} for task={$taskType}");
+
+        // Try specified provider
         $response = $this->tryProvider(
-            $routing['primary']['provider'],
-            $routing['primary']['model'] ?? null,
+            $providerName,
+            $modelName,
             $prompt,
             $options
         );
@@ -274,9 +292,12 @@ class LLMClient
             );
         }
 
-        $providerName = $routing['primary']['provider'];
-        $model = $routing['primary']['model'] ?? null;
+        // Allow provider/model override via options (for explicit escalation)
+        $providerName = $options['provider'] ?? $routing['primary']['provider'];
+        $model = $options['model'] ?? $routing['primary']['model'] ?? null;
         $provider = $this->providers[$providerName] ?? null;
+
+        \error_log("LLMClient: Vision using provider={$providerName}, model={$model} for task={$taskType}");
 
         if (!$provider) {
             return LLMResponse::error(

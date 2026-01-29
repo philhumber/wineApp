@@ -42,6 +42,7 @@ class ConfidenceScorer
         $this->thresholds = [
             'auto_populate' => $config['confidence']['auto_populate'] ?? 85,
             'suggest' => $config['confidence']['suggest'] ?? 60,
+            'user_choice' => $config['confidence']['user_choice_threshold'] ?? 50,
         ];
     }
 
@@ -57,12 +58,22 @@ class ConfidenceScorer
         $totalWeight = 0;
         $weightedScore = 0;
 
+        // Check if producer exists (for wineName scoring)
+        $hasValidProducer = !empty($parsed['producer']) && is_string($parsed['producer']);
+
         // Score each field
         foreach ($this->weights as $field => $weight) {
             $fieldKey = $this->mapFieldKey($field);
             $value = $parsed[$fieldKey] ?? null;
 
             $score = $this->scoreField($field, $value);
+
+            // For many wines (Opus One, Château Margaux, etc.), producer = wine name
+            // Give partial credit for null wineName when producer exists
+            if ($field === 'wine_name' && $value === null && $hasValidProducer) {
+                $score = 0.7; // Partial credit - producer likely IS the wine name
+            }
+
             $fieldScores[$field] = [
                 'score' => $score,
                 'weight' => $weight,
@@ -328,8 +339,14 @@ class ConfidenceScorer
     /**
      * Determine action based on score
      *
+     * Actions:
+     * - auto_populate: ≥85% - Fill form automatically
+     * - suggest: 60-84% - Show suggestion with confirmation
+     * - user_choice: 50-59% - Let user choose Opus escalation or conversational
+     * - disambiguate: <50% - Show multiple options or enter conversational flow
+     *
      * @param int $score Confidence score (0-100)
-     * @return string Action (auto_populate, suggest, disambiguate)
+     * @return string Action (auto_populate, suggest, user_choice, disambiguate)
      */
     private function determineAction(int $score): string
     {
@@ -339,6 +356,10 @@ class ConfidenceScorer
 
         if ($score >= $this->thresholds['suggest']) {
             return 'suggest';
+        }
+
+        if ($score >= $this->thresholds['user_choice']) {
+            return 'user_choice';
         }
 
         return 'disambiguate';
@@ -387,6 +408,7 @@ class ConfidenceScorer
         return match ($action) {
             'auto_populate' => "High confidence ({$score}%) - safe to auto-fill form",
             'suggest' => "Medium confidence ({$score}%) - suggest with confirmation",
+            'user_choice' => "Moderate confidence ({$score}%) - offer premium model or conversational",
             'disambiguate' => "Low confidence ({$score}%) - show multiple options",
             default => "Unknown action",
         };

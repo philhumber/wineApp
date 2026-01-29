@@ -339,9 +339,29 @@ export interface AgentCandidate {
   data: Record<string, unknown>;
 }
 
-export type AgentAction = 'auto_populate' | 'suggest' | 'disambiguate';
+export type AgentAction = 'auto_populate' | 'suggest' | 'user_choice' | 'disambiguate';
 
 export type AgentInputType = 'text' | 'image';
+
+export interface AgentTierResult {
+  model: string;
+  confidence: number;
+  cost: number;
+  latencyMs: number;
+  timestamp: string;
+}
+
+export interface AgentEscalationMeta {
+  tiers: {
+    tier1?: AgentTierResult;
+    tier1_5?: AgentTierResult;
+    tier2?: AgentTierResult;
+    tier3?: AgentTierResult;
+  };
+  final_tier: 'tier1' | 'tier1_5' | 'tier2' | 'tier3';
+  total_cost: number;
+  total_latency: number;
+}
 
 export interface AgentIdentificationResult {
   intent: 'add' | 'advice' | 'pair';
@@ -349,11 +369,8 @@ export interface AgentIdentificationResult {
   confidence: number;
   action: AgentAction;
   candidates: AgentCandidate[];
-  escalation?: {
-    attempted: boolean;
-    improved: boolean;
-    originalConfidence: number | null;
-  };
+  escalation?: AgentEscalationMeta;
+  inferences_applied?: string[];
   usage?: {
     tokens: { input: number; output: number };
     cost: number;
