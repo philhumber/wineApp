@@ -94,7 +94,16 @@ PROMPT;
             ? $this->getDetailedPrompt()
             : $this->promptTemplate;
 
+        $promptType = $options['detailed_prompt'] ?? false ? 'DETAILED' : 'STANDARD';
+
         $prompt = str_replace('{input}', $text, $template);
+
+        // Debug: Log prompt construction
+        error_log("╔══════════════════════════════════════════════════════════════════");
+        error_log("║ 🔧 TEXT PROCESSOR - PROMPT CONSTRUCTION");
+        error_log("╠══════════════════════════════════════════════════════════════════");
+        error_log("║ Input Text: " . substr($text, 0, 200) . (strlen($text) > 200 ? '...' : ''));
+        error_log("║ Prompt Type: {$promptType}");
 
         // Append supplementary context from user if provided
         if (!empty($options['supplementary_text'])) {
@@ -102,16 +111,24 @@ PROMPT;
             $contextResult = $parser->parse($options['supplementary_text']);
             if (!empty($contextResult['promptSnippet'])) {
                 $prompt .= "\n\n" . $contextResult['promptSnippet'];
+                error_log("║ + Supplementary (parsed): " . substr($contextResult['promptSnippet'], 0, 150));
             } else {
                 // Fallback: append raw text if parser found no structured constraints
                 $prompt .= "\n\nUSER CONTEXT: " . $options['supplementary_text'];
+                error_log("║ + Supplementary (raw): " . substr($options['supplementary_text'], 0, 150));
             }
         }
 
         // Append prior context for escalation attempts
         if (!empty($options['prior_context'])) {
             $prompt .= "\n\n" . $options['prior_context'];
+            error_log("║ + Prior Context: " . substr($options['prior_context'], 0, 150));
         }
+
+        error_log("║ Provider: " . ($options['provider'] ?? 'default'));
+        error_log("║ Model: " . ($options['model'] ?? 'default'));
+        error_log("║ Final Prompt Length: " . strlen($prompt) . " chars");
+        error_log("╚══════════════════════════════════════════════════════════════════");
 
         // Build LLM options
         $llmOptions = [
@@ -333,21 +350,10 @@ PROMPT;
         // Ensure confidence is numeric and in range
         $normalized['confidence'] = max(0, min(100, (int)($normalized['confidence'] ?? 0)));
 
-        // For single-wine estates, wineName should equal producer
-        // Only copy producer to wineName if this looks like a complete wine identification:
-        // - Has vintage (specific wine year mentioned), OR
-        // - LLM explicitly set wineName to same as producer
-        // Do NOT copy for producer-only searches like "Burgundy from Domaine Leroy"
-        $hasVintage = !empty($normalized['vintage']);
-        $hasWineType = !empty($normalized['wineType']);
-
-        if ($normalized['wineName'] === null && $normalized['producer'] !== null) {
-            // Only treat producer as wine name if we have vintage (indicates specific wine)
-            // Producers like Domaine Leroy make many wines, so don't assume producer = wine
-            if ($hasVintage) {
-                $normalized['wineName'] = $normalized['producer'];
-            }
-        }
+        // NOTE: We no longer auto-fill wineName with producer.
+        // The frontend now handles missing wine names by prompting the user
+        // with options like "No Specific Name" or letting them type it in.
+        // This gives the user explicit control rather than assuming producer = wine.
 
         return $normalized;
     }

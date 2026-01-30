@@ -96,6 +96,9 @@ class GeminiAdapter implements LLMProviderInterface
             $payload['generationConfig']['responseMimeType'] = 'application/json';
         }
 
+        // Debug: Log context chain before LLM call
+        $this->logContextChain('text', $model, $payload, $options);
+
         $url = "{$this->baseUrl}/models/{$model}:generateContent?key={$this->apiKey}";
 
         $response = $this->makeRequest($url, $payload);
@@ -179,6 +182,9 @@ class GeminiAdapter implements LLMProviderInterface
             $payload['generationConfig']['responseMimeType'] = 'application/json';
         }
 
+        // Debug: Log context chain before LLM call
+        $this->logContextChain('vision', $model, $payload, $options);
+
         $url = "{$this->baseUrl}/models/{$model}:generateContent?key={$this->apiKey}";
 
         $response = $this->makeRequest($url, $payload, $this->config['timeout'] ?? 60);
@@ -217,6 +223,60 @@ class GeminiAdapter implements LLMProviderInterface
         }
 
         return $this->parseSuccessResponse($response['data'], $latencyMs, $model);
+    }
+
+    /**
+     * Log context chain for debugging
+     *
+     * @param string $type Request type (text or vision)
+     * @param string $model Model being used
+     * @param array $payload Request payload
+     * @param array $options Original options
+     * @return void
+     */
+    private function logContextChain(string $type, string $model, array $payload, array $options): void
+    {
+        \error_log("╔══════════════════════════════════════════════════════════════════");
+        \error_log("║ 🍷 GEMINI CONTEXT CHAIN [{$type}]");
+        \error_log("╠══════════════════════════════════════════════════════════════════");
+        \error_log("║ Provider: gemini");
+        \error_log("║ Model: {$model}");
+        \error_log("║ Temperature: " . ($payload['generationConfig']['temperature'] ?? 'default'));
+        \error_log("║ Max Tokens: " . ($payload['generationConfig']['maxOutputTokens'] ?? 'default'));
+
+        if (isset($payload['generationConfig']['thinkingConfig'])) {
+            $thinkingLevel = $payload['generationConfig']['thinkingConfig']['thinkingLevel'] ?? 'unknown';
+            \error_log("║ Thinking Level: {$thinkingLevel}");
+        }
+
+        if (isset($payload['generationConfig']['responseMimeType'])) {
+            \error_log("║ Response Format: " . $payload['generationConfig']['responseMimeType']);
+        }
+
+        \error_log("╠──────────────────────────────────────────────────────────────────");
+        \error_log("║ CONTENTS:");
+
+        foreach ($payload['contents'] as $contentIdx => $content) {
+            \error_log("║   [Content {$contentIdx}]");
+            foreach ($content['parts'] as $partIdx => $part) {
+                if (isset($part['text'])) {
+                    $text = \substr($part['text'], 0, 800);
+                    \error_log("║     Part {$partIdx} (text):");
+                    foreach (\explode("\n", $text) as $line) {
+                        \error_log("║       " . $line);
+                    }
+                    if (\strlen($part['text']) > 800) {
+                        \error_log("║       ... [truncated, total " . \strlen($part['text']) . " chars]");
+                    }
+                } elseif (isset($part['inline_data'])) {
+                    $mimeType = $part['inline_data']['mime_type'] ?? 'unknown';
+                    $dataLen = \strlen($part['inline_data']['data'] ?? '');
+                    \error_log("║     Part {$partIdx} (image): {$mimeType}, {$dataLen} chars base64");
+                }
+            }
+        }
+
+        \error_log("╚══════════════════════════════════════════════════════════════════");
     }
 
     /**

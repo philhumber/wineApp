@@ -7,17 +7,14 @@
 	 */
 	import { createEventDispatcher } from 'svelte';
 	import type { AgentMessage, AgentChip } from '$lib/stores';
-	import type { AgentParsedWine, AgentCandidate } from '$lib/api/types';
+	import type { AgentCandidate } from '$lib/api/types';
 	import ActionChips from './ActionChips.svelte';
 	import WineIdentificationCard from './WineIdentificationCard.svelte';
 	import DisambiguationList from './DisambiguationList.svelte';
+	import CandidateMiniCards from './CandidateMiniCards.svelte';
 
 	const dispatch = createEventDispatcher<{
 		chipSelect: { action: string };
-		addToCellar: { parsed: AgentParsedWine };
-		tryAgain: void;
-		confirm: { parsed: AgentParsedWine };
-		edit: { parsed: AgentParsedWine };
 		selectCandidate: { candidate: AgentCandidate };
 	}>();
 
@@ -25,22 +22,6 @@
 
 	function handleChipSelect(e: CustomEvent<{ action: string }>) {
 		dispatch('chipSelect', e.detail);
-	}
-
-	function handleAddToCellar(e: CustomEvent<{ parsed: AgentParsedWine }>) {
-		dispatch('addToCellar', e.detail);
-	}
-
-	function handleTryAgain() {
-		dispatch('tryAgain');
-	}
-
-	function handleConfirm(e: CustomEvent<{ parsed: AgentParsedWine }>) {
-		dispatch('confirm', e.detail);
-	}
-
-	function handleEdit(e: CustomEvent<{ parsed: AgentParsedWine }>) {
-		dispatch('edit', e.detail);
 	}
 
 	function handleSelectCandidate(e: CustomEvent<{ candidate: AgentCandidate }>) {
@@ -54,6 +35,7 @@
 	class:user={message.role === 'user'}
 	class:has-wine-result={message.type === 'wine_result'}
 	class:has-low-confidence={message.type === 'low_confidence'}
+	class:has-partial-match={message.type === 'partial_match'}
 	class:has-disambiguation={message.type === 'disambiguation'}
 >
 	{#if message.role === 'agent'}
@@ -62,16 +44,21 @@
 			<!-- Wine result card -->
 			<WineIdentificationCard
 				parsed={message.wineResult}
-				action="suggest"
 				confidence={message.confidence ?? 0}
-				on:addToCellar={handleAddToCellar}
-				on:tryAgain={handleTryAgain}
-				on:confirm={handleConfirm}
-				on:edit={handleEdit}
 			/>
 		{:else if message.type === 'low_confidence'}
 			<!-- Low confidence conversational message -->
 			<p class="agent-text low-confidence-text">{message.content}</p>
+			<div class="accent-divider"></div>
+		{:else if message.type === 'partial_match'}
+			<!-- Partial match conversational message with optional mini-cards -->
+			<p class="agent-text partial-match-text">{message.content}</p>
+			{#if message.candidates && message.candidates.length > 0}
+				<CandidateMiniCards
+					candidates={message.candidates}
+					on:select={handleSelectCandidate}
+				/>
+			{/if}
 			<div class="accent-divider"></div>
 		{:else if message.type === 'disambiguation' && message.candidates}
 			<!-- Disambiguation list -->
@@ -152,6 +139,11 @@
 		line-height: 1.7;
 	}
 
+	.agent-text.partial-match-text {
+		color: var(--text-secondary);
+		line-height: 1.7;
+	}
+
 	.accent-divider {
 		width: 40px;
 		height: 1px;
@@ -189,8 +181,9 @@
 		object-fit: cover;
 	}
 
-	/* Wine result and disambiguation don't need extra padding */
+	/* Wine result, partial-match, and disambiguation don't need extra padding */
 	.chat-message.has-wine-result,
+	.chat-message.has-partial-match,
 	.chat-message.has-disambiguation {
 		padding-right: 0;
 	}

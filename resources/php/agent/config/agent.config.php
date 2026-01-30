@@ -162,7 +162,7 @@ return [
             'model' => 'gemini-3-flash-preview',
             'thinking_level' => 'LOW', // Low thinking for quick responses
             'description' => 'Quick identification - Tier 1',
-            'temperature' => 0.3,
+            'temperature' => 1.0,
             'max_tokens' => 4000, // Higher to accommodate thinking tokens
         ],
         'detailed' => [
@@ -170,7 +170,7 @@ return [
             'model' => 'gemini-3-flash-preview',
             'thinking_level' => 'HIGH', // Must be uppercase: LOW or HIGH
             'description' => 'Deep analysis with thinking - Tier 1.5',
-            'temperature' => 0.4,
+            'temperature' => 1.0,
             'max_tokens' => 16000, // High for thinking + JSON output
         ],
         'balanced' => [

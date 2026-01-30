@@ -1,40 +1,25 @@
 <script lang="ts">
 	/**
 	 * WineIdentificationCard
-	 * Displays identified wine data with confidence indicator and actions
+	 * Displays identified wine data with confidence indicator
 	 */
-	import { createEventDispatcher } from 'svelte';
 	import type { AgentParsedWine } from '$lib/api/types';
 	import ConfidenceIndicator from './ConfidenceIndicator.svelte';
 
-	const dispatch = createEventDispatcher<{
-		addToCellar: { parsed: AgentParsedWine };
-		tryAgain: void;
-		confirm: { parsed: AgentParsedWine };
-		edit: { parsed: AgentParsedWine };
-	}>();
-
 	export let parsed: AgentParsedWine;
-	export let action: 'auto_populate' | 'suggest' | 'disambiguate';
 	export let confidence: number;
 
 	// Format grape list
 	$: grapeList = parsed.grapes?.length ? parsed.grapes.join(', ') : null;
 
-	// Determine display name - prefer wine name over producer
-	$: displayName = (parsed.wineName && parsed.wineName !== 'Unknown Wine')
-		? parsed.wineName
-		: parsed.producer || 'Unknown Wine';
+	// Check if wine name is missing/unknown
+	$: hasWineName = parsed.wineName && parsed.wineName !== 'Unknown Wine';
 
-	// Detect when we're showing only the producer (no wine name available)
-	$: showingProducerOnly = displayName === parsed.producer &&
-		(!parsed.wineName || parsed.wineName === 'Unknown Wine');
+	// Determine display name - show placeholder if no wine name
+	$: displayName = hasWineName ? parsed.wineName : null;
 
-	// Show producer subtitle if we have both wine name and producer
-	$: showProducer = parsed.producer &&
-		parsed.wineName &&
-		parsed.wineName !== 'Unknown Wine' &&
-		parsed.wineName !== parsed.producer;
+	// Always show producer if available (as subtitle when wine name exists, as main info when no wine name)
+	$: showProducer = parsed.producer && parsed.producer !== 'Unknown';
 
 	// Build metadata string (region · country)
 	$: metadata = [parsed.region, parsed.country].filter(Boolean).join(' · ');
@@ -48,6 +33,7 @@
 			Spain: '\u{1F1EA}\u{1F1F8}',
 			USA: '\u{1F1FA}\u{1F1F8}',
 			Australia: '\u{1F1E6}\u{1F1FA}',
+			Austria: '\u{1F1E6}\u{1F1F9}',
 			'New Zealand': '\u{1F1F3}\u{1F1FF}',
 			Argentina: '\u{1F1E6}\u{1F1F7}',
 			Chile: '\u{1F1E8}\u{1F1F1}',
@@ -59,34 +45,19 @@
 	}
 
 	$: countryFlag = getCountryFlag(parsed.country);
-
-	function handleAddToCellar() {
-		dispatch('addToCellar', { parsed });
-	}
-
-	function handleTryAgain() {
-		dispatch('tryAgain');
-	}
-
-	function handleConfirm() {
-		dispatch('confirm', { parsed });
-	}
-
-	function handleEdit() {
-		dispatch('edit', { parsed });
-	}
 </script>
 
-<div class="wine-card" class:suggest={action === 'suggest'}>
-	<!-- Wine Name or Producer -->
-	{#if showingProducerOnly}
-		<span class="producer-label">Producer</span>
+<div class="wine-card" class:incomplete={!hasWineName}>
+	<!-- Wine Name -->
+	{#if displayName}
+		<h3 class="wine-name">{displayName}</h3>
+	{:else}
+		<span class="missing-label">Wine name needed</span>
 	{/if}
-	<h3 class="wine-name">{displayName}</h3>
 
-	<!-- Producer (if different from wine name) -->
+	<!-- Producer (always show if available) -->
 	{#if showProducer}
-		<p class="producer-name">From {parsed.producer}</p>
+		<p class="producer-name">{parsed.producer}</p>
 	{/if}
 
 	<!-- Accent divider -->
@@ -119,21 +90,6 @@
 		{/if}
 	</div>
 
-	<!-- Action buttons - vary based on action type -->
-	<div class="actions">
-		{#if action === 'auto_populate'}
-			<!-- High confidence: Add directly -->
-			<button class="btn btn-primary" on:click={handleAddToCellar}> Add to Cellar </button>
-			<button class="btn btn-secondary" on:click={handleTryAgain}> Try Again </button>
-		{:else if action === 'suggest'}
-			<!-- Medium confidence: Confirm or Edit -->
-			<button class="btn btn-primary" on:click={handleConfirm}> Confirm </button>
-			<button class="btn btn-secondary" on:click={handleEdit}> Edit </button>
-		{:else}
-			<!-- Low confidence: handled by DisambiguationList -->
-			<button class="btn btn-secondary" on:click={handleTryAgain}> Try Again </button>
-		{/if}
-	</div>
 </div>
 
 <style>
@@ -146,9 +102,9 @@
 		animation: slideUp 0.3s var(--ease-out);
 	}
 
-	.wine-card.suggest {
+	.wine-card.incomplete {
 		border-color: var(--warning);
-		border-width: 1px;
+		border-style: dashed;
 	}
 
 	@keyframes slideUp {
@@ -162,13 +118,11 @@
 		}
 	}
 
-	.producer-label {
+	.missing-label {
 		display: block;
-		font-family: var(--font-sans);
-		font-size: 0.625rem;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		font-family: var(--font-serif);
+		font-size: 1.125rem;
+		font-style: italic;
 		color: var(--text-tertiary);
 		margin-bottom: var(--space-1);
 	}
@@ -183,11 +137,17 @@
 	}
 
 	.producer-name {
-		font-family: var(--font-sans);
-		font-size: 0.8125rem;
-		font-weight: 400;
-		color: var(--text-tertiary);
+		font-family: var(--font-serif);
+		font-size: 1.25rem;
+		font-weight: 500;
+		color: var(--text-primary);
 		margin: var(--space-1) 0 0 0;
+	}
+
+	/* When wine name is missing, producer becomes main identifier */
+	.wine-card.incomplete .producer-name {
+		font-size: 1.5rem;
+		margin-top: var(--space-2);
 	}
 
 	.divider {
@@ -217,7 +177,6 @@
 		align-items: center;
 		flex-wrap: wrap;
 		gap: var(--space-2);
-		margin-bottom: var(--space-5);
 	}
 
 	.type-badge {
@@ -237,58 +196,5 @@
 		font-family: var(--font-sans);
 		font-size: 0.8125rem;
 		color: var(--text-tertiary);
-	}
-
-	.actions {
-		display: flex;
-		gap: var(--space-3);
-	}
-
-	.btn {
-		flex: 1;
-		height: 44px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-
-		font-family: var(--font-sans);
-		font-size: 0.75rem;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-
-		border: none;
-		border-radius: var(--radius-pill);
-		cursor: pointer;
-		touch-action: manipulation;
-
-		transition:
-			background 0.15s var(--ease-out),
-			transform 0.15s var(--ease-out),
-			opacity 0.15s var(--ease-out);
-	}
-
-	.btn:active {
-		transform: scale(0.98);
-	}
-
-	.btn-primary {
-		background: var(--text-primary);
-		color: var(--bg);
-	}
-
-	.btn-primary:hover {
-		opacity: 0.9;
-	}
-
-	.btn-secondary {
-		background: transparent;
-		border: 1px solid var(--divider);
-		color: var(--text-secondary);
-	}
-
-	.btn-secondary:hover {
-		background: var(--bg-subtle);
-		border-color: var(--accent);
 	}
 </style>

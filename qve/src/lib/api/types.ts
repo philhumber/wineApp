@@ -349,6 +349,7 @@ export interface AgentTierResult {
   cost: number;
   latencyMs: number;
   timestamp: string;
+  thinking_level?: string; // Only for tier1_5
 }
 
 export interface AgentEscalationMeta {
@@ -358,7 +359,7 @@ export interface AgentEscalationMeta {
     tier2?: AgentTierResult;
     tier3?: AgentTierResult;
   };
-  final_tier: 'tier1' | 'tier1_5' | 'tier2' | 'tier3';
+  final_tier: 'tier1' | 'tier1_5' | 'tier2' | 'tier3' | 'user_choice';
   total_cost: number;
   total_latency: number;
 }
