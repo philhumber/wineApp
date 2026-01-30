@@ -123,17 +123,35 @@ PROMPT;
             ? $this->getDetailedPrompt()
             : $this->promptTemplate;
 
+        $promptType = $options['detailed_prompt'] ?? false ? 'DETAILED' : 'STANDARD';
+
+        // Debug: Log prompt construction
+        error_log("╔══════════════════════════════════════════════════════════════════");
+        error_log("║ 🔧 VISION PROCESSOR - PROMPT CONSTRUCTION");
+        error_log("╠══════════════════════════════════════════════════════════════════");
+        error_log("║ Image: {$mimeType}, " . strlen($imageData) . " chars base64");
+        error_log("║ Image Quality Score: " . ($quality['score'] ?? 'unknown'));
+        error_log("║ Prompt Type: {$promptType}");
+
         // Append supplementary context from user if provided
         if (!empty($options['supplementary_text'])) {
             $parser = new SupplementaryContextParser();
             $contextResult = $parser->parse($options['supplementary_text']);
             if (!empty($contextResult['promptSnippet'])) {
                 $prompt .= "\n\n" . $contextResult['promptSnippet'];
+                error_log("║ + Supplementary (parsed): " . substr($contextResult['promptSnippet'], 0, 150));
             } else {
                 // Fallback: append raw text if parser found no structured constraints
                 $prompt .= "\n\nUSER CONTEXT: " . $options['supplementary_text'];
+                error_log("║ + Supplementary (raw): " . substr($options['supplementary_text'], 0, 150));
             }
         }
+
+        error_log("║ Provider: " . ($options['provider'] ?? 'default'));
+        error_log("║ Model: " . ($options['model'] ?? 'default'));
+        error_log("║ Thinking Level: " . ($options['thinking_level'] ?? 'default'));
+        error_log("║ Final Prompt Length: " . strlen($prompt) . " chars");
+        error_log("╚══════════════════════════════════════════════════════════════════");
 
         // Step 2: Call LLM with vision
         $llmOptions = [

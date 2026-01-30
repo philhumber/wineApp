@@ -91,6 +91,9 @@ class ClaudeAdapter implements LLMProviderInterface
             $payload['system'] = $options['system'];
         }
 
+        // Debug: Log context chain before LLM call
+        $this->logContextChain('text', $model, $payload, $options);
+
         $response = $this->makeRequest('/messages', $payload);
         $latencyMs = (int)((\microtime(true) - $startTime) * 1000);
 
@@ -159,6 +162,9 @@ class ClaudeAdapter implements LLMProviderInterface
             $payload['system'] = $options['system'];
         }
 
+        // Debug: Log context chain before LLM call
+        $this->logContextChain('vision', $model, $payload, $options);
+
         $response = $this->makeRequest('/messages', $payload, $this->config['timeout'] ?? 60);
         $latencyMs = (int)((\microtime(true) - $startTime) * 1000);
 
@@ -179,6 +185,75 @@ class ClaudeAdapter implements LLMProviderInterface
         }
 
         return $this->parseSuccessResponse($response['data'], $latencyMs, $model);
+    }
+
+    /**
+     * Log context chain for debugging
+     *
+     * @param string $type Request type (text or vision)
+     * @param string $model Model being used
+     * @param array $payload Request payload
+     * @param array $options Original options
+     * @return void
+     */
+    private function logContextChain(string $type, string $model, array $payload, array $options): void
+    {
+        \error_log("╔══════════════════════════════════════════════════════════════════");
+        \error_log("║ 🍷 CLAUDE CONTEXT CHAIN [{$type}]");
+        \error_log("╠══════════════════════════════════════════════════════════════════");
+        \error_log("║ Provider: claude");
+        \error_log("║ Model: {$model}");
+        \error_log("║ Temperature: " . ($options['temperature'] ?? 'default'));
+        \error_log("║ Max Tokens: " . ($payload['max_tokens'] ?? 'default'));
+
+        if (!empty($payload['system'])) {
+            \error_log("╠──────────────────────────────────────────────────────────────────");
+            \error_log("║ SYSTEM PROMPT:");
+            foreach (\explode("\n", \substr($payload['system'], 0, 500)) as $line) {
+                \error_log("║   " . $line);
+            }
+            if (\strlen($payload['system']) > 500) {
+                \error_log("║   ... [truncated, total " . \strlen($payload['system']) . " chars]");
+            }
+        }
+
+        \error_log("╠──────────────────────────────────────────────────────────────────");
+        \error_log("║ MESSAGES:");
+
+        foreach ($payload['messages'] as $idx => $message) {
+            $role = $message['role'] ?? 'unknown';
+            \error_log("║   [{$idx}] Role: {$role}");
+
+            if (\is_string($message['content'])) {
+                $content = \substr($message['content'], 0, 800);
+                foreach (\explode("\n", $content) as $line) {
+                    \error_log("║       " . $line);
+                }
+                if (\strlen($message['content']) > 800) {
+                    \error_log("║       ... [truncated, total " . \strlen($message['content']) . " chars]");
+                }
+            } elseif (\is_array($message['content'])) {
+                foreach ($message['content'] as $partIdx => $part) {
+                    $partType = $part['type'] ?? 'unknown';
+                    \error_log("║       Part {$partIdx}: type={$partType}");
+                    if ($partType === 'text' && isset($part['text'])) {
+                        $text = \substr($part['text'], 0, 500);
+                        foreach (\explode("\n", $text) as $line) {
+                            \error_log("║         " . $line);
+                        }
+                        if (\strlen($part['text']) > 500) {
+                            \error_log("║         ... [truncated, total " . \strlen($part['text']) . " chars]");
+                        }
+                    } elseif ($partType === 'image') {
+                        $mediaType = $part['source']['media_type'] ?? 'unknown';
+                        $dataLen = \strlen($part['source']['data'] ?? '');
+                        \error_log("║         [IMAGE: {$mediaType}, {$dataLen} chars base64]");
+                    }
+                }
+            }
+        }
+
+        \error_log("╚══════════════════════════════════════════════════════════════════");
     }
 
     /**

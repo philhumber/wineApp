@@ -31,7 +31,7 @@
 	import CommandInput from './CommandInput.svelte';
 	import ChatMessage from './ChatMessage.svelte';
 	import TypingIndicator from './TypingIndicator.svelte';
-	import type { AgentParsedWine, AgentCandidate, AgentAction } from '$lib/api/types';
+	import type { AgentParsedWine, AgentCandidate, AgentAction, AgentEscalationMeta, AgentIdentificationResult } from '$lib/api/types';
 	import { api } from '$lib/api';
 
 	// Reactive bindings
@@ -251,8 +251,111 @@
 	}
 
 	/**
-	 * Handle identification result with four-way branching logic.
-	 * Routes to: low_confidence conversation, disambiguation list, wine card, or error.
+	 * Build a conversational partial-match message.
+	 * Mentions what was found and asks for confirmation before drilling down.
+	 */
+	function buildPartialMatchMessage(parsed: AgentParsedWine): string {
+		// Build a comprehensive description for user confirmation
+		const details: string[] = [];
+
+		// Producer and wine name are the primary identifiers
+		if (parsed.producer && parsed.producer !== 'Unknown') {
+			if (parsed.wineName && parsed.wineName !== 'Unknown Wine') {
+				details.push(`${parsed.producer} "${parsed.wineName}"`);
+			} else {
+				details.push(parsed.producer);
+			}
+		} else if (parsed.wineName && parsed.wineName !== 'Unknown Wine') {
+			details.push(`"${parsed.wineName}"`);
+		}
+
+		// Add vintage if available
+		if (parsed.vintage) {
+			details.push(parsed.vintage);
+		}
+
+		// Add region/country context
+		const location = [parsed.region, parsed.country].filter(Boolean).join(', ');
+		if (location) {
+			details.push(`from ${location}`);
+		}
+
+		// Add wine type if available
+		if (parsed.wineType) {
+			details.push(`(${parsed.wineType})`);
+		}
+
+		if (details.length === 0) {
+			return "I couldn't identify much from that. Can you tell me more about the wine?";
+		}
+
+		return `I found ${details.join(' ')}. Does this look right?`;
+	}
+
+	/**
+	 * Get a prompt string for missing fields.
+	 */
+	function getMissingFieldsPrompt(parsed: AgentParsedWine): string {
+		const missing: string[] = [];
+		if (!parsed.wineName || parsed.wineName === 'Unknown Wine') missing.push('the wine name');
+		if (!parsed.vintage) missing.push('the vintage');
+		if (!parsed.region) missing.push('the region');
+		if (!parsed.wineType) missing.push('the wine type');
+
+		if (missing.length === 0) return '';
+		if (missing.length === 1) return `Can you tell me ${missing[0]}?`;
+		return `Can you tell me ${missing.slice(0, -1).join(', ')} or ${missing[missing.length - 1]}?`;
+	}
+
+	/**
+	 * Get chips for quick-fill options based on missing fields.
+	 * Provides shortcuts like "No specific name" or "NV" (non-vintage).
+	 */
+	function getMissingFieldChips(parsed: AgentParsedWine): AgentChip[] {
+		const chips: AgentChip[] = [];
+
+		// If wineName is missing but producer exists, offer "Use producer name"
+		if ((!parsed.wineName || parsed.wineName === 'Unknown Wine') && parsed.producer && parsed.producer !== 'Unknown') {
+			chips.push({
+				id: 'use_producer_name',
+				label: 'No Specific Name',
+				icon: 'wine',
+				action: 'use_producer_name'
+			});
+		}
+
+		// If vintage is missing, offer "NV" option
+		if (!parsed.vintage) {
+			chips.push({
+				id: 'nv_vintage',
+				label: 'NV (Non-Vintage)',
+				icon: 'calendar',
+				action: 'nv_vintage'
+			});
+		}
+
+		return chips;
+	}
+
+	/**
+	 * Check if Opus escalation should be offered.
+	 * Only show "Try Harder" if tier2 (Sonnet) has been attempted and Opus hasn't.
+	 */
+	function canTryOpus(escalation: AgentEscalationMeta | undefined): boolean {
+		if (!escalation?.tiers) return false;
+
+		const { tiers, final_tier } = escalation;
+
+		// Only show "Try Opus" if we've auto-escalated through tier2 (Sonnet)
+		const hasTriedTier2 = !!tiers.tier2;
+		const opusNotYetTried = final_tier !== 'tier3' && !tiers.tier3;
+
+		return hasTriedTier2 && opusNotYetTried;
+	}
+
+	/**
+	 * Handle identification result with branching logic.
+	 * Routes to: partial_match (with/without mini-cards), wine card (85%+), or error.
 	 * When in retry mode (augmentation), merges results with locked-in fields and
 	 * checks minimum required fields before allowing add-wine.
 	 */
@@ -294,8 +397,8 @@
 				});
 				agent.setPhase('result_confirm');
 
-			} else if (mergedConfidence >= 60 && mergedIsValidWine) {
-				// Confidence is reasonable — show wine card.
+			} else if (mergedConfidence >= 85 && mergedIsValidWine) {
+				// High confidence — show wine card.
 				// If all minimum fields present, clear augmentation context (ready for add).
 				// If some fields missing, keep context so handleAddToCellar can redirect.
 				if (hasMinimumFields(merged)) {
@@ -328,7 +431,7 @@
 				const message = buildProgressMessage(merged);
 				agent.addMessage({
 					role: 'agent',
-					type: 'low_confidence',
+					type: 'partial_match',
 					content: message,
 					wineResult: merged,
 					confidence: result.confidence,
@@ -359,78 +462,23 @@
 			result.parsed.wineName !== 'Unknown Wine' &&
 			result.parsed.producer !== 'Unknown';
 
-		// Check for producer-only result (producer identified but no specific wine)
-		// This happens when user says "Burgundy from Domaine Leroy" - we know the producer
-		// but need to ask which specific wine
-		const isProducerOnly = result.parsed &&
-			result.parsed.producer &&
-			result.parsed.producer !== 'Unknown' &&
-			(!result.parsed.wineName || result.parsed.wineName === result.parsed.producer) &&
-			!result.parsed.vintage;
-
-		// PRODUCER-ONLY: Found producer but need specific wine
-		if (isProducerOnly && confidence >= 60) {
-			const producerName = result.parsed.producer;
-			const regionInfo = result.parsed.region ? ` from ${result.parsed.region}` : '';
+		// All partial matches (< 85%) go through Yes/No confirmation first
+		if (hasCandidates) {
+			// CANDIDATES: Partial match text + mini-cards
+			const chips: AgentChip[] = [
+				{ id: 'none_of_these', label: 'None of These', icon: 'x', action: 'not_correct' }
+			];
+			// Add "Try Harder" if Opus is available
+			const resultWithEscalation = result as AgentIdentificationResult;
+			if (canTryOpus(resultWithEscalation.escalation)) {
+				chips.unshift({ id: 'try_opus', label: 'Try Harder', icon: 'sparkle', action: 'try_opus' });
+			}
 			agent.addMessage({
 				role: 'agent',
-				type: 'text',
-				content: `I found ${producerName}${regionInfo}. Which wine from this producer are you looking for? (e.g., the specific cuvée, vineyard, or vintage)`
-			});
-			agent.setAugmentationContext({
-				originalInput: inputText,
-				originalInputType: lastInputType || 'text',
-				originalResult: {
-					intent: 'add',
-					parsed: result.parsed,
-					confidence: result.confidence,
-					action: 'disambiguate' as AgentAction,
-					candidates: result.candidates ?? []
-				}
-			});
-			agent.setPhase('augment_input');
-
-		// USER_CHOICE: Confidence 50-59 - let user decide: try harder (Opus) or conversational
-		} else if (result.action === 'user_choice') {
-			const message = buildLowConfidenceMessage(result.parsed, false);
-			agent.addMessage({
-				role: 'agent',
-				type: 'low_confidence',
-				content: `${message}\n\nI can try harder with our premium analysis, or we can work through this together.`,
-				wineResult: result.parsed,
-				confidence: result.confidence,
-				chips: [
-					{ id: 'try_opus', label: 'Try Harder', icon: 'sparkle', action: 'try_opus' },
-					{ id: 'use_conversation', label: 'Help Me Find It', icon: 'chat', action: 'use_conversation' }
-				]
-			});
-			agent.setAugmentationContext({
-				originalInput: inputText,
-				originalInputType: lastInputType || 'text',
-				originalResult: {
-					intent: 'add',
-					parsed: result.parsed,
-					confidence: result.confidence,
-					action: (result.action ?? 'user_choice') as AgentAction,
-					candidates: result.candidates ?? []
-				}
-			});
-			agent.setPhase('escalation_choice');
-
-		} else if (confidence < 60 && !hasCandidates) {
-			// LOW CONFIDENCE: conversational message asking for more context
-			const message = buildLowConfidenceMessage(result.parsed, false);
-			agent.addMessage({
-				role: 'agent',
-				type: 'low_confidence',
-				content: message,
-				wineResult: result.parsed,
-				confidence: result.confidence,
+				type: 'partial_match',
+				content: buildPartialMatchMessage(result.parsed),
 				candidates: result.candidates,
-				chips: [
-					{ id: 'provide_more', label: 'Tell Me More', icon: 'edit', action: 'provide_more' },
-					{ id: 'see_result', label: 'See What I Found', icon: 'search', action: 'see_result' }
-				]
+				chips
 			});
 			agent.setAugmentationContext({
 				originalInput: inputText,
@@ -443,16 +491,43 @@
 					candidates: result.candidates ?? []
 				}
 			});
-			agent.setPhase('augment_input');
+			agent.setPhase('result_confirm');
 
-		} else if (hasCandidates && confidence < 60) {
-			// DISAMBIGUATION: multiple candidates — show list (preserved)
-			agent.setAugmentationContext(null);
+		} else if (confidence < 85) {
+			// LOW/MEDIUM without candidates: Ask for confirmation before drilling down
+			const chips: AgentChip[] = [
+				{ id: 'confirm_direction', label: 'Yes', icon: 'check', action: 'confirm_direction' },
+				{ id: 'wrong_direction', label: 'No', icon: 'x', action: 'wrong_direction' }
+			];
+			// Add "Try Harder" if Opus is available
+			const resultWithEscalation = result as AgentIdentificationResult;
+			if (canTryOpus(resultWithEscalation.escalation)) {
+				chips.push({ id: 'try_opus', label: 'Try Harder', icon: 'sparkle', action: 'try_opus' });
+			}
 			agent.addMessage({
 				role: 'agent',
-				type: 'disambiguation',
-				content: 'I found a few possibilities. Does one of these look right?',
-				candidates: result.candidates!
+				type: 'partial_match',
+				content: buildPartialMatchMessage(result.parsed),
+				wineResult: result.parsed,
+				confidence: result.confidence,
+				chips
+			});
+			// Preserve cumulative input chain if this came from a "No" flow
+			// (where originalResult was null but originalInput existed)
+			const existingAugContext = $agentAugmentationContext;
+			const cumulativeInput = existingAugContext?.originalInput && !existingAugContext?.originalResult
+				? `${existingAugContext.originalInput}. ${inputText}`  // Append to chain
+				: inputText;  // Fresh start
+			agent.setAugmentationContext({
+				originalInput: cumulativeInput,
+				originalInputType: lastInputType || 'text',
+				originalResult: {
+					intent: 'add',
+					parsed: result.parsed,
+					confidence: result.confidence,
+					action: (result.action ?? 'disambiguate') as AgentAction,
+					candidates: result.candidates ?? []
+				}
 			});
 			agent.setPhase('result_confirm');
 
@@ -609,6 +684,197 @@
 				// User chose conversational flow instead of Opus
 				handleUseConversation();
 				break;
+
+			case 'what_wrong':
+				// User wants to provide correct information after a high-confidence miss
+				agent.addMessage({
+					role: 'agent',
+					type: 'text',
+					content: "No problem. What's the correct producer, region, or other details you know about this wine?"
+				});
+				// Store ONLY the original input (image/text) for re-analysis, NOT the wrong parsed result
+				agent.setAugmentationContext({
+					originalInput: $agentAugmentationContext?.originalInput || '',
+					originalInputType: lastInputType || 'text',
+					originalResult: null as unknown as AgentIdentificationResult,  // Don't preserve the wrong result
+					userFeedback: undefined
+				});
+				agent.setPhase('augment_input');
+				break;
+
+			case 'new_input':
+				// Clear state and prompt for new image/text
+				lastImageFile = null;
+				lastInputType = null;
+				agent.setAugmentationContext(null);
+				agent.addMessage({
+					role: 'agent',
+					type: 'text',
+					content: "Let's try again. Share a different image or describe the wine differently."
+				});
+				agent.setPhase('await_input');
+				break;
+
+			case 'confirm_direction': {
+				// User confirms partial match is on right track → Ask for clarifying details
+				const augCtx = $agentAugmentationContext;
+				if (augCtx?.originalResult?.parsed) {
+					const missingPrompt = getMissingFieldsPrompt(augCtx.originalResult.parsed);
+					const quickFillChips = getMissingFieldChips(augCtx.originalResult.parsed);
+
+					// If we have quick-fill options, show them as chips
+					if (quickFillChips.length > 0) {
+						agent.addMessage({
+							role: 'agent',
+							type: 'chips',
+							content: missingPrompt || 'Great! What else can you tell me about this wine?',
+							chips: quickFillChips
+						});
+					} else {
+						agent.addMessage({
+							role: 'agent',
+							type: 'text',
+							content: missingPrompt || 'Great! What else can you tell me about this wine?'
+						});
+					}
+				} else {
+					agent.addMessage({
+						role: 'agent',
+						type: 'text',
+						content: 'Great! Can you tell me more details like the vintage or specific wine name?'
+					});
+				}
+				agent.setPhase('augment_input');
+				break;
+			}
+
+			case 'wrong_direction': {
+				// User says partial match is wrong → Clear wrong result, keep original input for re-identification
+				const augCtx = $agentAugmentationContext;
+				agent.addMessage({
+					role: 'agent',
+					type: 'text',
+					content: "No problem. Can you tell me more about the wine? For example, the producer name, country, or grape variety."
+				});
+				// Keep original input but CLEAR the wrong parsed result
+				// Next submission will combine: original input + new user context
+				agent.setAugmentationContext({
+					originalInput: augCtx?.originalInput || '',
+					originalInputType: augCtx?.originalInputType || 'text',
+					originalResult: null as unknown as AgentIdentificationResult,  // Clear wrong result
+					userFeedback: undefined
+				});
+				agent.setPhase('augment_input');
+				break;
+			}
+
+			case 'use_producer_name': {
+				// User confirms wine has no specific name - use producer as wine name
+				const augCtx = $agentAugmentationContext;
+				if (augCtx?.originalResult?.parsed) {
+					const updatedParsed: AgentParsedWine = {
+						...augCtx.originalResult.parsed,
+						wineName: augCtx.originalResult.parsed.producer // Use producer as wine name
+					};
+					// Update the augmentation context with the new parsed data
+					agent.setAugmentationContext({
+						...augCtx,
+						originalResult: {
+							...augCtx.originalResult,
+							parsed: updatedParsed
+						}
+					});
+					// Check if we now have all required fields
+					if (hasMinimumFields(updatedParsed)) {
+						// Show the wine card for confirmation
+						agent.addMessage({
+							role: 'agent',
+							type: 'wine_result',
+							content: 'Is this the wine you\'re seeking?',
+							wineResult: updatedParsed,
+							confidence: augCtx.originalResult.confidence,
+							chips: [
+								{ id: 'correct', label: 'Correct', icon: 'check', action: 'correct' },
+								{ id: 'not_correct', label: 'Not Correct', icon: 'x', action: 'not_correct' }
+							]
+						});
+						agent.setPhase('result_confirm');
+					} else {
+						// Still missing fields, ask for more
+						const remainingChips = getMissingFieldChips(updatedParsed);
+						const missingPrompt = getMissingFieldsPrompt(updatedParsed);
+						if (remainingChips.length > 0) {
+							agent.addMessage({
+								role: 'agent',
+								type: 'chips',
+								content: `Got it. ${missingPrompt}`,
+								chips: remainingChips
+							});
+						} else {
+							agent.addMessage({
+								role: 'agent',
+								type: 'text',
+								content: `Got it. ${missingPrompt}`
+							});
+						}
+					}
+				}
+				break;
+			}
+
+			case 'nv_vintage': {
+				// User confirms wine is non-vintage
+				const augCtx = $agentAugmentationContext;
+				if (augCtx?.originalResult?.parsed) {
+					const updatedParsed: AgentParsedWine = {
+						...augCtx.originalResult.parsed,
+						vintage: 'NV'
+					};
+					// Update the augmentation context with the new parsed data
+					agent.setAugmentationContext({
+						...augCtx,
+						originalResult: {
+							...augCtx.originalResult,
+							parsed: updatedParsed
+						}
+					});
+					// Check if we now have all required fields
+					if (hasMinimumFields(updatedParsed)) {
+						// Show the wine card for confirmation
+						agent.addMessage({
+							role: 'agent',
+							type: 'wine_result',
+							content: 'Is this the wine you\'re seeking?',
+							wineResult: updatedParsed,
+							confidence: augCtx.originalResult.confidence,
+							chips: [
+								{ id: 'correct', label: 'Correct', icon: 'check', action: 'correct' },
+								{ id: 'not_correct', label: 'Not Correct', icon: 'x', action: 'not_correct' }
+							]
+						});
+						agent.setPhase('result_confirm');
+					} else {
+						// Still missing fields, ask for more
+						const remainingChips = getMissingFieldChips(updatedParsed);
+						const missingPrompt = getMissingFieldsPrompt(updatedParsed);
+						if (remainingChips.length > 0) {
+							agent.addMessage({
+								role: 'agent',
+								type: 'chips',
+								content: `Got it, non-vintage. ${missingPrompt}`,
+								chips: remainingChips
+							});
+						} else {
+							agent.addMessage({
+								role: 'agent',
+								type: 'text',
+								content: `Got it, non-vintage. ${missingPrompt}`
+							});
+						}
+					}
+				}
+				break;
+			}
 		}
 	}
 
@@ -698,7 +964,7 @@
 		const message = buildProgressMessage(augContext.originalResult.parsed);
 		agent.addMessage({
 			role: 'agent',
-			type: 'low_confidence',
+			type: 'partial_match',
 			content: `Let's work through this together. ${message}`,
 			wineResult: augContext.originalResult.parsed,
 			confidence: augContext.originalResult.confidence,
@@ -713,21 +979,43 @@
 
 	function handleIncorrectResult() {
 		const candidates = $agentCandidates;
+		const augContext = $agentAugmentationContext;
 
 		// Use the most recent wine result (may contain merged data from progressive flow)
 		const lastWineMsg = [...$agentMessages].reverse().find(
 			(m) => m.type === 'wine_result' && m.wineResult
 		);
 		const wineData = lastWineMsg?.wineResult || parsed;
+		const lastResultConfidence = augContext?.originalResult?.confidence ?? $agentConfidence ?? 0;
+		const wasHighConfidence = lastResultConfidence >= 85;
 
-		if (candidates.length > 0) {
-			// Show alternatives
+		if (wasHighConfidence) {
+			// High confidence miss - don't assume the path is right, give clear escape options
+			agent.addMessage({
+				role: 'agent',
+				type: 'text',
+				content: "I apologize for the confusion. Let's try a different approach.",
+				chips: [
+					{ id: 'what_wrong', label: "Tell Me What's Wrong", icon: 'edit', action: 'what_wrong' },
+					{ id: 'new_input', label: 'Try Different Input', icon: 'camera', action: 'new_input' },
+					{ id: 'start_fresh', label: 'Start Over', icon: 'refresh', action: 'start_fresh' }
+				]
+			});
+			// Clear augmentation context - don't lock in wrong data
+			agent.setAugmentationContext(null);
+			agent.setPhase('handle_incorrect');
+
+		} else if (candidates.length > 0) {
+			// Show alternatives using partial_match with mini-cards
 			agent.setPhase('handle_incorrect');
 			agent.addMessage({
 				role: 'agent',
-				type: 'disambiguation',
+				type: 'partial_match',
 				content: 'Perhaps one of these?',
-				candidates
+				candidates,
+				chips: [
+					{ id: 'none_of_these', label: 'None of These', icon: 'x', action: 'start_fresh' }
+				]
 			});
 		} else {
 			// Ask for more details
@@ -835,20 +1123,25 @@
 			} else {
 				// Text-based identification (possibly augmented with previous result)
 				let queryText = text;
-				if (phase === 'augment_input' && augContext?.originalResult?.parsed) {
-					// Combine original wine info with new user input
-					const orig = augContext.originalResult.parsed;
-					const parts: string[] = [];
+				if (phase === 'augment_input' && augContext) {
+					if (augContext.originalResult?.parsed) {
+						// Combine original wine info with new user input (user confirmed direction)
+						const orig = augContext.originalResult.parsed;
+						const parts: string[] = [];
 
-					if (orig.producer) parts.push(`Producer: ${orig.producer}`);
-					if (orig.wineName && orig.wineName !== 'Unknown Wine') parts.push(`Wine: ${orig.wineName}`);
-					if (orig.vintage) parts.push(`Vintage: ${orig.vintage}`);
-					if (orig.region) parts.push(`Region: ${orig.region}`);
-					if (orig.country) parts.push(`Country: ${orig.country}`);
-					if (orig.wineType) parts.push(`Type: ${orig.wineType}`);
+						if (orig.producer) parts.push(`Producer: ${orig.producer}`);
+						if (orig.wineName && orig.wineName !== 'Unknown Wine') parts.push(`Wine: ${orig.wineName}`);
+						if (orig.vintage) parts.push(`Vintage: ${orig.vintage}`);
+						if (orig.region) parts.push(`Region: ${orig.region}`);
+						if (orig.country) parts.push(`Country: ${orig.country}`);
+						if (orig.wineType) parts.push(`Type: ${orig.wineType}`);
 
-					parts.push(`Additional info: ${text}`);
-					queryText = parts.join('. ');
+						parts.push(`Additional info: ${text}`);
+						queryText = parts.join('. ');
+					} else if (augContext.originalInput) {
+						// User said "No" - combine original input with new context (discard wrong result)
+						queryText = `${augContext.originalInput}. Additional context: ${text}`;
+					}
 				} else {
 					// Fresh text submission — track input type
 					lastInputType = 'text';

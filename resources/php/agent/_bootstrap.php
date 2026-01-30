@@ -9,6 +9,10 @@
  * @package Agent
  */
 
+// Extend PHP execution time for multi-tier LLM escalation
+// Default 30s is insufficient when making multiple API calls with thinking mode
+set_time_limit(120);
+
 // Autoloader for Agent namespace
 spl_autoload_register(function ($class) {
     $prefix = 'Agent\\';

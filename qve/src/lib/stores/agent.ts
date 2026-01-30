@@ -53,6 +53,7 @@ export type AgentMessageType =
 	| 'image_preview'
 	| 'wine_result'
 	| 'low_confidence'
+	| 'partial_match'
 	| 'disambiguation'
 	| 'coming_soon'
 	| 'error';
@@ -254,22 +255,64 @@ function createAgentStore() {
 				imageQuality: null
 			}));
 
+			// Debug: Log query initiation
+			console.group('🍷 Agent: Text Identification Request');
+			console.log('Input:', text);
+			console.log('Timestamp:', new Date().toISOString());
+			console.groupEnd();
+
 			try {
 				const result = await api.identifyText(text);
 
-				// Debug: Log escalation info to console
+				// Debug: Log full context chain and escalation info
+				console.group('🍷 Agent: Text Identification Result');
+				console.log('Input:', text);
+				console.log('Success:', result.success ?? true);
+
 				if (result.escalation) {
-					console.group('🍷 Wine Identification Escalation');
+					console.group('📊 Escalation Chain');
 					console.log('Final Tier:', result.escalation.final_tier);
-					console.log('Confidence:', result.confidence);
-					console.log('Action:', result.action);
-					console.table(result.escalation.tiers);
-					if (result.inferences_applied?.length) {
-						console.log('Inferences Applied:', result.inferences_applied);
-					}
-					console.log('Total Cost:', result.escalation.total_cost);
+
+					// Log each tier's context
+					Object.entries(result.escalation.tiers).forEach(([tier, data]) => {
+						console.group(`  Tier: ${tier}`);
+						console.log('Model:', (data as Record<string, unknown>).model);
+						console.log('Confidence:', (data as Record<string, unknown>).confidence);
+						if ((data as Record<string, unknown>).thinking_level) {
+							console.log('Thinking Level:', (data as Record<string, unknown>).thinking_level);
+						}
+						console.groupEnd();
+					});
+
+					console.log('Total Cost: $' + (result.escalation.total_cost?.toFixed(6) ?? '0'));
 					console.groupEnd();
 				}
+
+				console.group('📋 Parsed Result');
+				console.log('Producer:', result.parsed?.producer ?? 'null');
+				console.log('Wine Name:', result.parsed?.wineName ?? 'null');
+				console.log('Vintage:', result.parsed?.vintage ?? 'null');
+				console.log('Region:', result.parsed?.region ?? 'null');
+				console.log('Country:', result.parsed?.country ?? 'null');
+				console.log('Type:', result.parsed?.wineType ?? 'null');
+				console.groupEnd();
+
+				console.log('Confidence:', result.confidence);
+				console.log('Action:', result.action);
+
+				if (result.inferences_applied?.length) {
+					console.log('Inferences Applied:', result.inferences_applied);
+				}
+
+				if (result.usage) {
+					console.group('📈 Usage');
+					console.log('Input Tokens:', result.usage.tokens?.input);
+					console.log('Output Tokens:', result.usage.tokens?.output);
+					console.log('Latency:', result.usage.latencyMs + 'ms');
+					console.groupEnd();
+				}
+
+				console.groupEnd();
 
 				update((state) => ({
 					...state,
@@ -302,12 +345,71 @@ function createAgentStore() {
 				imageQuality: null
 			}));
 
+			// Debug: Log query initiation
+			console.group('🍷 Agent: Image Identification Request');
+			console.log('File:', file.name);
+			console.log('Size:', (file.size / 1024).toFixed(1) + ' KB');
+			console.log('Type:', file.type);
+			console.log('Timestamp:', new Date().toISOString());
+			console.groupEnd();
+
 			try {
 				// Compress image for upload
 				const { imageData, mimeType } = await api.compressImageForIdentification(file);
+				console.log('🖼️ Compressed image:', (imageData.length / 1024).toFixed(1) + ' KB base64');
 
 				// Call API with retry
 				const result = await withRetry(() => api.identifyImage(imageData, mimeType));
+
+				// Debug: Log full context chain and escalation info
+				console.group('🍷 Agent: Image Identification Result');
+				console.log('Success:', result.success ?? true);
+
+				if (result.quality) {
+					console.group('🖼️ Image Quality');
+					console.log('Score:', result.quality.score);
+					console.log('Valid:', result.quality.valid);
+					if (result.quality.issues?.length) {
+						console.log('Issues:', result.quality.issues);
+					}
+					console.groupEnd();
+				}
+
+				if (result.escalation) {
+					console.group('📊 Escalation Chain');
+					console.log('Final Tier:', result.escalation.final_tier);
+
+					Object.entries(result.escalation.tiers).forEach(([tier, data]) => {
+						console.group(`  Tier: ${tier}`);
+						console.log('Model:', (data as Record<string, unknown>).model);
+						console.log('Confidence:', (data as Record<string, unknown>).confidence);
+						if ((data as Record<string, unknown>).thinking_level) {
+							console.log('Thinking Level:', (data as Record<string, unknown>).thinking_level);
+						}
+						console.groupEnd();
+					});
+
+					console.log('Total Cost: $' + (result.escalation.total_cost?.toFixed(6) ?? '0'));
+					console.groupEnd();
+				}
+
+				console.group('📋 Parsed Result');
+				console.log('Producer:', result.parsed?.producer ?? 'null');
+				console.log('Wine Name:', result.parsed?.wineName ?? 'null');
+				console.log('Vintage:', result.parsed?.vintage ?? 'null');
+				console.log('Region:', result.parsed?.region ?? 'null');
+				console.log('Country:', result.parsed?.country ?? 'null');
+				console.log('Type:', result.parsed?.wineType ?? 'null');
+				console.groupEnd();
+
+				console.log('Confidence:', result.confidence);
+				console.log('Action:', result.action);
+
+				if (result.inferences_applied?.length) {
+					console.log('Inferences Applied:', result.inferences_applied);
+				}
+
+				console.groupEnd();
 
 				update((state) => ({
 					...state,
@@ -346,14 +448,43 @@ function createAgentStore() {
 				imageQuality: null
 			}));
 
+			// Debug: Log query initiation with supplementary context
+			console.group('🍷 Agent: Image + Supplementary Text Request');
+			console.log('File:', file.name);
+			console.log('Size:', (file.size / 1024).toFixed(1) + ' KB');
+			console.log('Supplementary Text:', supplementaryText);
+			console.log('Timestamp:', new Date().toISOString());
+			console.groupEnd();
+
 			try {
 				// Compress image for upload
 				const { imageData, mimeType } = await api.compressImageForIdentification(file);
+				console.log('🖼️ Compressed image:', (imageData.length / 1024).toFixed(1) + ' KB base64');
 
 				// Call API with supplementary text and retry
 				const result = await withRetry(() =>
 					api.identifyImage(imageData, mimeType, supplementaryText)
 				);
+
+				// Debug: Log result with context chain
+				console.group('🍷 Agent: Image + Supplementary Result');
+				console.log('Supplementary Text Used:', supplementaryText);
+
+				if (result.escalation) {
+					console.group('📊 Escalation Chain');
+					console.log('Final Tier:', result.escalation.final_tier);
+					Object.entries(result.escalation.tiers).forEach(([tier, data]) => {
+						console.log(`  ${tier}: confidence=${(data as Record<string, unknown>).confidence}, model=${(data as Record<string, unknown>).model}`);
+					});
+					console.log('Total Cost: $' + (result.escalation.total_cost?.toFixed(6) ?? '0'));
+					console.groupEnd();
+				}
+
+				console.log('Confidence:', result.confidence);
+				console.log('Action:', result.action);
+				console.log('Producer:', result.parsed?.producer ?? 'null');
+				console.log('Wine Name:', result.parsed?.wineName ?? 'null');
+				console.groupEnd();
 
 				update((state) => ({
 					...state,
@@ -394,21 +525,64 @@ function createAgentStore() {
 				error: null
 			}));
 
+			// Debug: Log Opus escalation request with full context
+			console.group('🚀 Agent: Opus Escalation Request (Tier 3)');
+			console.log('Input Type:', inputType);
+			console.log('Input Length:', input.length);
+			if (supplementaryText) {
+				console.log('Supplementary Text:', supplementaryText);
+			}
+			console.group('📋 Prior Result Context');
+			console.log('Prior Confidence:', priorResult.confidence);
+			console.log('Prior Action:', priorResult.action);
+			console.log('Prior Producer:', priorResult.parsed?.producer ?? 'null');
+			console.log('Prior Wine Name:', priorResult.parsed?.wineName ?? 'null');
+			console.log('Prior Tier:', priorResult.escalation?.final_tier ?? 'unknown');
+			console.groupEnd();
+			console.log('Timestamp:', new Date().toISOString());
+			console.groupEnd();
+
 			try {
-				console.log(`🚀 Escalating to Claude Opus (Tier 3) with ${inputType} input...`);
 				const result = await withRetry(() =>
 					api.identifyWithOpus(input, inputType, priorResult, mimeType, supplementaryText)
 				);
 
-				// Debug: Log Opus result
+				// Debug: Log Opus result with full context chain
+				console.group('🍷 Agent: Opus (Tier 3) Result');
+				console.log('Success:', result.success ?? true);
+
 				if (result.escalation) {
-					console.group('🍷 Opus (Tier 3) Result');
-					console.log('Confidence:', result.confidence);
-					console.log('Action:', result.action);
-					console.table(result.escalation.tiers);
-					console.log('Total Cost:', result.escalation.total_cost);
+					console.group('📊 Escalation Chain');
+					console.log('Final Tier:', result.escalation.final_tier);
+
+					Object.entries(result.escalation.tiers).forEach(([tier, data]) => {
+						console.group(`  Tier: ${tier}`);
+						console.log('Model:', (data as Record<string, unknown>).model);
+						console.log('Confidence:', (data as Record<string, unknown>).confidence);
+						console.groupEnd();
+					});
+
+					console.log('Total Cost: $' + (result.escalation.total_cost?.toFixed(6) ?? '0'));
 					console.groupEnd();
 				}
+
+				console.group('📋 Parsed Result');
+				console.log('Producer:', result.parsed?.producer ?? 'null');
+				console.log('Wine Name:', result.parsed?.wineName ?? 'null');
+				console.log('Vintage:', result.parsed?.vintage ?? 'null');
+				console.log('Region:', result.parsed?.region ?? 'null');
+				console.log('Country:', result.parsed?.country ?? 'null');
+				console.log('Type:', result.parsed?.wineType ?? 'null');
+				console.groupEnd();
+
+				console.log('Confidence:', result.confidence);
+				console.log('Action:', result.action);
+
+				if (result.inferences_applied?.length) {
+					console.log('Inferences Applied:', result.inferences_applied);
+				}
+
+				console.groupEnd();
 
 				update((state) => ({
 					...state,

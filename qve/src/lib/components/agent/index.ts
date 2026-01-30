@@ -15,3 +15,4 @@ export { default as AgentLoadingState } from './AgentLoadingState.svelte';
 export { default as ChatMessage } from './ChatMessage.svelte';
 export { default as ActionChips } from './ActionChips.svelte';
 export { default as TypingIndicator } from './TypingIndicator.svelte';
+export { default as CandidateMiniCards } from './CandidateMiniCards.svelte';
