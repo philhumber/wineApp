@@ -288,6 +288,30 @@ export interface CurrencyDataResponse {
   bottleSizes: BottleSize[];
 }
 
+// ─────────────────────────────────────────────────────────
+// USER SETTINGS TYPES (WIN-126)
+// ─────────────────────────────────────────────────────────
+
+export interface UserSettings {
+  collectionName: string;
+}
+
+export interface UpdateSettingsPayload {
+  collectionName?: string;
+}
+
+// ─────────────────────────────────────────────────────────
+// CELLAR VALUE TYPES (WIN-127)
+// ─────────────────────────────────────────────────────────
+
+export interface CellarValue {
+  totalValueEUR: number;
+  bottleCount: number;
+  bottlesWithPrice: number;
+  bottlesWithoutPrice: number;
+  hasIncompleteData: boolean;
+}
+
 // DUPLICATE CHECK TYPES
 // ─────────────────────────────────────────────────────────
 
