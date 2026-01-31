@@ -26,7 +26,8 @@ import type {
   DuplicateCheckParams,
   DuplicateCheckResult,
   AgentIdentificationResult,
-  AgentIdentificationResultWithMeta
+  AgentIdentificationResultWithMeta,
+  AgentEnrichmentResult
 } from './types';
 
 class WineApiClient {
@@ -577,6 +578,38 @@ class WineApiClient {
 
     return response.data;
   }
+
+  // ─────────────────────────────────────────────────────────
+  // AI AGENT ENRICHMENT
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Enrich wine with web search data
+   * Returns grape varieties, critic scores, drink windows, style profiles
+   * Called on-demand by Phase 2.6 UI
+   */
+  async enrichWine(
+    producer: string,
+    wineName: string,
+    vintage?: string | null,
+    wineType?: string | null,
+    region?: string | null
+  ): Promise<AgentEnrichmentResult> {
+    const response = await this.fetchJSON<AgentEnrichmentResult>(
+      'agent/agentEnrich.php',
+      { producer, wineName, vintage, wineType, region }
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Enrichment failed');
+    }
+
+    return response.data;
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // UTILITY METHODS
+  // ─────────────────────────────────────────────────────────
 
   /**
    * Compress and convert image file for identification API
