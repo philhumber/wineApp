@@ -91,6 +91,29 @@ function getAgentIdentificationService(int $userId = 1): \Agent\Identification\I
 }
 
 /**
+ * Initialize Enrichment Service
+ *
+ * @param int $userId User ID for tracking
+ * @return \Agent\Enrichment\EnrichmentService Enrichment service instance
+ */
+function getAgentEnrichmentService(int $userId = 1): \Agent\Enrichment\EnrichmentService
+{
+    $config = getAgentConfig();
+    $pdo = getAgentDB();
+    $llmClient = getAgentLLMClient($userId);
+
+    $cache = new \Agent\Enrichment\EnrichmentCache($pdo, $config);
+    $enricher = new \Agent\Enrichment\WebSearchEnricher($llmClient, $config);
+    $validator = new \Agent\Enrichment\ValidationService($config);
+    $merger = new \Agent\Enrichment\EnrichmentMerger();
+    $fallback = new \Agent\Enrichment\EnrichmentFallback($pdo);
+
+    return new \Agent\Enrichment\EnrichmentService(
+        $cache, $enricher, $validator, $merger, $fallback, $config
+    );
+}
+
+/**
  * Send JSON response and exit
  *
  * @param bool $success Success status

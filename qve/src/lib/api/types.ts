@@ -389,3 +389,61 @@ export interface AgentIdentificationResultWithMeta extends AgentIdentificationRe
   inputType: 'text' | 'image';
   quality?: AgentImageQuality;
 }
+
+// ─────────────────────────────────────────────────────────
+// AI AGENT ENRICHMENT TYPES (Phase 2.5)
+// ─────────────────────────────────────────────────────────
+
+export interface AgentUsage {
+  tokens: { input: number; output: number };
+  cost: number;
+  latencyMs: number;
+}
+
+export interface GrapeVariety {
+  grape: string;
+  percentage: number | null;
+  source?: string;
+}
+
+export interface CriticScore {
+  critic: string;      // "WS", "RP", "Decanter", "JS"
+  score: number;       // 50-100
+  year?: number;       // Review year
+  source?: string;     // URL reference
+}
+
+export interface DrinkWindow {
+  start: number | null;
+  end: number | null;
+  maturity?: 'young' | 'ready' | 'peak' | 'declining';
+}
+
+export interface AgentEnrichmentData {
+  grapeVarieties: GrapeVariety[] | null;
+  appellation: string | null;
+  alcoholContent: number | null;
+  drinkWindow: DrinkWindow | null;
+  productionMethod: string | null;
+  criticScores: CriticScore[] | null;
+  averagePrice: number | null;
+  priceSource: string | null;
+  body: string | null;
+  tannin: string | null;
+  acidity: string | null;
+  sweetness: string | null;
+  overview: string | null;
+  tastingNotes: string | null;
+  pairingNotes: string | null;
+  confidence: number;
+  sources: string[];
+}
+
+export interface AgentEnrichmentResult {
+  success: boolean;
+  data: AgentEnrichmentData | null;
+  source: 'cache' | 'web_search' | 'inference';
+  warnings: string[];
+  fieldSources: Record<string, string> | null;
+  usage: AgentUsage | null;
+}
