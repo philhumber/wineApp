@@ -16,3 +16,11 @@ export { default as ChatMessage } from './ChatMessage.svelte';
 export { default as ActionChips } from './ActionChips.svelte';
 export { default as TypingIndicator } from './TypingIndicator.svelte';
 export { default as CandidateMiniCards } from './CandidateMiniCards.svelte';
+
+// Enrichment components
+export { default as EnrichmentCard } from './enrichment/EnrichmentCard.svelte';
+export { default as StyleProfileDisplay } from './enrichment/StyleProfileDisplay.svelte';
+export { default as CriticScores } from './enrichment/CriticScores.svelte';
+export { default as DrinkWindow } from './enrichment/DrinkWindow.svelte';
+export { default as GrapeComposition } from './enrichment/GrapeComposition.svelte';
+export { default as EnrichmentSkeleton } from './enrichment/EnrichmentSkeleton.svelte';
