@@ -17,6 +17,11 @@ export { default as ActionChips } from './ActionChips.svelte';
 export { default as TypingIndicator } from './TypingIndicator.svelte';
 export { default as CandidateMiniCards } from './CandidateMiniCards.svelte';
 
+// Add wine flow components
+export { default as MatchSelectionList } from './MatchSelectionList.svelte';
+export { default as BottleDetailsForm } from './BottleDetailsForm.svelte';
+export { default as ManualEntryForm } from './ManualEntryForm.svelte';
+
 // Enrichment components
 export { default as EnrichmentCard } from './enrichment/EnrichmentCard.svelte';
 export { default as StyleProfileDisplay } from './enrichment/StyleProfileDisplay.svelte';

@@ -739,6 +739,27 @@ class InferenceEngine
 
         return false;
     }
+
+    /**
+     * Public normalization wrapper for frontend validation
+     *
+     * @param string $field Field type (country, wineType)
+     * @param string $value Value to normalize
+     * @return string|null Normalized value or null if no match
+     */
+    public function normalize(string $field, string $value): ?string
+    {
+        $valueLower = strtolower(trim($value));
+
+        switch ($field) {
+            case 'country':
+                return $this->matchCountry($valueLower);
+            case 'wineType':
+                return $this->matchWineType($valueLower);
+            default:
+                return null;
+        }
+    }
 }
 
 // Backward compatibility alias

@@ -7,26 +7,60 @@
 	 */
 	import { createEventDispatcher } from 'svelte';
 	import type { AgentMessage, AgentChip } from '$lib/stores';
-	import type { AgentCandidate } from '$lib/api/types';
+	import type { AgentCandidate, AgentParsedWine } from '$lib/api/types';
 	import ActionChips from './ActionChips.svelte';
 	import WineIdentificationCard from './WineIdentificationCard.svelte';
 	import DisambiguationList from './DisambiguationList.svelte';
 	import CandidateMiniCards from './CandidateMiniCards.svelte';
+	import MatchSelectionList from './MatchSelectionList.svelte';
+	import BottleDetailsForm from './BottleDetailsForm.svelte';
+	import ManualEntryForm from './ManualEntryForm.svelte';
 	import { EnrichmentCard } from './enrichment';
+	import { agentAddState } from '$lib/stores';
 
 	const dispatch = createEventDispatcher<{
-		chipSelect: { action: string };
+		chipSelect: { action: string; data?: unknown };
 		selectCandidate: { candidate: AgentCandidate };
+		formReady: void;
 	}>();
 
 	export let message: AgentMessage;
 
-	function handleChipSelect(e: CustomEvent<{ action: string }>) {
+	// For manual entry form - derive missing fields from identified wine
+	$: partialData = $agentAddState?.identified ?? null;
+	$: missingFields = partialData ? getMissingFields(partialData) : [];
+
+	function getMissingFields(parsed: AgentParsedWine): string[] {
+		const missing: string[] = [];
+		if (!parsed.producer) missing.push('producer');
+		if (!parsed.wineName) missing.push('wine name');
+		if (!parsed.region) missing.push('region');
+		if (!parsed.wineType) missing.push('wine type');
+		return missing;
+	}
+
+	function handleChipSelect(e: CustomEvent<{ action: string; data?: unknown }>) {
 		dispatch('chipSelect', e.detail);
 	}
 
 	function handleSelectCandidate(e: CustomEvent<{ candidate: AgentCandidate }>) {
 		dispatch('selectCandidate', e.detail);
+	}
+
+	function handleManualEntryComplete(e: CustomEvent<{ producer: string; wineName: string; region: string; wineType: string }>) {
+		dispatch('chipSelect', { action: 'manual_entry_complete', data: e.detail });
+	}
+
+	function handleBottleNext() {
+		dispatch('chipSelect', { action: 'bottle_next' });
+	}
+
+	function handleBottleSubmit() {
+		dispatch('chipSelect', { action: 'bottle_submit' });
+	}
+
+	function handleFormReady() {
+		dispatch('formReady');
 	}
 </script>
 
@@ -80,6 +114,51 @@
 			<!-- Coming soon message -->
 			<p class="agent-text coming-soon-text">{message.content}</p>
 			<div class="accent-divider"></div>
+		{:else if message.type === 'add_confirm'}
+			<!-- Add to cellar confirmation -->
+			<p class="agent-text">{message.content}</p>
+			<!-- ActionChips provided via message.chips -->
+		{:else if message.type === 'match_selection'}
+			<!-- Match selection list -->
+			<p class="agent-text">{message.content}</p>
+			{#if message.matches && message.matchType}
+				<MatchSelectionList
+					matches={message.matches}
+					type={message.matchType}
+					on:chipSelect={handleChipSelect}
+				/>
+			{/if}
+			<!-- ActionChips for "Add as new" | "Help me decide" provided via message.chips -->
+		{:else if message.type === 'match_confirmed'}
+			<!-- Match confirmed message -->
+			<p class="agent-text">{message.content}</p>
+			<!-- No chips - auto-advance after brief display -->
+		{:else if message.type === 'manual_entry'}
+			<!-- Manual entry form for missing fields -->
+			<p class="agent-text">{message.content}</p>
+			{#if partialData}
+				<ManualEntryForm
+					{partialData}
+					{missingFields}
+					on:complete={handleManualEntryComplete}
+				/>
+			{/if}
+		{:else if message.type === 'bottle_form'}
+			<!-- Bottle details form -->
+			<BottleDetailsForm
+				part={message.bottleFormPart ?? 1}
+				on:next={handleBottleNext}
+				on:submit={handleBottleSubmit}
+				on:ready={handleFormReady}
+			/>
+		{:else if message.type === 'enrichment_choice'}
+			<!-- Enrichment choice message -->
+			<p class="agent-text">{message.content}</p>
+			<!-- ActionChips: "Enrich now" | "Add quickly" provided via message.chips -->
+		{:else if message.type === 'add_complete'}
+			<!-- Add complete success message -->
+			<p class="agent-text success-text">{message.content}</p>
+			<!-- No chips - panel closes and navigates automatically -->
 		{:else}
 			<!-- Standard text message -->
 			<p class="agent-text">{message.content}</p>
@@ -139,6 +218,11 @@
 
 	.agent-text.coming-soon-text {
 		color: var(--text-tertiary);
+	}
+
+	.agent-text.success-text {
+		color: var(--success, #6b8e6b);
+		font-style: normal;
 	}
 
 	.agent-text.low-confidence-text {
