@@ -64,6 +64,7 @@
 	// Auto-scroll logic
 	let messageContainer: HTMLElement;
 	let userScrolledUp = false;
+	let messageElements: HTMLElement[] = [];
 
 	// Typing indicator text based on phase
 	$: typingText = phase === 'identifying' ? 'Consulting the cellar...' : 'Thinking...';
@@ -82,9 +83,9 @@
 		}
 	});
 
-	// Scroll to bottom when new messages arrive
+	// Scroll to show top of new message when messages arrive
 	$: if (messages.length > 0) {
-		scrollToBottom();
+		scrollToNewMessage();
 	}
 
 	function handleScroll(e: Event) {
@@ -93,12 +94,13 @@
 		userScrolledUp = !isAtBottom;
 	}
 
-	async function scrollToBottom() {
+	async function scrollToNewMessage() {
 		if (!userScrolledUp && messageContainer) {
 			await tick();
 			requestAnimationFrame(() => {
-				if (messageContainer) {
-					messageContainer.scrollTop = messageContainer.scrollHeight;
+				const lastMessage = messageElements[messageElements.length - 1];
+				if (lastMessage) {
+					lastMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
 				}
 			});
 		}
@@ -1740,16 +1742,18 @@
 					<p class="agent-text">Preparing...</p>
 				</div>
 			{:else}
-				{#each messages as message (message.id)}
-					<ChatMessage
-						{message}
-						on:chipSelect={handleChipAction}
-						on:addToCellar={handleWineAddToCellar}
-						on:tryAgain={handleWineTryAgain}
-						on:confirm={handleWineConfirm}
-						on:edit={handleWineEdit}
-						on:selectCandidate={handleCandidateSelect}
-					/>
+				{#each messages as message, index (message.id)}
+					<div bind:this={messageElements[index]}>
+						<ChatMessage
+							{message}
+							on:chipSelect={handleChipAction}
+							on:addToCellar={handleWineAddToCellar}
+							on:tryAgain={handleWineTryAgain}
+							on:confirm={handleWineConfirm}
+							on:edit={handleWineEdit}
+							on:selectCandidate={handleCandidateSelect}
+						/>
+					</div>
 				{/each}
 			{/if}
 
