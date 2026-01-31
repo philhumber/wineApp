@@ -326,6 +326,18 @@
 			});
 		}
 
+		// If wineName is missing but grapes exist, offer to use grape as name
+		if ((!parsed.wineName || parsed.wineName === 'Unknown Wine') &&
+			parsed.grapes && parsed.grapes.length > 0) {
+			const primaryGrape = parsed.grapes[0];
+			chips.push({
+				id: `use_grape_as_name:${encodeURIComponent(primaryGrape)}`,
+				label: `Use "${primaryGrape}"`,
+				icon: 'wine',
+				action: 'use_grape_as_name'
+			});
+		}
+
 		// If vintage is missing, offer "NV" option
 		if (!parsed.vintage) {
 			chips.push({
@@ -534,18 +546,50 @@
 			agent.setPhase('result_confirm');
 
 		} else if (isValidWine) {
-			// CARD: medium/high confidence — show wine card (preserved)
-			agent.setAugmentationContext(null);
+			// CARD: medium/high confidence — show wine card
+			// Check if wine is incomplete (e.g., missing wine name but has grapes)
+			const isIncomplete = !hasMinimumFields(result.parsed);
+			const quickFillChips = isIncomplete ? getMissingFieldChips(result.parsed) : [];
+
+			// If incomplete, keep augmentation context for quick-fill handlers
+			if (isIncomplete) {
+				agent.setAugmentationContext({
+					originalInput: inputText,
+					originalInputType: lastInputType || 'text',
+					originalResult: {
+						intent: 'add',
+						parsed: result.parsed,
+						confidence: result.confidence,
+						action: (result.action ?? 'suggest') as AgentAction,
+						candidates: result.candidates ?? []
+					}
+				});
+			} else {
+				agent.setAugmentationContext(null);
+			}
+
+			// Build chips based on completeness
+			const cardChips: AgentChip[] = isIncomplete
+				? [
+					// Incomplete: show quick-fill options + "doesn't look right" (no Correct yet)
+					...quickFillChips,
+					{ id: 'not_correct', label: "Doesn't Look Right", icon: 'x', action: 'not_correct' }
+				]
+				: [
+					// Complete: show standard Correct/Not Correct
+					{ id: 'correct', label: 'Correct', icon: 'check', action: 'correct' },
+					{ id: 'not_correct', label: 'Not Correct', icon: 'x', action: 'not_correct' }
+				];
+
 			agent.addMessage({
 				role: 'agent',
 				type: 'wine_result',
-				content: 'Is this the wine you\'re seeking?',
+				content: isIncomplete
+					? 'I found this wine but need a bit more detail.'
+					: 'Is this the wine you\'re seeking?',
 				wineResult: result.parsed,
 				confidence: result.confidence,
-				chips: [
-					{ id: 'correct', label: 'Correct', icon: 'check', action: 'correct' },
-					{ id: 'not_correct', label: 'Not Correct', icon: 'x', action: 'not_correct' }
-				]
+				chips: cardChips
 			});
 			agent.setPhase('result_confirm');
 
@@ -629,15 +673,21 @@
 				await handleAddToCellar();
 				break;
 
-			case 'learn':
+			case 'learn': {
 				// Enrich the identified wine with additional details
-				const parsedWine = $agentParsed;
-				if (parsedWine) {
+				// Use the most recent wine result shown to the user (may contain merged data
+				// from progressive identification, like grape used as wine name)
+				const lastWineResultMsg = [...$agentMessages].reverse().find(
+					(m) => m.type === 'wine_result' && m.wineResult
+				);
+				const wineToEnrich = lastWineResultMsg?.wineResult || $agentParsed;
+				if (wineToEnrich) {
 					agent.setTyping(true);
-					await agent.enrichWine(parsedWine);
+					await agent.enrichWine(wineToEnrich);
 					agent.setTyping(false);
 				}
 				break;
+			}
 
 			case 'remember':
 				agent.addMessage({
@@ -889,6 +939,87 @@
 				}
 				break;
 			}
+
+			case 'use_grape_as_name': {
+				// User confirms wine has no specific name - use grape variety as wine name
+				// Example: "Au Bon Climat Pinot Noir" → wineName = "Pinot Noir"
+				const augCtx = $agentAugmentationContext;
+				if (!augCtx?.originalResult?.parsed) {
+					break; // Guard clause - no context to work with
+				}
+
+				// Extract grape from chip ID (handles multi-grape wines correctly)
+				// Chip ID format: "use_grape_as_name:Pinot%20Noir"
+				const lastChipMessage = [...$agentMessages]
+					.reverse()
+					.find(m => m.chips?.some(c => c.action === 'use_grape_as_name'));
+
+				const chipWithGrape = lastChipMessage?.chips?.find(c => c.action === 'use_grape_as_name');
+				const chipId = chipWithGrape?.id || '';
+
+				let grapeToUse: string;
+				if (chipId.includes(':')) {
+					grapeToUse = decodeURIComponent(chipId.split(':')[1]);
+				} else {
+					// Fallback: use first grape from parsed data
+					grapeToUse = augCtx.originalResult.parsed.grapes?.[0] || '';
+				}
+
+				if (!grapeToUse) {
+					break; // No grape to use
+				}
+
+				const updatedParsedGrape: AgentParsedWine = {
+					...augCtx.originalResult.parsed,
+					wineName: grapeToUse
+				};
+
+				// Update augmentation context with new parsed data
+				agent.setAugmentationContext({
+					...augCtx,
+					originalResult: {
+						...augCtx.originalResult,
+						parsed: updatedParsedGrape
+					}
+				});
+
+				// Check if we now have all required fields
+				if (hasMinimumFields(updatedParsedGrape)) {
+					// Show wine card for confirmation
+					agent.addMessage({
+						role: 'agent',
+						type: 'wine_result',
+						content: 'Is this the wine you\'re seeking?',
+						wineResult: updatedParsedGrape,
+						confidence: augCtx.originalResult.confidence,
+						chips: [
+							{ id: 'correct', label: 'Correct', icon: 'check', action: 'correct' },
+							{ id: 'not_correct', label: 'Not Correct', icon: 'x', action: 'not_correct' }
+						]
+					});
+					agent.setPhase('result_confirm');
+				} else {
+					// Still missing other fields - ask for more info
+					const remainingChips = getMissingFieldChips(updatedParsedGrape);
+					const missingPrompt = getMissingFieldsPrompt(updatedParsedGrape);
+
+					if (remainingChips.length > 0) {
+						agent.addMessage({
+							role: 'agent',
+							type: 'chips',
+							content: `Got it, using "${grapeToUse}" as the wine name. ${missingPrompt}`,
+							chips: remainingChips
+						});
+					} else {
+						agent.addMessage({
+							role: 'agent',
+							type: 'text',
+							content: `Got it, using "${grapeToUse}" as the wine name. ${missingPrompt}`
+						});
+					}
+				}
+				break;
+			}
 		}
 	}
 
@@ -1116,6 +1247,7 @@
 	async function handleTextSubmit(e: CustomEvent<{ text: string }>) {
 		const text = e.detail.text;
 		const augContext = $agentAugmentationContext;
+		const wasInAugmentPhase = phase === 'augment_input'; // Capture before any state changes
 
 		// Add user message
 		agent.addMessage({
@@ -1165,6 +1297,58 @@
 			}
 
 			agent.setTyping(false);
+
+			// Post-AI grape detection: if wine name still missing but user typed a grape, offer to use it
+			if (result?.parsed && wasInAugmentPhase) {
+				const parsedResult = result.parsed;
+				const stillMissingWineName = !parsedResult.wineName || parsedResult.wineName === 'Unknown Wine';
+
+				if (stillMissingWineName && parsedResult.grapes?.length) {
+					// Check if user's input matches any of the identified grapes (case-insensitive exact match)
+					const normalizedInput = text.trim().toLowerCase();
+					const matchedGrape = parsedResult.grapes.find(
+						g => g.trim().toLowerCase() === normalizedInput
+					);
+
+					if (matchedGrape) {
+						// User typed a grape name that matches - offer to use it as wine name
+						agent.addMessage({
+							role: 'agent',
+							type: 'chips',
+							content: `I found the wine but still need a name. "${matchedGrape}" is the grape variety - should I use it as the wine name?`,
+							chips: [
+								{
+									id: `use_grape_as_name:${encodeURIComponent(matchedGrape)}`,
+									label: 'Yes, use it',
+									icon: 'check',
+									action: 'use_grape_as_name'
+								},
+								{
+									id: 'provide_more',
+									label: 'No, I\'ll clarify',
+									icon: 'edit',
+									action: 'provide_more'
+								}
+							]
+						});
+
+						// Store context for the handler
+						agent.setAugmentationContext({
+							originalInput: text,
+							originalInputType: lastInputType || 'text',
+							originalResult: {
+								intent: 'add',
+								parsed: result.parsed,
+								confidence: result.confidence,
+								action: (result.action ?? 'suggest') as AgentAction,
+								candidates: result.candidates ?? []
+							}
+						});
+						agent.setPhase('augment_input');
+						return; // Skip normal result handling - waiting for user confirmation
+					}
+				}
+			}
 
 			// Use four-way branch handler
 			if (!handleIdentificationResult(result, text)) {
