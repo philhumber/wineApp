@@ -12,6 +12,7 @@
 	import WineIdentificationCard from './WineIdentificationCard.svelte';
 	import DisambiguationList from './DisambiguationList.svelte';
 	import CandidateMiniCards from './CandidateMiniCards.svelte';
+	import { EnrichmentCard } from './enrichment';
 
 	const dispatch = createEventDispatcher<{
 		chipSelect: { action: string };
@@ -34,6 +35,7 @@
 	class:agent={message.role === 'agent'}
 	class:user={message.role === 'user'}
 	class:has-wine-result={message.type === 'wine_result'}
+	class:has-wine-enrichment={message.type === 'wine_enrichment'}
 	class:has-low-confidence={message.type === 'low_confidence'}
 	class:has-partial-match={message.type === 'partial_match'}
 	class:has-disambiguation={message.type === 'disambiguation'}
@@ -46,6 +48,10 @@
 				parsed={message.wineResult}
 				confidence={message.confidence ?? 0}
 			/>
+		{:else if message.type === 'wine_enrichment' && message.enrichmentData}
+			<!-- Wine enrichment card -->
+			<p class="agent-text">{message.content}</p>
+			<EnrichmentCard data={message.enrichmentData} source={message.enrichmentSource} />
 		{:else if message.type === 'low_confidence'}
 			<!-- Low confidence conversational message -->
 			<p class="agent-text low-confidence-text">{message.content}</p>
@@ -181,8 +187,9 @@
 		object-fit: cover;
 	}
 
-	/* Wine result, partial-match, and disambiguation don't need extra padding */
+	/* Wine result, enrichment, partial-match, and disambiguation don't need extra padding */
 	.chat-message.has-wine-result,
+	.chat-message.has-wine-enrichment,
 	.chat-message.has-partial-match,
 	.chat-message.has-disambiguation {
 		padding-right: 0;

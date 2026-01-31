@@ -33,6 +33,27 @@
   --rating-wine: #8B4A5C;
   --rating-value: #7A8B6B;
 
+  /* Enrichment - Critic score colors (muted palette) */
+  --score-exceptional: #5A7A5A;
+  --score-exceptional-bg: rgba(90, 122, 90, 0.15);
+  --score-outstanding: #6B8E6B;
+  --score-outstanding-bg: rgba(107, 142, 107, 0.15);
+  --score-very-good: #B89A4A;
+  --score-very-good-bg: rgba(184, 154, 74, 0.15);
+  --score-good: #8A847D;
+  --score-good-bg: rgba(138, 132, 125, 0.15);
+
+  /* Enrichment - Drink window status colors */
+  --status-hold: #B89A4A;
+  --status-hold-bg: rgba(184, 154, 74, 0.15);
+  --status-ready: #6B8E6B;
+  --status-ready-bg: rgba(107, 142, 107, 0.15);
+  --status-past: #A87070;
+  --status-past-bg: rgba(168, 112, 112, 0.15);
+
+  /* Enrichment - Accent hue for grape colors */
+  --accent-hue: 350;
+
   /* Shadows - barely there */
   --shadow-sm: 0 1px 2px rgba(45, 41, 38, 0.03);
   --shadow-md: 0 2px 8px rgba(45, 41, 38, 0.04), 0 1px 2px rgba(45, 41, 38, 0.03);
@@ -107,6 +128,25 @@
   /* Rating colors - slightly brighter in dark mode */
   --rating-wine: #C98A9C;
   --rating-value: #9AAB8B;
+
+  /* Enrichment - Dark mode overrides */
+  --score-exceptional: #8BA88B;
+  --score-exceptional-bg: rgba(139, 168, 139, 0.2);
+  --score-outstanding: #9AAB8B;
+  --score-outstanding-bg: rgba(154, 171, 139, 0.2);
+  --score-very-good: #D4B86A;
+  --score-very-good-bg: rgba(212, 184, 106, 0.2);
+  --score-good: #8A847D;
+  --score-good-bg: rgba(138, 132, 125, 0.2);
+
+  --status-hold: #D4B86A;
+  --status-hold-bg: rgba(212, 184, 106, 0.2);
+  --status-ready: #8BA88B;
+  --status-ready-bg: rgba(139, 168, 139, 0.2);
+  --status-past: #C99999;
+  --status-past-bg: rgba(201, 153, 153, 0.2);
+
+  --accent-hue: 350;
 
   /* Shadows in dark mode - subtle glows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
