@@ -16,7 +16,8 @@ import type {
 	AgentAction,
 	AgentCandidate,
 	AgentInputType,
-	AgentImageQuality
+	AgentImageQuality,
+	AgentEnrichmentData
 } from '$lib/api/types';
 
 // ─────────────────────────────────────────────────────────
@@ -52,6 +53,7 @@ export type AgentMessageType =
 	| 'chips'
 	| 'image_preview'
 	| 'wine_result'
+	| 'wine_enrichment'
 	| 'low_confidence'
 	| 'partial_match'
 	| 'disambiguation'
@@ -79,6 +81,8 @@ export interface AgentMessage {
 	wineResult?: AgentParsedWine;
 	confidence?: number;
 	candidates?: AgentCandidate[];
+	enrichmentData?: AgentEnrichmentData;
+	enrichmentSource?: 'cache' | 'web_search' | 'inference';
 }
 
 /** Context for augmentation (Not Correct flow) */
@@ -145,6 +149,7 @@ export interface AgentState {
 	// Phase 2: Enrichment state
 	isEnriching: boolean;
 	enrichmentError: string | null;
+	enrichmentData: AgentEnrichmentData | null;
 
 	// Image quality (for image inputs)
 	imageQuality: AgentImageQuality | null;
@@ -220,6 +225,7 @@ const initialState: AgentState = {
 	currentInputType: null,
 	isEnriching: false,
 	enrichmentError: null,
+	enrichmentData: null,
 	imageQuality: null,
 	// Conversation state
 	phase: 'greeting',
@@ -653,6 +659,87 @@ function createAgentStore() {
 			update((state) => ({ ...state, isEnriching: false, enrichmentError: error }));
 		},
 
+		/**
+		 * Enrich wine with additional details (grape composition, critic scores, etc.)
+		 */
+		enrichWine: async (parsed: AgentParsedWine): Promise<void> => {
+			// Validate required fields
+			if (!parsed.producer || !parsed.wineName) {
+				const errorMessage: AgentMessage = {
+					id: generateMessageId(),
+					role: 'agent',
+					type: 'text',
+					content: 'I need at least the producer and wine name to find more information.',
+					timestamp: Date.now()
+				};
+				update((s) => ({
+					...s,
+					messages: [...s.messages, errorMessage]
+				}));
+				return;
+			}
+
+			update((s) => ({ ...s, isEnriching: true, enrichmentError: null }));
+
+			try {
+				const result = await api.enrichWine(
+					parsed.producer,
+					parsed.wineName,
+					parsed.vintage,
+					parsed.wineType,
+					parsed.region
+				);
+
+				// Add enrichment message to conversation
+				const enrichMessage: AgentMessage = {
+					id: generateMessageId(),
+					role: 'agent',
+					type: 'wine_enrichment',
+					content: "Here's what I found about this wine.",
+					timestamp: Date.now(),
+					enrichmentData: result.data ?? undefined,
+					enrichmentSource: result.source
+				};
+
+				update((s) => ({
+					...s,
+					isEnriching: false,
+					enrichmentData: result.data,
+					messages: [...s.messages, enrichMessage]
+				}));
+			} catch (error) {
+				const errorMsg = error instanceof Error ? error.message : 'Enrichment failed';
+
+				const errorMessage: AgentMessage = {
+					id: generateMessageId(),
+					role: 'agent',
+					type: 'text',
+					content:
+						"I couldn't find additional information about this wine. You can still add it to your cellar.",
+					timestamp: Date.now()
+				};
+
+				update((s) => ({
+					...s,
+					isEnriching: false,
+					enrichmentError: errorMsg,
+					enrichmentData: null,
+					messages: [...s.messages, errorMessage]
+				}));
+			}
+		},
+
+		/**
+		 * Clear enrichment data and error
+		 */
+		clearEnrichment: (): void => {
+			update((s) => ({
+				...s,
+				enrichmentData: null,
+				enrichmentError: null
+			}));
+		},
+
 		// ─────────────────────────────────────────────────────
 		// RESET / CLEAR
 		// ─────────────────────────────────────────────────────
@@ -707,7 +794,9 @@ function createAgentStore() {
 				messages: [greetingMessage],
 				lastResult: null,
 				error: null,
-				augmentationContext: null
+				augmentationContext: null,
+				enrichmentData: null,
+				enrichmentError: null
 			}));
 		},
 
@@ -800,7 +889,9 @@ function createAgentStore() {
 					lastResult: null,
 					error: null,
 					augmentationContext: null,
-					isTyping: false
+					isTyping: false,
+					enrichmentData: null,
+					enrichmentError: null
 				};
 			});
 		}
@@ -848,6 +939,12 @@ export const agentIdentifying = derived<typeof agent, boolean>(agent, ($agent) =
 
 /** Whether agent is enriching */
 export const agentEnriching = derived<typeof agent, boolean>(agent, ($agent) => $agent.isEnriching);
+
+/** Enrichment data from last enrichment call */
+export const agentEnrichmentData = derived<typeof agent, AgentEnrichmentData | null>(
+	agent,
+	($agent) => $agent.enrichmentData
+);
 
 /** Whether agent has an error */
 export const agentError = derived<typeof agent, string | null>(
