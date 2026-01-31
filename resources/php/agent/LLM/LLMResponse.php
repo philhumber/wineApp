@@ -45,6 +45,9 @@ class LLMResponse
     /** @var array|null Tool calls if any */
     public ?array $toolCalls;
 
+    /** @var array|null Grounding metadata from web search (internal use only) */
+    public ?array $groundingMetadata;
+
     /** @var array Additional metadata */
     public array $metadata;
 
@@ -66,6 +69,7 @@ class LLMResponse
         $this->provider = $data['provider'] ?? '';
         $this->model = $data['model'] ?? '';
         $this->toolCalls = $data['toolCalls'] ?? null;
+        $this->groundingMetadata = $data['groundingMetadata'] ?? null;
         $this->metadata = $data['metadata'] ?? [];
     }
 
@@ -115,6 +119,7 @@ class LLMResponse
             'provider' => $this->provider,
             'model' => $this->model,
             'toolCalls' => $this->toolCalls,
+            'groundingMetadata' => $this->groundingMetadata,
         ];
     }
 
