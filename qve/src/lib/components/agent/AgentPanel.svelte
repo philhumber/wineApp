@@ -66,6 +66,9 @@
 	let userScrolledUp = false;
 	let messageElements: HTMLElement[] = [];
 
+	// CommandInput ref for triggering camera/gallery
+	let commandInputRef: CommandInput;
+
 	// Typing indicator text based on phase
 	$: typingText = phase === 'identifying' ? 'Consulting the cellar...' : 'Thinking...';
 
@@ -732,9 +735,21 @@
 				agent.setPhase('await_input');
 				agent.addMessage({
 					role: 'agent',
-					type: 'text',
-					content: 'Share an image of the label, or tell me what you know about it.'
+					type: 'chips',
+					content: 'Share an image, or type what you know.',
+					chips: [
+						{ id: 'take_photo', label: 'Take Photo', icon: 'camera', action: 'take_photo' },
+						{ id: 'choose_photo', label: 'Choose from Library', icon: 'gallery', action: 'choose_photo' }
+					]
 				});
+				break;
+
+			case 'take_photo':
+				commandInputRef?.triggerCamera();
+				break;
+
+			case 'choose_photo':
+				commandInputRef?.triggerGallery();
 				break;
 
 			case 'recommend':
@@ -1770,6 +1785,7 @@
 		{#if showInput}
 			<div class="panel-input">
 				<CommandInput
+					bind:this={commandInputRef}
 					disabled={isLoading || isTyping}
 					placeholder={inputPlaceholder}
 					on:submit={handleTextSubmit}

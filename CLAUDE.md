@@ -231,12 +231,31 @@ function handleTouchEnd(e: TouchEvent) {
 
 ### Agent Session Persistence (stores/agent.ts)
 Wine Assistant state survives mobile browser tab switches (e.g., switching to Camera app):
-- **Storage**: sessionStorage (clears on tab close)
-- **Persisted**: messages, lastResult, augmentationContext, enrichmentData, phase, image data (base64)
-- **Images**: Stored as data URLs (not ObjectURLs) for cross-reload survival
-- **Quota handling**: Graceful fallback drops image data first, then reduces to minimal state
-- **Clear triggers**: `startSession()` (new greeting), `fullReset()`
-- **Orphan protection**: Loading states reset on hydration to prevent stuck UI
+
+| Data | Storage | Lifetime |
+|------|---------|----------|
+| Chat messages, results, images | sessionStorage | Tab close clears |
+| Panel open/close state | localStorage | Persists across sessions |
+
+**Persisted state**: messages (max 30), lastResult, augmentationContext, enrichmentData, phase, image data (base64)
+
+**Images**: Stored as data URLs (not ObjectURLs) for cross-reload survival
+
+**Clear triggers**:
+| Trigger | Function | Effect |
+|---------|----------|--------|
+| Panel opens with no messages | `startSession()` | Clears storage, new greeting |
+| "Start Over" button | `resetConversation()` | Adds divider + greeting, keeps history |
+| Tab closed | Browser | sessionStorage auto-cleared |
+| Hard reset | `fullReset()` | Clears all storage, closes panel |
+
+**Persistence timing**:
+- Debounced (500ms): Message additions, phase changes
+- Immediate: Identification results, augmentation context (critical for retry)
+
+**Quota handling**: Graceful fallback drops image data first, then reduces to last 10 messages
+
+**Orphan protection**: Loading states (`isLoading`, `isTyping`, `isEnriching`) reset to false on hydration
 
 ---
 
