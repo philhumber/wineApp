@@ -25,12 +25,14 @@
 		agentIsTyping,
 		agentHasStarted,
 		agentAugmentationContext,
+		agentEnriching,
 		addWineStore
 	} from '$lib/stores';
 	import type { AgentPhase, AgentMessage, AgentChip } from '$lib/stores';
 	import CommandInput from './CommandInput.svelte';
 	import ChatMessage from './ChatMessage.svelte';
 	import TypingIndicator from './TypingIndicator.svelte';
+	import { EnrichmentSkeleton } from './enrichment';
 	import type { AgentParsedWine, AgentCandidate, AgentAction, AgentEscalationMeta, AgentIdentificationResult } from '$lib/api/types';
 	import { api } from '$lib/api';
 
@@ -625,6 +627,15 @@
 				break;
 
 			case 'learn':
+				// Enrich the identified wine with additional details
+				const parsedWine = $agentParsed;
+				if (parsedWine) {
+					agent.setTyping(true);
+					await agent.enrichWine(parsedWine);
+					agent.setTyping(false);
+				}
+				break;
+
 			case 'remember':
 				agent.addMessage({
 					role: 'agent',
@@ -1471,6 +1482,10 @@
 
 			{#if isTyping}
 				<TypingIndicator text={typingText} />
+			{/if}
+
+			{#if $agentEnriching}
+				<EnrichmentSkeleton />
 			{/if}
 		</div>
 
