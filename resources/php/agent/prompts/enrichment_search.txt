@@ -1,0 +1,50 @@
+Search for detailed wine information about: {producer} {wine} {vintage}
+
+Find and extract from reliable wine sources:
+1. Grape varieties with percentages (e.g., "Cabernet Sauvignon 75%, Merlot 20%")
+2. Official appellation or AVA classification
+3. Alcohol content (ABV %)
+4. Recommended drink window (start year to end year)
+5. Critic scores from: Wine Spectator (WS), Robert Parker/Wine Advocate (RP), Decanter, James Suckling (JS)
+   - Only include 100-point scale scores
+6. Production method notes (if notable, e.g., barrel aging)
+7. Style profile: body, tannin level, acidity, sweetness
+8. Wine overview - 3-4 sentences (60-120 words) describing the wine's character, style, and reputation
+9. Tasting notes - 3-4 sentences (60-120 words) with aromas, palate flavors, texture, and finish
+10. Food pairings - 3-4 sentences (60-100 words) with specific food recommendations
+
+Return as JSON:
+{
+  "grapeVarieties": [
+    {"grape": "Cabernet Sauvignon", "percentage": 75},
+    {"grape": "Merlot", "percentage": 20},
+    {"grape": "Petit Verdot", "percentage": 5}
+  ],
+  "appellation": "Margaux AOC",
+  "alcoholContent": 13.5,
+  "drinkWindow": {
+    "start": 2025,
+    "end": 2055,
+    "maturity": "young"
+  },
+  "criticScores": [
+    {"critic": "WS", "score": 98, "year": 2023},
+    {"critic": "RP", "score": 97, "year": 2022}
+  ],
+  "productionMethod": "18 months in new French oak",
+  "body": "Full",
+  "tannin": "High",
+  "acidity": "Medium-High",
+  "sweetness": "Dry",
+  "overview": "A flagship Left Bank Bordeaux from one of the most prestigious estates in Margaux. Known for its elegance, power, and remarkable aging potential. This vintage showcases the estate's commitment to excellence.",
+  "tastingNotes": "Intense aromas of blackcurrant, violet, and cedar on the nose. The palate reveals layers of dark fruit, tobacco, and graphite with silky, refined tannins. The finish is exceptionally long with mineral undertones.",
+  "pairingNotes": "Pairs beautifully with lamb rack, beef Wellington, or aged hard cheeses like Comté. Also excellent alongside slow-braised short ribs or wild mushroom dishes."
+}
+
+IMPORTANT:
+- Only include data you find from reputable wine sources
+- Use null for any field you cannot verify
+- For critic scores, only include 100-point scale scores (not 20-point or 5-star)
+- maturity values: "young", "ready", "peak", "declining"
+- Do not guess or invent data
+- For narrative fields (overview, tastingNotes, pairingNotes): write in an accessible, wine-enthusiast style; use sensory descriptors; keep each field to 3-4 sentences

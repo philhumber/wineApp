@@ -62,6 +62,21 @@
 						(SELECT ROUND(AVG(normalized_price), 2)
 						FROM (
 							SELECT
+								(b.price / COALESCE(NULLIF(c.rateToEUR, 0), 1)) AS normalized_price,
+								ROW_NUMBER() OVER (ORDER BY
+									(b.price / COALESCE(NULLIF(c.rateToEUR, 0), 1))
+								) AS rn,
+								COUNT(*) OVER () AS cnt
+							FROM bottles b
+							LEFT JOIN currencies c ON b.currency = c.currencyCode
+							WHERE b.wineID = wine.wineID
+								AND b.price IS NOT NULL
+								AND b.price > 0
+						) AS ranked
+						WHERE rn IN (FLOOR((cnt + 1) / 2), CEILING((cnt + 1) / 2))) AS avgBottlePriceEUR,
+						(SELECT ROUND(AVG(normalized_price), 2)
+						FROM (
+							SELECT
 								(b.price / COALESCE(NULLIF(c.rateToEUR, 0), 1)) / COALESCE(NULLIF(bs.volumeLitres, 0), 0.75) AS normalized_price,
 								ROW_NUMBER() OVER (ORDER BY
 									(b.price / COALESCE(NULLIF(c.rateToEUR, 0), 1)) / COALESCE(NULLIF(bs.volumeLitres, 0), 0.75)

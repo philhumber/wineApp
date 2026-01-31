@@ -1,17 +1,50 @@
 <script lang="ts">
   /**
    * SettingsModal component
-   * Modal for app settings: theme toggle and view density toggle
+   * Modal for app settings: theme toggle, view density toggle, collection name
    */
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { Icon, ThemeToggle, ViewToggle, CurrencySelector } from '$lib/components';
+  import { collectionName } from '$lib/stores/settings';
 
   const dispatch = createEventDispatcher<{
     close: void;
   }>();
 
+  // Collection name input with debounced save
+  let nameInput = '';
+  let saveTimeout: ReturnType<typeof setTimeout>;
+  let saveError = false;
+
+  // Initialize input from store
+  onMount(() => {
+    nameInput = $collectionName;
+  });
+
+  // Keep input in sync with store changes
+  $: if ($collectionName && !nameInput) {
+    nameInput = $collectionName;
+  }
+
+  // Debounced save (save 500ms after user stops typing)
+  function handleNameInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    nameInput = target.value;
+    saveError = false;
+
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(async () => {
+      try {
+        await collectionName.update(nameInput);
+      } catch {
+        saveError = true;
+      }
+    }, 500);
+  }
+
   function handleClose() {
+    clearTimeout(saveTimeout);
     dispatch('close');
   }
 
@@ -59,6 +92,22 @@
   </div>
 
   <div class="modal-body">
+    <div class="setting-row">
+      <div class="setting-info">
+        <h3 class="setting-label">Collection Name</h3>
+        <p class="setting-description">Personalize your wine collection title</p>
+      </div>
+      <input
+        type="text"
+        class="name-input"
+        class:error={saveError}
+        value={nameInput}
+        on:input={handleNameInput}
+        placeholder="Our Wines"
+        maxlength="50"
+      />
+    </div>
+
     <div class="setting-row">
       <div class="setting-info">
         <h3 class="setting-label">Theme</h3>
@@ -176,5 +225,31 @@
     font-size: 0.8125rem;
     color: var(--text-tertiary);
     margin: 0;
+  }
+
+  .name-input {
+    width: 140px;
+    padding: var(--space-2) var(--space-3);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    background: var(--bg-subtle);
+    border: 1px solid var(--divider);
+    border-radius: 6px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .name-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-subtle);
+  }
+
+  .name-input.error {
+    border-color: var(--error);
+  }
+
+  .name-input::placeholder {
+    color: var(--text-tertiary);
   }
 </style>

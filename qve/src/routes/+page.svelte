@@ -12,8 +12,7 @@
     RatingDisplay,
     BottleIndicators,
     WineGrid,
-    Header,
-    CellarSortBar
+    Header
   } from '$lib/components';
 
   // Sort wines using cellar sort settings
@@ -167,19 +166,6 @@
 <main class="page-container">
   <!-- Wine Grid Section -->
   <section class="wine-section">
-    <div class="section-header">
-      <h2 class="section-title">
-        {$viewMode === 'ourWines' ? 'Our Wines' : 'All Wines'}
-      </h2>
-      <span class="wine-count">
-        {#if $winesLoading}
-          Loading...
-        {:else}
-          {$wines.length} wines
-        {/if}
-      </span>
-    </div>
-
     {#if $winesLoading}
       <div class="loading-state">
         <p>Loading wines...</p>
@@ -195,7 +181,6 @@
         <a href="{base}/add" class="btn-primary">Add Wine</a>
       </div>
     {:else}
-      <CellarSortBar />
       <WineGrid
         wines={sortedWines}
         on:drink={handleDrink}
@@ -291,9 +276,17 @@
    * ───────────────────────────────────────────────────────── */
   .page-container {
     max-width: 1200px;
+    width: 100%;
     margin: 0 auto;
     padding: var(--space-6);
     min-height: 100vh;
+    box-sizing: border-box;
+  }
+
+  @media (max-width: 479px) {
+    .page-container {
+      padding: var(--space-4);
+    }
   }
 
   /* ─────────────────────────────────────────────────────────
@@ -301,27 +294,6 @@
    * ───────────────────────────────────────────────────────── */
   .wine-section {
     margin-bottom: var(--space-8);
-  }
-
-  .section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: var(--space-5);
-  }
-
-  .section-title {
-    font-family: var(--font-serif);
-    font-size: 1.5rem;
-    font-weight: 400;
-    color: var(--text-primary);
-    margin: 0;
-  }
-
-  .wine-count {
-    font-family: var(--font-sans);
-    font-size: 0.8125rem;
-    color: var(--text-tertiary);
   }
 
   /* ─────────────────────────────────────────────────────────

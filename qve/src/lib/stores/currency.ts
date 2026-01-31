@@ -289,6 +289,32 @@ export function getCurrencyByCode(code: string, currencies: Currency[]): Currenc
 }
 
 /**
+ * Format a value as a compact string (e.g., 44819.30 -> "~45k")
+ * Used for displaying cellar total value in a space-efficient way
+ * @param value - Value to format
+ * @param currency - Currency object for the symbol
+ * @returns Formatted compact string (e.g., "~£45k")
+ */
+export function formatCompactValue(
+	value: number | string | null,
+	currency: Currency
+): string | null {
+	if (value === null || value === '' || value === 0 || value === '0') return null;
+
+	const numValue = typeof value === 'string' ? parseFloat(value) : value;
+	if (isNaN(numValue) || numValue === 0) return null;
+
+	// Round to nearest thousand and format with k suffix
+	const thousands = Math.round(numValue / 1000);
+	if (thousands === 0) {
+		// For values under 500, show as-is with no decimal
+		return `${currency.symbol}${Math.round(numValue)}`;
+	}
+
+	return `~${currency.symbol}${thousands}k`;
+}
+
+/**
  * Convert price from original currency to display currency and format
  * Handles full conversion flow: validate -> lookup original currency -> convert -> format
  * @param price - Price in original currency

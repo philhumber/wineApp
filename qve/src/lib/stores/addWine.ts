@@ -6,7 +6,7 @@
 import { writable, derived, get } from 'svelte/store';
 import { api } from '$lib/api/client';
 import { toasts } from './toast';
-import type { Region, Producer, Wine, Country, WineType, AddWinePayload, DuplicateCheckType, DuplicateMatch, DuplicateCheckResult } from '$lib/api/types';
+import type { Region, Producer, Wine, Country, WineType, AddWinePayload, DuplicateCheckType, DuplicateMatch, DuplicateCheckResult, AgentParsedWine } from '$lib/api/types';
 
 // ─────────────────────────────────────────────────────────
 // TYPES
@@ -789,6 +789,75 @@ function createAddWineStore() {
 		set({ ...initialState });
 	};
 
+	// ─────────────────────────────────────────────────────
+	// AGENT INTEGRATION
+	// ─────────────────────────────────────────────────────
+
+	/**
+	 * Populate the wizard with data from AI Agent identification
+	 * Sets all steps to create mode and jumps to bottle step
+	 */
+	const populateFromAgent = async (parsed: AgentParsedWine): Promise<boolean> => {
+		try {
+			// Look up country by name to get code + ID
+			let matchedCountry: Country | null = null;
+			if (parsed.country) {
+				const countries = await api.getCountries();
+				matchedCountry = countries.find(
+					(c) => c.countryName.toLowerCase() === parsed.country?.toLowerCase()
+				) || null;
+			}
+
+			// Map wine type string to valid type
+			const wineType = parsed.wineType || 'Red';
+
+			// Format grapes if present
+			const grapesString = parsed.grapes?.join(', ') || '';
+
+			// Reset first, then populate
+			reset();
+
+			update((s) => ({
+				...s,
+				// Set all to create mode
+				mode: {
+					region: 'create',
+					producer: 'create',
+					wine: 'create'
+				},
+				// Populate region
+				region: {
+					...s.region,
+					regionName: parsed.region || '',
+					country: matchedCountry?.code || parsed.country || '',
+					countryID: null // Will be resolved on submit
+				},
+				// Populate producer
+				producer: {
+					...s.producer,
+					producerName: parsed.producer || ''
+				},
+				// Populate wine
+				wine: {
+					...s.wine,
+					wineName: parsed.wineName || '',
+					wineYear: parsed.vintage || '',
+					wineType: wineType,
+					// Store grapes in description for now (could add dedicated field later)
+					description: grapesString ? `Grapes: ${grapesString}` : ''
+				},
+				// Jump to bottle step (step 4)
+				currentStep: 4
+			}));
+
+			return true;
+		} catch (error) {
+			console.error('Failed to populate from agent:', error);
+			toasts.error('Failed to import wine data');
+			return false;
+		}
+	};
+
 	return {
 		subscribe,
 		// Navigation
@@ -825,7 +894,9 @@ function createAddWineStore() {
 		// Submit
 		submit,
 		// Reset
-		reset
+		reset,
+		// Agent integration
+		populateFromAgent
 	};
 }
 

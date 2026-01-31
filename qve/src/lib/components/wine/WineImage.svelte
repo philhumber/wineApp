@@ -19,8 +19,9 @@
     hasError = true;
   }
 
-  function handleClick() {
+  function handleClick(event: MouseEvent) {
     if (clickable && src && !hasError) {
+      event.stopPropagation();
       dispatch('click');
     }
   }
@@ -28,7 +29,8 @@
   function handleKeydown(event: KeyboardEvent) {
     if (clickable && (event.key === 'Enter' || event.key === ' ')) {
       event.preventDefault();
-      handleClick();
+      event.stopPropagation();
+      dispatch('click');
     }
   }
 

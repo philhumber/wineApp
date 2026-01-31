@@ -22,8 +22,35 @@ export const winesError = writable<string | null>(null);
 /** Target wine ID to scroll to after operations */
 export const targetWineID = writable<number | null>(null);
 
-/** Currently expanded wine card ID */
-export const expandedWineID = writable<number | null>(null);
+/** Set of currently expanded wine card IDs (allows multiple cards expanded) */
+export const expandedWineIDs = writable<Set<number>>(new Set());
+
+/** Toggle expansion state for a wine card */
+export function toggleWineExpanded(id: number): void {
+  expandedWineIDs.update(($ids) => {
+    const newSet = new Set($ids);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    return newSet;
+  });
+}
+
+/** Collapse a specific wine card */
+export function collapseWine(id: number): void {
+  expandedWineIDs.update(($ids) => {
+    const newSet = new Set($ids);
+    newSet.delete(id);
+    return newSet;
+  });
+}
+
+/** Collapse all expanded wine cards */
+export function collapseAllWines(): void {
+  expandedWineIDs.set(new Set());
+}
 
 // ─────────────────────────────────────────────────────────
 // DERIVED STORES

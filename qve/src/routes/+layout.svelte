@@ -2,10 +2,11 @@
   import { onMount, onDestroy } from 'svelte';
   import { beforeNavigate, afterNavigate } from '$app/navigation';
   import { get } from 'svelte/store';
-  import { theme, menuOpen, closeMenu, saveScrollPosition, getScrollPosition, modal, isModalOpen, viewMode, isDirtyAddBottle, addBottle } from '$stores';
+  import { theme, menuOpen, closeMenu, saveScrollPosition, getScrollPosition, modal, isModalOpen, viewMode, isDirtyAddBottle, addBottle, collectionName } from '$stores';
   import { displayCurrency } from '$lib/stores/currency';
   import { ToastContainer, SideMenu } from '$lib/components';
   import { ModalContainer } from '$lib/components/modals';
+  import { AgentBubble, AgentPanel } from '$lib/components/agent';
   import '$lib/styles/index.css';
 
   // Handle popstate for modals and view mode (SvelteKit's afterNavigate doesn't fire for same-URL history changes)
@@ -48,6 +49,7 @@
   onMount(() => {
     theme.initialize();
     displayCurrency.initialize();
+    collectionName.initialize();
 
     // Listen for popstate to handle modal back button
     // Use capture phase to handle before SvelteKit's router
@@ -96,3 +98,7 @@
 
 <!-- Global modal container -->
 <ModalContainer />
+
+<!-- AI Wine Assistant -->
+<AgentBubble />
+<AgentPanel />

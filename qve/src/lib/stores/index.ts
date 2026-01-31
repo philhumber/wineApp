@@ -16,7 +16,10 @@ export {
   winesLoading,
   winesError,
   targetWineID,
-  expandedWineID,
+  expandedWineIDs,
+  toggleWineExpanded,
+  collapseWine,
+  collapseAllWines,
   totalBottles,
   wineCount,
   winesByCountry,
@@ -155,6 +158,47 @@ export {
   formatPrice,
   formatPriceFromEUR,
   formatPriceConverted,
-  getCurrencyByCode
+  getCurrencyByCode,
+  formatCompactValue
 } from './currency';
 export type { CurrencyCode } from './currency';
+
+// Settings (Collection Name, Cellar Value)
+export { collectionName, cellarValue } from './settings';
+
+// Agent (AI Wine Identification)
+export {
+  agent,
+  agentParsed,
+  agentAction,
+  agentCandidates,
+  agentConfidence,
+  agentLoading,
+  agentIdentifying,
+  agentEnriching,
+  agentError,
+  agentErrorMessage,
+  agentErrorRetryable,
+  agentErrorSupportRef,
+  agentPanelOpen,
+  agentInputType,
+  agentImageQuality,
+  agentHasResult,
+  // Conversation stores
+  agentPhase,
+  agentMessages,
+  agentIsTyping,
+  agentHasAugmentationContext,
+  agentAugmentationContext,
+  agentHasStarted,
+  agentPendingNewSearch
+} from './agent';
+export type {
+  AgentState,
+  AgentPhase,
+  AgentMessageType,
+  AgentChip,
+  AgentMessage,
+  AgentAugmentationContext,
+  PendingNewSearch
+} from './agent';

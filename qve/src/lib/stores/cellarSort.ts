@@ -19,7 +19,8 @@ export type CellarSortKey =
   | 'type'
   | 'rating'
   | 'bottles'
-  | 'price';
+  | 'price'
+  | 'priceBottle';
 
 export type CellarSortDir = 'asc' | 'desc';
 
@@ -83,9 +84,18 @@ export function sortWines(wines: Wine[], sortKey: CellarSortKey, sortDir: Cellar
       case 'bottles':
         return direction * (a.bottleCount - b.bottleCount);
       case 'price': {
-        // Use avgPricePerLiterEUR for comparison
+        // Use avgPricePerLiterEUR for comparison (value per liter)
         const priceA = parseFloat(a.avgPricePerLiterEUR || '0') || 0;
         const priceB = parseFloat(b.avgPricePerLiterEUR || '0') || 0;
+        if (priceA === 0 && priceB === 0) return 0;
+        if (priceA === 0) return 1;
+        if (priceB === 0) return -1;
+        return direction * (priceA - priceB);
+      }
+      case 'priceBottle': {
+        // Use median bottle price in EUR for comparison (absolute price)
+        const priceA = parseFloat(a.avgBottlePriceEUR || '0') || 0;
+        const priceB = parseFloat(b.avgBottlePriceEUR || '0') || 0;
         if (priceA === 0 && priceB === 0) return 0;
         if (priceA === 0) return 1;
         if (priceB === 0) return -1;

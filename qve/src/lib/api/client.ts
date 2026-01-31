@@ -23,9 +23,17 @@ import type {
   AIProducerData,
   AIWineData,
   CurrencyDataResponse,
+  UserSettings,
+  UpdateSettingsPayload,
+  CellarValue,
   DuplicateCheckParams,
-  DuplicateCheckResult
+  DuplicateCheckResult,
+  AgentIdentificationResult,
+  AgentIdentificationResultWithMeta,
+  AgentEnrichmentResult,
+  AgentErrorResponse
 } from './types';
+import { AgentError } from './types';
 
 class WineApiClient {
   private baseURL: string;
@@ -39,7 +47,8 @@ class WineApiClient {
   // ─────────────────────────────────────────────────────────
 
   /**
-   * Generic fetch with JSON body and response
+   * Generic fetch with JSON body and response.
+   * Handles structured agent errors with user-friendly messages.
    */
   private async fetchJSON<T>(
     endpoint: string,
@@ -57,14 +66,24 @@ class WineApiClient {
 
     try {
       const response = await fetch(url, options);
+      const json = await response.json();
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      // Check for structured agent error (works for both HTTP errors and 200 with success:false)
+      if (!json.success && json.error?.type) {
+        throw AgentError.fromResponse(json as AgentErrorResponse);
       }
 
-      const json = await response.json();
+      // Generic HTTP error without structured info
+      if (!response.ok) {
+        throw new Error(json.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
       return json;
     } catch (error) {
+      // Re-throw AgentError as-is to preserve structured error info
+      if (AgentError.isAgentError(error)) {
+        throw error;
+      }
       console.error(`API Error (${endpoint}):`, error);
       throw error;
     }
@@ -489,6 +508,228 @@ class WineApiClient {
       existingBottles: 0,
       existingWineId: null
     };
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // USER SETTINGS (WIN-126)
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Get user settings (collection name, etc.)
+   */
+  async getUserSettings(): Promise<UserSettings> {
+    const response = await this.fetchJSON<UserSettings>('getUserSettings.php');
+    return response.data ?? { collectionName: 'Our Wines' };
+  }
+
+  /**
+   * Update user settings
+   */
+  async updateUserSettings(settings: UpdateSettingsPayload): Promise<UserSettings> {
+    const response = await this.fetchJSON<UserSettings>(
+      'updateUserSettings.php',
+      settings as Record<string, unknown>
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to update settings');
+    }
+
+    return response.data ?? { collectionName: 'Our Wines' };
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // CELLAR VALUE (WIN-127)
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Get cellar value statistics
+   * Returns total value in EUR (frontend handles currency conversion)
+   */
+  async getCellarValue(): Promise<CellarValue> {
+    const response = await this.fetchJSON<CellarValue>('getCellarValue.php');
+    return response.data ?? {
+      totalValueEUR: 0,
+      bottleCount: 0,
+      bottlesWithPrice: 0,
+      bottlesWithoutPrice: 0,
+      hasIncompleteData: false
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // AI AGENT IDENTIFICATION
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Identify wine from text description
+   * Uses AI to parse wine details and match against collection/reference data
+   */
+  async identifyText(text: string): Promise<AgentIdentificationResult> {
+    const response = await this.fetchJSON<AgentIdentificationResult>(
+      'agent/identifyText.php',
+      { text }
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to identify wine from text');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Identify wine from image (label photo)
+   * Uses AI vision to extract wine details from label
+   * Optionally includes supplementary text for re-identification with user context
+   */
+  async identifyImage(
+    imageBase64: string,
+    mimeType: string,
+    supplementaryText?: string
+  ): Promise<AgentIdentificationResultWithMeta> {
+    const body: Record<string, string> = { image: imageBase64, mimeType };
+    if (supplementaryText) {
+      body.supplementaryText = supplementaryText;
+    }
+
+    const response = await this.fetchJSON<AgentIdentificationResultWithMeta>(
+      'agent/identifyImage.php',
+      body
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to identify wine from image');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * User-triggered escalation to Claude Opus for maximum accuracy
+   * Called when user clicks "Try harder" after a user_choice action
+   * Supports both text and image inputs based on inputType
+   */
+  async identifyWithOpus(
+    input: string,
+    inputType: 'text' | 'image',
+    priorResult: AgentIdentificationResult,
+    mimeType?: string,
+    supplementaryText?: string
+  ): Promise<AgentIdentificationResult> {
+    // Build request body based on input type
+    const body: Record<string, unknown> = { priorResult };
+
+    if (inputType === 'image') {
+      body.image = input;
+      body.mimeType = mimeType || 'image/jpeg';
+      if (supplementaryText) {
+        body.supplementaryText = supplementaryText;
+      }
+    } else {
+      body.text = input;
+    }
+
+    const response = await this.fetchJSON<AgentIdentificationResult>(
+      'agent/identifyWithOpus.php',
+      body
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to identify wine with premium model');
+    }
+
+    return response.data;
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // AI AGENT ENRICHMENT
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Enrich wine with web search data
+   * Returns grape varieties, critic scores, drink windows, style profiles
+   * Called on-demand by Phase 2.6 UI
+   */
+  async enrichWine(
+    producer: string,
+    wineName: string,
+    vintage?: string | null,
+    wineType?: string | null,
+    region?: string | null
+  ): Promise<AgentEnrichmentResult> {
+    const response = await this.fetchJSON<AgentEnrichmentResult>(
+      'agent/agentEnrich.php',
+      { producer, wineName, vintage, wineType, region }
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Enrichment failed');
+    }
+
+    return response.data;
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // UTILITY METHODS
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Compress and convert image file for identification API
+   * Returns base64-encoded image data with mime type
+   */
+  async compressImageForIdentification(file: File): Promise<{ imageData: string; mimeType: string }> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      const img = new Image();
+
+      reader.onload = (e) => {
+        img.onload = () => {
+          // Create canvas for compression
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+
+          if (!ctx) {
+            reject(new Error('Could not get canvas context'));
+            return;
+          }
+
+          // Max dimensions for upload
+          const MAX_WIDTH = 1200;
+          const MAX_HEIGHT = 1200;
+
+          let { width, height } = img;
+
+          // Scale down if needed
+          if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+            const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          // Draw image
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Convert to JPEG with quality
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          const base64Data = dataUrl.split(',')[1];
+
+          resolve({
+            imageData: base64Data,
+            mimeType: 'image/jpeg'
+          });
+        };
+
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = e.target?.result as string;
+      };
+
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
   }
 }
 
