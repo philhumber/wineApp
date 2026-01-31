@@ -846,6 +846,24 @@ function createAgentStore() {
 		},
 
 		/**
+		 * Clear chips from the last message that has them
+		 * Called when user selects a chip to prevent reselection
+		 */
+		clearLastChips: () => {
+			update((state) => {
+				const messages = [...state.messages];
+				// Find last message with chips and clear them
+				for (let i = messages.length - 1; i >= 0; i--) {
+					if (messages[i].chips && messages[i].chips.length > 0) {
+						messages[i] = { ...messages[i], chips: undefined };
+						break;
+					}
+				}
+				return { ...state, messages };
+			});
+		},
+
+		/**
 		 * Reset conversation and start fresh (preserves panel state and history)
 		 * Adds a divider and new greeting without clearing messages
 		 */

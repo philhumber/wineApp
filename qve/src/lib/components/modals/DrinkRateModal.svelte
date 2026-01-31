@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
-  import { drinkWine, isDirty, canSubmit, modal, decrementBottleCount, scrollToWine, expandedWineID } from '$lib/stores';
+  import { drinkWine, isDirty, canSubmit, modal, decrementBottleCount, scrollToWine, collapseWine } from '$lib/stores';
   import { RatingDots, MiniRatingDots, ToggleSwitch } from '$lib/components/forms';
   import Icon from '$lib/components/ui/Icon.svelte';
   import type { Wine } from '$lib/api/types';
@@ -45,8 +45,8 @@
       // Decrement bottle count in wines list
       if (result.wineID) {
         decrementBottleCount(result.wineID);
-        // Collapse the card and scroll to top of viewport
-        expandedWineID.set(null);
+        // Collapse this wine's card and scroll to top of viewport
+        collapseWine(result.wineID);
         scrollToWine(result.wineID);
       }
       drinkWine.reset();

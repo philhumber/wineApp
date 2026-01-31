@@ -4,7 +4,7 @@
    * Responsive container that manages wine card layout and expanded state
    */
   import { createEventDispatcher } from 'svelte';
-  import { viewDensity, expandedWineID, targetWineID } from '$lib/stores';
+  import { viewDensity, expandedWineIDs, toggleWineExpanded, targetWineID } from '$lib/stores';
   import type { Wine } from '$lib/api/types';
   import WineCard from './WineCard.svelte';
 
@@ -16,13 +16,8 @@
     edit: { wine: Wine };
   }>();
 
-  function handleExpand(event: CustomEvent<{ wineID: number }>) {
-    const { wineID } = event.detail;
-    expandedWineID.set(wineID);
-  }
-
-  function handleCollapse() {
-    expandedWineID.set(null);
+  function handleToggleExpand(event: CustomEvent<{ wineID: number }>) {
+    toggleWineExpanded(event.detail.wineID);
   }
 
   // Forward action events from WineCard
@@ -52,11 +47,11 @@
   {#each wines as wine, index (wine.wineID)}
     <WineCard
       {wine}
-      expanded={$expandedWineID === wine.wineID}
+      expanded={$expandedWineIDs.has(wine.wineID)}
       compact={$viewDensity === 'compact'}
       targetHighlight={$targetWineID === wine.wineID}
-      on:expand={handleExpand}
-      on:collapse={handleCollapse}
+      on:expand={handleToggleExpand}
+      on:collapse={handleToggleExpand}
       on:drink={handleDrink}
       on:add={handleAdd}
       on:edit={handleEdit}

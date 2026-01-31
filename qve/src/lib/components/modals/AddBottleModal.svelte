@@ -12,7 +12,7 @@
     canSubmitAddBottle,
     incrementBottleCount,
     scrollToWine,
-    expandedWineID,
+    collapseWine,
     bottleSizeSelectOptions,
     storageOptions,
     currencySelectOptions
@@ -61,8 +61,8 @@
       // Increment bottle count in wines list
       if (result.wineID && result.count > 0) {
         incrementBottleCount(result.wineID, result.count);
-        // Collapse any expanded card and scroll to the wine
-        expandedWineID.set(null);
+        // Collapse this wine's card and scroll to it
+        collapseWine(result.wineID);
         scrollToWine(result.wineID);
       }
       addBottle.reset();
