@@ -187,7 +187,8 @@ export {
   agentIsTyping,
   agentHasAugmentationContext,
   agentAugmentationContext,
-  agentHasStarted
+  agentHasStarted,
+  agentPendingNewSearch
 } from './agent';
 export type {
   AgentState,
@@ -195,5 +196,6 @@ export type {
   AgentMessageType,
   AgentChip,
   AgentMessage,
-  AgentAugmentationContext
+  AgentAugmentationContext,
+  PendingNewSearch
 } from './agent';
