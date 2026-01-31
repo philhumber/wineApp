@@ -573,6 +573,9 @@
 	async function handleChipAction(e: CustomEvent<{ action: string }>) {
 		const { action } = e.detail;
 
+		// Clear chips immediately to prevent reselection
+		agent.clearLastChips();
+
 		switch (action) {
 			case 'identify':
 				agent.setPhase('await_input');
@@ -1461,6 +1464,9 @@
 			bind:this={messageContainer}
 			on:scroll={handleScroll}
 		>
+			<!-- Spacer pushes content to bottom while preserving scroll -->
+			<div class="message-spacer"></div>
+
 			{#if messages.length === 0}
 				<!-- Loading state while session initializes -->
 				<div class="loading-greeting">
@@ -1688,6 +1694,11 @@
 		flex-direction: column;
 		gap: var(--space-5);
 		min-height: 200px;
+	}
+
+	/* Spacer pushes messages to bottom while preserving scroll */
+	.message-spacer {
+		flex: 1 1 auto;
 	}
 
 	/* Input area */
