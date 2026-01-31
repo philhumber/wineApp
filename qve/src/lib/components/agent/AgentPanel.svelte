@@ -28,6 +28,7 @@
 		agentIsTyping,
 		agentHasStarted,
 		agentAugmentationContext,
+		agentPendingNewSearch,
 		agentEnriching,
 		addWineStore
 	} from '$lib/stores';
@@ -38,7 +39,11 @@
 	import { EnrichmentSkeleton } from './enrichment';
 	import type { AgentParsedWine, AgentCandidate, AgentAction, AgentEscalationMeta, AgentIdentificationResult } from '$lib/api/types';
 	import { api } from '$lib/api';
-	import { detectCommand, type CommandType } from '$lib/utils';
+	import { detectCommand, detectChipResponse, isBriefInput, type CommandType } from '$lib/utils';
+
+	// Chip actions that can be triggered by positive/negative text responses
+	const POSITIVE_CHIP_ACTIONS = ['correct', 'confirm_direction', 'use_grape_as_name'];
+	const NEGATIVE_CHIP_ACTIONS = ['not_correct', 'wrong_direction'];
 
 	// Reactive bindings
 	$: isOpen = $agentPanelOpen;
@@ -62,6 +67,23 @@
 	}
 	let lastAction: LastAction | null = null;
 
+	// Track pending brief search for confirmation flow
+	let pendingBriefSearch: string | null = null;
+
+	// Check if we have meaningful progress worth preserving
+	function hasActiveIdentification(): boolean {
+		const progressPhases: AgentPhase[] = ['result_confirm', 'action_select'];
+		if (!progressPhases.includes(phase)) return false;
+
+		const parsed = $agentAugmentationContext?.originalResult?.parsed || $agent.lastResult?.parsed;
+		if (!parsed) return false;
+
+		// Meaningful if we have producer OR wine name identified
+		const hasProducer = !!(parsed.producer && parsed.producer !== 'Unknown');
+		const hasWineName = !!(parsed.wineName && parsed.wineName !== 'Unknown Wine');
+		return hasProducer || hasWineName;
+	}
+
 	// Auto-scroll logic
 	let messageContainer: HTMLElement;
 	let userScrolledUp = false;
@@ -73,12 +95,32 @@
 	// Typing indicator text based on phase
 	$: typingText = phase === 'identifying' ? 'Consulting the cellar...' : 'Thinking...';
 
-	// Show input based on phase
-	$: showInput = ['await_input', 'augment_input'].includes(phase);
+	// Input placeholder based on phase (input is always visible)
+	$: inputPlaceholder = (() => {
+		// Image-originated augmentation needs distinct guidance
+		if (phase === 'augment_input' && $agentAugmentationContext?.originalInputType === 'image') {
+			return 'Add details visible in the image...';
+		}
 
-	// Input placeholder based on phase
-	$: inputPlaceholder =
-		phase === 'augment_input' ? 'Tell me more about this wine...' : 'Type wine name...';
+		switch (phase) {
+			case 'augment_input':
+				return 'Tell me more about this wine...';
+			case 'handle_incorrect':
+				return 'Describe what I got wrong...';
+			case 'result_confirm':
+				return 'Or type to search again...';
+			case 'action_select':
+				return 'Or identify another wine...';
+			case 'confirm_new_search':
+				return 'Choose an option above...';
+			case 'identifying':
+			case 'complete':
+				return 'Processing...';
+			// greeting, path_selection, coming_soon, await_input, escalation_choice
+			default:
+				return 'Type wine name or take a photo...';
+		}
+	})();
 
 	// Initialize conversation when panel opens
 	onMount(() => {
@@ -126,6 +168,7 @@
 	}
 
 	function handleStartOver() {
+		agent.setPendingNewSearch(null);
 		lastImageFile = null;
 		lastInputType = null;
 		lastAction = null;
@@ -496,7 +539,7 @@
 			chips.push({
 				id: 'use_producer_name',
 				label: 'No Specific Name',
-				icon: 'wine',
+				icon: 'wine-bottle',
 				action: 'use_producer_name'
 			});
 		}
@@ -508,7 +551,7 @@
 			chips.push({
 				id: `use_grape_as_name:${encodeURIComponent(primaryGrape)}`,
 				label: `Use "${primaryGrape}"`,
-				icon: 'wine',
+				icon: 'wine-bottle',
 				action: 'use_grape_as_name'
 			});
 		}
@@ -802,6 +845,108 @@
 
 			case 'start_over_error':
 				handleStartOver();
+				break;
+
+			case 'confirm_brief_search':
+				if (pendingBriefSearch) {
+					const searchText = pendingBriefSearch;
+					pendingBriefSearch = null;
+					// Set lastAction for retry support
+					lastAction = { type: 'text', text: searchText };
+					// Call handleTextSubmit which will now proceed (pendingBriefSearch is cleared)
+					await handleTextSubmit({ detail: { text: searchText } } as CustomEvent<{ text: string }>);
+				}
+				break;
+
+			case 'confirm_new_search': {
+				// User confirmed they want to start new search
+				const pending = $agentPendingNewSearch;
+				if (!pending) {
+					// Edge case: state lost, fall back gracefully
+					agent.addMessage({
+						role: 'agent',
+						type: 'text',
+						content: "Something went wrong. Let's start fresh."
+					});
+					agent.setPhase('await_input');
+					break;
+				}
+
+				const searchText = pending.text;
+				agent.setPendingNewSearch(null);
+
+				// Clear context for fresh search
+				lastImageFile = null;
+				lastInputType = 'text';
+				agent.setAugmentationContext(null);
+				agent.setPhase('identifying');
+				agent.setTyping(true);
+
+				try {
+					lastAction = { type: 'text', text: searchText };
+					const result = await agent.identify(searchText);
+					agent.setTyping(false);
+
+					if (!handleIdentificationResult(result, searchText)) {
+						showErrorWithRetry($agentErrorMessage || "I couldn't identify that wine.");
+					}
+				} catch {
+					agent.setTyping(false);
+					showErrorWithRetry($agentErrorMessage || 'Something went wrong.');
+				}
+				break;
+			}
+
+			case 'continue_current': {
+				// User wants to stay with current wine
+				const pending = $agentPendingNewSearch;
+				agent.setPendingNewSearch(null);
+
+				// Validate previousPhase before restoring
+				const targetPhase = pending?.previousPhase;
+
+				agent.addMessage({
+					role: 'agent',
+					type: 'text',
+					content: "No problem, let's continue."
+				});
+
+				if (targetPhase === 'action_select') {
+					agent.addMessage({
+						role: 'agent',
+						type: 'chips',
+						content: 'What would you like to do?',
+						chips: [
+							{ id: 'add', label: 'Add to Cellar', icon: 'plus', action: 'add' },
+							{ id: 'learn', label: 'Learn More', icon: 'info', action: 'learn' },
+							{ id: 'remember', label: 'Remember', icon: 'bookmark', action: 'remember' }
+						]
+					});
+					agent.setPhase('action_select');
+				} else {
+					// Default to result_confirm (safest fallback)
+					agent.addMessage({
+						role: 'agent',
+						type: 'chips',
+						content: 'Is this correct?',
+						chips: [
+							{ id: 'correct', label: 'Correct', icon: 'check', action: 'correct' },
+							{ id: 'not_correct', label: 'Not Correct', icon: 'x', action: 'not_correct' }
+						]
+					});
+					agent.setPhase('result_confirm');
+				}
+				break;
+			}
+
+			case 'add_more_detail':
+				// User wants to add more - keep pendingBriefSearch so next input accumulates
+				agent.addMessage({
+					role: 'agent',
+					type: 'text',
+					content: 'Tell me more — the producer name, vintage, region, or grape variety would help.'
+				});
+				agent.setPhase('await_input');
 				break;
 
 			case 'identify':
@@ -1458,8 +1603,154 @@
 			return;
 		}
 
+		// Check if we should confirm before starting new search
+		// Note: Commands like "start over" already handled above - they execute immediately
+		if (hasActiveIdentification()) {
+			// Store pending search in store (persisted to sessionStorage)
+			agent.setPendingNewSearch({ text, previousPhase: phase as AgentPhase });
+
+			// Show user's message
+			agent.addMessage({
+				role: 'user',
+				type: 'text',
+				content: text
+			});
+
+			// Ask for confirmation
+			agent.addMessage({
+				role: 'agent',
+				type: 'chips',
+				content: 'I have a wine ready. Did you want to search for something new instead?',
+				chips: [
+					{ id: 'confirm_new_search', label: 'Search New', icon: 'search', action: 'confirm_new_search' },
+					{ id: 'continue_current', label: 'Keep Current', icon: 'wine-bottle', action: 'continue_current' }
+				]
+			});
+
+			agent.setPhase('confirm_new_search');
+			return;
+		}
+
+		// Check for chip responses when in result_confirm phase
+		if (phase === 'result_confirm') {
+			const lastChipMessage = [...$agentMessages].reverse().find((m) => m.chips?.length);
+			if (lastChipMessage?.chips?.length) {
+				const chipDetection = detectChipResponse(text);
+
+				if (chipDetection.type === 'chip_response' && chipDetection.chipResponse) {
+					const chips = lastChipMessage.chips;
+					let targetChip;
+
+					if (chipDetection.chipResponse === 'positive') {
+						targetChip = chips.find((c) => POSITIVE_CHIP_ACTIONS.includes(c.action));
+					} else {
+						targetChip = chips.find((c) => NEGATIVE_CHIP_ACTIONS.includes(c.action));
+					}
+
+					if (targetChip) {
+						// Add user message showing what they typed
+						agent.addMessage({ role: 'user', type: 'text', content: text });
+						// Trigger chip action
+						await handleChipAction({
+							detail: { action: targetChip.action }
+						} as CustomEvent<{ action: string }>);
+						return;
+					}
+				}
+
+				// Fallback for unrecognized short input - show gentle prompt
+				// Only for short input (1-3 words) that isn't clearly a wine query
+				const wordCount = text.trim().split(/\s+/).length;
+				if (wordCount <= 3 && chipDetection.type === 'wine_query') {
+					// Check it's not a wine indicator (those should proceed to identification)
+					const normalized = text.toLowerCase().trim();
+					const hasWineIndicator = [
+						'château',
+						'chateau',
+						'domaine',
+						'bodega',
+						'winery',
+						'vineyard',
+						'estate',
+						'reserve',
+						'vintage',
+						'wine'
+					].some((w) => normalized.includes(w));
+
+					if (!hasWineIndicator) {
+						// Show user message and gentle fallback
+						agent.addMessage({ role: 'user', type: 'text', content: text });
+						agent.addMessage({
+							role: 'agent',
+							type: 'text',
+							content:
+								"I didn't quite catch that. Please tap one of the options above, or type a new wine to search."
+						});
+						return;
+					}
+				}
+			}
+		}
+
+		// Handle text during chip-driven phases
+		// In these phases, treat text as starting a new identification
+		if (['greeting', 'path_selection', 'result_confirm', 'action_select', 'handle_incorrect'].includes(phase)) {
+			// Clear any existing context since user is starting fresh
+			agent.setAugmentationContext(null);
+		}
+
 		const augContext = $agentAugmentationContext;
 		const wasInAugmentPhase = phase === 'augment_input'; // Capture before any state changes
+
+		// ─────────────────────────────────────────────────────
+		// BRIEF INPUT CHECK
+		// ─────────────────────────────────────────────────────
+
+		// Determine if this is a fresh identification (not providing more detail)
+		const freshIdentificationPhases = [
+			'greeting',
+			'path_selection',
+			'await_input',
+			'result_confirm',
+			'action_select',
+			'handle_incorrect'
+		];
+		const isFreshIdentification = freshIdentificationPhases.includes(phase) && !augContext;
+
+		// Check for brief input - but first handle accumulated text
+		if (pendingBriefSearch) {
+			// User typed more during confirmation - accumulate and proceed
+			const accumulatedText = `${pendingBriefSearch} ${text}`;
+			pendingBriefSearch = null;
+			// Recursively call with accumulated text (will skip this block since pendingBriefSearch is now null)
+			await handleTextSubmit({ detail: { text: accumulatedText } } as CustomEvent<{ text: string }>);
+			return;
+		}
+
+		// Show confirmation for brief input on fresh identification
+		if (isBriefInput(text) && isFreshIdentification) {
+			pendingBriefSearch = text;
+
+			// Add user message
+			agent.addMessage({ role: 'user', type: 'text', content: text });
+
+			// Show confirmation prompt
+			agent.addMessage({
+				role: 'agent',
+				type: 'chips',
+				content: `Just "${text}"? Adding more detail like the producer, vintage, or region will improve the match.`,
+				chips: [
+					{ id: 'confirm_brief', label: 'Search Anyway', icon: 'search', action: 'confirm_brief_search' },
+					{ id: 'add_detail', label: "I'll Add More", icon: 'edit', action: 'add_more_detail' }
+				]
+			});
+			agent.setPhase('await_input');
+			return;
+		}
+
+		// ─────────────────────────────────────────────────────
+		// END BRIEF INPUT CHECK
+		// ─────────────────────────────────────────────────────
 
 		// Add user message
 		agent.addMessage({
@@ -1862,18 +2153,16 @@
 			{/if}
 		</div>
 
-		<!-- Input area (conditional based on phase) -->
-		{#if showInput}
-			<div class="panel-input">
-				<CommandInput
-					bind:this={commandInputRef}
-					disabled={isLoading || isTyping}
-					placeholder={inputPlaceholder}
-					on:submit={handleTextSubmit}
-					on:image={handleImageSubmit}
-				/>
-			</div>
-		{/if}
+		<!-- Input area (always visible) -->
+		<div class="panel-input">
+			<CommandInput
+				bind:this={commandInputRef}
+				disabled={isLoading || isTyping || phase === 'complete' || phase === 'confirm_new_search'}
+				placeholder={inputPlaceholder}
+				on:submit={handleTextSubmit}
+				on:image={handleImageSubmit}
+			/>
+		</div>
 	</div>
 {/if}
 

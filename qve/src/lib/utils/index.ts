@@ -4,4 +4,12 @@
  */
 
 // Command Detection
-export { detectCommand, type CommandType, type CommandDetectionResult } from './commandDetector';
+export {
+	detectCommand,
+	detectChipResponse,
+	isBriefInput,
+	type CommandType,
+	type CommandDetectionResult,
+	type ChipResponseType,
+	type ChipResponseDetectionResult
+} from './commandDetector';

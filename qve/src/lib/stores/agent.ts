@@ -49,6 +49,7 @@ interface AgentSessionState {
 	lastImageData: string | null;
 	lastImageMimeType: string | null;
 	lastInputType: AgentInputType | null;
+	pendingNewSearch: PendingNewSearch | null;
 }
 
 function getStoredSessionState(): AgentSessionState | null {
@@ -125,7 +126,8 @@ function storeSessionState(state: AgentSessionState, immediate = false): void {
 					lastInputType: state.lastInputType,
 					augmentationContext: null,
 					enrichmentData: null,
-					enrichmentForWine: null
+					enrichmentForWine: null,
+					pendingNewSearch: null
 				};
 				sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(minimalState));
 				console.warn('Agent session: Reduced to minimal state due to quota');
@@ -162,6 +164,7 @@ export type AgentPhase =
 	| 'handle_incorrect'
 	| 'augment_input'
 	| 'escalation_choice' // User decides: try harder (Opus) or conversational
+	| 'confirm_new_search' // User typed during active identification, confirming intent
 	| 'complete';
 
 /** Message content types */
@@ -209,6 +212,12 @@ export interface AgentAugmentationContext {
 	originalInputType: AgentInputType;
 	originalResult: AgentIdentificationResult;
 	userFeedback?: string;
+}
+
+/** Pending new search confirmation state */
+export interface PendingNewSearch {
+	text: string;
+	previousPhase: AgentPhase;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -297,6 +306,7 @@ export interface AgentState {
 	messages: AgentMessage[];
 	augmentationContext: AgentAugmentationContext | null;
 	isTyping: boolean;
+	pendingNewSearch: PendingNewSearch | null;
 
 	// Session persistence fields
 	lastImageData: string | null;
@@ -375,6 +385,7 @@ const initialState: AgentState = {
 	messages: [],
 	augmentationContext: null,
 	isTyping: false,
+	pendingNewSearch: null,
 	// Session persistence
 	lastImageData: null,
 	lastImageMimeType: null,
@@ -402,6 +413,7 @@ function createAgentStore() {
 				lastImageData: storedSession.lastImageData,
 				lastImageMimeType: storedSession.lastImageMimeType,
 				currentInputType: storedSession.lastInputType,
+				pendingNewSearch: storedSession.pendingNewSearch ?? null,
 				isPanelOpen: true,
 				// Reset orphaned loading states
 				isLoading: false,
@@ -429,7 +441,8 @@ function createAgentStore() {
 				phase: state.phase,
 				lastImageData: state.lastImageData,
 				lastImageMimeType: state.lastImageMimeType,
-				lastInputType: state.currentInputType
+				lastInputType: state.currentInputType,
+				pendingNewSearch: state.pendingNewSearch
 			},
 			immediate
 		);
@@ -1012,6 +1025,7 @@ function createAgentStore() {
 				lastResult: null,
 				error: null,
 				augmentationContext: null,
+				pendingNewSearch: null,
 				enrichmentData: null,
 				enrichmentError: null
 			}));
@@ -1068,6 +1082,17 @@ function createAgentStore() {
 			update((state) => {
 				const newState = { ...state, augmentationContext: context };
 				persistCurrentState(newState, true); // Immediate - critical for retry flow
+				return newState;
+			});
+		},
+
+		/**
+		 * Set pending new search for confirmation flow
+		 */
+		setPendingNewSearch: (pending: PendingNewSearch | null) => {
+			update((state) => {
+				const newState = { ...state, pendingNewSearch: pending };
+				persistCurrentState(newState, true); // Immediate - critical for mobile tab switches
 				return newState;
 			});
 		},
@@ -1134,6 +1159,7 @@ function createAgentStore() {
 					lastResult: null,
 					error: null,
 					augmentationContext: null,
+					pendingNewSearch: null,
 					isTyping: false,
 					enrichmentData: null,
 					enrichmentError: null
@@ -1277,4 +1303,10 @@ export const agentAugmentationContext = derived<typeof agent, AgentAugmentationC
 export const agentHasStarted = derived<typeof agent, boolean>(
 	agent,
 	($agent) => $agent.messages.length > 0
+);
+
+/** Pending new search confirmation state */
+export const agentPendingNewSearch = derived<typeof agent, PendingNewSearch | null>(
+	agent,
+	($agent) => $agent.pendingNewSearch
 );

@@ -237,7 +237,7 @@ Wine Assistant state survives mobile browser tab switches (e.g., switching to Ca
 | Chat messages, results, images | sessionStorage | Tab close clears |
 | Panel open/close state | localStorage | Persists across sessions |
 
-**Persisted state**: messages (max 30), lastResult, augmentationContext, enrichmentData, phase, image data (base64)
+**Persisted state**: messages (max 30), lastResult, augmentationContext, enrichmentData, pendingNewSearch, phase, image data (base64)
 
 **Images**: Stored as data URLs (not ObjectURLs) for cross-reload survival
 
@@ -251,11 +251,39 @@ Wine Assistant state survives mobile browser tab switches (e.g., switching to Ca
 
 **Persistence timing**:
 - Debounced (500ms): Message additions, phase changes
-- Immediate: Identification results, augmentation context (critical for retry)
+- Immediate: Identification results, augmentation context, pendingNewSearch (critical for retry/mobile)
 
 **Quota handling**: Graceful fallback drops image data first, then reduces to last 10 messages
 
 **Orphan protection**: Loading states (`isLoading`, `isTyping`, `isEnriching`) reset to false on hydration
+
+### Agent Input Behavior (AgentPanel.svelte)
+
+The text input is **always visible** across all conversation phases, with phase-aware placeholders:
+
+| Phase | Placeholder | Behavior on Text Submit |
+|-------|-------------|------------------------|
+| `greeting` | "Type wine name or take a photo..." | Starts fresh identification |
+| `path_selection` | "Type wine name or take a photo..." | Starts fresh identification |
+| `await_input` | "Type wine name or take a photo..." | Starts fresh identification |
+| `identifying` | "Processing..." | Input disabled |
+| `result_confirm` | "Or type to search again..." | Shows confirmation if wine identified |
+| `action_select` | "Or identify another wine..." | Shows confirmation if wine identified |
+| `confirm_new_search` | "Choose an option above..." | Input disabled |
+| `handle_incorrect` | "Describe what I got wrong..." | Clears context, starts fresh |
+| `augment_input` (text) | "Tell me more about this wine..." | Merges with existing context |
+| `augment_input` (image) | "Add details visible in the image..." | Combines with original image |
+| `complete` | "Processing..." | Input disabled |
+
+**New Search Confirmation**: When user types during `result_confirm` or `action_select` phases with an identified wine (has producer or wine name), a confirmation prompt appears asking "Did you want to search for something new instead?" with chips:
+- **Search New**: Clears context and proceeds with new identification
+- **Keep Current**: Returns to previous phase with original chips
+
+This prevents accidental loss of progress if user input is misunderstood. Conversational commands (like "start over") still execute immediately without confirmation.
+
+**Confirmation state persistence**: `pendingNewSearch` is stored in sessionStorage to survive mobile tab switches (e.g., switching to Camera app and back).
+
+**Input disabled**: During `identifying` (loading), `confirm_new_search` (awaiting chip selection), and `complete` (navigating to add-wine).
 
 ---
 
@@ -369,6 +397,41 @@ Client-side detection intercepts conversational commands before API calls:
 | `try_again` | "try again", "retry", "one more time" | Re-execute last action |
 
 **False positive prevention**: Wine indicators checked first ("Château Cancel" → wine query), long text (>6 words) treated as wine query, punctuation normalized.
+
+### Agent Chip Response Detection (`qve/src/lib/utils/commandDetector.ts`)
+
+Users can type natural language responses instead of tapping chips. Detection runs in `result_confirm` phase only.
+
+| Response Type | Example Triggers | Chip Actions Triggered |
+|---------------|------------------|------------------------|
+| Positive | "yes", "ok", "correct", "thats right", typos like "corectt" | `correct`, `confirm_direction`, `use_grape_as_name` |
+| Negative | "no", "wrong", "not right", "incorrect", typos like "worng" | `not_correct`, `wrong_direction` |
+
+**Behavior:**
+- Multi-word input allowed: "yes please", "no thanks" → matches
+- Short unrecognized input (1-3 words): Shows "I didn't quite catch that" fallback
+- Wine indicators in input: Proceeds to identification instead
+- Long input (4+ words): Proceeds to identification instead
+
+### Brief Input Confirmation (`qve/src/lib/utils/commandDetector.ts`)
+
+Single-word inputs trigger a confirmation prompt before making LLM API calls:
+
+| Input | Behavior |
+|-------|----------|
+| "Margaux" | Prompt: "Just 'Margaux'? Adding more detail will improve the match." |
+| "Champagne" | Prompt (even wine terms are ambiguous alone) |
+| "2018" | Prompt (vintage alone is ambiguous) |
+| "Margaux 2018" | No prompt (2+ words) |
+
+**Chips shown:**
+- **Search Anyway** → proceeds with the single word
+- **I'll Add More** → user can type more, text accumulates (e.g., "Margaux" + "2018" → "Margaux 2018")
+
+**When prompt is skipped:**
+- Multi-word input (2+ words)
+- In `augment_input` phase with existing context (user is providing details)
+- Commands detected first ("start", "cancel", etc.)
 
 ---
 
