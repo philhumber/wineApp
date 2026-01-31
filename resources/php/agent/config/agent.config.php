@@ -23,12 +23,14 @@ return [
                     'supports_vision' => true,
                     'supports_tools' => true,
                     'supports_thinking' => true,
+                    'supports_grounding' => true,
                 ],
                 'gemini-3-pro-preview' => [
                     'max_tokens' => 8192,
                     'supports_vision' => true,
                     'supports_tools' => true,
                     'supports_thinking' => true,
+                    'supports_grounding' => true,
                 ],
                 'gemini-2.0-flash' => [
                     'max_tokens' => 8192,
@@ -87,8 +89,9 @@ return [
             'fallback' => ['provider' => 'claude', 'model' => 'claude-sonnet-4-5-20250929'],
         ],
         'enrich' => [
-            'primary' => ['provider' => 'gemini', 'model' => 'gemini-3-flash-preview'],
-            'fallback' => null,
+            'primary' => ['provider' => 'gemini', 'model' => 'gemini-3-pro-preview'],
+            'fallback' => null,  // Enrichment is optional - graceful degradation
+            'timeout' => 60,     // Longer timeout for web search
         ],
         'pair' => [
             'primary' => ['provider' => 'gemini', 'model' => 'gemini-3-flash-preview'],
@@ -219,6 +222,32 @@ return [
         'semi_static' => 90,       // Winemaker, description, drink window
         'dynamic' => 30,           // Critic scores, tasting notes
         'price' => 7,              // Market prices
+    ],
+
+    // ===========================================
+    // Enrichment Settings (Phase 2.5)
+    // ===========================================
+    'enrichment' => [
+        'enabled' => true,
+        'cache_ttl_days' => [
+            'static' => 365,       // grapes, appellation, ABV
+            'semi_static' => 90,   // drink window, production method, style
+            'dynamic' => 30,       // critic scores, price
+        ],
+        'confidence_thresholds' => [
+            'cache_accept' => 0.6,     // Use cached data without refresh
+            'store_minimum' => 0.4,    // Minimum confidence to cache
+            'merge_threshold' => 0.5,  // Below this, merge with cache/inference
+        ],
+        'validation' => [
+            'abv_min' => 5,
+            'abv_max_standard' => 17,   // Accommodates Zinfandel, Amarone, Shiraz
+            'abv_max_fortified' => 26,
+            'critic_score_min' => 50,
+            'critic_score_max' => 100,
+            'grape_percentage_tolerance' => 5,  // Allow 95-105%
+        ],
+        'fortified_types' => ['Fortified', 'Port', 'Sherry', 'Madeira', 'Marsala'],
     ],
 
     // ===========================================

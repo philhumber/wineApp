@@ -91,9 +91,20 @@ class GeminiAdapter implements LLMProviderInterface
             $payload['tools'] = $this->formatTools($options['tools']);
         }
 
+        // Handle web_search option (enables Google Search grounding)
+        if ($options['web_search'] ?? false) {
+            $payload['tools'] = [['google_search' => new \stdClass()]];
+        }
+
         // Add JSON response format if requested
         if ($options['json_response'] ?? false) {
             $payload['generationConfig']['responseMimeType'] = 'application/json';
+        }
+
+        // Structured output schema (works with google_search on Gemini 3)
+        if (!empty($options['response_schema'])) {
+            $payload['generationConfig']['responseMimeType'] = 'application/json';
+            $payload['generationConfig']['responseSchema'] = $options['response_schema'];
         }
 
         // Debug: Log context chain before LLM call
@@ -101,7 +112,8 @@ class GeminiAdapter implements LLMProviderInterface
 
         $url = "{$this->baseUrl}/models/{$model}:generateContent?key={$this->apiKey}";
 
-        $response = $this->makeRequest($url, $payload);
+        $timeout = $options['timeout'] ?? $this->config['timeout'] ?? 30;
+        $response = $this->makeRequest($url, $payload, $timeout);
         $latencyMs = (int)((\microtime(true) - $startTime) * 1000);
 
         if ($response['error']) {
@@ -338,6 +350,7 @@ class GeminiAdapter implements LLMProviderInterface
         $parts = $data['candidates'][0]['content']['parts'] ?? [];
         $inputTokens = $data['usageMetadata']['promptTokenCount'] ?? 0;
         $outputTokens = $data['usageMetadata']['candidatesTokenCount'] ?? 0;
+        $groundingMetadata = $data['candidates'][0]['groundingMetadata'] ?? null;
 
         // When thinking mode is enabled, Gemini returns multiple parts:
         // - First part(s): thinking text (may be empty or contain reasoning)
@@ -405,6 +418,7 @@ class GeminiAdapter implements LLMProviderInterface
             'latencyMs' => $latencyMs,
             'provider' => 'gemini',
             'model' => $model,
+            'groundingMetadata' => $groundingMetadata,
         ]);
     }
 
@@ -498,12 +512,32 @@ class GeminiAdapter implements LLMProviderInterface
     /**
      * Format tools for Gemini API
      *
+     * Handles both function declarations and built-in tools like google_search.
+     *
      * @param array $tools Tool definitions
      * @return array Formatted tools
      */
     private function formatTools(array $tools): array
     {
-        return [['function_declarations' => $tools]];
+        $formatted = [];
+        $functionDeclarations = [];
+
+        foreach ($tools as $tool) {
+            if (is_string($tool) && $tool === 'google_search') {
+                // Built-in tool format (matches geminiAPI.php pattern)
+                $formatted[] = ['google_search' => new \stdClass()];
+            } else {
+                // Collect function declarations
+                $functionDeclarations[] = $tool;
+            }
+        }
+
+        // Add function declarations at the end if any exist
+        if (!empty($functionDeclarations)) {
+            $formatted[] = ['function_declarations' => $functionDeclarations];
+        }
+
+        return $formatted;
     }
 
     /**
@@ -516,6 +550,7 @@ class GeminiAdapter implements LLMProviderInterface
             'vision' => $modelConfig['supports_vision'] ?? false,
             'tools' => $modelConfig['supports_tools'] ?? false,
             'streaming' => true,
+            'grounding' => $modelConfig['supports_grounding'] ?? false,
             default => false,
         };
     }
