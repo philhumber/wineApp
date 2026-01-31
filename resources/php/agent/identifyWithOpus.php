@@ -77,12 +77,7 @@ try {
 
     if (!$result['success']) {
         $errorType = $result['errorType'] ?? 'identification_error';
-        $httpCode = match ($errorType) {
-            'limit_exceeded', 'rate_limit' => 429,
-            'provider_unavailable', 'circuit_open', 'overloaded' => 503,
-            default => 400,
-        };
-        agentError($result['error'] ?? 'Premium identification failed', $httpCode);
+        agentStructuredError($errorType, $result['error'] ?? null);
     }
 
     // Success response
@@ -99,7 +94,5 @@ try {
     ]);
 
 } catch (\Exception $e) {
-    // Log error
-    error_log('Agent Opus identification error: ' . $e->getMessage());
-    agentError('Internal server error', 500);
+    agentExceptionError($e, 'identifyWithOpus');
 }

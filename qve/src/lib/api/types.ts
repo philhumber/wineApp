@@ -25,6 +25,7 @@ export interface Wine {
   rating: number | null;            // Individual rating
   // Price fields from PHP
   avgPricePerLiterEUR?: string;
+  avgBottlePriceEUR?: string;        // Median bottle price in EUR
   typeAvgPricePerLiterEUR?: string;  // Type average for price scale
   standardPrice?: string | null;
   magnumPrice?: string | null;
@@ -446,4 +447,79 @@ export interface AgentEnrichmentResult {
   warnings: string[];
   fieldSources: Record<string, string> | null;
   usage: AgentUsage | null;
+}
+
+// ─────────────────────────────────────────────────────────
+// AI AGENT ERROR TYPES
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Agent error types matching backend classification.
+ * Used for structured error handling and user-friendly messaging.
+ */
+export type AgentErrorType =
+  | 'timeout'
+  | 'rate_limit'
+  | 'limit_exceeded'
+  | 'server_error'
+  | 'overloaded'
+  | 'database_error'
+  | 'quality_check_failed'
+  | 'identification_error'
+  | 'enrichment_error'
+  | 'unknown';
+
+/**
+ * Structured error information from agent endpoints.
+ * Contains type classification, user message, and retry guidance.
+ */
+export interface AgentErrorInfo {
+  type: AgentErrorType;
+  userMessage: string;
+  retryable: boolean;
+  supportRef?: string | null;
+}
+
+/**
+ * Error response structure from agent endpoints.
+ * All agent errors return this shape for consistent handling.
+ */
+export interface AgentErrorResponse {
+  success: false;
+  message: string;
+  error: AgentErrorInfo;
+}
+
+/**
+ * Custom error class for agent-related failures.
+ * Extends Error with structured error information.
+ */
+export class AgentError extends Error {
+  type: AgentErrorType;
+  userMessage: string;
+  retryable: boolean;
+  supportRef: string | null;
+
+  constructor(errorInfo: AgentErrorInfo, fallbackMessage?: string) {
+    super(errorInfo.userMessage || fallbackMessage || 'Something went wrong');
+    this.name = 'AgentError';
+    this.type = errorInfo.type;
+    this.userMessage = errorInfo.userMessage;
+    this.retryable = errorInfo.retryable;
+    this.supportRef = errorInfo.supportRef || null;
+  }
+
+  /**
+   * Create AgentError from a structured error response
+   */
+  static fromResponse(json: AgentErrorResponse): AgentError {
+    return new AgentError(json.error, json.message);
+  }
+
+  /**
+   * Type guard to check if an error is an AgentError
+   */
+  static isAgentError(error: unknown): error is AgentError {
+    return error instanceof AgentError;
+  }
 }

@@ -17,8 +17,11 @@ import type {
 	AgentCandidate,
 	AgentInputType,
 	AgentImageQuality,
-	AgentEnrichmentData
+	AgentEnrichmentData,
+	AgentErrorInfo,
+	AgentErrorType
 } from '$lib/api/types';
+import { AgentError } from '$lib/api/types';
 
 // ─────────────────────────────────────────────────────────
 // CONSTANTS
@@ -27,6 +30,121 @@ import type {
 const PANEL_STORAGE_KEY = 'agentPanelOpen';
 const MAX_RETRIES = 2;
 const MAX_MESSAGES = 30;
+
+// ─────────────────────────────────────────────────────────
+// SESSION PERSISTENCE
+// ─────────────────────────────────────────────────────────
+
+const SESSION_STORAGE_KEY = 'agentSessionState';
+const SESSION_VERSION = 1;
+
+interface AgentSessionState {
+	version: number;
+	messages: AgentMessage[];
+	lastResult: AgentIdentificationResult | null;
+	augmentationContext: AgentAugmentationContext | null;
+	enrichmentData: AgentEnrichmentData | null;
+	enrichmentForWine: { producer: string; wineName: string } | null;
+	phase: AgentPhase;
+	lastImageData: string | null;
+	lastImageMimeType: string | null;
+	lastInputType: AgentInputType | null;
+}
+
+function getStoredSessionState(): AgentSessionState | null {
+	if (typeof window === 'undefined') return null;
+	try {
+		const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
+		if (!stored) return null;
+		const parsed = JSON.parse(stored);
+
+		// Version check
+		if (parsed.version !== SESSION_VERSION) {
+			sessionStorage.removeItem(SESSION_STORAGE_KEY);
+			return null;
+		}
+
+		// Basic validation
+		if (!parsed.messages || !Array.isArray(parsed.messages)) return null;
+		if (!parsed.phase || typeof parsed.phase !== 'string') return null;
+
+		return parsed as AgentSessionState;
+	} catch {
+		sessionStorage.removeItem(SESSION_STORAGE_KEY);
+		return null;
+	}
+}
+
+function clearSessionState(): void {
+	if (typeof window === 'undefined') return;
+	try {
+		sessionStorage.removeItem(SESSION_STORAGE_KEY);
+	} catch {
+		// Ignore errors
+	}
+}
+
+let persistenceTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function storeSessionState(state: AgentSessionState, immediate = false): void {
+	if (typeof window === 'undefined') return;
+
+	const doPersist = () => {
+		try {
+			// Strip transient UI state before persisting
+			const cleanState: AgentSessionState = {
+				...state,
+				// Strip ObjectURLs from messages (they won't work after reload)
+				messages: state.messages.map((msg) => ({
+					...msg,
+					imageUrl: msg.imageUrl?.startsWith('data:') ? msg.imageUrl : undefined
+				}))
+			};
+
+			const serialized = JSON.stringify(cleanState);
+
+			// Check size (~5MB limit, leave 1MB buffer)
+			if (serialized.length > 4 * 1024 * 1024) {
+				// Try without image data
+				const stateWithoutImage = { ...cleanState, lastImageData: null };
+				sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(stateWithoutImage));
+				console.warn('Agent session: Image data dropped due to size');
+			} else {
+				sessionStorage.setItem(SESSION_STORAGE_KEY, serialized);
+			}
+		} catch {
+			// Quota exceeded - try minimal state
+			try {
+				const minimalState: AgentSessionState = {
+					version: SESSION_VERSION,
+					messages: state.messages.slice(-10),
+					phase: state.phase,
+					lastResult: state.lastResult,
+					lastImageData: null,
+					lastImageMimeType: null,
+					lastInputType: state.lastInputType,
+					augmentationContext: null,
+					enrichmentData: null,
+					enrichmentForWine: null
+				};
+				sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(minimalState));
+				console.warn('Agent session: Reduced to minimal state due to quota');
+			} catch {
+				console.warn('Agent session: Unable to persist state');
+			}
+		}
+	};
+
+	if (immediate) {
+		if (persistenceTimeout) clearTimeout(persistenceTimeout);
+		persistenceTimeout = null;
+		doPersist();
+	} else {
+		// Debounce non-critical updates
+		if (persistenceTimeout) clearTimeout(persistenceTimeout);
+		persistenceTimeout = setTimeout(doPersist, 500);
+	}
+}
 
 // ─────────────────────────────────────────────────────────
 // CONVERSATION TYPES
@@ -132,6 +250,26 @@ function generateMessageId(): string {
 	return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
+/**
+ * Extract structured error info from caught error
+ */
+function extractErrorInfo(error: unknown, fallbackMessage: string): AgentErrorInfo {
+	if (AgentError.isAgentError(error)) {
+		return {
+			type: error.type,
+			userMessage: error.userMessage,
+			retryable: error.retryable,
+			supportRef: error.supportRef
+		};
+	}
+	return {
+		type: 'unknown',
+		userMessage: error instanceof Error ? error.message : fallbackMessage,
+		retryable: true,
+		supportRef: null
+	};
+}
+
 // ─────────────────────────────────────────────────────────
 // TYPES
 // ─────────────────────────────────────────────────────────
@@ -140,7 +278,7 @@ export interface AgentState {
 	// Core state
 	isLoading: boolean;
 	lastResult: AgentIdentificationResult | null;
-	error: string | null;
+	error: AgentErrorInfo | null;
 
 	// Phase 2: Panel state
 	isPanelOpen: boolean;
@@ -148,7 +286,7 @@ export interface AgentState {
 
 	// Phase 2: Enrichment state
 	isEnriching: boolean;
-	enrichmentError: string | null;
+	enrichmentError: AgentErrorInfo | null;
 	enrichmentData: AgentEnrichmentData | null;
 
 	// Image quality (for image inputs)
@@ -159,6 +297,11 @@ export interface AgentState {
 	messages: AgentMessage[];
 	augmentationContext: AgentAugmentationContext | null;
 	isTyping: boolean;
+
+	// Session persistence fields
+	lastImageData: string | null;
+	lastImageMimeType: string | null;
+	enrichmentForWine: { producer: string; wineName: string } | null;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -231,15 +374,65 @@ const initialState: AgentState = {
 	phase: 'greeting',
 	messages: [],
 	augmentationContext: null,
-	isTyping: false
+	isTyping: false,
+	// Session persistence
+	lastImageData: null,
+	lastImageMimeType: null,
+	enrichmentForWine: null
 };
 
 function createAgentStore() {
 	const { subscribe, set, update } = writable<AgentState>(initialState);
 
-	// Hydrate panel state from localStorage on client
+	// Hydrate from sessionStorage on client
 	if (typeof window !== 'undefined') {
-		update((state) => ({ ...state, isPanelOpen: getStoredPanelState() }));
+		const storedSession = getStoredSessionState();
+		const panelOpen = getStoredPanelState();
+
+		if (storedSession && panelOpen) {
+			// Restore session - but fix orphaned loading states
+			update((state) => ({
+				...state,
+				messages: storedSession.messages,
+				lastResult: storedSession.lastResult,
+				augmentationContext: storedSession.augmentationContext,
+				enrichmentData: storedSession.enrichmentData,
+				enrichmentForWine: storedSession.enrichmentForWine,
+				phase: storedSession.phase,
+				lastImageData: storedSession.lastImageData,
+				lastImageMimeType: storedSession.lastImageMimeType,
+				currentInputType: storedSession.lastInputType,
+				isPanelOpen: true,
+				// Reset orphaned loading states
+				isLoading: false,
+				isEnriching: false,
+				isTyping: false,
+				error: null,
+				enrichmentError: null
+			}));
+		} else {
+			// No session to restore, just set panel state
+			update((state) => ({ ...state, isPanelOpen: panelOpen }));
+		}
+	}
+
+	// Persistence helper - builds session state and stores it
+	function persistCurrentState(state: AgentState, immediate = false): void {
+		storeSessionState(
+			{
+				version: SESSION_VERSION,
+				messages: state.messages,
+				lastResult: state.lastResult,
+				augmentationContext: state.augmentationContext,
+				enrichmentData: state.enrichmentData,
+				enrichmentForWine: state.enrichmentForWine,
+				phase: state.phase,
+				lastImageData: state.lastImageData,
+				lastImageMimeType: state.lastImageMimeType,
+				lastInputType: state.currentInputType
+			},
+			immediate
+		);
 	}
 
 	return {
@@ -320,19 +513,23 @@ function createAgentStore() {
 
 				console.groupEnd();
 
-				update((state) => ({
-					...state,
-					isLoading: false,
-					lastResult: result,
-					error: null
-				}));
+				update((state) => {
+					const newState = {
+						...state,
+						isLoading: false,
+						lastResult: result,
+						error: null
+					};
+					persistCurrentState(newState, true);
+					return newState;
+				});
 				return result;
 			} catch (error) {
-				const message = error instanceof Error ? error.message : 'Identification failed';
+				const errorInfo = extractErrorInfo(error, 'Identification failed');
 				update((state) => ({
 					...state,
 					isLoading: false,
-					error: message
+					error: errorInfo
 				}));
 				return null;
 			}
@@ -417,22 +614,27 @@ function createAgentStore() {
 
 				console.groupEnd();
 
-				update((state) => ({
-					...state,
-					isLoading: false,
-					lastResult: result,
-					error: null,
-					imageQuality: result.quality ?? null
-				}));
+				update((state) => {
+					const newState = {
+						...state,
+						isLoading: false,
+						lastResult: result,
+						error: null,
+						imageQuality: result.quality ?? null,
+						lastImageData: imageData,
+						lastImageMimeType: mimeType
+					};
+					persistCurrentState(newState, true);
+					return newState;
+				});
 
 				return result;
 			} catch (error) {
-				const message =
-					error instanceof Error ? error.message : 'Image identification failed. Please try again.';
+				const errorInfo = extractErrorInfo(error, 'Image identification failed. Please try again.');
 				update((state) => ({
 					...state,
 					isLoading: false,
-					error: message
+					error: errorInfo
 				}));
 				return null;
 			}
@@ -492,22 +694,27 @@ function createAgentStore() {
 				console.log('Wine Name:', result.parsed?.wineName ?? 'null');
 				console.groupEnd();
 
-				update((state) => ({
-					...state,
-					isLoading: false,
-					lastResult: result,
-					error: null,
-					imageQuality: result.quality ?? null
-				}));
+				update((state) => {
+					const newState = {
+						...state,
+						isLoading: false,
+						lastResult: result,
+						error: null,
+						imageQuality: result.quality ?? null,
+						lastImageData: imageData,
+						lastImageMimeType: mimeType
+					};
+					persistCurrentState(newState, true);
+					return newState;
+				});
 
 				return result;
 			} catch (error) {
-				const message =
-					error instanceof Error ? error.message : 'Image identification failed. Please try again.';
+				const errorInfo = extractErrorInfo(error, 'Image identification failed. Please try again.');
 				update((state) => ({
 					...state,
 					isLoading: false,
-					error: message
+					error: errorInfo
 				}));
 				return null;
 			}
@@ -590,21 +797,24 @@ function createAgentStore() {
 
 				console.groupEnd();
 
-				update((state) => ({
-					...state,
-					isLoading: false,
-					lastResult: result,
-					error: null
-				}));
+				update((state) => {
+					const newState = {
+						...state,
+						isLoading: false,
+						lastResult: result,
+						error: null
+					};
+					persistCurrentState(newState, true);
+					return newState;
+				});
 
 				return result;
 			} catch (error) {
-				const message =
-					error instanceof Error ? error.message : 'Premium identification failed. Please try again.';
+				const errorInfo = extractErrorInfo(error, 'Premium identification failed. Please try again.');
 				update((state) => ({
 					...state,
 					isLoading: false,
-					error: message
+					error: errorInfo
 				}));
 				return null;
 			}
@@ -701,28 +911,32 @@ function createAgentStore() {
 					enrichmentSource: result.source
 				};
 
-				update((s) => ({
-					...s,
-					isEnriching: false,
-					enrichmentData: result.data,
-					messages: [...s.messages, enrichMessage]
-				}));
+				update((s) => {
+					const newState = {
+						...s,
+						isEnriching: false,
+						enrichmentData: result.data,
+						enrichmentForWine: { producer: parsed.producer!, wineName: parsed.wineName! },
+						messages: [...s.messages, enrichMessage]
+					};
+					persistCurrentState(newState, true);
+					return newState;
+				});
 			} catch (error) {
-				const errorMsg = error instanceof Error ? error.message : 'Enrichment failed';
+				const errorInfo = extractErrorInfo(error, 'Enrichment failed');
 
 				const errorMessage: AgentMessage = {
 					id: generateMessageId(),
 					role: 'agent',
 					type: 'text',
-					content:
-						"I couldn't find additional information about this wine. You can still add it to your cellar.",
+					content: errorInfo.userMessage || "I couldn't find additional information about this wine. You can still add it to your cellar.",
 					timestamp: Date.now()
 				};
 
 				update((s) => ({
 					...s,
 					isEnriching: false,
-					enrichmentError: errorMsg,
+					enrichmentError: errorInfo,
 					enrichmentData: null,
 					messages: [...s.messages, errorMessage]
 				}));
@@ -763,6 +977,7 @@ function createAgentStore() {
 		 * Full reset including panel state
 		 */
 		fullReset: () => {
+			clearSessionState();
 			set(initialState);
 			storePanelState(false);
 		},
@@ -775,6 +990,8 @@ function createAgentStore() {
 		 * Start a new conversation session with greeting
 		 */
 		startSession: () => {
+			clearSessionState(); // Clear old session before starting new one
+
 			const greeting = getRandomGreeting();
 			const greetingMessage: AgentMessage = {
 				id: generateMessageId(),
@@ -818,7 +1035,9 @@ function createAgentStore() {
 				if (newMessages.length > MAX_MESSAGES) {
 					newMessages.splice(0, newMessages.length - MAX_MESSAGES);
 				}
-				return { ...state, messages: newMessages };
+				const newState = { ...state, messages: newMessages };
+				persistCurrentState(newState); // Debounced
+				return newState;
 			});
 
 			return fullMessage.id;
@@ -828,7 +1047,11 @@ function createAgentStore() {
 		 * Set the current conversation phase
 		 */
 		setPhase: (phase: AgentPhase) => {
-			update((state) => ({ ...state, phase }));
+			update((state) => {
+				const newState = { ...state, phase };
+				persistCurrentState(newState); // Debounced
+				return newState;
+			});
 		},
 
 		/**
@@ -842,7 +1065,11 @@ function createAgentStore() {
 		 * Set augmentation context for retry flow
 		 */
 		setAugmentationContext: (context: AgentAugmentationContext | null) => {
-			update((state) => ({ ...state, augmentationContext: context }));
+			update((state) => {
+				const newState = { ...state, augmentationContext: context };
+				persistCurrentState(newState, true); // Immediate - critical for retry flow
+				return newState;
+			});
 		},
 
 		/**
@@ -964,10 +1191,28 @@ export const agentEnrichmentData = derived<typeof agent, AgentEnrichmentData | n
 	($agent) => $agent.enrichmentData
 );
 
-/** Whether agent has an error */
-export const agentError = derived<typeof agent, string | null>(
+/** Whether agent has an error - returns structured error info */
+export const agentError = derived<typeof agent, AgentErrorInfo | null>(
 	agent,
 	($agent) => $agent.error || $agent.enrichmentError
+);
+
+/** Convenience: just the error message */
+export const agentErrorMessage = derived<typeof agent, string | null>(
+	agent,
+	($agent) => ($agent.error || $agent.enrichmentError)?.userMessage ?? null
+);
+
+/** Convenience: whether error is retryable */
+export const agentErrorRetryable = derived<typeof agent, boolean>(
+	agent,
+	($agent) => ($agent.error || $agent.enrichmentError)?.retryable ?? false
+);
+
+/** Convenience: support reference for error */
+export const agentErrorSupportRef = derived<typeof agent, string | null>(
+	agent,
+	($agent) => ($agent.error || $agent.enrichmentError)?.supportRef ?? null
 );
 
 /** Whether agent panel is open */

@@ -32,7 +32,7 @@
     { key: 'producer', label: 'Producer' },
     { key: 'region', label: 'Region' },
     { key: 'year', label: 'Vintage' },
-    { key: 'price', label: 'Price' },
+    { key: 'price', label: 'Bottle' },
     { key: 'buyAgain', label: 'Buy Again' }
   ];
 

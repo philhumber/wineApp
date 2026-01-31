@@ -1,6 +1,6 @@
 # Qvé Wine App - Session Context
 
-**Last Updated**: 2026-01-27
+**Last Updated**: 2026-01-31
 **Status**: Production - Deployed and stable
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
@@ -74,7 +74,8 @@ qve/src/
 │   │   ├── forms/     # FormInput, RatingDots, MiniRatingDots
 │   │   ├── wizard/    # WizardStepIndicator, SearchDropdown, AILoadingOverlay
 │   │   ├── modals/    # DrinkRateModal, ConfirmModal, DuplicateWarningModal
-│   │   └── edit/      # WineForm, BottleForm, BottleSelector
+│   │   ├── edit/      # WineForm, BottleForm, BottleSelector
+│   │   └── agent/     # AgentPanel, ChatMessage, ActionChips, CommandInput, enrichment/
 │   ├── stores/        # 16 Svelte stores (state management)
 │   └── styles/        # tokens.css, base.css, animations.css
 └── routes/            # SvelteKit file-based routing
@@ -107,6 +108,7 @@ qve/src/
 | theme | `stores/theme.ts` | Light/dark theme |
 | currency | `stores/currency.ts` | Display currency, conversion utilities, formatCompactValue |
 | scrollPosition | `stores/scrollPosition.ts` | Scroll restoration |
+| agent | `stores/agent.ts` | Wine Assistant state, identification, enrichment, session persistence (sessionStorage) |
 
 ---
 
@@ -227,6 +229,15 @@ function handleTouchEnd(e: TouchEvent) {
 .no-overscroll { overscroll-behavior: none; }
 ```
 
+### Agent Session Persistence (stores/agent.ts)
+Wine Assistant state survives mobile browser tab switches (e.g., switching to Camera app):
+- **Storage**: sessionStorage (clears on tab close)
+- **Persisted**: messages, lastResult, augmentationContext, enrichmentData, phase, image data (base64)
+- **Images**: Stored as data URLs (not ObjectURLs) for cross-reload survival
+- **Quota handling**: Graceful fallback drops image data first, then reduces to minimal state
+- **Clear triggers**: `startSession()` (new greeting), `fullReset()`
+- **Orphan protection**: Loading states reset on hydration to prevent stuck UI
+
 ---
 
 ## Routes
@@ -316,6 +327,133 @@ Endpoints in `resources/php/`:
 | `upload.php` | Image upload (800x800) |
 | `geminiAPI.php` | AI enrichment |
 | `checkDuplicate.php` | Duplicate/similar item detection (fuzzy matching) |
+
+### Agent Endpoints (`resources/php/agent/`)
+
+| File | Purpose |
+|------|---------|
+| `_bootstrap.php` | Shared functions: `agentResponse()`, `agentExceptionError()`, `agentStructuredError()` |
+| `identifyText.php` | Text-based wine identification |
+| `identifyImage.php` | Image-based wine identification |
+| `identifyWithOpus.php` | Premium Opus model escalation |
+| `agentEnrich.php` | Wine enrichment (grapes, critics, drink window) |
+
+---
+
+## Agent Error Handling
+
+The agent uses structured error responses for user-friendly error messages with retry support.
+
+### Error Types (`AgentErrorType`)
+| Type | HTTP | Retryable | Description |
+|------|------|-----------|-------------|
+| `timeout` | 408 | Yes | LLM took too long |
+| `rate_limit` | 429 | Yes | Too many requests |
+| `limit_exceeded` | 429 | No | Daily quota reached |
+| `server_error` | 500 | Yes | Unexpected error |
+| `overloaded` | 503 | Yes | Service overwhelmed |
+| `database_error` | 500 | Yes | DB connection issue |
+| `quality_check_failed` | 422 | No | Image too unclear |
+| `identification_error` | 400 | No | Could not identify wine |
+| `enrichment_error` | 400 | No | Could not enrich wine |
+
+### Backend Error Functions (`_bootstrap.php`)
+
+```php
+// For exceptions (500 errors, timeouts, etc.)
+agentExceptionError($e, 'endpointName');
+
+// For service-level errors (success=false from LLM)
+agentStructuredError($errorType, $fallbackMessage);
+```
+
+Both return structured JSON:
+```json
+{
+  "success": false,
+  "message": "Our sommelier is taking longer than expected...",
+  "error": {
+    "type": "timeout",
+    "userMessage": "Our sommelier is taking longer than expected...",
+    "retryable": true,
+    "supportRef": "ERR-A3F7B2C1"
+  }
+}
+```
+
+### Support Reference
+
+A unique error identifier that links user-facing errors to server-side debug logs.
+
+**Format**: `ERR-XXXXXXXX` (8 uppercase hex chars)
+- Generated from: `MD5(timestamp + errorType + endpoint)`
+- Example: `ERR-A3F7B2C1`
+
+**When it appears**:
+- Only for **exception errors** (500s, timeouts caught in catch blocks)
+- NOT for service-level errors (when LLM returns `success: false`)
+- Retryable errors (timeout, rate_limit) still get a reference since they hit the exception path
+
+**What gets logged** (PHP error log):
+```
+[Agent Error] Exception in identifyText | Context: {
+  "type": "timeout",
+  "message": "cURL error 28: Operation timed out",
+  "supportRef": "ERR-A3F7B2C1",
+  "trace": "#0 /var/www/.../AgentIdentificationService.php(123)..."
+}
+```
+
+**Debugging workflow**:
+1. User reports: "I got error ERR-A3F7B2C1"
+2. Search PHP logs: `grep "ERR-A3F7B2C1" /var/log/php_errors.log`
+3. Find full context: error type, message, stack trace, timestamp, endpoint
+
+**User display** (in AgentPanel):
+```
+Our sommelier is taking longer than expected. Please try again or start over.
+
+Reference: ERR-A3F7B2C1
+```
+
+### Frontend Error Handling
+
+**Types** (`types.ts`):
+```typescript
+interface AgentErrorInfo {
+  type: AgentErrorType;
+  userMessage: string;
+  retryable: boolean;
+  supportRef?: string | null;
+}
+
+class AgentError extends Error {
+  static fromResponse(json: AgentErrorResponse): AgentError;
+  static isAgentError(error: unknown): error is AgentError;
+}
+```
+
+**Stores** (`agent.ts`):
+```typescript
+// Derived stores for error state
+export const agentError;           // Full AgentErrorInfo | null
+export const agentErrorMessage;    // string | null
+export const agentErrorRetryable;  // boolean
+export const agentErrorSupportRef; // string | null
+```
+
+**UI** (`AgentPanel.svelte`):
+- Tracks `lastAction` for retry functionality
+- `showErrorWithRetry()` displays error with action chips
+- "Try Again" chip (if retryable) repeats last action
+- "Start Over" chip resets conversation
+- Support reference shown on new line when available
+
+### Error Message Style (Sommelier Personality)
+- "Our sommelier is taking longer than expected..."
+- "Our sommelier is quite busy at the moment..."
+- "We've reached our tasting limit for today..."
+- "That image is a bit unclear. Could you try a clearer photo?"
 
 ---
 

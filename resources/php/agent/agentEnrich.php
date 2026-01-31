@@ -61,6 +61,5 @@ try {
 
     agentResponse(true, 'Enrichment completed', $result->toArray());
 } catch (\Exception $e) {
-    agentLogError('Enrichment failed', ['error' => $e->getMessage()]);
-    agentResponse(false, 'Enrichment failed: ' . $e->getMessage());
+    agentExceptionError($e, 'agentEnrich');
 }

@@ -134,6 +134,7 @@
 	.agent-text.error-text {
 		color: var(--error);
 		font-style: normal;
+		white-space: pre-wrap;
 	}
 
 	.agent-text.coming-soon-text {

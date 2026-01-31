@@ -27,8 +27,10 @@ import type {
   DuplicateCheckResult,
   AgentIdentificationResult,
   AgentIdentificationResultWithMeta,
-  AgentEnrichmentResult
+  AgentEnrichmentResult,
+  AgentErrorResponse
 } from './types';
+import { AgentError } from './types';
 
 class WineApiClient {
   private baseURL: string;
@@ -42,7 +44,8 @@ class WineApiClient {
   // ─────────────────────────────────────────────────────────
 
   /**
-   * Generic fetch with JSON body and response
+   * Generic fetch with JSON body and response.
+   * Handles structured agent errors with user-friendly messages.
    */
   private async fetchJSON<T>(
     endpoint: string,
@@ -60,14 +63,24 @@ class WineApiClient {
 
     try {
       const response = await fetch(url, options);
+      const json = await response.json();
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      // Check for structured agent error (works for both HTTP errors and 200 with success:false)
+      if (!json.success && json.error?.type) {
+        throw AgentError.fromResponse(json as AgentErrorResponse);
       }
 
-      const json = await response.json();
+      // Generic HTTP error without structured info
+      if (!response.ok) {
+        throw new Error(json.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
       return json;
     } catch (error) {
+      // Re-throw AgentError as-is to preserve structured error info
+      if (AgentError.isAgentError(error)) {
+        throw error;
+      }
       console.error(`API Error (${endpoint}):`, error);
       throw error;
     }

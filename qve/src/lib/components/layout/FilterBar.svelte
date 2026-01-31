@@ -26,15 +26,20 @@
 
   // Sort options for cellar view
   const sortOptions = [
+    { key: 'wineName', label: 'Wine Name' },  
     { key: 'producer', label: 'Producer' },
-    { key: 'wineName', label: 'Name' },
-    { key: 'country', label: 'Country' },
     { key: 'region', label: 'Region' },
-    { key: 'year', label: 'Vintage' },
+    { key: 'country', label: 'Country' },    
     { key: 'type', label: 'Type' },
+    { key: 'year', label: 'Vintage' },    
     { key: 'rating', label: 'Rating' },
-    { key: 'bottles', label: 'Bottles' },
-    { key: 'price', label: 'Price' }
+    { key: 'bottles', label: 'No. Bottles' }
+  ];
+
+  // Cost sort options (grouped)
+  const costSortOptions = [
+    { key: 'priceBottle', label: 'Per Bottle' },
+    { key: 'price', label: 'Per Litre' }
   ];
 
   // Handle sort change
@@ -217,6 +222,11 @@
         {#each sortOptions as opt}
           <option value={opt.key}>{opt.label}</option>
         {/each}
+        <optgroup label="Cost">
+          {#each costSortOptions as opt}
+            <option value={opt.key}>{opt.label}</option>
+          {/each}
+        </optgroup>
       </select>
       <Icon name="chevron-down" size={12} />
     </div>
