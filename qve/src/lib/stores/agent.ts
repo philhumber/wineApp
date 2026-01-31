@@ -19,7 +19,11 @@ import type {
 	AgentImageQuality,
 	AgentEnrichmentData,
 	AgentErrorInfo,
-	AgentErrorType
+	AgentErrorType,
+	DuplicateMatch,
+	Region,
+	Producer,
+	Wine
 } from '$lib/api/types';
 import { AgentError } from '$lib/api/types';
 
@@ -36,7 +40,7 @@ const MAX_MESSAGES = 30;
 // ─────────────────────────────────────────────────────────
 
 const SESSION_STORAGE_KEY = 'agentSessionState';
-const SESSION_VERSION = 1;
+const SESSION_VERSION = 2;
 
 interface AgentSessionState {
 	version: number;
@@ -50,6 +54,7 @@ interface AgentSessionState {
 	lastImageMimeType: string | null;
 	lastInputType: AgentInputType | null;
 	pendingNewSearch: PendingNewSearch | null;
+	addState: AgentAddState | null;
 }
 
 function getStoredSessionState(): AgentSessionState | null {
@@ -127,7 +132,8 @@ function storeSessionState(state: AgentSessionState, immediate = false): void {
 					augmentationContext: null,
 					enrichmentData: null,
 					enrichmentForWine: null,
-					pendingNewSearch: null
+					pendingNewSearch: null,
+					addState: null
 				};
 				sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(minimalState));
 				console.warn('Agent session: Reduced to minimal state due to quota');
@@ -152,6 +158,75 @@ function storeSessionState(state: AgentSessionState, immediate = false): void {
 // CONVERSATION TYPES
 // ─────────────────────────────────────────────────────────
 
+// ============================================
+// ADD WINE FLOW TYPES
+// ============================================
+
+export type AgentAddSelectionMode = 'search' | 'create';
+
+export interface AgentAddRegionData {
+	regionName: string;
+	country: string; // Country NAME (not code), normalized via InferenceEngine
+}
+
+export interface AgentAddProducerData {
+	producerName: string;
+	regionName?: string; // For context when no regionID yet
+}
+
+export interface AgentAddWineData {
+	wineName: string;
+	wineYear: string;
+	wineType: string; // Must match DB winetype table
+	producerName?: string; // For context when no producerID yet
+}
+
+export interface AgentAddBottleData {
+	// Part 1 (required)
+	bottleSize: string; // Maps to bottleType in payload
+	storageLocation: string;
+	source: string; // Maps to bottleSource in payload
+	// Part 2 (optional)
+	price?: string;
+	currency?: string;
+	purchaseDate?: string;
+}
+
+export interface AgentAddState {
+	// Original identification
+	identified: AgentParsedWine;
+
+	// Selection mode per step
+	mode: {
+		region: AgentAddSelectionMode;
+		producer: AgentAddSelectionMode;
+		wine: AgentAddSelectionMode;
+	};
+
+	// Form data for new entities (names only, no enrichment data)
+	regionData: AgentAddRegionData;
+	producerData: AgentAddProducerData;
+	wineData: AgentAddWineData;
+	bottleData: AgentAddBottleData;
+
+	// Selected existing entities (null when mode = 'create')
+	selected: {
+		region: Region | null;
+		producer: Producer | null;
+		wine: Wine | null;
+	};
+
+	// Fuzzy matches found at each step
+	matches: {
+		region: DuplicateMatch[];
+		producer: DuplicateMatch[];
+		wine: DuplicateMatch[];
+	};
+
+	// Bottle form phase (1 or 2)
+	bottleFormPart: 1 | 2;
+}
+
 /** Conversation phases for state machine */
 export type AgentPhase =
 	| 'greeting'
@@ -165,7 +240,17 @@ export type AgentPhase =
 	| 'augment_input'
 	| 'escalation_choice' // User decides: try harder (Opus) or conversational
 	| 'confirm_new_search' // User typed during active identification, confirming intent
-	| 'complete';
+	| 'complete'
+	// Add wine flow phases
+	| 'add_confirm' // "Add to cellar?"
+	| 'add_region' // Region matching
+	| 'add_producer' // Producer matching
+	| 'add_wine' // Wine matching
+	| 'add_bottle_part1' // Bottle details part 1
+	| 'add_bottle_part2' // Bottle details part 2
+	| 'add_enrichment' // Enrichment choice
+	| 'add_complete' // Success
+	| 'add_manual_entry'; // Fill missing required fields
 
 /** Message content types */
 export type AgentMessageType =
@@ -179,7 +264,15 @@ export type AgentMessageType =
 	| 'partial_match'
 	| 'disambiguation'
 	| 'coming_soon'
-	| 'error';
+	| 'error'
+	// Add wine flow message types
+	| 'add_confirm' // "Add to cellar?"
+	| 'match_selection' // Show fuzzy matches
+	| 'match_confirmed' // User confirmed selection
+	| 'manual_entry' // Fill missing required fields
+	| 'bottle_form' // Bottle details form (both parts)
+	| 'enrichment_choice' // "Enrich now?" / "Add quickly"
+	| 'add_complete'; // Success
 
 /** Action chip definition */
 export interface AgentChip {
@@ -204,6 +297,11 @@ export interface AgentMessage {
 	candidates?: AgentCandidate[];
 	enrichmentData?: AgentEnrichmentData;
 	enrichmentSource?: 'cache' | 'web_search' | 'inference';
+	// Add-flow specific fields
+	matches?: DuplicateMatch[];
+	matchType?: 'region' | 'producer' | 'wine';
+	bottleFormPart?: 1 | 2;
+	addedWine?: Wine;
 }
 
 /** Context for augmentation (Not Correct flow) */
@@ -312,6 +410,9 @@ export interface AgentState {
 	lastImageData: string | null;
 	lastImageMimeType: string | null;
 	enrichmentForWine: { producer: string; wineName: string } | null;
+
+	// Add wine flow state
+	addState: AgentAddState | null;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -389,7 +490,9 @@ const initialState: AgentState = {
 	// Session persistence
 	lastImageData: null,
 	lastImageMimeType: null,
-	enrichmentForWine: null
+	enrichmentForWine: null,
+	// Add wine flow
+	addState: null
 };
 
 function createAgentStore() {
@@ -414,6 +517,7 @@ function createAgentStore() {
 				lastImageMimeType: storedSession.lastImageMimeType,
 				currentInputType: storedSession.lastInputType,
 				pendingNewSearch: storedSession.pendingNewSearch ?? null,
+				addState: storedSession.addState ?? null,
 				isPanelOpen: true,
 				// Reset orphaned loading states
 				isLoading: false,
@@ -442,7 +546,8 @@ function createAgentStore() {
 				lastImageData: state.lastImageData,
 				lastImageMimeType: state.lastImageMimeType,
 				lastInputType: state.currentInputType,
-				pendingNewSearch: state.pendingNewSearch
+				pendingNewSearch: state.pendingNewSearch,
+				addState: state.addState
 			},
 			immediate
 		);
@@ -1027,7 +1132,8 @@ function createAgentStore() {
 				augmentationContext: null,
 				pendingNewSearch: null,
 				enrichmentData: null,
-				enrichmentError: null
+				enrichmentError: null,
+				addState: null
 			}));
 		},
 
@@ -1162,9 +1268,202 @@ function createAgentStore() {
 					pendingNewSearch: null,
 					isTyping: false,
 					enrichmentData: null,
-					enrichmentError: null
+					enrichmentError: null,
+					addState: null
 				};
 			});
+		},
+
+		// ─────────────────────────────────────────────────────
+		// ADD WINE FLOW METHODS
+		// ─────────────────────────────────────────────────────
+
+		/**
+		 * Initialize add flow from identification result
+		 */
+		initializeAddFlow: (identified: AgentParsedWine) => {
+			update((state) => {
+				const newState = {
+					...state,
+					addState: {
+						identified,
+						mode: {
+							region: 'search' as AgentAddSelectionMode,
+							producer: 'search' as AgentAddSelectionMode,
+							wine: 'search' as AgentAddSelectionMode
+						},
+						regionData: {
+							regionName: identified.region || '',
+							country: identified.country || ''
+						},
+						producerData: {
+							producerName: identified.producer || '',
+							regionName: identified.region || ''
+						},
+						wineData: {
+							wineName: identified.wineName || '',
+							wineYear: identified.vintage || '',
+							wineType: identified.wineType || '',
+							producerName: identified.producer || ''
+						},
+						bottleData: { bottleSize: '', storageLocation: '', source: '' },
+						selected: { region: null, producer: null, wine: null },
+						matches: { region: [], producer: [], wine: [] },
+						bottleFormPart: 1 as const
+					}
+				};
+				persistCurrentState(newState, true);
+				return newState;
+			});
+		},
+
+		/**
+		 * Update selection at each step
+		 */
+		setAddSelection: (
+			step: 'region' | 'producer' | 'wine',
+			mode: AgentAddSelectionMode,
+			entity?: Region | Producer | Wine
+		) => {
+			update((state) => {
+				if (!state.addState) return state;
+
+				const newState = {
+					...state,
+					addState: {
+						...state.addState,
+						mode: { ...state.addState.mode, [step]: mode },
+						selected: {
+							...state.addState.selected,
+							[step]: mode === 'search' && entity ? entity : null
+						}
+					}
+				};
+				persistCurrentState(newState, true);
+				return newState;
+			});
+		},
+
+		/**
+		 * Store fuzzy matches
+		 */
+		setAddMatches: (step: 'region' | 'producer' | 'wine', matches: DuplicateMatch[]) => {
+			update((state) => {
+				if (!state.addState) return state;
+
+				const newState = {
+					...state,
+					addState: {
+						...state.addState,
+						matches: { ...state.addState.matches, [step]: matches }
+					}
+				};
+				persistCurrentState(newState, true);
+				return newState;
+			});
+		},
+
+		/**
+		 * Update form data for entities or bottle
+		 */
+		updateAddFormData: (
+			step: 'region' | 'producer' | 'wine' | 'bottle',
+			data: Partial<AgentAddRegionData | AgentAddProducerData | AgentAddWineData | AgentAddBottleData>
+		) => {
+			update((state) => {
+				if (!state.addState) return state;
+
+				let newAddState = { ...state.addState };
+
+				switch (step) {
+					case 'region':
+						newAddState.regionData = { ...newAddState.regionData, ...data as Partial<AgentAddRegionData> };
+						break;
+					case 'producer':
+						newAddState.producerData = { ...newAddState.producerData, ...data as Partial<AgentAddProducerData> };
+						break;
+					case 'wine':
+						newAddState.wineData = { ...newAddState.wineData, ...data as Partial<AgentAddWineData> };
+						break;
+					case 'bottle':
+						newAddState.bottleData = { ...newAddState.bottleData, ...data as Partial<AgentAddBottleData> };
+						break;
+				}
+
+				const newState = { ...state, addState: newAddState };
+				persistCurrentState(newState);
+				return newState;
+			});
+		},
+
+		/**
+		 * Advance bottle form part (1 → 2)
+		 */
+		advanceBottleFormPart: () => {
+			update((state) => {
+				if (!state.addState || state.addState.bottleFormPart !== 1) return state;
+
+				const newState = {
+					...state,
+					addState: { ...state.addState, bottleFormPart: 2 as const }
+				};
+				persistCurrentState(newState);
+				return newState;
+			});
+		},
+
+		/**
+		 * Clear add state (on "Start Over" or completion)
+		 */
+		clearAddState: () => {
+			update((state) => {
+				const newState = { ...state, addState: null };
+				persistCurrentState(newState, true);
+				return newState;
+			});
+		},
+
+		/**
+		 * Validate state before submission - returns error message or null
+		 */
+		validateAddState: (): string | null => {
+			const state = get(agent);
+			if (!state.addState) return 'Add flow not initialized';
+
+			const addState = state.addState;
+
+			// Region validation
+			if (addState.mode.region === 'search' && !addState.selected.region) {
+				return 'Region selection is incomplete';
+			}
+			if (addState.mode.region === 'create') {
+				if (!addState.regionData.regionName?.trim()) return 'Region name is required';
+				if (!addState.regionData.country?.trim()) return 'Country is required';
+			}
+
+			// Producer validation
+			if (addState.mode.producer === 'search' && !addState.selected.producer) {
+				return 'Producer selection is incomplete';
+			}
+			if (addState.mode.producer === 'create' && !addState.producerData.producerName?.trim()) {
+				return 'Producer name is required';
+			}
+
+			// Wine validation
+			if (addState.mode.wine === 'search' && !addState.selected.wine) {
+				return 'Wine selection is incomplete';
+			}
+			if (addState.mode.wine === 'create') {
+				if (!addState.wineData.wineName?.trim()) return 'Wine name is required';
+				if (!addState.wineData.wineType?.trim()) return 'Wine type is required';
+			}
+
+			// Bottle validation (required fields)
+			if (!addState.bottleData.bottleSize || !addState.bottleData.storageLocation || !addState.bottleData.source) {
+				return 'Please complete the bottle details';
+			}
+
+			return null; // Valid
 		}
 	};
 }
@@ -1309,4 +1608,14 @@ export const agentHasStarted = derived<typeof agent, boolean>(
 export const agentPendingNewSearch = derived<typeof agent, PendingNewSearch | null>(
 	agent,
 	($agent) => $agent.pendingNewSearch
+);
+
+// ─────────────────────────────────────────────────────────
+// ADD WINE FLOW DERIVED STORES
+// ─────────────────────────────────────────────────────────
+
+/** Add wine flow state */
+export const agentAddState = derived<typeof agent, AgentAddState | null>(
+	agent,
+	($agent) => $agent.addState
 );

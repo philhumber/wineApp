@@ -188,7 +188,9 @@ export {
   agentHasAugmentationContext,
   agentAugmentationContext,
   agentHasStarted,
-  agentPendingNewSearch
+  agentPendingNewSearch,
+  // Add wine flow
+  agentAddState
 } from './agent';
 export type {
   AgentState,
@@ -197,5 +199,12 @@ export type {
   AgentChip,
   AgentMessage,
   AgentAugmentationContext,
-  PendingNewSearch
+  PendingNewSearch,
+  // Add wine flow types
+  AgentAddState,
+  AgentAddSelectionMode,
+  AgentAddRegionData,
+  AgentAddProducerData,
+  AgentAddWineData,
+  AgentAddBottleData
 } from './agent';
