@@ -53,9 +53,8 @@ try {
 
     if (!$result['success']) {
         $errorType = $result['errorType'] ?? 'identification_error';
-        $httpCode = $errorType === 'limit_exceeded' ? 429 : 400;
         error_log('IdentifyText: Error - ' . ($result['error'] ?? 'unknown') . ' (type: ' . $errorType . ', stage: ' . ($result['stage'] ?? 'unknown') . ')');
-        agentError($result['error'] ?? 'Identification failed', $httpCode);
+        agentStructuredError($errorType, $result['error'] ?? null);
     }
 
     // Log escalation for debugging (check PHP error log)
@@ -77,7 +76,5 @@ try {
     ]);
 
 } catch (\Exception $e) {
-    // Log error
-    error_log('Agent identification error: ' . $e->getMessage());
-    agentError('Internal server error', 500);
+    agentExceptionError($e, 'identifyText');
 }

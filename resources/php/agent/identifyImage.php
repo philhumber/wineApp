@@ -81,12 +81,7 @@ try {
 
     if (!$result['success']) {
         $errorType = $result['errorType'] ?? 'identification_error';
-        $httpCode = match ($errorType) {
-            'limit_exceeded' => 429,
-            'quality_check_failed' => 422,
-            default => 400,
-        };
-        agentError($result['error'] ?? 'Image identification failed', $httpCode);
+        agentStructuredError($errorType, $result['error'] ?? null);
     }
 
     // Success response
@@ -102,7 +97,5 @@ try {
     ]);
 
 } catch (\Exception $e) {
-    // Log error
-    error_log('Agent image identification error: ' . $e->getMessage());
-    agentError('Internal server error', 500);
+    agentExceptionError($e, 'identifyImage');
 }

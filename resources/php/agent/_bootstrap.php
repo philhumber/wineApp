@@ -147,6 +147,128 @@ function agentError(string $message, int $httpCode = 400): void
 }
 
 /**
+ * Handle exception with context extraction
+ *
+ * Attempts to identify error type from exception message/previous exceptions.
+ * Returns structured error response with user-friendly message and support reference.
+ *
+ * @param \Exception $e The exception to handle
+ * @param string $endpoint The endpoint name for logging
+ * @param int $defaultCode Default HTTP code if type cannot be determined
+ * @return void
+ */
+function agentExceptionError(\Exception $e, string $endpoint, int $defaultCode = 500): void
+{
+    $message = $e->getMessage();
+    $errorType = 'server_error';
+    $httpCode = $defaultCode;
+
+    // Check for LLM error types in exception message or previous exceptions
+    $fullMessage = $message;
+    $prev = $e->getPrevious();
+    while ($prev) {
+        $fullMessage .= ' ' . $prev->getMessage();
+        $prev = $prev->getPrevious();
+    }
+
+    // Classify error type from exception chain
+    if (stripos($fullMessage, 'timeout') !== false || stripos($fullMessage, 'timed out') !== false) {
+        $errorType = 'timeout';
+        $httpCode = 408;
+    } elseif (stripos($fullMessage, 'rate limit') !== false || stripos($fullMessage, '429') !== false) {
+        $errorType = 'rate_limit';
+        $httpCode = 429;
+    } elseif (stripos($fullMessage, 'token') !== false && stripos($fullMessage, 'limit') !== false) {
+        $errorType = 'limit_exceeded';
+        $httpCode = 429;
+    } elseif ($e instanceof \PDOException) {
+        $errorType = 'database_error';
+    }
+
+    // User-friendly messages with sommelier personality
+    $userMessages = [
+        'timeout' => 'Our sommelier is taking longer than expected. Please try again or start over.',
+        'rate_limit' => 'Our sommelier is quite busy at the moment. Please wait a moment and try again or start over.',
+        'limit_exceeded' => 'We\'ve reached our tasting limit for today. Please try again tomorrow.',
+        'server_error' => 'Something unexpected happened. Please try again in a moment or start over.',
+        'overloaded' => 'Our sommelier is overwhelmed with requests. Please try again shortly or start over.',
+        'database_error' => 'We\'re having trouble accessing our cellar records. Please try again or start over.',
+    ];
+
+    // Generate support reference
+    $supportRef = 'ERR-' . strtoupper(substr(md5(time() . $errorType . $endpoint), 0, 8));
+
+    // Log full context for debugging
+    agentLogError("Exception in {$endpoint}", [
+        'type' => $errorType,
+        'message' => $message,
+        'supportRef' => $supportRef,
+        'trace' => $e->getTraceAsString()
+    ]);
+
+    // Return structured error
+    http_response_code($httpCode);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => false,
+        'message' => $userMessages[$errorType] ?? $userMessages['server_error'],
+        'error' => [
+            'type' => $errorType,
+            'userMessage' => $userMessages[$errorType] ?? $userMessages['server_error'],
+            'retryable' => in_array($errorType, ['timeout', 'rate_limit', 'server_error', 'overloaded']),
+            'supportRef' => $supportRef,
+        ]
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+/**
+ * Send structured error response for non-exception errors
+ *
+ * Used when service returns success=false with errorType.
+ * Returns user-friendly message with sommelier personality.
+ *
+ * @param string $errorType Error type from service
+ * @param string|null $fallbackMessage Fallback message if type unknown
+ * @return void
+ */
+function agentStructuredError(string $errorType, ?string $fallbackMessage = null): void
+{
+    $httpCode = match ($errorType) {
+        'limit_exceeded' => 429,
+        'rate_limit' => 429,
+        'timeout' => 408,
+        'quality_check_failed' => 422,
+        default => 400,
+    };
+
+    $userMessages = [
+        'timeout' => 'Our sommelier is taking longer than expected. Please try again.',
+        'rate_limit' => 'Our sommelier is quite busy. Please wait a moment.',
+        'limit_exceeded' => 'We\'ve reached our tasting limit for today.',
+        'quality_check_failed' => 'That image is a bit unclear. Could you try a clearer photo?',
+        'identification_error' => 'I couldn\'t quite identify that wine. Could you try again?',
+        'enrichment_error' => 'I couldn\'t find additional details about this wine.',
+    ];
+
+    $userMessage = $userMessages[$errorType] ?? $fallbackMessage ?? 'Something went wrong. Please try again.';
+
+    http_response_code($httpCode);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => false,
+        'message' => $userMessage,
+        'error' => [
+            'type' => $errorType,
+            'userMessage' => $userMessage,
+            'retryable' => in_array($errorType, ['timeout', 'rate_limit', 'server_error', 'overloaded']),
+            'supportRef' => null,
+        ]
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+/**
  * Validate request method
  *
  * @param string|array $allowedMethods Allowed HTTP methods

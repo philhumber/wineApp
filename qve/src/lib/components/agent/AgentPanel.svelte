@@ -20,6 +20,9 @@
 		agentConfidence,
 		agentCandidates,
 		agentError,
+		agentErrorMessage,
+		agentErrorRetryable,
+		agentErrorSupportRef,
 		agentMessages,
 		agentPhase,
 		agentIsTyping,
@@ -48,6 +51,15 @@
 	// Track original image and input type for re-identification with supplementary text
 	let lastImageFile: File | null = null;
 	let lastInputType: 'text' | 'image' | null = null;
+
+	// Track last action for retry functionality
+	interface LastAction {
+		type: 'text' | 'image' | 'imageWithText' | 'opus';
+		text?: string;
+		file?: File;
+		supplementaryText?: string;
+	}
+	let lastAction: LastAction | null = null;
 
 	// Auto-scroll logic
 	let messageContainer: HTMLElement;
@@ -110,7 +122,92 @@
 	function handleStartOver() {
 		lastImageFile = null;
 		lastInputType = null;
+		lastAction = null;
 		agent.resetConversation();
+	}
+
+	/**
+	 * Retry the last failed action
+	 */
+	async function handleRetry() {
+		if (!lastAction) {
+			// No action to retry - fall back to start over
+			handleStartOver();
+			return;
+		}
+
+		// Clear any error state
+		agent.clearError();
+
+		switch (lastAction.type) {
+			case 'text':
+				if (lastAction.text) {
+					// Re-submit the text
+					await handleTextSubmit({ detail: { text: lastAction.text } } as CustomEvent<{ text: string }>);
+				}
+				break;
+
+			case 'image':
+				if (lastAction.file) {
+					// Re-submit the image
+					await handleImageSubmit({ detail: { file: lastAction.file } } as CustomEvent<{ file: File }>);
+				}
+				break;
+
+			case 'imageWithText':
+				if (lastAction.file && lastAction.supplementaryText) {
+					// Re-submit image with supplementary text
+					agent.setPhase('identifying');
+					agent.setTyping(true);
+					try {
+						const result = await agent.identifyImageWithSupplementaryText(
+							lastAction.file,
+							lastAction.supplementaryText
+						);
+						agent.setTyping(false);
+						if (!handleIdentificationResult(result, lastAction.supplementaryText)) {
+							showErrorWithRetry($agentErrorMessage || 'I couldn\'t identify that wine.');
+						}
+					} catch (err) {
+						agent.setTyping(false);
+						showErrorWithRetry('Something went wrong.');
+					}
+				}
+				break;
+
+			case 'opus':
+				// Re-attempt Opus escalation
+				await handleTryOpus();
+				break;
+		}
+	}
+
+	/**
+	 * Show error message with retry and start over chips
+	 */
+	function showErrorWithRetry(errorMessage: string) {
+		const chips: AgentChip[] = [];
+
+		// Only show retry if error is retryable and we have an action to retry
+		if ($agentErrorRetryable && lastAction) {
+			chips.push({ id: 'retry', label: 'Try Again', icon: 'refresh', action: 'retry' });
+		}
+
+		chips.push({ id: 'start_over_error', label: 'Start Over', icon: 'x', action: 'start_over_error' });
+
+		// Include support reference if available
+		const supportRef = $agentErrorSupportRef;
+		const content = supportRef
+			? `${errorMessage}\n\nReference: ${supportRef}`
+			: errorMessage;
+
+		agent.addMessage({
+			role: 'agent',
+			type: 'error',
+			content,
+			chips
+		});
+		agent.setPhase('await_input');
 	}
 
 	// ─────────────────────────────────────────────────────
@@ -621,6 +718,14 @@
 		agent.clearLastChips();
 
 		switch (action) {
+			case 'retry':
+				await handleRetry();
+				break;
+
+			case 'start_over_error':
+				handleStartOver();
+				break;
+
 			case 'identify':
 				agent.setPhase('await_input');
 				agent.addMessage({
@@ -1030,6 +1135,9 @@
 		const augContext = $agentAugmentationContext;
 		if (!augContext?.originalResult) return;
 
+		// Track this action for retry
+		lastAction = { type: 'opus' };
+
 		agent.addMessage({
 			role: 'agent',
 			type: 'text',
@@ -1043,11 +1151,27 @@
 			let input: string;
 			let mimeType: string | undefined;
 
-			// For image inputs, re-compress the stored file
-			if (augContext.originalInputType === 'image' && lastImageFile) {
-				const compressed = await api.compressImageForIdentification(lastImageFile);
-				input = compressed.imageData;
-				mimeType = compressed.mimeType;
+			// For image inputs, re-compress the stored file or use persisted base64
+			if (augContext.originalInputType === 'image') {
+				if (lastImageFile) {
+					const compressed = await api.compressImageForIdentification(lastImageFile);
+					input = compressed.imageData;
+					mimeType = compressed.mimeType;
+				} else if ($agent.lastImageData) {
+					// Use persisted base64 (session was restored)
+					input = $agent.lastImageData;
+					mimeType = $agent.lastImageMimeType ?? 'image/jpeg';
+				} else {
+					// No image available - inform user
+					agent.setTyping(false);
+					agent.addMessage({
+						role: 'agent',
+						type: 'text',
+						content: 'The image from your previous session is no longer available. Please upload the image again.'
+					});
+					agent.setPhase('await_input');
+					return;
+				}
 			} else {
 				// Text input - use original input
 				input = augContext.originalInput;
@@ -1069,12 +1193,7 @@
 
 				// Handle the Opus result with the standard flow
 				if (!handleIdentificationResult(result, augContext.originalInput)) {
-					agent.addMessage({
-						role: 'agent',
-						type: 'error',
-						content: $agentError || 'Premium analysis could not identify the wine.'
-					});
-					agent.setPhase('augment_input');
+					showErrorWithRetry($agentErrorMessage || 'Premium analysis could not identify the wine.');
 				}
 			} else {
 				// Opus failed - offer conversational fallback
@@ -1087,12 +1206,7 @@
 			}
 		} catch (err) {
 			agent.setTyping(false);
-			agent.addMessage({
-				role: 'agent',
-				type: 'error',
-				content: 'Something went wrong with the premium analysis.'
-			});
-			agent.setPhase('augment_input');
+			showErrorWithRetry($agentErrorMessage || 'Something went wrong with the premium analysis.');
 		}
 	}
 
@@ -1264,9 +1378,34 @@
 			let result: { parsed: AgentParsedWine; confidence: number; candidates?: AgentCandidate[]; action?: string } | null = null;
 
 			// Check if we're augmenting an image-originated flow
-			if (phase === 'augment_input' && augContext?.originalInputType === 'image' && lastImageFile) {
-				result = await agent.identifyImageWithSupplementaryText(lastImageFile, text);
-			} else {
+			if (phase === 'augment_input' && augContext?.originalInputType === 'image') {
+				if (lastImageFile) {
+					// Track this action for retry
+					lastAction = { type: 'imageWithText', file: lastImageFile, supplementaryText: text };
+					result = await agent.identifyImageWithSupplementaryText(lastImageFile, text);
+				} else if ($agent.lastImageData) {
+					// Use persisted base64 - call identifyWithOpus with supplementary text
+					// since we can't re-compress the File
+					const priorResult = augContext.originalResult || {
+						intent: 'add' as const,
+						parsed: {},
+						confidence: 0,
+						action: 'suggest' as const,
+						candidates: []
+					};
+					result = await agent.identifyWithOpus(
+						$agent.lastImageData,
+						'image',
+						priorResult,
+						$agent.lastImageMimeType ?? 'image/jpeg',
+						text
+					);
+				} else {
+					// Fall through to text-based identification
+				}
+			}
+
+			if (!result) {
 				// Text-based identification (possibly augmented with previous result)
 				let queryText = text;
 				if (phase === 'augment_input' && augContext) {
@@ -1293,6 +1432,8 @@
 					lastInputType = 'text';
 				}
 
+				// Track this action for retry
+				lastAction = { type: 'text', text: queryText };
 				result = await agent.identify(queryText);
 			}
 
@@ -1353,43 +1494,11 @@
 			// Use four-way branch handler
 			if (!handleIdentificationResult(result, text)) {
 				// Null result — error occurred
-				agent.addMessage({
-					role: 'agent',
-					type: 'error',
-					content: $agentError || 'I couldn\'t identify that wine.'
-				});
-				setTimeout(() => {
-					agent.addMessage({
-						role: 'agent',
-						type: 'chips',
-						content: 'Would you like to try again?',
-						chips: [
-							{ id: 'identify', label: 'Identify', icon: 'search', action: 'identify' },
-							{ id: 'recommend', label: 'Recommend', icon: 'sparkle', action: 'recommend' }
-						]
-					});
-					agent.setPhase('path_selection');
-				}, 500);
+				showErrorWithRetry($agentErrorMessage || 'I couldn\'t identify that wine.');
 			}
 		} catch (err) {
 			agent.setTyping(false);
-			agent.addMessage({
-				role: 'agent',
-				type: 'error',
-				content: 'Something went wrong.'
-			});
-			setTimeout(() => {
-				agent.addMessage({
-					role: 'agent',
-					type: 'chips',
-					content: 'Would you like to try again?',
-					chips: [
-						{ id: 'identify', label: 'Identify', icon: 'search', action: 'identify' },
-						{ id: 'recommend', label: 'Recommend', icon: 'sparkle', action: 'recommend' }
-					]
-				});
-				agent.setPhase('path_selection');
-			}, 500);
+			showErrorWithRetry($agentErrorMessage || 'Something went wrong.');
 		}
 	}
 
@@ -1400,10 +1509,16 @@
 		lastImageFile = file;
 		lastInputType = 'image';
 
-		// Create preview URL for user message
-		const imageUrl = URL.createObjectURL(file);
+		// Track this action for retry
+		lastAction = { type: 'image', file };
 
-		// Add user message with image preview
+		// Compress image early for both preview and API call
+		const { imageData, mimeType } = await api.compressImageForIdentification(file);
+
+		// Use data URL for preview (persists across page reload)
+		const imageUrl = `data:${mimeType};base64,${imageData}`;
+
+		// Add user message with data URL preview
 		agent.addMessage({
 			role: 'user',
 			type: 'image_preview',
@@ -1422,43 +1537,11 @@
 			// Use four-way branch handler
 			if (!handleIdentificationResult(result, '')) {
 				// Null result — error occurred
-				agent.addMessage({
-					role: 'agent',
-					type: 'error',
-					content: $agentError || 'I couldn\'t identify the wine from this image.'
-				});
-				setTimeout(() => {
-					agent.addMessage({
-						role: 'agent',
-						type: 'chips',
-						content: 'Would you like to try again?',
-						chips: [
-							{ id: 'identify', label: 'Identify', icon: 'search', action: 'identify' },
-							{ id: 'recommend', label: 'Recommend', icon: 'sparkle', action: 'recommend' }
-						]
-					});
-					agent.setPhase('path_selection');
-				}, 500);
+				showErrorWithRetry($agentErrorMessage || 'I couldn\'t identify the wine from this image.');
 			}
 		} catch (err) {
 			agent.setTyping(false);
-			agent.addMessage({
-				role: 'agent',
-				type: 'error',
-				content: 'Something went wrong processing the image.'
-			});
-			setTimeout(() => {
-				agent.addMessage({
-					role: 'agent',
-					type: 'chips',
-					content: 'Would you like to try again?',
-					chips: [
-						{ id: 'identify', label: 'Identify', icon: 'search', action: 'identify' },
-						{ id: 'recommend', label: 'Recommend', icon: 'sparkle', action: 'recommend' }
-					]
-				});
-				agent.setPhase('path_selection');
-			}, 500);
+			showErrorWithRetry($agentErrorMessage || 'Something went wrong processing the image.');
 		}
 	}
 

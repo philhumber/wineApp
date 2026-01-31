@@ -5,6 +5,7 @@
 
 import { writable, derived } from 'svelte/store';
 import type { DrunkWine } from '$api/types';
+import { availableCurrencies, getCurrencyByCode, convertToEUR } from './currency';
 
 // ─────────────────────────────────────────────────────────
 // TYPES
@@ -71,8 +72,8 @@ export const activeHistoryFilterCount = derived(historyFilters, ($filters) =>
 
 /** Filtered and sorted drunk wines */
 export const sortedDrunkWines = derived(
-  [drunkWines, historySortKey, historySortDir, historyFilters],
-  ([$drunkWines, $sortKey, $sortDir, $filters]) => {
+  [drunkWines, historySortKey, historySortDir, historyFilters, availableCurrencies],
+  ([$drunkWines, $sortKey, $sortDir, $filters, $currencies]) => {
     // Filter first
     let filtered = $drunkWines.filter((wine) => {
       if ($filters.countryDropdown && wine.countryName !== $filters.countryDropdown) return false;
@@ -116,8 +117,17 @@ export const sortedDrunkWines = derived(
           return direction * yearA.localeCompare(yearB);
         }
         case 'price': {
-          const priceA = parseFloat(String(a.bottlePrice || '0')) || 0;
-          const priceB = parseFloat(String(b.bottlePrice || '0')) || 0;
+          const rawPriceA = parseFloat(String(a.bottlePrice || '0')) || 0;
+          const rawPriceB = parseFloat(String(b.bottlePrice || '0')) || 0;
+
+          // Convert to EUR for fair comparison - default to EUR if currency null
+          const currencyA = getCurrencyByCode(a.bottleCurrency || 'EUR', $currencies);
+          const currencyB = getCurrencyByCode(b.bottleCurrency || 'EUR', $currencies);
+
+          // If currency not in list (store not loaded), fall back to raw comparison
+          const priceA = currencyA ? convertToEUR(rawPriceA, currencyA) : rawPriceA;
+          const priceB = currencyB ? convertToEUR(rawPriceB, currencyB) : rawPriceB;
+
           if (priceA === 0 && priceB === 0) return 0;
           if (priceA === 0) return 1;
           if (priceB === 0) return -1;

@@ -25,7 +25,8 @@
     | 'history'
     | 'settings'
     | 'sparkle'
-    | 'bookmark';
+    | 'bookmark'
+    | 'refresh';
 </script>
 
 <script lang="ts">
@@ -159,6 +160,10 @@
   {:else if name === 'bookmark'}
     <!-- Bookmark icon for save/remember -->
     <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+  {:else if name === 'refresh'}
+    <!-- Refresh/retry icon -->
+    <polyline points="23 4 23 10 17 10" />
+    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
   {/if}
 </svg>
 
