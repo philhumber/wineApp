@@ -163,6 +163,9 @@ export {
 } from './currency';
 export type { CurrencyCode } from './currency';
 
+// Settings (Collection Name, Cellar Value)
+export { collectionName, cellarValue } from './settings';
+
 // Agent (AI Wine Identification)
 export {
   agent,
