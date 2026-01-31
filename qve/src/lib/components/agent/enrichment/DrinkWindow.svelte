@@ -8,13 +8,23 @@
 	$: windowStart = start ?? currentYear;
 	$: windowEnd = end ?? currentYear + 10;
 
-	$: status = maturity ?? calculateStatus(windowStart, windowEnd, currentYear);
+	// Always calculate status from dates - they're the source of truth
+	// Only fall back to provided maturity if dates aren't available
+	$: status = start && end ? calculateStatus(windowStart, windowEnd, currentYear) : (maturity ?? 'ready');
 	$: statusLabel = getStatusLabel(status);
 	$: statusClass = getStatusClass(status);
 
 	function calculateStatus(start: number, end: number, current: number): string {
 		if (current < start) return 'young';
 		if (current > end) return 'declining';
+
+		// Within the drinking window - determine position
+		const range = end - start;
+		const position = current - start;
+		const percentThrough = range > 0 ? position / range : 0.5;
+
+		if (percentThrough < 0.33) return 'ready-young';
+		if (percentThrough > 0.66) return 'ready-declining';
 		return 'ready';
 	}
 
@@ -22,10 +32,14 @@
 		switch (status) {
 			case 'young':
 				return 'Hold';
+			case 'ready-young':
+				return 'Ready (Young)';
 			case 'ready':
 				return 'Ready';
 			case 'peak':
 				return 'At Peak';
+			case 'ready-declining':
+				return 'Ready (Declining)';
 			case 'declining':
 				return 'Past Peak';
 			default:
@@ -37,8 +51,10 @@
 		switch (status) {
 			case 'young':
 				return 'status-hold';
+			case 'ready-young':
 			case 'ready':
 			case 'peak':
+			case 'ready-declining':
 				return 'status-ready';
 			case 'declining':
 				return 'status-past';
@@ -73,7 +89,7 @@
 		<span class="status-badge {statusClass}">{statusLabel}</span>
 		{#if status === 'young' && start}
 			<span class="status-detail">Best after {start}</span>
-		{:else if status === 'ready' && end}
+		{:else if (status === 'ready-young' || status === 'ready' || status === 'ready-declining') && end}
 			<span class="status-detail">{end - currentYear} years left in window</span>
 		{:else if status === 'declining'}
 			<span class="status-detail">Consider drinking soon</span>
