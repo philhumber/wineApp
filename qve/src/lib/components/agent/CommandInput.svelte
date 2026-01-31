@@ -16,6 +16,16 @@
 	export let value: string = '';
 
 	let fileInput: HTMLInputElement;
+	let cameraInput: HTMLInputElement;
+
+	// Exposed methods for parent component
+	export function triggerCamera() {
+		cameraInput?.click();
+	}
+
+	export function triggerGallery() {
+		fileInput?.click();
+	}
 
 	function handleSubmit() {
 		const trimmed = value.trim();
@@ -41,8 +51,9 @@
 		const file = input.files?.[0];
 		if (file) {
 			dispatch('image', { file });
-			// Reset input so same file can be selected again
-			input.value = '';
+			// Reset both inputs so same file can be selected again
+			fileInput.value = '';
+			cameraInput.value = '';
 		}
 	}
 
@@ -50,11 +61,22 @@
 </script>
 
 <div class="command-input">
-	<!-- Hidden file input -->
+	<!-- Hidden file input for gallery -->
 	<input
 		bind:this={fileInput}
 		type="file"
 		accept="image/*"
+		class="file-input"
+		on:change={handleFileChange}
+		{disabled}
+	/>
+
+	<!-- Hidden file input for camera capture -->
+	<input
+		bind:this={cameraInput}
+		type="file"
+		accept="image/*"
+		capture="environment"
 		class="file-input"
 		on:change={handleFileChange}
 		{disabled}
