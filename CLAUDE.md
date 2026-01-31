@@ -357,6 +357,19 @@ Endpoints in `resources/php/`:
 | `identifyWithOpus.php` | Premium Opus model escalation |
 | `agentEnrich.php` | Wine enrichment (grapes, critics, drink window) |
 
+### Agent Command Detection (`qve/src/lib/utils/commandDetector.ts`)
+
+Client-side detection intercepts conversational commands before API calls:
+
+| Command | Triggers | Action |
+|---------|----------|--------|
+| `start_over` | "start", "start over", "restart", "reset", "new wine" | Reset conversation |
+| `cancel` | "stop", "cancel", "never mind", "quit", "exit" | Close panel |
+| `go_back` | "back", "go back", "undo", "previous" | Return to await_input |
+| `try_again` | "try again", "retry", "one more time" | Re-execute last action |
+
+**False positive prevention**: Wine indicators checked first ("Château Cancel" → wine query), long text (>6 words) treated as wine query, punctuation normalized.
+
 ---
 
 ## Agent Error Handling

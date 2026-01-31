@@ -38,6 +38,7 @@
 	import { EnrichmentSkeleton } from './enrichment';
 	import type { AgentParsedWine, AgentCandidate, AgentAction, AgentEscalationMeta, AgentIdentificationResult } from '$lib/api/types';
 	import { api } from '$lib/api';
+	import { detectCommand, type CommandType } from '$lib/utils';
 
 	// Reactive bindings
 	$: isOpen = $agentPanelOpen;
@@ -184,6 +185,78 @@
 				// Re-attempt Opus escalation
 				await handleTryOpus();
 				break;
+		}
+	}
+
+	/**
+	 * Handle conversational commands locally (no API call)
+	 */
+	function handleConversationalCommand(command: CommandType, originalText: string) {
+		// Always add user message first - shows what they typed
+		agent.addMessage({ role: 'user', type: 'text', content: originalText });
+
+		switch (command) {
+			case 'start_over':
+				// User message shown above, then handleStartOver adds divider + greeting
+				handleStartOver();
+				break;
+
+			case 'cancel':
+				agent.addMessage({
+					role: 'agent',
+					type: 'text',
+					content: "No problem. I'll be here when you need me."
+				});
+				setTimeout(() => agent.closePanel(), 600);
+				break;
+
+			case 'go_back':
+				handleGoBack();
+				break;
+
+			case 'try_again':
+				// handleRetry already exists and handles all retry logic
+				handleRetry();
+				break;
+		}
+	}
+
+	/**
+	 * Phase-aware back navigation
+	 */
+	function handleGoBack() {
+		const currentPhase = $agentPhase;
+
+		switch (currentPhase) {
+			case 'result_confirm':
+			case 'action_select':
+				agent.addMessage({
+					role: 'agent',
+					type: 'text',
+					content: "Of course. Let's revisit that."
+				});
+				agent.setPhase('await_input');
+				break;
+
+			case 'augment_input':
+			case 'handle_incorrect':
+			case 'escalation_choice':
+				agent.addMessage({
+					role: 'agent',
+					type: 'text',
+					content: "Let's try a different approach."
+				});
+				agent.setPhase('await_input');
+				break;
+
+			default:
+				// greeting, path_selection, identifying, complete, await_input
+				agent.addMessage({
+					role: 'agent',
+					type: 'text',
+					content: 'Share an image or tell me about the wine.'
+				});
+				agent.setPhase('await_input');
 		}
 	}
 
@@ -1377,6 +1450,14 @@
 
 	async function handleTextSubmit(e: CustomEvent<{ text: string }>) {
 		const text = e.detail.text;
+
+		// Check for conversational commands BEFORE wine identification
+		const detection = detectCommand(text);
+		if (detection.type === 'command' && detection.command) {
+			handleConversationalCommand(detection.command, text);
+			return;
+		}
+
 		const augContext = $agentAugmentationContext;
 		const wasInAugmentPhase = phase === 'augment_input'; // Capture before any state changes
 
