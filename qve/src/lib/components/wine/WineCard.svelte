@@ -269,10 +269,10 @@
     flex-wrap: wrap;
   }
 
-  /* Target highlight for scroll-to-wine - uses separate animation properties
-     to avoid overwriting fadeInUp and prevent re-trigger flash when class removed */
+  /* Target highlight for scroll-to-wine - only uses highlightPulse
+     to avoid overwriting fadeInUp which would restart and flash the card */
   .wine-card.target-highlight {
-    animation: fadeInUp 0.7s var(--ease-out) forwards, highlightPulse 2s var(--ease-out) forwards;
+    animation: highlightPulse 2s var(--ease-out) forwards;
   }
 
   @keyframes highlightPulse {
