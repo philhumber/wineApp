@@ -9,7 +9,7 @@
   import FilterBar from './FilterBar.svelte';
   import HistoryFilterBar from './HistoryFilterBar.svelte';
   import CollectionRow from './CollectionRow.svelte';
-  import { toggleMenu, wines, winesLoading, viewMode, drunkWineCount, filteredDrunkWineCount, historyLoading } from '$lib/stores';
+  import { toggleMenu, wines, winesLoading, viewMode, drunkWineCount, filteredDrunkWineCount, historyLoading, collectionName } from '$lib/stores';
   import { currentCurrency, formatCompactValue, availableCurrencies, convertFromEUR } from '$lib/stores/currency';
   import type { Wine } from '$lib/api/types';
 
@@ -27,7 +27,7 @@
   };
 
   // Collection row title based on filter type
-  $: collectionTitle = filterType === 'history' ? 'Drink History' : 'Our Wines';
+  $: collectionTitle = filterType === 'history' ? 'Drink History' : $collectionName;
 
   // Calculate total cellar value from wines (prices are stored in EUR in avgPricePerLiterEUR)
   $: cellarStats = calculateCellarStats($wines, $currentCurrency);

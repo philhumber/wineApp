@@ -1282,9 +1282,9 @@ function createAgentStore() {
 					newMessages = newMessages.slice(-MAX_MESSAGES);
 				}
 
-				return {
+				const newState = {
 					...state,
-					phase: 'path_selection',
+					phase: 'path_selection' as AgentPhase,
 					messages: newMessages,
 					lastResult: null,
 					error: null,
@@ -1295,6 +1295,11 @@ function createAgentStore() {
 					enrichmentError: null,
 					addState: null
 				};
+
+				// Persist immediately to ensure greeting appears after error recovery
+				persistCurrentState(newState, true);
+
+				return newState;
 			});
 		},
 

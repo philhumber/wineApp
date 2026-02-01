@@ -16,14 +16,15 @@
   let nameInput = '';
   let saveTimeout: ReturnType<typeof setTimeout>;
   let saveError = false;
+  let hasUserEdited = false; // Track if user has started editing
 
   // Initialize input from store
   onMount(() => {
     nameInput = $collectionName;
   });
 
-  // Keep input in sync with store changes
-  $: if ($collectionName && !nameInput) {
+  // Keep input in sync with store changes (only before user starts editing)
+  $: if ($collectionName && !hasUserEdited) {
     nameInput = $collectionName;
   }
 
@@ -31,6 +32,7 @@
   function handleNameInput(event: Event) {
     const target = event.target as HTMLInputElement;
     nameInput = target.value;
+    hasUserEdited = true; // Prevent reactive statement from repopulating
     saveError = false;
 
     clearTimeout(saveTimeout);
