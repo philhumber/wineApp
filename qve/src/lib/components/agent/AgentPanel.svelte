@@ -30,14 +30,19 @@
 		agentAugmentationContext,
 		agentPendingNewSearch,
 		agentEnriching,
-		addWineStore
+		agentAddState,
+		addWineStore,
+		wines as winesStore,
+		targetWineID,
+		viewMode
 	} from '$lib/stores';
-	import type { AgentPhase, AgentMessage, AgentChip } from '$lib/stores';
+	import type { AgentPhase, AgentMessage, AgentChip, AgentAddState } from '$lib/stores';
+	import { get } from 'svelte/store';
 	import CommandInput from './CommandInput.svelte';
 	import ChatMessage from './ChatMessage.svelte';
 	import TypingIndicator from './TypingIndicator.svelte';
 	import { EnrichmentSkeleton } from './enrichment';
-	import type { AgentParsedWine, AgentCandidate, AgentAction, AgentEscalationMeta, AgentIdentificationResult } from '$lib/api/types';
+	import type { AgentParsedWine, AgentCandidate, AgentAction, AgentEscalationMeta, AgentIdentificationResult, Region, Producer, Wine, AddWinePayload } from '$lib/api/types';
 	import { api } from '$lib/api';
 	import { detectCommand, detectChipResponse, isBriefInput, type CommandType } from '$lib/utils';
 
@@ -69,6 +74,17 @@
 
 	// Track pending brief search for confirmation flow
 	let pendingBriefSearch: string | null = null;
+
+	// Operation locking for add wine flow - prevents race conditions from rapid clicks
+	let isProcessingAction = false;
+	let advanceTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+	function cancelPendingAdvance() {
+		if (advanceTimeoutId) {
+			clearTimeout(advanceTimeoutId);
+			advanceTimeoutId = null;
+		}
+	}
 
 	// Check if we have meaningful progress worth preserving
 	function hasActiveIdentification(): boolean {
@@ -152,6 +168,22 @@
 		}
 	}
 
+	/**
+	 * Scroll to show form content fully (used when async form content loads)
+	 */
+	async function scrollToFormContent() {
+		if (messageContainer) {
+			await tick();
+			requestAnimationFrame(() => {
+				// Scroll container to bottom to show the full form
+				messageContainer.scrollTo({
+					top: messageContainer.scrollHeight,
+					behavior: 'smooth'
+				});
+			});
+		}
+	}
+
 	function handleClose() {
 		agent.closePanel();
 	}
@@ -168,7 +200,10 @@
 	}
 
 	function handleStartOver() {
+		cancelPendingAdvance();
 		agent.setPendingNewSearch(null);
+		agent.clearAddState();
+		agent.setAugmentationContext(null);
 		lastImageFile = null;
 		lastInputType = null;
 		lastAction = null;
@@ -829,10 +864,520 @@
 	}
 
 	// ─────────────────────────────────────────────────────
+	// ADD WINE FLOW HELPERS
+	// ─────────────────────────────────────────────────────
+
+	/**
+	 * Fetch entity from addState matches or wines store
+	 * For region/producer: look up from matches populated by checkDuplicate
+	 * For wine: look up from wines store
+	 */
+	function fetchEntity(type: 'region' | 'producer' | 'wine', id: number): Region | Producer | Wine | null {
+		const addState = get(agent).addState;
+
+		if (type === 'wine') {
+			const wines = get(winesStore);
+			return wines.find(w => w.wineID === id) || null;
+		}
+
+		if (type === 'producer' && addState?.matches.producer) {
+			const match = addState.matches.producer.find(m => m.id === id);
+			if (match) {
+				// Return producer with required fields - regionID is not used in payload
+				return { producerID: match.id, producerName: match.name, regionID: 0 };
+			}
+			return null;
+		}
+
+		if (type === 'region' && addState?.matches.region) {
+			const match = addState.matches.region.find(m => m.id === id);
+			if (match) {
+				// Return region with required fields - countryID is not used in payload
+				return { regionID: match.id, regionName: match.name, countryID: 0 };
+			}
+			return null;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Advance to the next step in the add wine flow
+	 */
+	function advanceToNextStep(currentStep: string) {
+		const addState = get(agent).addState;
+		if (!addState) return;
+
+		switch (currentStep) {
+			case 'region':
+				agent.setPhase('add_producer');
+				startProducerMatching();
+				break;
+			case 'producer':
+				agent.setPhase('add_wine');
+				startWineMatching();
+				break;
+			case 'wine':
+				agent.setPhase('add_bottle_part1');
+				agent.addMessage({
+					role: 'agent',
+					type: 'bottle_form',
+					content: "Now let's record the bottle details.",
+					bottleFormPart: 1
+				});
+				break;
+		}
+	}
+
+	/**
+	 * Start region matching using checkDuplicate API
+	 */
+	async function startRegionMatching() {
+		const addState = get(agent).addState;
+		if (!addState?.regionData.regionName) {
+			// No region to match - auto-advance to create new
+			agent.setAddSelection('region', 'create');
+			agent.addMessage({
+				role: 'agent',
+				type: 'text',
+				content: "I'll create a new region entry."
+			});
+			advanceTimeoutId = setTimeout(() => {
+				advanceTimeoutId = null;
+				advanceToNextStep('region');
+			}, 800);
+			return;
+		}
+
+		try {
+			const result = await api.checkDuplicate({
+				type: 'region',
+				name: addState.regionData.regionName
+			});
+
+			const matches = [
+				...(result.exactMatch ? [result.exactMatch] : []),
+				...(result.similarMatches || [])
+			];
+
+			agent.setAddMatches('region', matches);
+
+			if (matches.length === 0) {
+				// No matches - auto-proceed to create new
+				agent.setAddSelection('region', 'create');
+				agent.addMessage({
+					role: 'agent',
+					type: 'text',
+					content: `No existing regions match "${addState.regionData.regionName}". I'll create a new entry.`
+				});
+				advanceTimeoutId = setTimeout(() => {
+					advanceTimeoutId = null;
+					advanceToNextStep('region');
+				}, 800);
+			} else {
+				// Show match selection
+				agent.addMessage({
+					role: 'agent',
+					type: 'match_selection',
+					content: `I found some regions that might match "${addState.regionData.regionName}".`,
+					matches,
+					matchType: 'region',
+					chips: [
+						{ id: 'add_new_region', label: 'Add as New', icon: 'plus', action: 'add_new:region' },
+						{ id: 'help_region', label: 'Help Me Decide', icon: 'sparkle', action: 'clarify:region' }
+					]
+				});
+			}
+		} catch (error) {
+			console.error('Region matching failed:', error);
+			// Fall back to create new on error
+			agent.setAddSelection('region', 'create');
+			advanceToNextStep('region');
+		}
+	}
+
+	/**
+	 * Start producer matching using checkDuplicate API
+	 */
+	async function startProducerMatching() {
+		const addState = get(agent).addState;
+		if (!addState?.producerData.producerName) {
+			// No producer to match - auto-advance to create new
+			agent.setAddSelection('producer', 'create');
+			agent.addMessage({
+				role: 'agent',
+				type: 'text',
+				content: "I'll create a new producer entry."
+			});
+			advanceTimeoutId = setTimeout(() => {
+				advanceTimeoutId = null;
+				advanceToNextStep('producer');
+			}, 800);
+			return;
+		}
+
+		try {
+			const result = await api.checkDuplicate({
+				type: 'producer',
+				name: addState.producerData.producerName,
+				regionId: addState.selected.region?.regionID,
+				regionName: addState.regionData.regionName || undefined
+			});
+
+			const matches = [
+				...(result.exactMatch ? [result.exactMatch] : []),
+				...(result.similarMatches || [])
+			];
+
+			agent.setAddMatches('producer', matches);
+
+			if (matches.length === 0) {
+				// No matches - auto-proceed to create new
+				agent.setAddSelection('producer', 'create');
+				agent.addMessage({
+					role: 'agent',
+					type: 'text',
+					content: `No existing producers match "${addState.producerData.producerName}". I'll create a new entry.`
+				});
+				advanceTimeoutId = setTimeout(() => {
+					advanceTimeoutId = null;
+					advanceToNextStep('producer');
+				}, 800);
+			} else {
+				// Show match selection
+				agent.addMessage({
+					role: 'agent',
+					type: 'match_selection',
+					content: `I found some producers that might match "${addState.producerData.producerName}".`,
+					matches,
+					matchType: 'producer',
+					chips: [
+						{ id: 'add_new_producer', label: 'Add as New', icon: 'plus', action: 'add_new:producer' },
+						{ id: 'help_producer', label: 'Help Me Decide', icon: 'sparkle', action: 'clarify:producer' }
+					]
+				});
+			}
+		} catch (error) {
+			console.error('Producer matching failed:', error);
+			// Fall back to create new on error
+			agent.setAddSelection('producer', 'create');
+			advanceToNextStep('producer');
+		}
+	}
+
+	/**
+	 * Start wine matching using checkDuplicate API
+	 */
+	async function startWineMatching() {
+		const addState = get(agent).addState;
+		if (!addState?.wineData.wineName) {
+			// No wine to match - auto-advance to create new
+			agent.setAddSelection('wine', 'create');
+			agent.addMessage({
+				role: 'agent',
+				type: 'text',
+				content: "I'll create a new wine entry."
+			});
+			advanceTimeoutId = setTimeout(() => {
+				advanceTimeoutId = null;
+				advanceToNextStep('wine');
+			}, 800);
+			return;
+		}
+
+		try {
+			const result = await api.checkDuplicate({
+				type: 'wine',
+				name: addState.wineData.wineName,
+				producerId: addState.selected.producer?.producerID,
+				producerName: addState.producerData.producerName || undefined,
+				year: addState.wineData.wineYear || undefined
+			});
+
+			// Check if this exact wine already exists with bottles (WIN-145)
+			if (result.existingWineId && result.existingBottles > 0) {
+				// Wine exists - offer choice to add bottle or create new
+				agent.addMessage({
+					role: 'agent',
+					type: 'existing_wine_choice',
+					content: `I found "${addState.wineData.wineName}" already in your cellar with ${result.existingBottles} bottle${result.existingBottles > 1 ? 's' : ''}.`,
+					existingWineId: result.existingWineId,
+					existingBottles: result.existingBottles,
+					chips: [
+						{ id: 'add_bottle', label: 'Add Another Bottle', icon: 'plus', action: 'add_bottle_existing' },
+						{ id: 'create_new', label: 'Create New Wine', icon: 'wine', action: 'create_new_wine' }
+					]
+				});
+				return;
+			}
+
+			const matches = [
+				...(result.exactMatch ? [result.exactMatch] : []),
+				...(result.similarMatches || [])
+			];
+
+			agent.setAddMatches('wine', matches);
+
+			if (matches.length === 0) {
+				// No matches - auto-proceed to create new
+				agent.setAddSelection('wine', 'create');
+				agent.addMessage({
+					role: 'agent',
+					type: 'text',
+					content: `No existing wines match "${addState.wineData.wineName}". I'll create a new entry.`
+				});
+				advanceTimeoutId = setTimeout(() => {
+					advanceTimeoutId = null;
+					advanceToNextStep('wine');
+				}, 800);
+			} else {
+				// Show match selection
+				agent.addMessage({
+					role: 'agent',
+					type: 'match_selection',
+					content: `I found some wines that might match "${addState.wineData.wineName}".`,
+					matches,
+					matchType: 'wine',
+					chips: [
+						{ id: 'add_new_wine', label: 'Add as New', icon: 'plus', action: 'add_new:wine' },
+						{ id: 'help_wine', label: 'Help Me Decide', icon: 'sparkle', action: 'clarify:wine' }
+					]
+				});
+			}
+		} catch (error) {
+			console.error('Wine matching failed:', error);
+			// Fall back to create new on error
+			agent.setAddSelection('wine', 'create');
+			advanceToNextStep('wine');
+		}
+	}
+
+	/**
+	 * Build AddWinePayload from AgentAddState
+	 */
+	function buildPayloadFromAddState(state: AgentAddState): AddWinePayload {
+		const isCreateRegion = state.mode.region === 'create';
+		const isCreateProducer = state.mode.producer === 'create';
+		const isCreateWine = state.mode.wine === 'create';
+
+		return {
+			// Region - mutual exclusivity pattern
+			findRegion: !isCreateRegion && state.selected.region
+				? state.selected.region.regionName
+				: '',
+			regionName: isCreateRegion ? state.regionData.regionName : '',
+			regionCountry: isCreateRegion ? state.regionData.country : '',
+			regionDescription: '',
+			regionClimate: '',
+			regionSoil: '',
+			regionMap: '',
+
+			// Producer
+			findProducer: !isCreateProducer && state.selected.producer
+				? state.selected.producer.producerName
+				: '',
+			producerName: isCreateProducer ? state.producerData.producerName : '',
+			producerTown: '',
+			producerFounded: '',
+			producerOwnership: '',
+			producerDescription: '',
+
+			// Wine
+			findWine: !isCreateWine && state.selected.wine
+				? state.selected.wine.wineName
+				: '',
+			wineName: isCreateWine ? state.wineData.wineName : '',
+			wineYear: state.wineData.wineYear || '',
+			wineType: state.wineData.wineType,
+			wineDescription: '',
+			wineTasting: '',
+			winePairing: '',
+			winePicture: 'images/wines/placeBottle.png',
+
+			// Bottle
+			bottleType: state.bottleData.bottleSize,
+			storageLocation: state.bottleData.storageLocation,
+			bottleSource: state.bottleData.source,
+			bottlePrice: state.bottleData.price || '',
+			bottleCurrency: state.bottleData.currency || '',
+			bottlePurchaseDate: state.bottleData.purchaseDate || ''
+		};
+	}
+
+	/**
+	 * Stub for background enrichment (future implementation)
+	 */
+	function triggerBackgroundEnrichment(wineId: number, addState: AgentAddState, immediate: boolean) {
+		// STUB: Future implementation will queue PHP background job
+		console.log('[Enrichment Hook] Wine ID:', wineId, {
+			immediate,
+			isNewRegion: addState.mode.region === 'create',
+			isNewProducer: addState.mode.producer === 'create',
+			isNewWine: addState.mode.wine === 'create'
+		});
+	}
+
+	/**
+	 * Handle successful wine addition
+	 */
+	async function handleAddSuccess(wineId: number, wineName: string) {
+		agent.setPhase('add_complete');
+		agent.addMessage({
+			role: 'agent',
+			type: 'add_complete',
+			content: `Perfect! I've added "${wineName}" to your cellar.`
+		});
+
+		// Clear state before navigation
+		cancelPendingAdvance();
+		agent.clearAddState();
+		agent.setAugmentationContext(null);
+
+		// Brief delay to show success message, then close and navigate
+		setTimeout(async () => {
+			// Close panel first
+			agent.closePanel();
+
+			// Navigate to home (no-op if already there, but ensures consistent state)
+			await goto('/qve/');
+
+			// Wait for navigation to settle
+			await tick();
+
+			// Scroll to top instantly before refresh to avoid jarring jump
+			// User will only see smooth scroll down to their new wine
+			window.scrollTo({ top: 0, behavior: 'instant' });
+
+			// Refresh wine list using current view mode filter
+			try {
+				const bottleCountFilter = get(viewMode) === 'ourWines' ? '1' : '0';
+				const wineList = await api.getWines({ bottleCount: bottleCountFilter });
+				winesStore.set(wineList);
+
+				// Wait for DOM to render the new wine cards
+				await tick();
+
+				// Set targetWineID - the page's reactive will handle scroll then highlight
+				// Use a small delay to ensure cards are fully rendered
+				// Cast to number to ensure type match with wine.wineID from getWines
+				setTimeout(() => {
+					targetWineID.set(Number(wineId));
+				}, 100);
+			} catch (error) {
+				console.error('Failed to refresh wine list:', error);
+			}
+		}, 1500);
+	}
+
+	/**
+	 * Submit the wine using the add wine flow state
+	 */
+	async function submitAddWine(enrichNow: boolean) {
+		const addState = get(agent).addState;
+		if (!addState) return;
+
+		// WIN-145: Check if adding bottle to existing wine
+		if (addState.existingWineId) {
+			await submitAddBottleToExisting(addState.existingWineId);
+			return;
+		}
+
+		// Validate state
+		const validationError = agent.validateAddState();
+		if (validationError) {
+			agent.addMessage({
+				role: 'agent',
+				type: 'error',
+				content: validationError,
+				chips: [
+					{ id: 'start_over', label: 'Start Over', icon: 'refresh', action: 'start_over' }
+				]
+			});
+			return;
+		}
+
+		agent.setTyping(true);
+
+		try {
+			const payload = buildPayloadFromAddState(addState);
+			const result = await api.addWine(payload);
+
+			agent.setTyping(false);
+
+			// api.addWine throws on failure, so if we get here it succeeded
+			// Trigger background enrichment (stub)
+			triggerBackgroundEnrichment(result.wineID, addState, enrichNow);
+
+			// Show success and navigate
+			const wineName = addState.wineData.wineName || addState.selected.wine?.wineName || 'your wine';
+			await handleAddSuccess(result.wineID, wineName);
+		} catch (error) {
+			agent.setTyping(false);
+			console.error('Add wine failed:', error);
+			agent.addMessage({
+				role: 'agent',
+				type: 'error',
+				content: 'Something went wrong adding the wine.',
+				chips: [
+					{ id: 'retry_add', label: 'Try Again', icon: 'refresh', action: 'retry_add' },
+					{ id: 'start_over', label: 'Start Over', icon: 'x', action: 'start_over' }
+				]
+			});
+		}
+	}
+
+	/**
+	 * WIN-145: Submit bottle to existing wine (skip wine creation)
+	 */
+	async function submitAddBottleToExisting(existingWineId: number) {
+		const addState = get(agent).addState;
+		if (!addState) return;
+
+		agent.setTyping(true);
+
+		try {
+			const bottlePayload = {
+				wineID: existingWineId,
+				bottleSize: addState.bottleData.bottleSize || '750ml',
+				bottleLocation: addState.bottleData.storageLocation,
+				bottleSource: addState.bottleData.source,
+				bottlePrice: addState.bottleData.price ? parseFloat(addState.bottleData.price) : undefined,
+				bottleCurrency: addState.bottleData.currency,
+				purchaseDate: addState.bottleData.purchaseDate
+			};
+
+			await api.addBottle(bottlePayload);
+
+			agent.setTyping(false);
+
+			// Show success and navigate
+			const wineName = addState.wineData.wineName || addState.identified.wineName || 'this wine';
+			await handleAddSuccess(existingWineId, wineName);
+		} catch (error) {
+			agent.setTyping(false);
+			console.error('Add bottle failed:', error);
+			agent.addMessage({
+				role: 'agent',
+				type: 'error',
+				content: 'Something went wrong adding the bottle.',
+				chips: [
+					{ id: 'retry_add', label: 'Try Again', icon: 'refresh', action: 'retry_add' },
+					{ id: 'start_over', label: 'Start Over', icon: 'x', action: 'start_over' }
+				]
+			});
+		}
+	}
+
+	// ─────────────────────────────────────────────────────
 	// CHIP ACTION HANDLERS
 	// ─────────────────────────────────────────────────────
 
-	async function handleChipAction(e: CustomEvent<{ action: string }>) {
+	async function handleChipAction(e: CustomEvent<{ action: string; data?: unknown }>) {
+		// Operation locking - prevent race conditions
+		if (isProcessingAction) return;
+		isProcessingAction = true;
+
+		try {
 		const { action } = e.detail;
 
 		// Clear chips immediately to prevent reselection
@@ -851,9 +1396,9 @@
 				if (pendingBriefSearch) {
 					const searchText = pendingBriefSearch;
 					pendingBriefSearch = null;
-					// Set lastAction for retry support
 					lastAction = { type: 'text', text: searchText };
-					// Call handleTextSubmit which will now proceed (pendingBriefSearch is cleared)
+					// Set phase to identifying BEFORE recursive call to skip brief input check
+					agent.setPhase('identifying');
 					await handleTextSubmit({ detail: { text: searchText } } as CustomEvent<{ text: string }>);
 				}
 				break;
@@ -1360,6 +1905,294 @@
 				}
 				break;
 			}
+
+			// ─────────────────────────────────────────────────────
+			// ADD WINE FLOW ACTIONS
+			// ─────────────────────────────────────────────────────
+
+			case 'add_to_cellar': {
+				// Start the add wine flow from identification result
+				const lastWineMsg = [...$agentMessages].reverse().find(
+					(m) => m.type === 'wine_result' && m.wineResult
+				);
+				const identified = lastWineMsg?.wineResult || $agentParsed;
+
+				if (!identified) {
+					agent.addMessage({
+						role: 'agent',
+						type: 'error',
+						content: 'No wine identified to add.',
+						chips: [{ id: 'start_over', label: 'Start Over', icon: 'refresh', action: 'start_over' }]
+					});
+					break;
+				}
+
+				// Check for missing required fields
+				const missing: string[] = [];
+				if (!identified.producer) missing.push('producer');
+				if (!identified.wineName) missing.push('wine name');
+				if (!identified.region) missing.push('region');
+				if (!identified.wineType) missing.push('wine type');
+
+				if (missing.length > 0) {
+					// Initialize add flow state even with missing fields
+					agent.initializeAddFlow(identified);
+					agent.setPhase('add_manual_entry');
+					agent.addMessage({
+						role: 'agent',
+						type: 'manual_entry',
+						content: `I need a few more details: ${missing.join(', ')}.`
+					});
+					break;
+				}
+
+				// All required fields present - check for existing wine first (WIN-145)
+				agent.initializeAddFlow(identified);
+
+				// Early check: does this exact wine already exist?
+				try {
+					const existingCheck = await api.checkDuplicate({
+						type: 'wine',
+						name: identified.wineName!,
+						producerName: identified.producer,
+						year: identified.vintage || undefined
+					});
+
+					if (existingCheck.existingWineId && existingCheck.existingBottles > 0) {
+						// Wine exists - offer choice immediately (skip region/producer matching)
+						agent.setPhase('add_wine');
+						agent.addMessage({
+							role: 'agent',
+							type: 'existing_wine_choice',
+							content: `I found "${identified.wineName}" by ${identified.producer} already in your cellar with ${existingCheck.existingBottles} bottle${existingCheck.existingBottles > 1 ? 's' : ''}.`,
+							existingWineId: existingCheck.existingWineId,
+							existingBottles: existingCheck.existingBottles,
+							chips: [
+								{ id: 'add_bottle', label: 'Add Another Bottle', icon: 'plus', action: 'add_bottle_existing' },
+								{ id: 'create_new', label: 'Create New Wine', icon: 'wine', action: 'create_new_wine' }
+							]
+						});
+						break;
+					}
+				} catch (error) {
+					// If check fails, proceed with normal flow
+					console.error('Early wine check failed:', error);
+				}
+
+				// No existing wine found - start normal matching flow
+				agent.setPhase('add_region');
+				await startRegionMatching();
+				break;
+			}
+
+			case 'remember_wine': {
+				// Wishlist feature - placeholder for future implementation
+				agent.addMessage({
+					role: 'agent',
+					type: 'text',
+					content: "The wishlist feature is coming soon! For now, you can add this wine to your cellar.",
+					chips: [
+						{ id: 'add_to_cellar', label: 'Add to Cellar', icon: 'plus', action: 'add_to_cellar' }
+					]
+				});
+				break;
+			}
+
+			case 'manual_entry_complete': {
+				// User completed manual entry form
+				const data = e.detail.data as { producer: string; wineName: string; region: string; wineType: string };
+				const currentAddState = get(agent).addState;
+
+				if (!currentAddState) break;
+
+				// Update the identified data with manual entries
+				const updatedIdentified = {
+					...currentAddState.identified,
+					producer: data.producer || currentAddState.identified.producer,
+					wineName: data.wineName || currentAddState.identified.wineName,
+					region: data.region || currentAddState.identified.region,
+					wineType: data.wineType || currentAddState.identified.wineType
+				};
+
+				// Re-initialize with updated data
+				agent.initializeAddFlow(updatedIdentified as AgentParsedWine);
+				agent.setPhase('add_region');
+				await startRegionMatching();
+				break;
+			}
+
+			// Handle match selection from MatchSelectionList
+			default:
+				if (action.startsWith('select_match:')) {
+					const [, matchType, idStr] = action.split(':');
+					const id = parseInt(idStr, 10);
+					const entity = fetchEntity(matchType as 'region' | 'producer' | 'wine', id);
+
+					if (!entity) {
+						agent.addMessage({
+							role: 'agent',
+							type: 'error',
+							content: 'Could not find that selection. Please try again.'
+						});
+						break;
+					}
+
+					// Set selection in state
+					agent.setAddSelection(matchType as 'region' | 'producer' | 'wine', 'search', entity);
+
+					// Show confirmation message
+					const entityName = matchType === 'region' ? (entity as Region).regionName
+						: matchType === 'producer' ? (entity as Producer).producerName
+						: (entity as Wine).wineName;
+
+					agent.addMessage({
+						role: 'agent',
+						type: 'match_confirmed',
+						content: `Got it - using "${entityName}".`
+					});
+
+					// Brief delay then advance to next step
+					advanceTimeoutId = setTimeout(() => {
+						advanceTimeoutId = null;
+						advanceToNextStep(matchType);
+					}, 800);
+					break;
+				}
+
+				// Handle "Add as new" actions
+				if (action.startsWith('add_new:')) {
+					const [, entityType] = action.split(':');
+					const currentAddState = get(agent).addState;
+
+					if (!currentAddState) break;
+
+					agent.setAddSelection(entityType as 'region' | 'producer' | 'wine', 'create');
+
+					const entityName = entityType === 'region' ? currentAddState.regionData.regionName
+						: entityType === 'producer' ? currentAddState.producerData.producerName
+						: currentAddState.wineData.wineName;
+
+					agent.addMessage({
+						role: 'agent',
+						type: 'match_confirmed',
+						content: `I'll create a new ${entityType} called "${entityName}".`
+					});
+
+					// Brief delay then advance to next step
+					advanceTimeoutId = setTimeout(() => {
+						advanceTimeoutId = null;
+						advanceToNextStep(entityType);
+					}, 800);
+					break;
+				}
+
+				// Handle clarify/help actions (stub - will be implemented in segment 4)
+				if (action.startsWith('clarify:')) {
+					agent.addMessage({
+						role: 'agent',
+						type: 'text',
+						content: 'Help me decide is coming soon. Please select from the list or add as new.'
+					});
+					break;
+				}
+				break;
+
+			case 'add_bottle_existing': {
+				// WIN-145: Add bottle to existing wine
+				const lastExistingWineMsg = [...$agentMessages].reverse().find(
+					(m) => m.type === 'existing_wine_choice' && m.existingWineId
+				);
+				const existingWineId = lastExistingWineMsg?.existingWineId;
+
+				if (!existingWineId) {
+					agent.addMessage({
+						role: 'agent',
+						type: 'error',
+						content: 'Could not find existing wine. Please try again.',
+						chips: [{ id: 'start_over', label: 'Start Over', icon: 'refresh', action: 'start_over' }]
+					});
+					break;
+				}
+
+				// Store existingWineId in addState and skip to bottle form
+				agent.updateAddState({ existingWineId });
+				agent.setPhase('add_bottle_part1');
+				agent.addMessage({
+					role: 'agent',
+					type: 'bottle_form',
+					content: "Great, I'll add another bottle. What are the details?",
+					bottleFormPart: 1
+				});
+				break;
+			}
+
+			case 'create_new_wine': {
+				// WIN-145: User chose to create new wine despite existing
+				const currentAddState = get(agent).addState;
+				if (!currentAddState) break;
+
+				const wineName = currentAddState.wineData.wineName || currentAddState.identified.wineName;
+				agent.addMessage({
+					role: 'agent',
+					type: 'match_confirmed',
+					content: `I'll create a new entry for "${wineName}".`
+				});
+
+				// Start the full region/producer/wine matching flow
+				advanceTimeoutId = setTimeout(async () => {
+					advanceTimeoutId = null;
+					agent.setPhase('add_region');
+					await startRegionMatching();
+				}, 800);
+				break;
+			}
+
+			case 'bottle_next': {
+				// Part 1 complete - advance to part 2
+				agent.advanceBottleFormPart();
+				agent.setPhase('add_bottle_part2');
+				agent.addMessage({
+					role: 'agent',
+					type: 'bottle_form',
+					content: 'And the purchase details?',
+					bottleFormPart: 2
+				});
+				break;
+			}
+
+			case 'bottle_submit': {
+				// Part 2 complete - proceed to enrichment choice
+				agent.setPhase('add_enrichment');
+				agent.addMessage({
+					role: 'agent',
+					type: 'enrichment_choice',
+					content: 'Would you like me to research this wine now, or add it quickly and enrich later?',
+					chips: [
+						{ id: 'enrich_now', label: 'Enrich Now', icon: 'sparkle', action: 'enrich_now' },
+						{ id: 'add_quickly', label: 'Add Quickly', icon: 'plus', action: 'add_quickly' }
+					]
+				});
+				break;
+			}
+
+			case 'enrich_now':
+			case 'add_quickly': {
+				const enrichNow = action === 'enrich_now';
+				await submitAddWine(enrichNow);
+				break;
+			}
+
+			case 'retry_add': {
+				// Retry the add wine submission
+				const currentAddState = get(agent).addState;
+				if (currentAddState) {
+					await submitAddWine(false);
+				}
+				break;
+			}
+		}
+		} finally {
+			isProcessingAction = false;
 		}
 	}
 
@@ -1423,12 +2256,13 @@
 			agent.setTyping(false);
 
 			if (result) {
-				// Clear augmentation context since we got a new result
-				agent.setAugmentationContext(null);
-
 				// Handle the Opus result with the standard flow
 				if (!handleIdentificationResult(result, augContext.originalInput)) {
 					showErrorWithRetry($agentErrorMessage || 'Premium analysis could not identify the wine.');
+				}
+				// Only clear augmentation context AFTER result handling, and only if result was complete
+				if (hasMinimumFields(result.parsed)) {
+					agent.setAugmentationContext(null);
 				}
 			} else {
 				// Opus failed - offer conversational fallback
@@ -1543,50 +2377,71 @@
 			(m) => m.type === 'wine_result' && m.wineResult
 		);
 		const wineData = lastWineMsg?.wineResult || parsed;
-		if (!wineData) return;
-
-		// Check minimum required fields before navigating to add-wine
-		if (!hasMinimumFields(wineData)) {
-			// Missing required fields — redirect to augmentation
-			const message = buildProgressMessage(wineData);
+		if (!wineData) {
 			agent.addMessage({
 				role: 'agent',
-				type: 'text',
-				content: `Almost there! ${message} Can you help fill in the gaps?`
+				type: 'error',
+				content: 'No wine identified to add.',
+				chips: [{ id: 'start_over', label: 'Start Over', icon: 'refresh', action: 'start_over' }]
 			});
-			agent.setAugmentationContext({
-				originalInput: '',
-				originalInputType: lastInputType || 'text',
-				originalResult: {
-					intent: 'add',
-					parsed: wineData,
-					confidence: wineData.confidence ?? 0,
-					action: 'suggest' as AgentAction,
-					candidates: []
-				}
-			});
-			agent.setPhase('augment_input');
 			return;
 		}
 
-		// Pre-fill the add wine wizard with identified data
-		await addWineStore.populateFromAgent(wineData);
+		// Check for missing required fields
+		const missing: string[] = [];
+		if (!wineData.producer) missing.push('producer');
+		if (!wineData.wineName) missing.push('wine name');
+		if (!wineData.region) missing.push('region');
+		if (!wineData.wineType) missing.push('wine type');
 
-		// Add completion message
-		agent.addMessage({
-			role: 'agent',
-			type: 'text',
-			content: 'Opening the cellar for you...'
-		});
+		if (missing.length > 0) {
+			// Initialize add flow state even with missing fields
+			agent.initializeAddFlow(wineData);
+			agent.setPhase('add_manual_entry');
+			agent.addMessage({
+				role: 'agent',
+				type: 'manual_entry',
+				content: `I need a bit more information. Please fill in the missing details: ${missing.join(', ')}.`
+			});
+			return;
+		}
 
-		agent.setPhase('complete');
+		// All required fields present - check for existing wine first (WIN-145)
+		agent.initializeAddFlow(wineData);
 
-		// Brief delay for message to appear
-		await tick();
-		setTimeout(() => {
-			agent.closePanel();
-			goto('/qve/add');
-		}, 500);
+		// Early check: does this exact wine already exist?
+		try {
+			const existingCheck = await api.checkDuplicate({
+				type: 'wine',
+				name: wineData.wineName!,
+				producerName: wineData.producer,
+				year: wineData.vintage || undefined
+			});
+
+			if (existingCheck.existingWineId && existingCheck.existingBottles > 0) {
+				// Wine exists - offer choice immediately (skip region/producer matching)
+				agent.setPhase('add_wine');
+				agent.addMessage({
+					role: 'agent',
+					type: 'existing_wine_choice',
+					content: `I found "${wineData.wineName}" by ${wineData.producer} already in your cellar with ${existingCheck.existingBottles} bottle${existingCheck.existingBottles > 1 ? 's' : ''}.`,
+					existingWineId: existingCheck.existingWineId,
+					existingBottles: existingCheck.existingBottles,
+					chips: [
+						{ id: 'add_bottle', label: 'Add Another Bottle', icon: 'plus', action: 'add_bottle_existing' },
+						{ id: 'create_new', label: 'Create New Wine', icon: 'wine', action: 'create_new_wine' }
+					]
+				});
+				return;
+			}
+		} catch (error) {
+			// If check fails, proceed with normal flow
+			console.error('Early wine check failed:', error);
+		}
+
+		// No existing wine found - start normal matching flow
+		agent.setPhase('add_region');
+		await startRegionMatching();
 	}
 
 	// ─────────────────────────────────────────────────────
@@ -1603,35 +2458,8 @@
 			return;
 		}
 
-		// Check if we should confirm before starting new search
-		// Note: Commands like "start over" already handled above - they execute immediately
-		if (hasActiveIdentification()) {
-			// Store pending search in store (persisted to sessionStorage)
-			agent.setPendingNewSearch({ text, previousPhase: phase as AgentPhase });
-
-			// Show user's message
-			agent.addMessage({
-				role: 'user',
-				type: 'text',
-				content: text
-			});
-
-			// Ask for confirmation
-			agent.addMessage({
-				role: 'agent',
-				type: 'chips',
-				content: 'I have a wine ready. Did you want to search for something new instead?',
-				chips: [
-					{ id: 'confirm_new_search', label: 'Search New', icon: 'search', action: 'confirm_new_search' },
-					{ id: 'continue_current', label: 'Keep Current', icon: 'wine-bottle', action: 'continue_current' }
-				]
-			});
-
-			agent.setPhase('confirm_new_search');
-			return;
-		}
-
 		// Check for chip responses when in result_confirm phase
+		// This must run BEFORE hasActiveIdentification() so "yes", "yep", etc. work
 		if (phase === 'result_confirm') {
 			const lastChipMessage = [...$agentMessages].reverse().find((m) => m.chips?.length);
 			if (lastChipMessage?.chips?.length) {
@@ -1692,6 +2520,34 @@
 			}
 		}
 
+		// Check if we should confirm before starting new search
+		// Note: Commands like "start over" already handled above - they execute immediately
+		if (hasActiveIdentification()) {
+			// Store pending search in store (persisted to sessionStorage)
+			agent.setPendingNewSearch({ text, previousPhase: phase as AgentPhase });
+
+			// Show user's message
+			agent.addMessage({
+				role: 'user',
+				type: 'text',
+				content: text
+			});
+
+			// Ask for confirmation
+			agent.addMessage({
+				role: 'agent',
+				type: 'chips',
+				content: 'I have a wine ready. Did you want to search for something new instead?',
+				chips: [
+					{ id: 'confirm_new_search', label: 'Search New', icon: 'search', action: 'confirm_new_search' },
+					{ id: 'continue_current', label: 'Keep Current', icon: 'wine-bottle', action: 'continue_current' }
+				]
+			});
+
+			agent.setPhase('confirm_new_search');
+			return;
+		}
+
 		// Handle text during chip-driven phases
 		// In these phases, treat text as starting a new identification
 		if (['greeting', 'path_selection', 'result_confirm', 'action_select', 'handle_incorrect'].includes(phase)) {
@@ -1707,6 +2563,7 @@
 		// ─────────────────────────────────────────────────────
 
 		// Determine if this is a fresh identification (not providing more detail)
+		// Use $agentPhase directly (not cached `phase`) to ensure we see synchronous updates
 		const freshIdentificationPhases = [
 			'greeting',
 			'path_selection',
@@ -1715,7 +2572,7 @@
 			'action_select',
 			'handle_incorrect'
 		];
-		const isFreshIdentification = freshIdentificationPhases.includes(phase) && !augContext;
+		const isFreshIdentification = freshIdentificationPhases.includes($agentPhase) && !augContext;
 
 		// Check for brief input - but first handle accumulated text
 		if (pendingBriefSearch) {
@@ -2139,6 +2996,7 @@
 							on:confirm={handleWineConfirm}
 							on:edit={handleWineEdit}
 							on:selectCandidate={handleCandidateSelect}
+							on:formReady={scrollToFormContent}
 						/>
 					</div>
 				{/each}
