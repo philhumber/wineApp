@@ -35,7 +35,7 @@
 			bottles.price AS bottlePrice,
 			bottles.currency AS bottleCurrency,
 			ratings.avgRating,
-			ratings.Notes,
+			ratings.Notes AS notes,
 			ratings.drinkDate,
 			ratings.overallRating,
 			ratings.valueRating,
