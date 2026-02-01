@@ -34,6 +34,7 @@
 						wine.enrichment_status,
 						country.countryName,
 						wine.year,
+						wine.isNonVintage,
 						wine.tastingNotes,
 						wine.pairing,
 						region.regionName,
@@ -183,11 +184,11 @@
 		}
 		if (!empty($wineYear) && $wineYear !== '%') {
 			if ($wineYear == 'No Year') {
-				$where[] = "(wine.year IS NULL OR wine.year = '')";
+				$where[] = "wine.isNonVintage = 1";
 			} else {
 				$where[] = "wine.year = :wineYear";
 				$params[':wineYear'] = $wineYear;
-			}			
+			}
 		}
 		if (!empty($where)) {
 			$sqlQuery .= " WHERE " . implode(' AND ', $where);

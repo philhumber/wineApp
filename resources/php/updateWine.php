@@ -2,6 +2,7 @@
 	// 1. Include dependencies at the top
     require_once 'databaseConnection.php';
     require_once 'audit_log.php';
+    require_once 'validators.php';
 
     // 2. Initialize response
     $response = ['success' => false, 'message' => '', 'data' => null];
@@ -27,15 +28,14 @@
             throw new Exception('Wine type is required');
         }
 
-        $year = isset($data['wineYear']) ? trim($data['wineYear']) : null;
-
-        if ($year === '' || $year === null) {
-            $year =null; // allow null year
+        // Handle year and isNonVintage (WIN-176)
+        $isNonVintage = isset($data['isNonVintage']) && $data['isNonVintage'];
+        if ($isNonVintage) {
+            $year = null;
         } else {
-            $year = (int)$year;
-            if ($year <= 0) {
-                throw new Exception('Invalid wine year');
-            }
+            $yearResult = validateWineYear($data['wineYear'] ?? null);
+            $year = $yearResult['year'];
+            $isNonVintage = $yearResult['isNonVintage'];
         }
 
         $description = trim($data['wineDescription'] ?? '');
@@ -63,14 +63,16 @@
                         wineName = :wineName,
                         wineTypeID = :wineTypeID,
                         year = :year,
+                        isNonVintage = :isNonVintage,
                         description = :description,
                         tastingNotes = :tastingNotes,
                         pairing = :pairing,
                         pictureURL = :pictureURL
                     WHERE wineID = :wineID";
 
-        $params[':wineName'] = $wineName;        
+        $params[':wineName'] = $wineName;
         $params[':year'] = $year;
+        $params[':isNonVintage'] = $isNonVintage ? 1 : 0;
         $params[':description'] = $description;
         $params[':tastingNotes'] = $tastingNotes;
         $params[':pairing'] = $pairing;
@@ -110,6 +112,7 @@
                 'wineName' => $wineName,
                 'wineTypeID' => $wineTypeID['wineTypeID'],
                 'year' => $year,
+                'isNonVintage' => $isNonVintage ? 1 : 0,
                 'description' => $description,
                 'tastingNotes' => $tastingNotes,
                 'pairing' => $pairing,
