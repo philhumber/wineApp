@@ -129,10 +129,10 @@ function storeSessionState(state: AgentSessionState, immediate = false): void {
 					lastImageData: null,
 					lastImageMimeType: null,
 					lastInputType: state.lastInputType,
-					augmentationContext: null,
+					augmentationContext: state.augmentationContext, // Preserve context for retry
 					enrichmentData: null,
 					enrichmentForWine: null,
-					pendingNewSearch: null,
+					pendingNewSearch: state.pendingNewSearch, // Preserve for mobile tab switches
 					addState: null
 				};
 				sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(minimalState));
@@ -225,6 +225,9 @@ export interface AgentAddState {
 
 	// Bottle form phase (1 or 2)
 	bottleFormPart: 1 | 2;
+
+	// For adding bottle to existing wine (WIN-145)
+	existingWineId?: number;
 }
 
 /** Conversation phases for state machine */
@@ -269,6 +272,7 @@ export type AgentMessageType =
 	| 'add_confirm' // "Add to cellar?"
 	| 'match_selection' // Show fuzzy matches
 	| 'match_confirmed' // User confirmed selection
+	| 'existing_wine_choice' // Wine exists - add bottle or create new? (WIN-145)
 	| 'manual_entry' // Fill missing required fields
 	| 'bottle_form' // Bottle details form (both parts)
 	| 'enrichment_choice' // "Enrich now?" / "Add quickly"
@@ -302,6 +306,9 @@ export interface AgentMessage {
 	matchType?: 'region' | 'producer' | 'wine';
 	bottleFormPart?: 1 | 2;
 	addedWine?: Wine;
+	// Existing wine choice fields (WIN-145)
+	existingWineId?: number;
+	existingBottles?: number;
 }
 
 /** Context for augmentation (Not Correct flow) */
@@ -1018,7 +1025,7 @@ function createAgentStore() {
 					parsed.region
 				);
 
-				// Add enrichment message to conversation
+				// Add enrichment message to conversation with action chips
 				const enrichMessage: AgentMessage = {
 					id: generateMessageId(),
 					role: 'agent',
@@ -1026,7 +1033,11 @@ function createAgentStore() {
 					content: "Here's what I found about this wine.",
 					timestamp: Date.now(),
 					enrichmentData: result.data ?? undefined,
-					enrichmentSource: result.source
+					enrichmentSource: result.source,
+					chips: [
+						{ id: 'add_to_cellar', label: 'Add to Cellar', icon: 'plus', action: 'add_to_cellar' },
+						{ id: 'remember_wine', label: 'Remember Wine', icon: 'heart', action: 'remember_wine' }
+					]
 				};
 
 				update((s) => {
@@ -1419,6 +1430,21 @@ function createAgentStore() {
 			update((state) => {
 				const newState = { ...state, addState: null };
 				persistCurrentState(newState, true);
+				return newState;
+			});
+		},
+
+		/**
+		 * Update add state with partial data (WIN-145: for existingWineId)
+		 */
+		updateAddState: (updates: Partial<AgentAddState>) => {
+			update((state) => {
+				if (!state.addState) return state;
+				const newState = {
+					...state,
+					addState: { ...state.addState, ...updates }
+				};
+				persistCurrentState(newState);
 				return newState;
 			});
 		},

@@ -49,7 +49,7 @@
       {wine}
       expanded={$expandedWineIDs.has(wine.wineID)}
       compact={$viewDensity === 'compact'}
-      targetHighlight={$targetWineID === wine.wineID}
+      targetHighlight={$targetWineID != null && Number($targetWineID) === Number(wine.wineID)}
       on:expand={handleToggleExpand}
       on:collapse={handleToggleExpand}
       on:drink={handleDrink}

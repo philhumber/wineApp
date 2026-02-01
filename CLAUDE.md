@@ -275,15 +275,35 @@ The text input is **always visible** across all conversation phases, with phase-
 | `augment_input` (image) | "Add details visible in the image..." | Combines with original image |
 | `complete` | "Processing..." | Input disabled |
 
-**New Search Confirmation**: When user types during `result_confirm` or `action_select` phases with an identified wine (has producer or wine name), a confirmation prompt appears asking "Did you want to search for something new instead?" with chips:
+**New Search Confirmation**: When user types during `action_select` phase (or `result_confirm` if not a chip response) with an identified wine, a confirmation prompt appears asking "Did you want to search for something new instead?" with chips:
 - **Search New**: Clears context and proceeds with new identification
 - **Keep Current**: Returns to previous phase with original chips
+
+**Processing order in `result_confirm` phase**:
+1. Chip response detection runs first ("yes", "yep", "no" → triggers Yes/No chip)
+2. Only non-chip-response text triggers the new search confirmation
 
 This prevents accidental loss of progress if user input is misunderstood. Conversational commands (like "start over") still execute immediately without confirmation.
 
 **Confirmation state persistence**: `pendingNewSearch` is stored in sessionStorage to survive mobile tab switches (e.g., switching to Camera app and back).
 
 **Input disabled**: During `identifying` (loading), `confirm_new_search` (awaiting chip selection), and `complete` (navigating to add-wine).
+
+### Add Bottle to Existing Wine (WIN-145)
+
+When user adds a wine that already exists in their cellar:
+
+1. **Early check**: After "Add to Cellar" is tapped, `checkDuplicate` runs with producer name, wine name, and vintage
+2. **If wine exists**: Shows `existing_wine_choice` message with:
+   - "I found [wine] by [producer] already in your cellar with X bottles"
+   - **Add Another Bottle** → Skips to bottle form, calls `api.addBottle()`
+   - **Create New Wine** → Starts full region/producer/wine matching flow
+3. **If no match**: Normal matching flow proceeds
+
+**Key files:**
+- `AgentPanel.svelte`: `handleAddToCellar()` early check, `add_bottle_existing` handler
+- `agent.ts`: `AgentAddState.existingWineId`, `existing_wine_choice` message type
+- `ChatMessage.svelte`: Renders `existing_wine_choice` message
 
 ---
 
@@ -307,6 +327,16 @@ This prevents accidental loss of progress if user input is misunderstood. Conver
 - WIN-122: Fix UI flashing/highlighting
 - WIN-117: Edit ratings from history
 - WIN-114: Image view enhancements
+
+### Completed: Sprint 7 (Agent Add Wine Flow - Phase 1)
+- WIN-166: Fix missing regionID in checkDuplicate.php SQL ✓
+- WIN-169: Fix one-word loop bug in agent brief input check ✓
+- WIN-176: Fix Opus escalation clearing context too early ✓
+- WIN-177: Preserve context in session storage quota fallback ✓
+- WIN-178: Fix race condition in context reading ✓
+- WIN-171: Fix highlight for new wines after agent add ✓
+- WIN-170: Add chips after enrichment (Add to Cellar, Remember Wine) ✓
+- WIN-145: Add bottle to existing wine (early check, skip matching) ✓
 
 ### Completed: Sprint 5 (Currency + Card Details)
 - WIN-134: Implement bottle_sizes and currencies tables ✓

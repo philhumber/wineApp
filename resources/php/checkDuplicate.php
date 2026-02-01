@@ -206,7 +206,7 @@ function checkProducerDuplicates($pdo, $name, $normalizedName, $regionId = null,
 
     // Get all producers for fuzzy matching
     $stmt = $pdo->prepare("
-        SELECT p.producerID, p.producerName, r.regionName
+        SELECT p.producerID, p.producerName, p.regionID, r.regionName
         FROM producers p
         LEFT JOIN region r ON p.regionID = r.regionID
         ORDER BY p.producerName

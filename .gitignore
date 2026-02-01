@@ -71,3 +71,4 @@ jira_*.txt
 # TRASH FOLDER
 # ===================
 .trash/
+nul
