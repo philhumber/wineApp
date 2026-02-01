@@ -1,6 +1,6 @@
 # Qvé Wine App - Session Context
 
-**Last Updated**: 2026-02-01
+**Last Updated**: 2026-02-01 (Sprint cleanup - JIRA is now source of truth)
 **Status**: Production - Deployed and stable
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
@@ -329,79 +329,15 @@ When user adds a wine that already exists in their cellar:
 
 ---
 
-## Current Sprint Backlog
+## Current Work
 
-### Sprint 6: iOS + Navigation + Ratings (Current)
-- WIN-131: iOS testing/bug fixes
-- WIN-128: Back button / swipe navigation
-- WIN-122: Fix UI flashing/highlighting
-- WIN-117: Edit ratings from history
-- WIN-114: Image view enhancements
+For up-to-date task status, see [JIRA Board](https://philhumber.atlassian.net/jira/software/projects/WIN).
 
-### Completed: Sprint 7 (Agent Add Wine Flow - Phase 1)
-- WIN-166: Fix missing regionID in checkDuplicate.php SQL ✓
-- WIN-169: Fix one-word loop bug in agent brief input check ✓
-- WIN-176: Fix Opus escalation clearing context too early ✓
-- WIN-177: Preserve context in session storage quota fallback ✓
-- WIN-178: Fix race condition in context reading ✓
-- WIN-171: Fix highlight for new wines after agent add ✓
-- WIN-170: Add chips after enrichment (Add to Cellar, Remember Wine) ✓
-- WIN-145: Add bottle to existing wine (early check, skip matching) ✓
-
-### Completed: Sprint 5 (Currency + Card Details)
-- WIN-134: Implement bottle_sizes and currencies tables ✓
-- WIN-133: Fix TypeScript error in WineStep.svelte ✓
-- WIN-132: Fix TypeScript error in RegionStep.svelte ✓
-- WIN-130: Allow currency display setting ✓
-- WIN-125: Add/Edit screen consistency ✓
-- WIN-111: Additional wine card details ✓
-- WIN-103: Remove hardcoded currencies/sizes ✓
-- WIN-99: Audit JSON display fix ✓
-
-### Completed: Sprint 4 (Security + Quick Wins)
-- WIN-119: Secure wineapp-config directory ✓
-- WIN-34: Finish filtering/sorting ✓
-- WIN-79: Finish duplicate checking ✓
-- WIN-124: Double field label bug ✓
-- WIN-129: Form not clearing bug ✓
-- WIN-115: Browser tab titles ✓
-- WIN-116: Qve to Qvé branding ✓
-
-### Future: Collection Features + Data Quality
-- WIN-121/126: Collection naming
-- WIN-127: Collection value data
-- WIN-113: Region parent level search
-- WIN-123: Field validation vs SQL
-
-### Sprint 8: Bug Fixes + Agent Polish (Current)
-**Completed:**
-- WIN-173: Fix buyAgain type coercion (boolean to 0/1 for MySQL) ✓
-- WIN-141: Refresh UI after rating bottle (fetch updated wine, auto-switch to All Wines) ✓
-- WIN-167: Fix context removal issues (Opus escalation, quota fallback, race condition) ✓
-- WIN-165: Agent help command ("help", "what can you do") ✓
-- WIN-155: UTF-8 seed data re-import (requires TRUNCATE before re-run) ✓
-
-**Pending (plans created):**
-- WIN-176: Add NV (Non-Vintage) wine support - requires `isNonVintage` DB column
-- WIN-142: Implement rating edit UI - needs ratingID from API + edit modal
-- WIN-168: Agent typewriter text effect - needs `isNew` flag on messages
-
-### Sprint 9: Data Management + Infrastructure
-- WIN-97: Audit functions for all operations
-- WIN-80: Soft delete support
-- WIN-78: JS/PHP caching
-- WIN-108: AI extract region from producer
-- WIN-32: Producer/region info cards
-
-### Sprint 10: Wishlist + Grape Data
-- WIN-109: Wine wishlist
-- WIN-112: Grape data capture
-
-### Backlog: AI Features
-- WIN-42: Image recognition
-- WIN-37: AI chatbot (winebot)
-- WIN-64: Structured output and grounding
-- WIN-118: Vector database evaluation
+```bash
+.\scripts\jira.ps1 list                    # All open issues
+.\scripts\jira.ps1 sprint                  # Current sprint
+.\scripts\jira.ps1 get WIN-123             # Issue details
+```
 
 ---
 

@@ -13,6 +13,7 @@ import { availableCurrencies, getCurrencyByCode, convertToEUR } from './currency
 
 export type HistorySortKey =
   | 'drinkDate'
+  | 'rating'
   | 'overallRating'
   | 'valueRating'
   | 'wineName'
@@ -94,10 +95,35 @@ export const sortedDrunkWines = derived(
           if (!a.drinkDate) return 1;
           if (!b.drinkDate) return -1;
           return direction * (new Date(a.drinkDate).getTime() - new Date(b.drinkDate).getTime());
-        case 'overallRating':
-          return direction * ((a.overallRating ?? 0) - (b.overallRating ?? 0));
-        case 'valueRating':
-          return direction * ((a.valueRating ?? 0) - (b.valueRating ?? 0));
+        case 'rating': {
+          // Combined rating: (overall + value) / 2
+          const ratingA = (a.overallRating != null && a.valueRating != null)
+            ? (a.overallRating + a.valueRating) / 2
+            : a.overallRating ?? a.valueRating ?? -1;
+          const ratingB = (b.overallRating != null && b.valueRating != null)
+            ? (b.overallRating + b.valueRating) / 2
+            : b.overallRating ?? b.valueRating ?? -1;
+          if (ratingA === -1 && ratingB === -1) return 0;
+          if (ratingA === -1) return 1;
+          if (ratingB === -1) return -1;
+          return direction * (ratingA - ratingB);
+        }
+        case 'overallRating': {
+          const ratingA = a.overallRating ?? -1;
+          const ratingB = b.overallRating ?? -1;
+          if (ratingA === -1 && ratingB === -1) return 0;
+          if (ratingA === -1) return 1;
+          if (ratingB === -1) return -1;
+          return direction * (ratingA - ratingB);
+        }
+        case 'valueRating': {
+          const ratingA = a.valueRating ?? -1;
+          const ratingB = b.valueRating ?? -1;
+          if (ratingA === -1 && ratingB === -1) return 0;
+          if (ratingA === -1) return 1;
+          if (ratingB === -1) return -1;
+          return direction * (ratingA - ratingB);
+        }
         case 'wineName':
           return direction * a.wineName.localeCompare(b.wineName);
         case 'wineType':
