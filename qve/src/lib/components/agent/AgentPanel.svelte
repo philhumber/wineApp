@@ -296,6 +296,19 @@
 				// handleRetry already exists and handles all retry logic
 				handleRetry();
 				break;
+
+			case 'help':
+				agent.addMessage({
+					role: 'agent',
+					type: 'text',
+					content: "I'm your wine sommelier! Here's what I can do:\n\n" +
+						"📸 Identify wines — Take a photo of a label or describe a wine\n" +
+						"🍷 Add to cellar — I'll guide you through adding wines step by step\n" +
+						"📝 Enrich details — I can find grape varieties, critic scores, and drink windows\n\n" +
+						"Just start by sharing an image or telling me about a wine!"
+				});
+				agent.setPhase('await_input');
+				break;
 		}
 	}
 
@@ -459,6 +472,7 @@
 			country: newParsed.country || prev.country,
 			wineType: newParsed.wineType || prev.wineType,
 			grapes: newParsed.grapes || prev.grapes,
+			appellation: newParsed.appellation || prev.appellation,  // WIN-148
 			confidence: newParsed.confidence // Always use latest LLM confidence
 		};
 	}
@@ -1189,6 +1203,7 @@
 			wineName: isCreateWine ? state.wineData.wineName : '',
 			wineYear: state.wineData.wineYear || '',
 			wineType: state.wineData.wineType,
+			appellation: state.identified?.appellation || '', // WIN-148: Pass appellation from identification
 			wineDescription: '',
 			wineTasting: '',
 			winePairing: '',
@@ -1954,7 +1969,7 @@
 					const existingCheck = await api.checkDuplicate({
 						type: 'wine',
 						name: identified.wineName!,
-						producerName: identified.producer,
+						producerName: identified.producer || undefined,
 						year: identified.vintage || undefined
 					});
 
@@ -2415,7 +2430,7 @@
 			const existingCheck = await api.checkDuplicate({
 				type: 'wine',
 				name: wineData.wineName!,
-				producerName: wineData.producer,
+				producerName: wineData.producer || undefined,
 				year: wineData.vintage || undefined
 			});
 
@@ -2911,6 +2926,7 @@
 				country: (data.country as string) || null,
 				wineType: (wineTypes?.[0] as AgentParsedWine['wineType']) || null,
 				grapes: (data.primaryGrapes as string[]) || null,
+				appellation: null,  // WIN-148
 				confidence: candidate.confidence
 			};
 		} else {
@@ -2923,6 +2939,7 @@
 				country: (data.country as string) || null,
 				wineType: (data.wineType as AgentParsedWine['wineType']) || null,
 				grapes: (data.grapes as string[]) || null,
+				appellation: (data.appellation as string) || null,  // WIN-148
 				confidence: candidate.confidence
 			};
 		}
@@ -2939,6 +2956,7 @@
 				country: selectedParsed.country || prev.country,
 				wineType: selectedParsed.wineType || prev.wineType,
 				grapes: selectedParsed.grapes || prev.grapes,
+				appellation: selectedParsed.appellation || prev.appellation,  // WIN-148
 				confidence: candidate.confidence
 			};
 		}
@@ -3071,6 +3089,7 @@
 							on:edit={handleWineEdit}
 							on:selectCandidate={handleCandidateSelect}
 							on:formReady={scrollToFormContent}
+							on:chipsReady={scrollToFormContent}
 						/>
 					</div>
 				{/each}

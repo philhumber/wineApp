@@ -239,6 +239,20 @@ class IdentificationService
             }
         }
 
+        // Roll up village-level appellations to parent regions (WIN-148)
+        // E.g., "Margaux" -> region: "Bordeaux", appellation: "Margaux"
+        if (!empty($result['parsed']['region'])) {
+            $rollup = $this->inferenceEngine->rollUpRegion($result['parsed']['region']);
+            if ($rollup['appellation']) {
+                $result['parsed']['region'] = $rollup['region'];
+                $result['inferences_applied'][] = 'region_rolled_up_from_' . $rollup['appellation'];
+                // Store the specific appellation for future use
+                if (empty($result['parsed']['appellation'])) {
+                    $result['parsed']['appellation'] = $rollup['appellation'];
+                }
+            }
+        }
+
         // Re-score after inference
         $newScoring = $this->scorer->score($result['parsed']);
         $result['confidence'] = $newScoring['score'];
