@@ -249,6 +249,7 @@ function agentStructuredError(string $errorType, ?string $fallbackMessage = null
         'quality_check_failed' => 'That image is a bit unclear. Could you try a clearer photo?',
         'identification_error' => 'I couldn\'t quite identify that wine. Could you try again?',
         'enrichment_error' => 'I couldn\'t find additional details about this wine.',
+        'clarification_error' => 'I couldn\'t help narrow down the choices. Please review the options yourself.',
     ];
 
     $userMessage = $userMessages[$errorType] ?? $fallbackMessage ?? 'Something went wrong. Please try again.';

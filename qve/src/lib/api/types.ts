@@ -39,6 +39,8 @@ export interface Wine {
   bottleSources?: string | null;     // Comma-separated sources
   buyAgainPercent?: number | null;   // 0-100 percentage
   ratingCount?: number;              // Number of ratings
+  // Enrichment tracking (Segment 5)
+  enrichment_status?: 'pending' | 'complete' | 'failed' | null;
 }
 
 export interface Bottle {
@@ -416,6 +418,21 @@ export interface AgentIdentificationResultWithMeta extends AgentIdentificationRe
 }
 
 // ─────────────────────────────────────────────────────────
+// AI AGENT CLARIFICATION TYPES
+// ─────────────────────────────────────────────────────────
+
+export interface AgentClarificationRequest {
+  type: DuplicateCheckType;  // Reuses existing 'region' | 'producer' | 'wine'
+  identified: AgentParsedWine;
+  options: DuplicateMatch[];
+  userId?: number;
+}
+
+export interface AgentClarificationResult {
+  explanation: string;
+}
+
+// ─────────────────────────────────────────────────────────
 // AI AGENT ENRICHMENT TYPES (Phase 2.5)
 // ─────────────────────────────────────────────────────────
 
@@ -491,6 +508,7 @@ export type AgentErrorType =
   | 'quality_check_failed'
   | 'identification_error'
   | 'enrichment_error'
+  | 'clarification_error'
   | 'unknown';
 
 /**
