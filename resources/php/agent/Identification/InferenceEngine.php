@@ -283,14 +283,13 @@ class InferenceEngine
             // Query refAppellations table
             $stmt = $this->pdo->prepare("
                 SELECT
-                    a.name as appellationName,
+                    a.appellationName,
                     a.region,
                     a.country,
                     a.primaryGrapes,
                     a.wineTypes
                 FROM refAppellations a
-                WHERE LOWER(REPLACE(a.name, ' ', '')) = :normalized
-                   OR a.normalizedName = :normalized
+                WHERE LOWER(REPLACE(a.appellationName, ' ', '')) = :normalized
                 LIMIT 1
             ");
             $stmt->execute(['normalized' => $normalized]);
@@ -307,7 +306,7 @@ class InferenceEngine
             }
 
             // Try fuzzy match with Levenshtein
-            $stmt = $this->pdo->query("SELECT name, region, country, primaryGrapes, wineTypes FROM refAppellations");
+            $stmt = $this->pdo->query("SELECT appellationName, region, country, primaryGrapes, wineTypes FROM refAppellations");
             $appellations = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
             $bestMatch = null;
@@ -315,7 +314,7 @@ class InferenceEngine
             $threshold = 3; // Max edit distance
 
             foreach ($appellations as $app) {
-                $distance = levenshtein($normalized, strtolower(str_replace(' ', '', $app['name'])));
+                $distance = levenshtein($normalized, strtolower(str_replace(' ', '', $app['appellationName'])));
                 if ($distance < $bestDistance && $distance <= $threshold) {
                     $bestDistance = $distance;
                     $bestMatch = $app;
@@ -324,7 +323,7 @@ class InferenceEngine
 
             if ($bestMatch) {
                 return [
-                    'appellationName' => $bestMatch['name'],
+                    'appellationName' => $bestMatch['appellationName'],
                     'region' => $bestMatch['region'],
                     'country' => $bestMatch['country'],
                     'typicalGrapes' => $bestMatch['primaryGrapes'] ? explode(',', $bestMatch['primaryGrapes']) : null,
@@ -336,7 +335,8 @@ class InferenceEngine
             error_log("Appellation lookup failed: " . $e->getMessage());
         }
 
-        return null;
+        // Fall back to static lookup if database didn't find a match
+        return $this->matchAppellationStatic($text);
     }
 
     /**
@@ -349,39 +349,135 @@ class InferenceEngine
     private function matchAppellationStatic(string $text): ?array
     {
         $appellations = [
-            // Bordeaux appellations
+            // ─────────────────────────────────────────────────────
+            // BORDEAUX APPELLATIONS (Left Bank - Médoc)
+            // ─────────────────────────────────────────────────────
             'margaux' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Red']],
             'pauillac' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Red']],
             'saint-julien' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Red']],
             'saint-estephe' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Red']],
+            'listrac-medoc' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Red']],
+            'moulis' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Red']],
+            'haut-medoc' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Red']],
+            'medoc' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Red']],
+            // Bordeaux (Graves & Pessac)
             'pessac-leognan' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Red', 'White']],
+            'graves' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Red', 'White']],
+            // Bordeaux (Right Bank)
             'pomerol' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Red']],
             'saint-emilion' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Red']],
+            'fronsac' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Red']],
+            'canon-fronsac' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Red']],
+            'lalande-de-pomerol' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Red']],
+            'montagne-saint-emilion' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Red']],
+            'lussac-saint-emilion' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Red']],
+            'castillon-cotes-de-bordeaux' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Red']],
+            // Bordeaux (Sweet)
             'sauternes' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Dessert']],
-            // Burgundy appellations
-            'chablis' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['White'], 'typicalGrapes' => ['Chardonnay']],
+            'barsac' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['Dessert']],
+            // Bordeaux (Entre-Deux-Mers)
+            'entre-deux-mers' => ['region' => 'Bordeaux', 'country' => 'France', 'wineTypes' => ['White']],
+
+            // ─────────────────────────────────────────────────────
+            // BURGUNDY APPELLATIONS (Côte de Nuits)
+            // ─────────────────────────────────────────────────────
+            'gevrey-chambertin' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Pinot Noir']],
+            'chambolle-musigny' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Pinot Noir']],
+            'morey-saint-denis' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Pinot Noir']],
+            'vougeot' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Pinot Noir']],
+            'clos-de-vougeot' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Pinot Noir']],
+            'vosne-romanee' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Pinot Noir']],
+            'flagey-echezeaux' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Pinot Noir']],
+            'nuits-saint-georges' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Pinot Noir']],
+            'cote-de-nuits-villages' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Pinot Noir']],
+            // Burgundy (Côte de Beaune - Red)
+            'pommard' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Pinot Noir']],
+            'volnay' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Pinot Noir']],
+            'beaune' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red', 'White']],
+            'savigny-les-beaune' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red']],
+            'aloxe-corton' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red']],
+            'corton' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Pinot Noir']],
+            'santenay' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red']],
+            'cote-de-beaune-villages' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red']],
+            // Burgundy (Côte de Beaune - White)
             'meursault' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['White'], 'typicalGrapes' => ['Chardonnay']],
             'puligny-montrachet' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['White'], 'typicalGrapes' => ['Chardonnay']],
             'chassagne-montrachet' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['White', 'Red']],
-            'gevrey-chambertin' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Pinot Noir']],
-            'vosne-romanee' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Pinot Noir']],
-            'nuits-saint-georges' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Pinot Noir']],
-            'pommard' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Pinot Noir']],
-            'volnay' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Pinot Noir']],
-            // Rhône appellations
-            'chateauneuf-du-pape' => ['region' => 'Rhône', 'country' => 'France', 'wineTypes' => ['Red', 'White']],
-            'hermitage' => ['region' => 'Rhône', 'country' => 'France', 'wineTypes' => ['Red', 'White'], 'typicalGrapes' => ['Syrah']],
+            'corton-charlemagne' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['White'], 'typicalGrapes' => ['Chardonnay']],
+            // Burgundy (Chablis)
+            'chablis' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['White'], 'typicalGrapes' => ['Chardonnay']],
+            'petit-chablis' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['White'], 'typicalGrapes' => ['Chardonnay']],
+            // Burgundy (Côte Chalonnaise)
+            'mercurey' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red']],
+            'givry' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['Red']],
+            'rully' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['White', 'Sparkling']],
+            'montagny' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['White']],
+            // Burgundy (Mâconnais)
+            'pouilly-fuisse' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['White'], 'typicalGrapes' => ['Chardonnay']],
+            'saint-veran' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['White']],
+            'macon' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['White', 'Red']],
+            'macon-villages' => ['region' => 'Burgundy', 'country' => 'France', 'wineTypes' => ['White']],
+
+            // ─────────────────────────────────────────────────────
+            // RHÔNE APPELLATIONS (Northern)
+            // ─────────────────────────────────────────────────────
             'cote-rotie' => ['region' => 'Rhône', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Syrah']],
+            'hermitage' => ['region' => 'Rhône', 'country' => 'France', 'wineTypes' => ['Red', 'White'], 'typicalGrapes' => ['Syrah']],
+            'crozes-hermitage' => ['region' => 'Rhône', 'country' => 'France', 'wineTypes' => ['Red', 'White'], 'typicalGrapes' => ['Syrah']],
+            'saint-joseph' => ['region' => 'Rhône', 'country' => 'France', 'wineTypes' => ['Red', 'White'], 'typicalGrapes' => ['Syrah']],
+            'cornas' => ['region' => 'Rhône', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Syrah']],
+            'condrieu' => ['region' => 'Rhône', 'country' => 'France', 'wineTypes' => ['White'], 'typicalGrapes' => ['Viognier']],
+            'chateau-grillet' => ['region' => 'Rhône', 'country' => 'France', 'wineTypes' => ['White'], 'typicalGrapes' => ['Viognier']],
+            // Rhône (Southern)
+            'chateauneuf-du-pape' => ['region' => 'Rhône', 'country' => 'France', 'wineTypes' => ['Red', 'White']],
             'gigondas' => ['region' => 'Rhône', 'country' => 'France', 'wineTypes' => ['Red']],
-            // Italian appellations
+            'vacqueyras' => ['region' => 'Rhône', 'country' => 'France', 'wineTypes' => ['Red']],
+            'rasteau' => ['region' => 'Rhône', 'country' => 'France', 'wineTypes' => ['Red', 'Fortified']],
+            'beaumes-de-venise' => ['region' => 'Rhône', 'country' => 'France', 'wineTypes' => ['Red', 'Dessert']],
+            'lirac' => ['region' => 'Rhône', 'country' => 'France', 'wineTypes' => ['Red', 'Rosé']],
+            'tavel' => ['region' => 'Rhône', 'country' => 'France', 'wineTypes' => ['Rosé']],
+            'cotes-du-rhone' => ['region' => 'Rhône', 'country' => 'France', 'wineTypes' => ['Red', 'White', 'Rosé']],
+            'cotes-du-rhone-villages' => ['region' => 'Rhône', 'country' => 'France', 'wineTypes' => ['Red']],
+
+            // ─────────────────────────────────────────────────────
+            // ITALIAN APPELLATIONS
+            // ─────────────────────────────────────────────────────
+            // Piedmont
             'barolo' => ['region' => 'Piedmont', 'country' => 'Italy', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Nebbiolo']],
             'barbaresco' => ['region' => 'Piedmont', 'country' => 'Italy', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Nebbiolo']],
-            'brunello di montalcino' => ['region' => 'Tuscany', 'country' => 'Italy', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Sangiovese']],
+            'barbera-d-asti' => ['region' => 'Piedmont', 'country' => 'Italy', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Barbera']],
+            'gavi' => ['region' => 'Piedmont', 'country' => 'Italy', 'wineTypes' => ['White'], 'typicalGrapes' => ['Cortese']],
+            // Tuscany
+            'brunello-di-montalcino' => ['region' => 'Tuscany', 'country' => 'Italy', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Sangiovese']],
             'chianti' => ['region' => 'Tuscany', 'country' => 'Italy', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Sangiovese']],
+            'chianti-classico' => ['region' => 'Tuscany', 'country' => 'Italy', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Sangiovese']],
+            'vino-nobile-di-montepulciano' => ['region' => 'Tuscany', 'country' => 'Italy', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Sangiovese']],
+            'bolgheri' => ['region' => 'Tuscany', 'country' => 'Italy', 'wineTypes' => ['Red']],
+            // Veneto
             'amarone' => ['region' => 'Veneto', 'country' => 'Italy', 'wineTypes' => ['Red']],
-            // Spanish appellations
-            'rioja alta' => ['region' => 'Rioja', 'country' => 'Spain', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Tempranillo']],
+            'valpolicella' => ['region' => 'Veneto', 'country' => 'Italy', 'wineTypes' => ['Red']],
+            'soave' => ['region' => 'Veneto', 'country' => 'Italy', 'wineTypes' => ['White']],
+            'prosecco' => ['region' => 'Veneto', 'country' => 'Italy', 'wineTypes' => ['Sparkling']],
+
+            // ─────────────────────────────────────────────────────
+            // SPANISH APPELLATIONS
+            // ─────────────────────────────────────────────────────
+            'rioja' => ['region' => 'Rioja', 'country' => 'Spain', 'wineTypes' => ['Red', 'White'], 'typicalGrapes' => ['Tempranillo']],
+            'rioja-alta' => ['region' => 'Rioja', 'country' => 'Spain', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Tempranillo']],
+            'rioja-alavesa' => ['region' => 'Rioja', 'country' => 'Spain', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Tempranillo']],
+            'ribera-del-duero' => ['region' => 'Ribera del Duero', 'country' => 'Spain', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Tempranillo']],
             'priorat' => ['region' => 'Catalonia', 'country' => 'Spain', 'wineTypes' => ['Red']],
+            'rias-baixas' => ['region' => 'Galicia', 'country' => 'Spain', 'wineTypes' => ['White'], 'typicalGrapes' => ['Albariño']],
+            'rueda' => ['region' => 'Castilla y León', 'country' => 'Spain', 'wineTypes' => ['White'], 'typicalGrapes' => ['Verdejo']],
+
+            // ─────────────────────────────────────────────────────
+            // LOIRE APPELLATIONS
+            // ─────────────────────────────────────────────────────
+            'sancerre' => ['region' => 'Loire', 'country' => 'France', 'wineTypes' => ['White', 'Red'], 'typicalGrapes' => ['Sauvignon Blanc']],
+            'pouilly-fume' => ['region' => 'Loire', 'country' => 'France', 'wineTypes' => ['White'], 'typicalGrapes' => ['Sauvignon Blanc']],
+            'vouvray' => ['region' => 'Loire', 'country' => 'France', 'wineTypes' => ['White', 'Sparkling'], 'typicalGrapes' => ['Chenin Blanc']],
+            'chinon' => ['region' => 'Loire', 'country' => 'France', 'wineTypes' => ['Red'], 'typicalGrapes' => ['Cabernet Franc']],
+            'muscadet' => ['region' => 'Loire', 'country' => 'France', 'wineTypes' => ['White'], 'typicalGrapes' => ['Melon de Bourgogne']],
         ];
 
         $normalized = strtolower(str_replace([' ', '-', '_'], '', $text));
@@ -394,6 +490,44 @@ class InferenceEngine
         }
 
         return null;
+    }
+
+    // ─────────────────────────────────────────────────────
+    // REGION ROLLUP (WIN-148)
+    // ─────────────────────────────────────────────────────
+
+    /**
+     * Roll up village/appellation to parent region
+     *
+     * If the given region string is actually a village-level appellation
+     * (e.g., "Margaux", "Pauillac", "Gevrey-Chambertin"), returns the
+     * parent wine region (e.g., "Bordeaux", "Burgundy").
+     *
+     * If already a region or not recognized, returns the original value.
+     *
+     * @param string $region Region string to check
+     * @return array{region: string, appellation: string|null} Rolled-up region and original appellation if different
+     */
+    public function rollUpRegion(string $region): array
+    {
+        $regionLower = strtolower($region);
+
+        // Already a known region? Return as-is
+        if (isset(self::REGIONS[$regionLower])) {
+            return ['region' => self::REGIONS[$regionLower]['name'], 'appellation' => null];
+        }
+
+        // Try to match as an appellation (uses both DB and static fallback)
+        $match = $this->matchAppellation($region);
+        if ($match && isset($match['region']) && strtolower($match['region']) !== $regionLower) {
+            return [
+                'region' => $match['region'],
+                'appellation' => $region  // Preserve original as appellation
+            ];
+        }
+
+        // Not recognized - return as-is
+        return ['region' => $region, 'appellation' => null];
     }
 
     // ─────────────────────────────────────────────────────
