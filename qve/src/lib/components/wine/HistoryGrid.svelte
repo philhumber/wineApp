@@ -80,10 +80,12 @@
 
   /* ─────────────────────────────────────────────────────────
    * COMPACT VIEW (Grid Layout)
+   * Mobile-first with fixed column counts to prevent overflow
+   * (auto-fill/minmax causes issues on mobile - see CLAUDE.md)
    * ───────────────────────────────────────────────────────── */
   .history-grid.view-compact {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: var(--space-4);
   }
 
@@ -95,33 +97,27 @@
   /* ─────────────────────────────────────────────────────────
    * RESPONSIVE COLUMN COUNTS
    * ───────────────────────────────────────────────────────── */
-  @media (min-width: 1200px) {
-    .history-grid.view-compact {
-      grid-template-columns: repeat(6, 1fr);
-    }
-  }
-
-  @media (min-width: 992px) and (max-width: 1199px) {
-    .history-grid.view-compact {
-      grid-template-columns: repeat(5, 1fr);
-    }
-  }
-
-  @media (min-width: 768px) and (max-width: 991px) {
-    .history-grid.view-compact {
-      grid-template-columns: repeat(4, 1fr);
-    }
-  }
-
-  @media (min-width: 480px) and (max-width: 767px) {
+  @media (min-width: 560px) {
     .history-grid.view-compact {
       grid-template-columns: repeat(3, 1fr);
     }
   }
 
-  @media (max-width: 479px) {
+  @media (min-width: 768px) {
     .history-grid.view-compact {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  @media (min-width: 992px) {
+    .history-grid.view-compact {
+      grid-template-columns: repeat(5, 1fr);
+    }
+  }
+
+  @media (min-width: 1200px) {
+    .history-grid.view-compact {
+      grid-template-columns: repeat(6, 1fr);
     }
   }
 
