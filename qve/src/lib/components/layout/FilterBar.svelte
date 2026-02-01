@@ -26,16 +26,21 @@
 
   // Sort options for cellar view
   const sortOptions = [
-    { key: 'wineName', label: 'Wine Name' },  
+    { key: 'wineName', label: 'Wine Name' },
     { key: 'producer', label: 'Producer' },
     { key: 'region', label: 'Region' },
-    { key: 'country', label: 'Country' },    
+    { key: 'country', label: 'Country' },
     { key: 'type', label: 'Type' },
-    { key: 'year', label: 'Vintage' },    
-    { key: 'rating', label: 'Rating' },
+    { key: 'year', label: 'Vintage' },
     { key: 'bottles', label: 'No. Bottles' }
   ];
 
+  // Rating sort options (grouped)
+  const ratingSortOptions = [
+    { key: 'rating', label: 'Aggregate' },
+    { key: 'ratingOverall', label: 'Overall' },
+    { key: 'ratingValue', label: 'Value' }
+  ];
   // Cost sort options (grouped)
   const costSortOptions = [
     { key: 'priceBottle', label: 'Per Bottle' },
@@ -222,6 +227,11 @@
         {#each sortOptions as opt}
           <option value={opt.key}>{opt.label}</option>
         {/each}
+        <optgroup label="Rating">
+          {#each ratingSortOptions as opt}
+            <option value={opt.key}>{opt.label}</option>
+          {/each}
+        </optgroup>
         <optgroup label="Cost">
           {#each costSortOptions as opt}
             <option value={opt.key}>{opt.label}</option>

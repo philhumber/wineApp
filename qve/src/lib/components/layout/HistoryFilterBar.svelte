@@ -23,17 +23,26 @@
 
   // Sort options for history view
   const sortOptions = [
-    { key: 'drinkDate', label: 'Date' },
-    { key: 'overallRating', label: 'Rating' },
-    { key: 'valueRating', label: 'Value' },
-    { key: 'wineName', label: 'Name' },
-    { key: 'wineType', label: 'Type' },
-    { key: 'country', label: 'Country' },
+    { key: 'drinkDate', label: 'Drink Date' },
+    { key: 'buyAgain', label: 'Buy Again' },
+    { key: 'wineName', label: 'Wine Name' },    
     { key: 'producer', label: 'Producer' },
     { key: 'region', label: 'Region' },
-    { key: 'year', label: 'Vintage' },
-    { key: 'price', label: 'Bottle' },
-    { key: 'buyAgain', label: 'Buy Again' }
+    { key: 'country', label: 'Country' },
+    { key: 'wineType', label: 'Type' },
+    { key: 'year', label: 'Vintage' }
+  ];
+
+  // Rating sort options (grouped)
+  const ratingSortOptions = [
+    { key: 'rating', label: 'Aggregate' },
+    { key: 'overallRating', label: 'Overall' },
+    { key: 'valueRating', label: 'Value' }
+  ];
+
+  // Cost sort options (grouped)
+  const costSortOptions = [
+    { key: 'price', label: 'Bottle Price' }
   ];
 
   // Handle sort change
@@ -206,6 +215,16 @@
         {#each sortOptions as opt}
           <option value={opt.key}>{opt.label}</option>
         {/each}
+        <optgroup label="Rating">
+          {#each ratingSortOptions as opt}
+            <option value={opt.key}>{opt.label}</option>
+          {/each}
+        </optgroup>
+        <optgroup label="Cost">
+          {#each costSortOptions as opt}
+            <option value={opt.key}>{opt.label}</option>
+          {/each}
+        </optgroup>
       </select>
       <Icon name="chevron-down" size={12} />
     </div>
