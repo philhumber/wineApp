@@ -12,6 +12,7 @@
 
   const dispatch = createEventDispatcher<{
     addBottle: { wine: DrunkWine };
+    editRating: { wine: DrunkWine };
   }>();
 
   function handleExpand(event: CustomEvent<{ key: string }>) {
@@ -26,6 +27,11 @@
   // Forward addBottle event from HistoryCard
   function handleAddBottle(event: CustomEvent<{ wine: DrunkWine }>) {
     dispatch('addBottle', event.detail);
+  }
+
+  // Forward editRating event from HistoryCard
+  function handleEditRating(event: CustomEvent<{ wine: DrunkWine }>) {
+    dispatch('editRating', event.detail);
   }
 
   // Calculate stagger delay (max 350ms for smoother UX)
@@ -48,6 +54,7 @@
       on:expand={handleExpand}
       on:collapse={handleCollapse}
       on:addBottle={handleAddBottle}
+      on:editRating={handleEditRating}
       --animation-delay={getStaggerDelay(index)}
     />
   {/each}

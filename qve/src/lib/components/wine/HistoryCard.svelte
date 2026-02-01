@@ -24,6 +24,7 @@
     expand: { key: string };
     collapse: { key: string };
     addBottle: { wine: DrunkWine };
+    editRating: { wine: DrunkWine };
   }>();
 
   // Unique key for this drunk wine entry (wineID + bottleID)
@@ -47,6 +48,11 @@
   function handleAddBottle(event: MouseEvent) {
     event.stopPropagation();
     dispatch('addBottle', { wine });
+  }
+
+  function handleEditRating(event: MouseEvent) {
+    event.stopPropagation();
+    dispatch('editRating', { wine });
   }
 
   function handleImageClick(event: CustomEvent) {
@@ -166,8 +172,12 @@
     </div>
   </div>
 
-  <!-- Add Bottle action button -->
+  <!-- Action buttons -->
   <div class="card-actions">
+    <button class="action-btn" title="Edit rating" on:click={handleEditRating}>
+      <Icon name="edit" size={14} />
+      <span class="btn-text">Edit Rating</span>
+    </button>
     <button class="action-btn" title="Add another bottle" on:click={handleAddBottle}>
       <Icon name="plus" size={14} />
       <span class="btn-text">Add Bottle</span>
