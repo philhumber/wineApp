@@ -180,6 +180,7 @@ export interface AddWinePayload {
   wineName: string;
   wineYear: string;
   wineType: string;
+  appellation?: string; // WIN-148: Specific appellation (e.g., Margaux)
   wineDescription?: string;
   wineTasting?: string;
   winePairing?: string;
@@ -231,7 +232,7 @@ export interface DrinkBottlePayload {
   overallRating: number;
   valueRating: number;
   drinkDate: string;
-  buyAgain?: boolean;
+  buyAgain?: 0 | 1;
   notes?: string;
   // Optional ratings (0-5 scale)
   complexityRating?: number;
@@ -354,6 +355,7 @@ export interface AgentParsedWine {
   wineName: string | null;
   vintage: string | null;
   region: string | null;
+  appellation: string | null; // WIN-148: Specific appellation (e.g., Margaux) if different from region
   country: string | null;
   wineType: AgentWineType | null;
   grapes: string[] | null;

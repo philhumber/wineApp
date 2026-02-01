@@ -74,7 +74,7 @@
     $winePairing = trim($data['winePairing']);
     $winePicture = trim($data['winePicture']);
     $wineType = trim($data['wineType']);
-    //TODO: Has to be here
+    $appellation = !empty($data['appellation']) ? trim($data['appellation']) : null;  // WIN-148: Specific appellation
 
     $pdo->beginTransaction();
 
@@ -232,14 +232,15 @@
 
         //add the wine  as we know it is new and new wine data is there
 
-        $stmt = $pdo->prepare("INSERT INTO `wine` (wineName, wineTypeID, producerID, year, description, tastingNotes, pairing, pictureURL, enrichment_status)
-                                VALUES (:wineName, :wineTypeID, :producerID, :wineYear, :wineDescription, :wineTasting, :winePairing, :winePicture, 'pending')");    
+        $stmt = $pdo->prepare("INSERT INTO `wine` (wineName, wineTypeID, producerID, year, appellation, description, tastingNotes, pairing, pictureURL, enrichment_status)
+                                VALUES (:wineName, :wineTypeID, :producerID, :wineYear, :appellation, :wineDescription, :wineTasting, :winePairing, :winePicture, 'pending')");
 
         $stmt->execute([
             ':wineName' => $newWineName,
             ':wineTypeID' => $wineTypeID,
-            ':producerID' => $producerID, // Make sure $regionID is a valid array
+            ':producerID' => $producerID,
             ':wineYear' => $wineYear,
+            ':appellation' => $appellation,  // WIN-148: Specific appellation
             ':wineDescription' => $wineDescription,
             ':wineTasting' => $wineTasting,
             ':winePairing' => $winePairing,
