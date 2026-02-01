@@ -38,6 +38,7 @@ export interface ProducerFormData {
 export interface WineFormData {
 	wineName: string;
 	wineYear: string;
+	isNonVintage: boolean;  // WIN-176: True for NV wines
 	wineType: string;
 	wineTypeID: number | null;
 	// AI fields (optional)
@@ -153,6 +154,7 @@ const initialState: WizardState = {
 	wine: {
 		wineName: '',
 		wineYear: '',
+		isNonVintage: false,  // WIN-176
 		wineType: '',
 		wineTypeID: null,
 		description: '',
@@ -268,7 +270,7 @@ function createAddWineStore() {
 		}));
 	};
 
-	const updateWine = (field: keyof WineFormData, value: string | number | File | null): void => {
+	const updateWine = (field: keyof WineFormData, value: string | number | boolean | File | null): void => {
 		update((s) => ({
 			...s,
 			wine: { ...s.wine, [field]: value },
@@ -322,6 +324,7 @@ function createAddWineStore() {
 				...s.wine,
 				wineName: wine.wineName,
 				wineYear: wine.year || '',
+				isNonVintage: wine.isNonVintage || false,  // WIN-176
 				wineType: wine.wineType
 			}
 		}));
@@ -748,6 +751,7 @@ function createAddWineStore() {
 				findWine: state.selected.wine?.wineName || '',
 				wineName: state.mode.wine === 'create' ? state.wine.wineName : '',
 				wineYear: state.wine.wineYear || '',
+				isNonVintage: state.wine.isNonVintage,  // WIN-176
 				wineType: state.wine.wineType || '',
 				wineDescription: state.wine.description || '',
 				wineTasting: state.wine.tastingNotes || '',
@@ -837,11 +841,12 @@ function createAddWineStore() {
 					...s.producer,
 					producerName: parsed.producer || ''
 				},
-				// Populate wine
+				// Populate wine (WIN-176: Handle NV wines)
 				wine: {
 					...s.wine,
 					wineName: parsed.wineName || '',
-					wineYear: parsed.vintage || '',
+					wineYear: (parsed.vintage && parsed.vintage.toUpperCase() !== 'NV') ? parsed.vintage : '',
+					isNonVintage: !parsed.vintage || parsed.vintage.toUpperCase() === 'NV',
 					wineType: wineType,
 					// Store grapes in description for now (could add dedicated field later)
 					description: grapesString ? `Grapes: ${grapesString}` : ''

@@ -11,6 +11,7 @@ export interface Wine {
   wineID: number;
   wineName: string;
   year: string | null;              // PHP returns 'year' not 'wineYear'
+  isNonVintage: boolean;            // WIN-176: True for NV wines
   pictureURL: string | null;        // PHP returns 'pictureURL' not 'winePicture'
   description: string | null;       // PHP returns 'description' not 'wineDescription'
   tastingNotes: string | null;
@@ -179,6 +180,7 @@ export interface AddWinePayload {
   findWine: string;
   wineName: string;
   wineYear: string;
+  isNonVintage?: boolean;           // WIN-176: True for NV wines
   wineType: string;
   appellation?: string; // WIN-148: Specific appellation (e.g., Margaux)
   wineDescription?: string;
@@ -210,6 +212,7 @@ export interface UpdateWinePayload {
   wineName: string;
   wineType: string;          // PHP expects 'wineType' (name), not wineTypeID
   wineYear?: string;
+  isNonVintage?: boolean;    // WIN-176: True for NV wines
   wineDescription: string;
   wineTasting: string;       // PHP expects 'wineTasting'
   winePairing: string;       // PHP expects 'winePairing'

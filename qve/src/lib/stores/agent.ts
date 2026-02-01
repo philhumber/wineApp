@@ -100,10 +100,11 @@ function storeSessionState(state: AgentSessionState, immediate = false): void {
 			// Strip transient UI state before persisting
 			const cleanState: AgentSessionState = {
 				...state,
-				// Strip ObjectURLs from messages (they won't work after reload)
+				// Strip ObjectURLs and isNew flag from messages (WIN-168: prevent re-animation on reload)
 				messages: state.messages.map((msg) => ({
 					...msg,
-					imageUrl: msg.imageUrl?.startsWith('data:') ? msg.imageUrl : undefined
+					imageUrl: msg.imageUrl?.startsWith('data:') ? msg.imageUrl : undefined,
+					isNew: false
 				}))
 			};
 
@@ -123,7 +124,8 @@ function storeSessionState(state: AgentSessionState, immediate = false): void {
 			try {
 				const minimalState: AgentSessionState = {
 					version: SESSION_VERSION,
-					messages: state.messages.slice(-10),
+					// Strip isNew to prevent re-animation on reload (WIN-168)
+					messages: state.messages.slice(-10).map(m => ({ ...m, isNew: false })),
 					phase: state.phase,
 					lastResult: state.lastResult,
 					lastImageData: null,
@@ -177,6 +179,7 @@ export interface AgentAddProducerData {
 export interface AgentAddWineData {
 	wineName: string;
 	wineYear: string;
+	isNonVintage?: boolean;  // WIN-176: True for NV wines
 	wineType: string; // Must match DB winetype table
 	producerName?: string; // For context when no producerID yet
 }
@@ -309,6 +312,8 @@ export interface AgentMessage {
 	// Existing wine choice fields (WIN-145)
 	existingWineId?: number;
 	existingBottles?: number;
+	// WIN-168: Typewriter animation flag
+	isNew?: boolean;
 }
 
 /** Context for augmentation (Not Correct flow) */
@@ -514,7 +519,8 @@ function createAgentStore() {
 			// Restore session - but fix orphaned loading states
 			update((state) => ({
 				...state,
-				messages: storedSession.messages,
+				// Strip isNew flag to prevent re-animation on reload (WIN-168)
+				messages: storedSession.messages.map(m => ({ ...m, isNew: false })),
 				lastResult: storedSession.lastResult,
 				augmentationContext: storedSession.augmentationContext,
 				enrichmentData: storedSession.enrichmentData,
@@ -1005,7 +1011,8 @@ function createAgentStore() {
 					role: 'agent',
 					type: 'text',
 					content: 'I need at least the producer and wine name to find more information.',
-					timestamp: Date.now()
+					timestamp: Date.now(),
+					isNew: true
 				};
 				update((s) => ({
 					...s,
@@ -1032,6 +1039,7 @@ function createAgentStore() {
 					type: 'wine_enrichment',
 					content: "Here's what I found about this wine.",
 					timestamp: Date.now(),
+					isNew: true,
 					enrichmentData: result.data ?? undefined,
 					enrichmentSource: result.source,
 					chips: [
@@ -1059,7 +1067,8 @@ function createAgentStore() {
 					role: 'agent',
 					type: 'text',
 					content: errorInfo.userMessage || "I couldn't find additional information about this wine. You can still add it to your cellar.",
-					timestamp: Date.now()
+					timestamp: Date.now(),
+					isNew: true
 				};
 
 				update((s) => ({
@@ -1128,6 +1137,7 @@ function createAgentStore() {
 				type: 'greeting',
 				content: greeting,
 				timestamp: Date.now(),
+				isNew: true,
 				chips: [
 					{ id: 'identify', label: 'Identify', icon: 'search', action: 'identify' },
 					{ id: 'recommend', label: 'Recommend', icon: 'sparkle', action: 'recommend' }
@@ -1157,7 +1167,8 @@ function createAgentStore() {
 			const fullMessage: AgentMessage = {
 				...message,
 				id: generateMessageId(),
-				timestamp: Date.now()
+				timestamp: Date.now(),
+				isNew: true
 			};
 
 			update((state) => {
@@ -1245,7 +1256,8 @@ function createAgentStore() {
 				role: 'agent',
 				type: 'text',
 				content: '— New conversation —',
-				timestamp: Date.now()
+				timestamp: Date.now(),
+				isNew: true
 			};
 
 			const greetingMessage: AgentMessage = {
@@ -1254,6 +1266,7 @@ function createAgentStore() {
 				type: 'greeting',
 				content: greeting,
 				timestamp: Date.now(),
+				isNew: true,
 				chips: [
 					{ id: 'identify', label: 'Identify', icon: 'search', action: 'identify' },
 					{ id: 'recommend', label: 'Recommend', icon: 'sparkle', action: 'recommend' }

@@ -283,7 +283,7 @@ function checkWineDuplicates($pdo, $name, $normalizedName, $producerId = null, $
 
     // Get wines (filtered by producer if specified) for fuzzy matching
     $stmt = $pdo->prepare("
-        SELECT w.wineID, w.wineName, w.year, p.producerName, p.producerID,
+        SELECT w.wineID, w.wineName, w.year, w.isNonVintage, p.producerName, p.producerID,
                (SELECT COUNT(*) FROM bottles b WHERE b.wineID = w.wineID AND b.bottleDrunk = 0) as bottleCount
         FROM wine w
         LEFT JOIN producers p ON w.producerID = p.producerID
@@ -302,7 +302,7 @@ function checkWineDuplicates($pdo, $name, $normalizedName, $producerId = null, $
         // Exact match (case-insensitive, accent-insensitive)
         if ($inputNorm === $candidateNorm) {
             // This is an exact wine name match for this producer
-            // Set existingWineId and existingBottles for "Add Bottle" redirect
+            // Set exactMatch for display purposes
             if (!$result['exactMatch']) {
                 $result['exactMatch'] = [
                     'id' => (int)$row['wineID'],
@@ -311,9 +311,21 @@ function checkWineDuplicates($pdo, $name, $normalizedName, $producerId = null, $
                 ];
             }
 
-            // Track bottles for this producer's wine with this name
-            // If user enters same wine name for same producer, they should add bottle instead
-            if ($bottleCount > 0) {
+            // WIN-176: Year-aware duplicate detection
+            // Only set existingWineId if name + producer + year all match
+            $inputIsNV = ($year === null || strtoupper($year ?? '') === 'NV');
+            $rowIsNV = ($row['year'] === null || $row['isNonVintage']);
+
+            $yearMatches = false;
+            if ($inputIsNV && $rowIsNV) {
+                $yearMatches = true;  // Both NV
+            } else if (!$inputIsNV && !$rowIsNV) {
+                $yearMatches = ((int)$row['year'] === (int)$year);  // Both have years, compare
+            }
+            // If one is NV and other isn't, yearMatches stays false
+
+            // Only redirect to "Add Bottle" if exact match including year
+            if ($yearMatches && $bottleCount > 0) {
                 $result['existingBottles'] = $bottleCount;
                 $result['existingWineId'] = (int)$row['wineID'];
             }
