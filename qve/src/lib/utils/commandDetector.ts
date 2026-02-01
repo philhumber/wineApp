@@ -3,7 +3,7 @@
  * Intercepts conversational commands before they hit the identification API
  */
 
-export type CommandType = 'start_over' | 'cancel' | 'go_back' | 'try_again';
+export type CommandType = 'start_over' | 'cancel' | 'go_back' | 'try_again' | 'help';
 
 export interface CommandDetectionResult {
 	type: 'command' | 'wine_query';
@@ -32,7 +32,8 @@ const COMMAND_PATTERNS: Record<CommandType, string[]> = {
 	],
 	cancel: ['stop', 'cancel', 'never mind', 'nevermind', 'forget it', 'quit', 'exit'],
 	go_back: ['back', 'go back', 'undo', 'previous'],
-	try_again: ['try again', 'retry', 'one more time']
+	try_again: ['try again', 'retry', 'one more time'],
+	help: ['help', 'help me', 'what can you do', 'how does this work', 'how do i use this', 'instructions']
 };
 
 // Expanded wine indicators to prevent false positives on international wines
