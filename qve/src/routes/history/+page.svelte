@@ -11,9 +11,11 @@
     drunkWineCount,
     filteredDrunkWineCount,
     clearHistoryFilters,
-    toasts,
     modal
   } from '$stores';
+
+  // Track if we had an editRating modal open (to refresh on close)
+  let wasEditingRating = false;
 
   // Import components
   import { Header, HistoryGrid } from '$lib/components';
@@ -48,6 +50,23 @@
       wine.regionName,
       wine.countryName
     );
+  }
+
+  // Handle Edit Rating action from history card
+  function handleEditRating(event: CustomEvent<{ wine: DrunkWine }>) {
+    const { wine } = event.detail;
+    modal.openEditRating(wine);
+  }
+
+  // Watch modal state - refresh history when editRating modal closes
+  $: {
+    if ($modal.type === 'editRating') {
+      wasEditingRating = true;
+    } else if (wasEditingRating && $modal.type === null) {
+      // Modal just closed after editing, refresh history
+      wasEditingRating = false;
+      fetchDrunkWines();
+    }
   }
 </script>
 
@@ -87,7 +106,7 @@
         </button>
       </div>
     {:else}
-      <HistoryGrid wines={$sortedDrunkWines} on:addBottle={handleAddBottle} />
+      <HistoryGrid wines={$sortedDrunkWines} on:addBottle={handleAddBottle} on:editRating={handleEditRating} />
     {/if}
   </section>
 </main>

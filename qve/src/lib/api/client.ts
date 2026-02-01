@@ -19,6 +19,7 @@ import type {
   UpdateWinePayload,
   UpdateBottlePayload,
   DrinkBottlePayload,
+  UpdateRatingPayload,
   AIRegionData,
   AIProducerData,
   AIWineData,
@@ -424,6 +425,20 @@ class WineApiClient {
 
     if (!response.success) {
       throw new Error(response.message || 'Failed to record drink');
+    }
+  }
+
+  /**
+   * Update an existing rating
+   */
+  async updateRating(data: UpdateRatingPayload): Promise<void> {
+    const response = await this.fetchJSON<void>(
+      'updateRating.php',
+      data as unknown as Record<string, unknown>
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to update rating');
     }
   }
 

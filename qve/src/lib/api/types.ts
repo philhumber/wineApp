@@ -61,6 +61,8 @@ export interface Bottle {
 }
 
 export interface DrunkWine extends Wine {
+  // Rating ID (for updates)
+  ratingID: number;
   // Bottle info
   bottleID: number;
   bottleSize: string;
@@ -230,6 +232,22 @@ export interface UpdateBottlePayload {
 }
 
 export interface DrinkBottlePayload {
+  wineID: number;
+  bottleID: number;
+  overallRating: number;
+  valueRating: number;
+  drinkDate: string;
+  buyAgain?: 0 | 1;
+  notes?: string;
+  // Optional ratings (0-5 scale)
+  complexityRating?: number;
+  drinkabilityRating?: number;
+  surpriseRating?: number;
+  foodPairingRating?: number;
+}
+
+export interface UpdateRatingPayload {
+  ratingID: number;
   wineID: number;
   bottleID: number;
   overallRating: number;

@@ -4,7 +4,7 @@
  */
 
 import { writable, derived, get } from 'svelte/store';
-import type { Wine } from '$lib/api/types';
+import type { Wine, DrunkWine } from '$lib/api/types';
 
 // ─────────────────────────────────────────────────────────
 // TYPES
@@ -12,6 +12,7 @@ import type { Wine } from '$lib/api/types';
 
 export type ModalType =
   | 'drink'          // Drink & rate bottle
+  | 'editRating'     // Edit existing rating
   | 'addBottle'      // Add bottle to existing wine
   | 'edit'           // Edit wine or bottle
   | 'confirm'        // Confirmation dialog
@@ -118,6 +119,15 @@ function createModalStore() {
     openDrink: (wine: Wine): void => {
       const pushed = pushHistoryForModal('drink');
       set({ type: 'drink', data: { wine }, pushedHistory: pushed });
+    },
+
+    /**
+     * Open edit rating modal for an existing rating
+     * Pass the full DrunkWine object to pre-populate the form
+     */
+    openEditRating: (drunkWine: DrunkWine): void => {
+      const pushed = pushHistoryForModal('editRating');
+      set({ type: 'editRating', data: { drunkWine }, pushedHistory: pushed });
     },
 
     /**

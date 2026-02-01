@@ -12,7 +12,7 @@
   import ConfirmModal from './ConfirmModal.svelte';
   import SettingsModal from './SettingsModal.svelte';
   import ImageLightboxModal from './ImageLightboxModal.svelte';
-  import type { Wine } from '$lib/api/types';
+  import type { Wine, DrunkWine } from '$lib/api/types';
   import type { ConfirmModalData } from '$lib/stores';
 
   function handleClose() {
@@ -41,6 +41,13 @@
 
 {#if modalType === 'drink' && modalData?.wine}
   <DrinkRateModal wine={modalData.wine as Wine} on:close={handleClose} />
+{:else if modalType === 'editRating' && modalData?.drunkWine}
+  <DrinkRateModal
+    drunkWine={modalData.drunkWine as DrunkWine}
+    isEdit={true}
+    on:close={handleClose}
+    on:rated={handleClose}
+  />
 {:else if modalType === 'addBottle' && modalData?.wineID}
   <AddBottleModal
     wineID={modalData.wineID as number}
