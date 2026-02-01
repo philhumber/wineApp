@@ -133,6 +133,10 @@
 			<!-- Match confirmed message -->
 			<p class="agent-text">{message.content}</p>
 			<!-- No chips - auto-advance after brief display -->
+		{:else if message.type === 'existing_wine_choice'}
+			<!-- WIN-145: Wine exists - add bottle or create new? -->
+			<p class="agent-text">{message.content}</p>
+			<!-- ActionChips: "Add Another Bottle" | "Create New Wine" provided via message.chips -->
 		{:else if message.type === 'manual_entry'}
 			<!-- Manual entry form for missing fields -->
 			<p class="agent-text">{message.content}</p>
