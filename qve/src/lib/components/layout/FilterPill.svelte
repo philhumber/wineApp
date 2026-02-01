@@ -16,19 +16,20 @@
     click: void;
   }>();
 
-  // Track touch state to distinguish taps from scrolls
-  let touchHandled = false;
+  // Track touch for tap detection (iOS Chrome iPhone workaround)
   let touchStartX = 0;
   let touchStartY = 0;
-  const SCROLL_THRESHOLD = 10; // pixels - if moved more than this, it's a scroll
+  let touchStartTime = 0;
+  let touchTriggered = false;
+  const TAP_THRESHOLD = 10; // pixels
+  const TAP_TIMEOUT = 300; // ms
 
   function handleClick() {
-    // Ignore click if already handled by touch
-    if (touchHandled) {
-      touchHandled = false;
+    // Skip if already handled by touch
+    if (touchTriggered) {
+      touchTriggered = false;
       return;
     }
-
     if (!disabled) {
       dispatch('click');
     }
@@ -38,36 +39,36 @@
     const touch = event.touches[0];
     touchStartX = touch.clientX;
     touchStartY = touch.clientY;
+    touchStartTime = Date.now();
   }
 
-  // iOS fast tap handler - only fires if touch didn't move (not a scroll)
   function handleTouchEnd(event: TouchEvent) {
-    if (disabled || touchHandled) return;
+    if (disabled) return;
 
     const touch = event.changedTouches[0];
     const deltaX = Math.abs(touch.clientX - touchStartX);
     const deltaY = Math.abs(touch.clientY - touchStartY);
+    const elapsed = Date.now() - touchStartTime;
 
-    // If touch moved significantly, it was a scroll - don't trigger click
-    if (deltaX > SCROLL_THRESHOLD || deltaY > SCROLL_THRESHOLD) {
-      return;
+    // Only trigger if it was a quick tap without much movement
+    if (deltaX < TAP_THRESHOLD && deltaY < TAP_THRESHOLD && elapsed < TAP_TIMEOUT) {
+      event.preventDefault();
+      touchTriggered = true;
+      dispatch('click');
+
+      // Reset flag after a delay
+      setTimeout(() => {
+        touchTriggered = false;
+      }, 500);
     }
-
-    event.preventDefault(); // Prevent delayed click
-    event.stopImmediatePropagation(); // Stop all other handlers
-    touchHandled = true;
-    dispatch('click');
-
-    // Reset flag after potential click event (iOS can have up to 300ms delay)
-    setTimeout(() => {
-      touchHandled = false;
-    }, 500);
   }
 
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      handleClick();
+      if (!disabled) {
+        dispatch('click');
+      }
     }
   }
 </script>
@@ -110,11 +111,16 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    /* Ensure taps are handled as clicks, not scroll gestures (iOS) */
+    touch-action: manipulation;
   }
 
-  .filter-pill:hover:not(:disabled) {
-    border-color: var(--accent-subtle);
-    color: var(--text-secondary);
+  /* Only apply hover styles on devices with actual hover capability (not touch) */
+  @media (hover: hover) {
+    .filter-pill:hover:not(:disabled) {
+      border-color: var(--accent-subtle);
+      color: var(--text-secondary);
+    }
   }
 
   .filter-pill:focus-visible {
@@ -128,9 +134,11 @@
     color: var(--bg);
   }
 
-  .filter-pill.active:hover:not(:disabled) {
-    background: var(--text-secondary);
-    border-color: var(--text-secondary);
+  @media (hover: hover) {
+    .filter-pill.active:hover:not(:disabled) {
+      background: var(--text-secondary);
+      border-color: var(--text-secondary);
+    }
   }
 
   .filter-pill:disabled {

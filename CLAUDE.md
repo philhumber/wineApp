@@ -1,6 +1,6 @@
 # Qvé Wine App - Session Context
 
-**Last Updated**: 2026-01-31
+**Last Updated**: 2026-02-01
 **Status**: Production - Deployed and stable
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
 
@@ -208,19 +208,29 @@ Prevent scroll gestures from triggering click handlers:
 ```typescript
 let touchStartX = 0, touchStartY = 0;
 const SCROLL_THRESHOLD = 10; // pixels
+const TAP_TIMEOUT = 300; // ms
 
 function handleTouchStart(e: TouchEvent) {
   touchStartX = e.touches[0].clientX;
   touchStartY = e.touches[0].clientY;
+  touchStartTime = Date.now();
 }
 
 function handleTouchEnd(e: TouchEvent) {
   const deltaX = Math.abs(e.changedTouches[0].clientX - touchStartX);
   const deltaY = Math.abs(e.changedTouches[0].clientY - touchStartY);
-  if (deltaX > SCROLL_THRESHOLD || deltaY > SCROLL_THRESHOLD) return; // Was scroll
+  const elapsed = Date.now() - touchStartTime;
+  if (deltaX > SCROLL_THRESHOLD || deltaY > SCROLL_THRESHOLD || elapsed > TAP_TIMEOUT) return;
   // Handle tap...
 }
 ```
+
+### FilterDropdown Portal Pattern (FilterDropdown.svelte)
+The dropdown uses a portal to escape the header's stacking context on iOS:
+- Elements are moved to `document.body` on mount via `portalTarget`
+- Dark theme styles must use `:global(html[data-theme="dark"])` selectors with hardcoded colors
+- CSS variables don't inherit reliably when elements are portaled on iOS
+- Theme attribute is copied to portal container but explicit color overrides are required
 
 ### iOS Safari Utility Classes (base.css)
 ```css
@@ -357,20 +367,33 @@ When user adds a wine that already exists in their cellar:
 - WIN-115: Browser tab titles ✓
 - WIN-116: Qve to Qvé branding ✓
 
-### Sprint 7: Collection Features + Data Quality
+### Future: Collection Features + Data Quality
 - WIN-121/126: Collection naming
 - WIN-127: Collection value data
 - WIN-113: Region parent level search
 - WIN-123: Field validation vs SQL
 
-### Sprint 8: Data Management + Infrastructure
+### Sprint 8: Bug Fixes + Agent Polish (Current)
+**Completed:**
+- WIN-173: Fix buyAgain type coercion (boolean to 0/1 for MySQL) ✓
+- WIN-141: Refresh UI after rating bottle (fetch updated wine, auto-switch to All Wines) ✓
+- WIN-167: Fix context removal issues (Opus escalation, quota fallback, race condition) ✓
+- WIN-165: Agent help command ("help", "what can you do") ✓
+- WIN-155: UTF-8 seed data re-import (requires TRUNCATE before re-run) ✓
+
+**Pending (plans created):**
+- WIN-176: Add NV (Non-Vintage) wine support - requires `isNonVintage` DB column
+- WIN-142: Implement rating edit UI - needs ratingID from API + edit modal
+- WIN-168: Agent typewriter text effect - needs `isNew` flag on messages
+
+### Sprint 9: Data Management + Infrastructure
 - WIN-97: Audit functions for all operations
 - WIN-80: Soft delete support
 - WIN-78: JS/PHP caching
 - WIN-108: AI extract region from producer
 - WIN-32: Producer/region info cards
 
-### Sprint 9: Wishlist + Grape Data
+### Sprint 10: Wishlist + Grape Data
 - WIN-109: Wine wishlist
 - WIN-112: Grape data capture
 
