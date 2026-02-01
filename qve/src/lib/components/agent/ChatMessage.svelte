@@ -4,6 +4,7 @@
 	 * Displays a single message in the agent conversation
 	 * Agent: Editorial serif with accent divider
 	 * User: Subtle indented card
+	 * WIN-168: Typewriter effect for agent messages
 	 */
 	import { createEventDispatcher } from 'svelte';
 	import type { AgentMessage, AgentChip } from '$lib/stores';
@@ -17,14 +18,29 @@
 	import ManualEntryForm from './ManualEntryForm.svelte';
 	import { EnrichmentCard } from './enrichment';
 	import { agentAddState } from '$lib/stores';
+	import TypewriterText from './TypewriterText.svelte';
 
 	const dispatch = createEventDispatcher<{
 		chipSelect: { action: string; data?: unknown };
 		selectCandidate: { candidate: AgentCandidate };
 		formReady: void;
+		chipsReady: void;
 	}>();
 
 	export let message: AgentMessage;
+
+	// WIN-168: Chip delay until typewriter animation completes
+	// Message types without TypewriterText should show chips immediately
+	const noTypewriterTypes = ['wine_result', 'bottle_form'];
+	let chipsReady = !message.isNew || noTypewriterTypes.includes(message.type);
+
+	function handleTypewriterComplete() {
+		chipsReady = true;
+		// WIN-168: Notify parent to scroll when chips become visible
+		if (message.chips && message.chips.length > 0) {
+			dispatch('chipsReady');
+		}
+	}
 
 	// For manual entry form - derive missing fields from identified wine
 	$: partialData = $agentAddState?.identified ?? null;
@@ -84,15 +100,27 @@
 			/>
 		{:else if message.type === 'wine_enrichment' && message.enrichmentData}
 			<!-- Wine enrichment card -->
-			<p class="agent-text">{message.content}</p>
+			{#if message.isNew}
+				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{message.content}</p>
+			{/if}
 			<EnrichmentCard data={message.enrichmentData} source={message.enrichmentSource} />
 		{:else if message.type === 'low_confidence'}
 			<!-- Low confidence conversational message -->
-			<p class="agent-text low-confidence-text">{message.content}</p>
+			{#if message.isNew}
+				<TypewriterText text={message.content} className="agent-text low-confidence-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text low-confidence-text">{message.content}</p>
+			{/if}
 			<div class="accent-divider"></div>
 		{:else if message.type === 'partial_match'}
 			<!-- Partial match conversational message with optional mini-cards -->
-			<p class="agent-text partial-match-text">{message.content}</p>
+			{#if message.isNew}
+				<TypewriterText text={message.content} className="agent-text partial-match-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text partial-match-text">{message.content}</p>
+			{/if}
 			{#if message.candidates && message.candidates.length > 0}
 				<CandidateMiniCards
 					candidates={message.candidates}
@@ -102,25 +130,45 @@
 			<div class="accent-divider"></div>
 		{:else if message.type === 'disambiguation' && message.candidates}
 			<!-- Disambiguation list -->
-			<p class="agent-text">{message.content}</p>
+			{#if message.isNew}
+				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{message.content}</p>
+			{/if}
 			<DisambiguationList
 				candidates={message.candidates}
 				on:select={handleSelectCandidate}
 			/>
 		{:else if message.type === 'error'}
 			<!-- Error message -->
-			<p class="agent-text error-text">{message.content}</p>
+			{#if message.isNew}
+				<TypewriterText text={message.content} className="agent-text error-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text error-text">{message.content}</p>
+			{/if}
 		{:else if message.type === 'coming_soon'}
 			<!-- Coming soon message -->
-			<p class="agent-text coming-soon-text">{message.content}</p>
+			{#if message.isNew}
+				<TypewriterText text={message.content} className="agent-text coming-soon-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text coming-soon-text">{message.content}</p>
+			{/if}
 			<div class="accent-divider"></div>
 		{:else if message.type === 'add_confirm'}
 			<!-- Add to cellar confirmation -->
-			<p class="agent-text">{message.content}</p>
+			{#if message.isNew}
+				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{message.content}</p>
+			{/if}
 			<!-- ActionChips provided via message.chips -->
 		{:else if message.type === 'match_selection'}
 			<!-- Match selection list -->
-			<p class="agent-text">{message.content}</p>
+			{#if message.isNew}
+				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{message.content}</p>
+			{/if}
 			{#if message.matches && message.matchType}
 				<MatchSelectionList
 					matches={message.matches}
@@ -131,15 +179,27 @@
 			<!-- ActionChips for "Add as new" | "Help me decide" provided via message.chips -->
 		{:else if message.type === 'match_confirmed'}
 			<!-- Match confirmed message -->
-			<p class="agent-text">{message.content}</p>
+			{#if message.isNew}
+				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{message.content}</p>
+			{/if}
 			<!-- No chips - auto-advance after brief display -->
 		{:else if message.type === 'existing_wine_choice'}
 			<!-- WIN-145: Wine exists - add bottle or create new? -->
-			<p class="agent-text">{message.content}</p>
+			{#if message.isNew}
+				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{message.content}</p>
+			{/if}
 			<!-- ActionChips: "Add Another Bottle" | "Create New Wine" provided via message.chips -->
 		{:else if message.type === 'manual_entry'}
 			<!-- Manual entry form for missing fields -->
-			<p class="agent-text">{message.content}</p>
+			{#if message.isNew}
+				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{message.content}</p>
+			{/if}
 			{#if partialData}
 				<ManualEntryForm
 					{partialData}
@@ -157,19 +217,31 @@
 			/>
 		{:else if message.type === 'enrichment_choice'}
 			<!-- Enrichment choice message -->
-			<p class="agent-text">{message.content}</p>
+			{#if message.isNew}
+				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{message.content}</p>
+			{/if}
 			<!-- ActionChips: "Enrich now" | "Add quickly" provided via message.chips -->
 		{:else if message.type === 'add_complete'}
 			<!-- Add complete success message -->
-			<p class="agent-text success-text">{message.content}</p>
+			{#if message.isNew}
+				<TypewriterText text={message.content} className="agent-text success-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text success-text">{message.content}</p>
+			{/if}
 			<!-- No chips - panel closes and navigates automatically -->
 		{:else}
 			<!-- Standard text message -->
-			<p class="agent-text">{message.content}</p>
+			{#if message.isNew}
+				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{message.content}</p>
+			{/if}
 			<div class="accent-divider"></div>
 		{/if}
 
-		{#if message.chips && message.chips.length > 0}
+		{#if message.chips && message.chips.length > 0 && chipsReady}
 			<ActionChips chips={message.chips} on:select={handleChipSelect} />
 		{/if}
 	{:else}
@@ -185,7 +257,8 @@
 </article>
 
 <style>
-	.chat-message {
+	/* WIN-168: Removed fadeInUp from agent messages - replaced by typewriter effect */
+	.chat-message.user {
 		animation: fadeInUp 0.4s var(--ease-out);
 	}
 
@@ -286,7 +359,7 @@
 
 	/* Reduced motion */
 	@media (prefers-reduced-motion: reduce) {
-		.chat-message {
+		.chat-message.user {
 			animation: none;
 		}
 	}
