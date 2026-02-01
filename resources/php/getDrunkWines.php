@@ -18,6 +18,7 @@
 			wine.wineName,
 			wine.description,
 			wine.pictureURL,
+			wine.enrichment_status,
 			country.countryName,
 			wine.year,
 			wine.tastingNotes,

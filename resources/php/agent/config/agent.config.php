@@ -101,6 +101,10 @@ return [
             'primary' => ['provider' => 'openai', 'model' => 'text-embedding-3-small'],
             'fallback' => null, // Embeddings must be consistent - no fallback
         ],
+        'clarify_match' => [
+            'primary' => ['provider' => 'gemini', 'model' => 'gemini-3-flash-preview'],
+            'fallback' => null,  // Clarification is optional - graceful degradation
+        ],
     ],
 
     // ===========================================

@@ -42,7 +42,7 @@
 	import ChatMessage from './ChatMessage.svelte';
 	import TypingIndicator from './TypingIndicator.svelte';
 	import { EnrichmentSkeleton } from './enrichment';
-	import type { AgentParsedWine, AgentCandidate, AgentAction, AgentEscalationMeta, AgentIdentificationResult, Region, Producer, Wine, AddWinePayload } from '$lib/api/types';
+	import type { AgentParsedWine, AgentCandidate, AgentAction, AgentEscalationMeta, AgentIdentificationResult, Region, Producer, Wine, AddWinePayload, DuplicateMatch } from '$lib/api/types';
 	import { api } from '$lib/api';
 	import { detectCommand, detectChipResponse, isBriefInput, type CommandType } from '$lib/utils';
 
@@ -2086,13 +2086,14 @@
 					break;
 				}
 
-				// Handle clarify/help actions (stub - will be implemented in segment 4)
+				// Handle clarify/help actions
 				if (action.startsWith('clarify:')) {
-					agent.addMessage({
-						role: 'agent',
-						type: 'text',
-						content: 'Help me decide is coming soon. Please select from the list or add as new.'
-					});
+					const [, entityType] = action.split(':');
+					if (!['region', 'producer', 'wine'].includes(entityType)) {
+						console.error('Invalid clarify entity type:', entityType);
+						break;
+					}
+					await handleClarifyRequest(entityType as 'region' | 'producer' | 'wine');
 					break;
 				}
 				break;
@@ -2442,6 +2443,79 @@
 		// No existing wine found - start normal matching flow
 		agent.setPhase('add_region');
 		await startRegionMatching();
+	}
+
+	/**
+	 * Build selection chips for match selection (used by clarify and fallback)
+	 */
+	function buildMatchSelectionChips(
+		matches: DuplicateMatch[],
+		entityType: 'region' | 'producer' | 'wine',
+		idPrefix = 'select'
+	) {
+		return [
+			...matches.slice(0, 3).map((m, i) => ({
+				id: `${idPrefix}_${i}`,
+				label: m.name.length > 20 ? m.name.substring(0, 18) + '...' : m.name,
+				action: `select_match:${entityType}:${m.id}`
+			})),
+			{ id: `${idPrefix}_add_new`, label: 'Add as New', icon: 'plus', action: `add_new:${entityType}` }
+		];
+	}
+
+	/**
+	 * Handle "Help Me Decide" clarification request
+	 * Calls LLM to explain which option best matches the wine being added
+	 * Note: Called from handleChipAction which manages isProcessingAction
+	 */
+	async function handleClarifyRequest(entityType: 'region' | 'producer' | 'wine') {
+		const addState = get(agent).addState;
+		if (!addState) {
+			return;
+		}
+
+		const matches = addState.matches[entityType];
+		if (matches.length === 0) {
+			console.error('Clarify called with no matches for:', entityType);
+			agent.addMessage({
+				role: 'agent',
+				type: 'error',
+				content: 'Something went wrong. Please select "Add as New" instead.',
+				chips: [
+					{ id: 'add_new_fallback', label: 'Add as New', icon: 'plus', action: `add_new:${entityType}` }
+				]
+			});
+			return;
+		}
+
+		agent.setTyping(true);
+
+		try {
+			const result = await api.clarifyMatch({
+				type: entityType,
+				identified: addState.identified,
+				options: matches
+			});
+
+			agent.setTyping(false);
+
+			// Re-display selection chips with the explanation (without "Help Me Decide")
+			agent.addMessage({
+				role: 'agent',
+				type: 'text',
+				content: result.explanation,
+				chips: buildMatchSelectionChips(matches, entityType)
+			});
+		} catch (error) {
+			agent.setTyping(false);
+			console.error(`${entityType} clarification failed:`, error);
+			agent.addMessage({
+				role: 'agent',
+				type: 'error',
+				content: "I couldn't help narrow down the choices. Please select from the list or add as new.",
+				chips: buildMatchSelectionChips(matches, entityType, 'fallback')
+			});
+		}
 	}
 
 	// ─────────────────────────────────────────────────────

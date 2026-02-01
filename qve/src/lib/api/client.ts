@@ -31,6 +31,8 @@ import type {
   AgentIdentificationResult,
   AgentIdentificationResultWithMeta,
   AgentEnrichmentResult,
+  AgentClarificationRequest,
+  AgentClarificationResult,
   AgentErrorResponse
 } from './types';
 import { AgentError } from './types';
@@ -667,6 +669,25 @@ class WineApiClient {
       throw new Error(response.message || 'Enrichment failed');
     }
 
+    return response.data;
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // AI AGENT CLARIFICATION
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Get LLM clarification to help user decide between matching options
+   * Returns an explanation of which option best matches the wine being added
+   */
+  async clarifyMatch(request: AgentClarificationRequest): Promise<AgentClarificationResult> {
+    const response = await this.fetchJSON<AgentClarificationResult>(
+      'agent/clarifyMatch.php',
+      request as unknown as Record<string, unknown>
+    );
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to clarify match');
+    }
     return response.data;
   }
 
