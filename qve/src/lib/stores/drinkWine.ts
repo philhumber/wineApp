@@ -51,6 +51,19 @@ export interface DrinkWineState {
   // Edit mode
   isEditMode: boolean;
   ratingID: number | null;
+
+  // Original values for dirty checking in edit mode
+  originalValues: {
+    overallRating: number;
+    valueRating: number;
+    complexityRating: number;
+    drinkabilityRating: number;
+    surpriseRating: number;
+    foodPairingRating: number;
+    drinkDate: string;
+    buyAgain: boolean;
+    notes: string;
+  } | null;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -89,7 +102,8 @@ function getInitialState(): DrinkWineState {
     errors: {},
 
     isEditMode: false,
-    ratingID: null
+    ratingID: null,
+    originalValues: null
   };
 }
 
@@ -154,6 +168,19 @@ function createDrinkWineStore() {
       // Date from DB is already in YYYY-MM-DD format, use directly
       const drinkDate = drunkWine.drinkDate || new Date().toISOString().split('T')[0];
 
+      // Store original values for dirty checking
+      const originalValues = {
+        overallRating: drunkWine.overallRating || 0,
+        valueRating: drunkWine.valueRating || 0,
+        complexityRating: drunkWine.complexityRating || 0,
+        drinkabilityRating: drunkWine.drinkabilityRating || 0,
+        surpriseRating: drunkWine.surpriseRating || 0,
+        foodPairingRating: drunkWine.foodPairingRating || 0,
+        drinkDate,
+        buyAgain: drunkWine.buyAgain === 1,
+        notes: drunkWine.notes || ''
+      };
+
       set({
         wineID: drunkWine.wineID,
         wineName: drunkWine.wineName,
@@ -167,25 +194,26 @@ function createDrinkWineStore() {
         availableBottles: [],
 
         // Pre-populate ratings
-        overallRating: drunkWine.overallRating || 0,
-        valueRating: drunkWine.valueRating || 0,
+        overallRating: originalValues.overallRating,
+        valueRating: originalValues.valueRating,
 
-        complexityRating: drunkWine.complexityRating || 0,
-        drinkabilityRating: drunkWine.drinkabilityRating || 0,
-        surpriseRating: drunkWine.surpriseRating || 0,
-        foodPairingRating: drunkWine.foodPairingRating || 0,
+        complexityRating: originalValues.complexityRating,
+        drinkabilityRating: originalValues.drinkabilityRating,
+        surpriseRating: originalValues.surpriseRating,
+        foodPairingRating: originalValues.foodPairingRating,
         showMoreRatings: !!hasOptionalRatings,
 
-        drinkDate,
-        buyAgain: drunkWine.buyAgain === 1,
-        notes: drunkWine.notes || '',
+        drinkDate: originalValues.drinkDate,
+        buyAgain: originalValues.buyAgain,
+        notes: originalValues.notes,
 
         isLoading: false,
         isSubmitting: false,
         errors: {},
 
         isEditMode: true,
-        ratingID: drunkWine.ratingID
+        ratingID: drunkWine.ratingID,
+        originalValues
       });
     },
 
@@ -404,6 +432,23 @@ export const drinkWine = createDrinkWineStore();
 
 /** Check if the form has any changes from initial state */
 export const isDirty = derived(drinkWine, ($state) => {
+  // In edit mode, compare against original values
+  if ($state.isEditMode && $state.originalValues) {
+    const orig = $state.originalValues;
+    return (
+      $state.overallRating !== orig.overallRating ||
+      $state.valueRating !== orig.valueRating ||
+      $state.complexityRating !== orig.complexityRating ||
+      $state.drinkabilityRating !== orig.drinkabilityRating ||
+      $state.surpriseRating !== orig.surpriseRating ||
+      $state.foodPairingRating !== orig.foodPairingRating ||
+      $state.drinkDate !== orig.drinkDate ||
+      $state.buyAgain !== orig.buyAgain ||
+      $state.notes !== orig.notes
+    );
+  }
+
+  // In new rating mode, check if any fields have values
   return (
     $state.bottleID !== null ||
     $state.overallRating > 0 ||
