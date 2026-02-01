@@ -264,7 +264,7 @@
     min-width: 0; /* Allow shrinking */
     padding-bottom: 2px;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-x; /* Prevents vertical scroll/tap interference on mobile */
+    touch-action: manipulation; /* Allow horizontal scroll AND taps (was pan-x which blocked taps on iPhone) */
     scrollbar-width: none; /* Firefox - hide scrollbar */
     -ms-overflow-style: none; /* IE/Edge - hide scrollbar */
   }

@@ -5,7 +5,7 @@
    * Positioned below the filter pill that triggered it
    * Automatically adjusts position to stay within viewport bounds
    */
-  import { createEventDispatcher, onMount, tick } from 'svelte';
+  import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
   import { Icon } from '$lib/components';
   import type { FilterOption } from '$lib/stores/filterOptions';
 
@@ -16,6 +16,8 @@
   export let position: { top: number; left: number } = { top: 0, left: 0 };
 
   let containerElement: HTMLDivElement;
+  let backdropElement: HTMLDivElement;
+  let portalTarget: HTMLDivElement;
   let highlightedIndex = -1;
   let adjustedPosition = { ...position };
   let positionReady = false;
@@ -149,8 +151,24 @@
     }
   }
 
-  // Adjust position on mount
+  // Adjust position on mount and create portal
   onMount(() => {
+    // Create portal container and move elements to body to escape header stacking context
+    portalTarget = document.createElement('div');
+    portalTarget.className = 'filter-dropdown-portal';
+
+    // Copy theme attribute so CSS variables work correctly
+    const theme = document.documentElement.getAttribute('data-theme');
+    if (theme) {
+      portalTarget.setAttribute('data-theme', theme);
+    }
+
+    document.body.appendChild(portalTarget);
+
+    // Move backdrop and container to portal
+    if (backdropElement) portalTarget.appendChild(backdropElement);
+    if (containerElement) portalTarget.appendChild(containerElement);
+
     adjustPositionForViewport();
     // Don't auto-focus on iOS - it can interfere with touch handling
 
@@ -159,6 +177,13 @@
     setTimeout(() => {
       backdropReady = true;
     }, 300);
+  });
+
+  // Clean up portal on destroy
+  onDestroy(() => {
+    if (portalTarget && portalTarget.parentNode) {
+      portalTarget.parentNode.removeChild(portalTarget);
+    }
   });
 
   // Check if an item is the currently selected value
@@ -173,6 +198,7 @@
 <div
   class="dropdown-backdrop"
   class:backdrop-ready={backdropReady}
+  bind:this={backdropElement}
   on:touchstart={handleBackdropTouchStart}
   on:touchend={handleBackdropTouchEnd}
   on:click={handleBackdropClick}
@@ -299,6 +325,61 @@
     /* Force new compositing layer to escape header stacking context on iOS Safari */
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
+    /* Ensure theme inheritance works when portaled */
+    color-scheme: inherit;
+  }
+
+  /* Force dark theme styles when html has dark theme (for portal elements) */
+  :global(html[data-theme="dark"]) .dropdown-container {
+    background: #1A1918;
+    border-color: #2A2826;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  :global(html[data-theme="dark"]) .dropdown-header {
+    background: #141312;
+    border-bottom-color: #1F1E1C;
+  }
+
+  :global(html[data-theme="dark"]) .dropdown-label {
+    color: #6B665F;
+  }
+
+  :global(html[data-theme="dark"]) .dropdown-item {
+    color: #F0EDE6;
+  }
+
+  :global(html[data-theme="dark"]) .item-label {
+    color: #F0EDE6;
+  }
+
+  :global(html[data-theme="dark"]) .item-meta {
+    color: #6B665F;
+  }
+
+  :global(html[data-theme="dark"]) .item-count {
+    color: #6B665F;
+    background: #141312;
+  }
+
+  :global(html[data-theme="dark"]) .dropdown-item.highlighted {
+    background: #141312;
+  }
+
+  :global(html[data-theme="dark"]) .dropdown-item.selected {
+    background: rgba(184, 175, 160, 0.15);
+  }
+
+  :global(html[data-theme="dark"]) .close-btn {
+    color: #6B665F;
+  }
+
+  :global(html[data-theme="dark"]) .clear-item {
+    color: #6B665F;
+  }
+
+  :global(html[data-theme="dark"]) .dropdown-divider {
+    background: #1F1E1C;
   }
 
   .dropdown-container.position-ready {
@@ -337,6 +418,7 @@
     cursor: pointer;
     border-radius: 4px;
     transition: all 0.15s var(--ease-out);
+    font-family: var(--font-sans);
   }
 
 
@@ -374,6 +456,9 @@
     text-align: left;
     cursor: pointer;
     transition: background 0.1s var(--ease-out);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    color: var(--text-primary);
   }
 
   /* Highlighted state for keyboard/touch selection */
