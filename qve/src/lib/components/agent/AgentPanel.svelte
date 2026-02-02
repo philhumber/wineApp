@@ -1572,6 +1572,15 @@
 				agent.setPhase('await_input');
 				break;
 
+			// WIN-162: Cache match confirmation handlers
+			case 'confirm_cache_match':
+				await agent.confirmCacheMatch();
+				break;
+
+			case 'force_refresh':
+				await agent.forceRefreshEnrichment();
+				break;
+
 			case 'identify':
 				agent.setPhase('await_input');
 				agent.addMessage({

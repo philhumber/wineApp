@@ -16,7 +16,7 @@ return [
             'enabled' => true,
             'api_key_env' => 'GEMINI_API_KEY',
             'base_url' => 'https://generativelanguage.googleapis.com/v1beta',
-            'default_model' => 'gemini-2.0-flash',
+            'default_model' => 'gemini-3-flash-preview',
             'models' => [
                 'gemini-3-flash-preview' => [
                     'max_tokens' => 8192,
@@ -252,6 +252,15 @@ return [
             'grape_percentage_tolerance' => 5,  // Allow 95-105%
         ],
         'fortified_types' => ['Fortified', 'Port', 'Sherry', 'Madeira', 'Marsala'],
+        // WIN-162: Canonical name resolution for improved cache hit rates
+        'canonical_resolution' => [
+            'enabled' => true,
+            'abbreviation_expansion' => true,   // Tier 1: "Ch." → "Château"
+            'alias_lookup' => true,             // Tier 3: Previously resolved variants
+            'fuzzy_matching' => true,           // Tier 4: Substring + Levenshtein matching
+            'fuzzy_candidate_limit' => 100,     // Max cache entries to check for fuzzy
+            'fuzzy_min_hit_count' => 0,         // 0 for testing, increase to 5+ in prod
+        ],
     ],
 
     // ===========================================

@@ -108,6 +108,10 @@ function getAgentEnrichmentService(int $userId = 1): \Agent\Enrichment\Enrichmen
     $merger = new \Agent\Enrichment\EnrichmentMerger();
     $fallback = new \Agent\Enrichment\EnrichmentFallback($pdo);
 
+    // WIN-162: Wire up canonical name resolver for multi-tier cache lookup
+    $resolver = new \Agent\Enrichment\CanonicalNameResolver($pdo, $config);
+    $cache->setResolver($resolver);
+
     return new \Agent\Enrichment\EnrichmentService(
         $cache, $enricher, $validator, $merger, $fallback, $config
     );

@@ -36,7 +36,7 @@ class GeminiAdapter implements LLMProviderInterface
     {
         $this->config = $config;
         $this->apiKey = $this->loadApiKey();
-        $this->model = $config['default_model'] ?? 'gemini-3.0-flash';
+        $this->model = $config['default_model'] ?? 'gemini-3-flash-preview';
         $this->baseUrl = $config['base_url'] ?? 'https://generativelanguage.googleapis.com/v1beta';
     }
 
@@ -501,10 +501,9 @@ class GeminiAdapter implements LLMProviderInterface
      */
     private function getFallbackModel(string $model): ?string
     {
+        // Gemini 3 fallback chain: pro → flash. No fallback to Gemini 2.
         $fallbacks = [
-            'gemini-3-flash-preview' => 'gemini-2.0-flash',
-            'gemini-3-pro-preview' => 'gemini-2.0-flash',
-            'gemini-2.0-flash' => 'gemini-1.5-flash',
+            'gemini-3-pro-preview' => 'gemini-3-flash-preview',
         ];
         return $fallbacks[$model] ?? null;
     }
