@@ -116,16 +116,26 @@
 			'Reading the label...',
 			'Swirling for clarity...',
 			'Checking the vintage...',
+			'Tracing the producer...',
+			'Verifying the provenance...',
+			'Examining the cork...',
+			'Cross-checking the cuvée...',
 			'Decanting the details...'
 		],
 		enriching: [
 			'Gathering tasting notes...',
 			'Consulting the critics...',
 			'Exploring the terroir...',
+			'Balancing fruit, structure, and time...',
+			'Weighing the winemaker’s style...',
+			'Sampling the vintages...',
 			'Researching the producer...'
 		],
 		default: [
 			'Thinking...',
+			'Pondering...',
+			'Observing...',
+			'Listening to the wine...',
 			'One moment...'
 		]
 	};
@@ -1639,6 +1649,23 @@
 					await agent.enrichWine(wineToEnrich);
 					agent.setTyping(false);
 				}
+				break;
+			}
+
+			// WIN-162: Cache match confirmation handlers
+			case 'confirm_cache_match': {
+				// User confirmed the non-exact cache match - fetch with confirmMatch=true
+				agent.setTyping(true);
+				await agent.confirmCacheMatch();
+				agent.setTyping(false);
+				break;
+			}
+
+			case 'force_refresh': {
+				// User rejected the cache match - do fresh web search
+				agent.setTyping(true);
+				await agent.forceRefreshEnrichment();
+				agent.setTyping(false);
 				break;
 			}
 
