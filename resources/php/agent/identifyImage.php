@@ -77,11 +77,20 @@ try {
 
     // Run identification
     $service = getAgentIdentificationService($userId);
+    $llmClient = getAgentLLMClient($userId);
     $result = $service->identify($identifyInput);
 
     if (!$result['success']) {
         $errorType = $result['errorType'] ?? 'identification_error';
         agentStructuredError($errorType, $result['error'] ?? null);
+    }
+
+    // Log identification result for analytics (WIN-181)
+    try {
+        $llmClient->logIdentificationResult($result);
+    } catch (\Exception $logEx) {
+        // Don't fail the request if logging fails
+        error_log('Failed to log identification result: ' . $logEx->getMessage());
     }
 
     // Success response
@@ -94,6 +103,8 @@ try {
         'candidates' => $result['candidates'],
         'usage' => $result['usage'] ?? null,
         'quality' => $result['quality'] ?? null,
+        'escalation' => $result['escalation'] ?? null,
+        'inferences_applied' => $result['inferences_applied'] ?? [],
     ]);
 
 } catch (\Exception $e) {

@@ -47,6 +47,7 @@ try {
 
     // Run identification
     $service = getAgentIdentificationService($userId);
+    $llmClient = getAgentLLMClient($userId);
     error_log('IdentifyText: Starting identification for: ' . substr($input['text'], 0, 50));
     $result = $service->identify($input);
     error_log('IdentifyText: Result success=' . ($result['success'] ? 'true' : 'false') . ', confidence=' . ($result['confidence'] ?? 'null'));
@@ -60,6 +61,14 @@ try {
     // Log escalation for debugging (check PHP error log)
     if (isset($result['escalation'])) {
         error_log('Wine ID Escalation: ' . json_encode($result['escalation']));
+    }
+
+    // Log identification result for analytics (WIN-181)
+    try {
+        $llmClient->logIdentificationResult($result);
+    } catch (\Exception $logEx) {
+        // Don't fail the request if logging fails
+        error_log('Failed to log identification result: ' . $logEx->getMessage());
     }
 
     // Success response
