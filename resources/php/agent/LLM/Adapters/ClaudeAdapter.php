@@ -13,6 +13,7 @@ namespace Agent\LLM\Adapters;
 
 use Agent\LLM\Interfaces\LLMProviderInterface;
 use Agent\LLM\LLMResponse;
+use Agent\LLM\LLMStreamingResponse;
 
 class ClaudeAdapter implements LLMProviderInterface
 {
@@ -506,5 +507,73 @@ class ClaudeAdapter implements LLMProviderInterface
     public function isHealthy(): bool
     {
         return !empty($this->apiKey);
+    }
+
+    /**
+     * Stream completion with callback (WIN-181)
+     *
+     * Note: Claude streaming support is planned for future implementation.
+     * Currently falls back to non-streaming with all fields emitted at once.
+     *
+     * {@inheritdoc}
+     */
+    public function streamComplete(
+        string $prompt,
+        array $options,
+        callable $onChunk
+    ): LLMStreamingResponse {
+        // Fall back to non-streaming
+        $response = $this->complete($prompt, $options);
+
+        // Emit the complete result as one chunk if successful
+        if ($response->success && $response->content) {
+            $parsed = \json_decode($response->content, true);
+            if (\is_array($parsed)) {
+                foreach ($parsed as $field => $value) {
+                    $onChunk($field, $value);
+                }
+            }
+        }
+
+        return LLMStreamingResponse::fromLLMResponse($response, [
+            'streamed' => false, // Actually buffered
+            'ttfbMs' => $response->latencyMs,
+            'fieldTimings' => [],
+        ]);
+    }
+
+    /**
+     * Stream completion with image (WIN-181)
+     *
+     * Note: Claude streaming support is planned for future implementation.
+     * Currently falls back to non-streaming with all fields emitted at once.
+     *
+     * {@inheritdoc}
+     */
+    public function streamCompleteWithImage(
+        string $prompt,
+        string $imageBase64,
+        string $mimeType,
+        array $options,
+        callable $onChunk
+    ): LLMStreamingResponse {
+        // Fall back to non-streaming
+        $response = $this->completeWithImage($prompt, $imageBase64, $mimeType, $options);
+
+        // Emit the complete result as one chunk if successful
+        if ($response->success && $response->content) {
+            $parsed = \json_decode($response->content, true);
+            if (\is_array($parsed)) {
+                foreach ($parsed as $field => $value) {
+                    $onChunk($field, $value);
+                }
+            }
+        }
+
+        return LLMStreamingResponse::fromLLMResponse($response, [
+            'streamed' => false, // Actually buffered
+            'ttfbMs' => $response->latencyMs,
+            'fieldTimings' => [],
+        ]);
     }
 }

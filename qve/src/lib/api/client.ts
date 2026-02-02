@@ -34,7 +34,10 @@ import type {
   AgentEnrichmentResult,
   AgentClarificationRequest,
   AgentClarificationResult,
-  AgentErrorResponse
+  AgentErrorResponse,
+  StreamEvent,
+  StreamEventCallback,
+  StreamFieldCallback
 } from './types';
 import { AgentError } from './types';
 
@@ -89,6 +92,83 @@ class WineApiClient {
       }
       console.error(`API Error (${endpoint}):`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Parse and process Server-Sent Events from a streaming response.
+   * Handles event: and data: lines, calling onEvent for each complete event.
+   */
+  private async processSSEStream(
+    response: Response,
+    onEvent: StreamEventCallback
+  ): Promise<void> {
+    console.log('🌊 SSE: Starting stream processing');
+    const reader = response.body?.getReader();
+    if (!reader) {
+      console.error('🌊 SSE: Response body is not readable');
+      throw new Error('Response body is not readable');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let currentEvent = 'message';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          console.log('🌊 SSE: Stream done');
+          break;
+        }
+
+        const chunk = decoder.decode(value, { stream: true });
+        console.log('🌊 SSE: Received chunk:', chunk);
+        buffer += chunk;
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (line.startsWith('event:')) {
+            currentEvent = line.slice(6).trim();
+            console.log('🌊 SSE: Event type:', currentEvent);
+          } else if (line.startsWith('data:')) {
+            const dataStr = line.slice(5).trim();
+            if (dataStr) {
+              try {
+                const data = JSON.parse(dataStr);
+                console.log('🌊 SSE: Parsed event:', currentEvent, data);
+                onEvent({ type: currentEvent, data } as StreamEvent);
+              } catch {
+                console.warn('Failed to parse SSE data:', dataStr);
+              }
+            }
+            currentEvent = 'message'; // Reset for next event
+          }
+          // Ignore empty lines and comments (lines starting with :)
+        }
+      }
+
+      // Process any remaining buffer
+      if (buffer.trim()) {
+        const lines = buffer.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data:')) {
+            const dataStr = line.slice(5).trim();
+            if (dataStr) {
+              try {
+                const data = JSON.parse(dataStr);
+                onEvent({ type: currentEvent, data } as StreamEvent);
+              } catch {
+                console.warn('Failed to parse final SSE data:', dataStr);
+              }
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
     }
   }
 
@@ -660,6 +740,175 @@ class WineApiClient {
   }
 
   // ─────────────────────────────────────────────────────────
+  // AI AGENT STREAMING IDENTIFICATION (WIN-181)
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Identify wine from text description with streaming response.
+   * Fields are emitted as they become available via onField callback.
+   * Returns the complete result or throws on error.
+   *
+   * @param text Wine description text
+   * @param onField Callback for each field as it streams in
+   * @param onEvent Optional callback for all SSE events (field, result, escalating, error, done)
+   */
+  async identifyTextStream(
+    text: string,
+    onField?: StreamFieldCallback,
+    onEvent?: StreamEventCallback
+  ): Promise<AgentIdentificationResultWithMeta> {
+    const url = `${this.baseURL}agent/identifyTextStream.php`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+
+    if (!response.ok) {
+      // Try to parse error response
+      try {
+        const json = await response.json();
+        if (json.error?.type) {
+          throw AgentError.fromResponse(json as AgentErrorResponse);
+        }
+        throw new Error(json.message || `HTTP ${response.status}`);
+      } catch (e) {
+        if (AgentError.isAgentError(e)) throw e;
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+    }
+
+    // Track the final result across escalations
+    let finalResult: AgentIdentificationResultWithMeta | null = null;
+    let streamError: Error | null = null;
+
+    await this.processSSEStream(response, (event) => {
+      // Call the generic event handler if provided
+      onEvent?.(event);
+
+      switch (event.type) {
+        case 'field':
+          onField?.(event.data.field, event.data.value);
+          break;
+
+        case 'result':
+          // Keep the latest result (could be escalated)
+          finalResult = event.data as AgentIdentificationResultWithMeta;
+          break;
+
+        case 'error':
+          streamError = new AgentError({
+            type: event.data.type,
+            userMessage: event.data.message,
+            retryable: event.data.retryable,
+            supportRef: event.data.supportRef
+          });
+          break;
+
+        case 'escalating':
+          // Info only - continue processing
+          break;
+
+        case 'done':
+          // Stream complete
+          break;
+      }
+    });
+
+    if (streamError) {
+      throw streamError;
+    }
+
+    if (!finalResult) {
+      throw new Error('No result received from streaming identification');
+    }
+
+    return finalResult;
+  }
+
+  /**
+   * Identify wine from image with streaming response.
+   * Fields are emitted as they become available via onField callback.
+   * Returns the complete result or throws on error.
+   *
+   * @param imageBase64 Base64-encoded image data
+   * @param mimeType Image MIME type (e.g., 'image/jpeg')
+   * @param supplementaryText Optional user context
+   * @param onField Callback for each field as it streams in
+   * @param onEvent Optional callback for all SSE events
+   */
+  async identifyImageStream(
+    imageBase64: string,
+    mimeType: string,
+    supplementaryText?: string,
+    onField?: StreamFieldCallback,
+    onEvent?: StreamEventCallback
+  ): Promise<AgentIdentificationResultWithMeta> {
+    const url = `${this.baseURL}agent/identifyImageStream.php`;
+
+    const body: Record<string, string> = { image: imageBase64, mimeType };
+    if (supplementaryText) {
+      body.supplementaryText = supplementaryText;
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      try {
+        const json = await response.json();
+        if (json.error?.type) {
+          throw AgentError.fromResponse(json as AgentErrorResponse);
+        }
+        throw new Error(json.message || `HTTP ${response.status}`);
+      } catch (e) {
+        if (AgentError.isAgentError(e)) throw e;
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+    }
+
+    let finalResult: AgentIdentificationResultWithMeta | null = null;
+    let streamError: Error | null = null;
+
+    await this.processSSEStream(response, (event) => {
+      onEvent?.(event);
+
+      switch (event.type) {
+        case 'field':
+          onField?.(event.data.field, event.data.value);
+          break;
+
+        case 'result':
+          finalResult = event.data as AgentIdentificationResultWithMeta;
+          break;
+
+        case 'error':
+          streamError = new AgentError({
+            type: event.data.type,
+            userMessage: event.data.message,
+            retryable: event.data.retryable,
+            supportRef: event.data.supportRef
+          });
+          break;
+      }
+    });
+
+    if (streamError) {
+      throw streamError;
+    }
+
+    if (!finalResult) {
+      throw new Error('No result received from streaming identification');
+    }
+
+    return finalResult;
+  }
+
+  // ─────────────────────────────────────────────────────────
   // AI AGENT ENRICHMENT
   // ─────────────────────────────────────────────────────────
 
@@ -691,6 +940,113 @@ class WineApiClient {
     }
 
     return response.data;
+  }
+
+  /**
+   * Enrich wine with streaming response (WIN-181).
+   * Fields are emitted progressively as they become available.
+   *
+   * @param producer Wine producer name
+   * @param wineName Wine name
+   * @param vintage Optional vintage year
+   * @param wineType Optional wine type
+   * @param region Optional region
+   * @param confirmMatch Confirm a non-exact cache match
+   * @param forceRefresh Skip cache, do fresh web search
+   * @param onField Callback for each field as it streams in
+   * @param onEvent Optional callback for all SSE events
+   */
+  async enrichWineStream(
+    producer: string,
+    wineName: string,
+    vintage?: string | null,
+    wineType?: string | null,
+    region?: string | null,
+    confirmMatch = false,
+    forceRefresh = false,
+    onField?: StreamFieldCallback,
+    onEvent?: StreamEventCallback
+  ): Promise<AgentEnrichmentResult> {
+    const url = `${this.baseURL}agent/agentEnrichStream.php`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ producer, wineName, vintage, wineType, region, confirmMatch, forceRefresh })
+    });
+
+    if (!response.ok) {
+      try {
+        const json = await response.json();
+        if (json.error?.type) {
+          throw AgentError.fromResponse(json as AgentErrorResponse);
+        }
+        throw new Error(json.message || `HTTP ${response.status}`);
+      } catch (e) {
+        if (AgentError.isAgentError(e)) throw e;
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+    }
+
+    let finalResult: AgentEnrichmentResult | null = null;
+    let streamError: Error | null = null;
+    let confirmationResult: AgentEnrichmentResult | null = null;
+
+    await this.processSSEStream(response, (event) => {
+      onEvent?.(event);
+
+      switch (event.type) {
+        case 'field':
+          onField?.(event.data.field, event.data.value);
+          break;
+
+        case 'result':
+          // Enrichment result - cast through unknown since StreamEvent uses identification type
+          finalResult = event.data as unknown as AgentEnrichmentResult;
+          break;
+
+        case 'confirmation_required':
+          // Build a pending confirmation result
+          confirmationResult = {
+            success: true,
+            data: null,
+            source: 'cache',
+            warnings: [],
+            fieldSources: null,
+            usage: null,
+            pendingConfirmation: true,
+            matchType: event.data.matchType,
+            searchedFor: event.data.searchedFor ?? undefined,
+            matchedTo: event.data.matchedTo ?? undefined,
+            confidence: event.data.confidence
+          };
+          break;
+
+        case 'error':
+          streamError = new AgentError({
+            type: event.data.type,
+            userMessage: event.data.message,
+            retryable: event.data.retryable,
+            supportRef: event.data.supportRef
+          });
+          break;
+      }
+    });
+
+    if (streamError) {
+      throw streamError;
+    }
+
+    // Handle confirmation required case
+    if (confirmationResult) {
+      return confirmationResult;
+    }
+
+    if (!finalResult) {
+      throw new Error('No result received from streaming enrichment');
+    }
+
+    return finalResult;
   }
 
   // ─────────────────────────────────────────────────────────
