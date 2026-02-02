@@ -271,4 +271,19 @@ return [
         'max_context_items' => 10,
         'cleanup_interval' => 3600, // Run cleanup every hour
     ],
+
+    // ===========================================
+    // Streaming Settings (WIN-181)
+    // ===========================================
+    'streaming' => [
+        'enabled' => true,               // Master feature flag
+        'tasks' => [                     // Which tasks support streaming
+            'identify_text',
+            'identify_image',
+            'enrich',
+        ],
+        'tier1_only' => true,            // Only stream Tier 1 (escalation uses non-streaming)
+        'fallback_on_error' => true,     // Fallback to non-streaming on failure
+        'timeout' => 30,                 // SSE connection timeout
+    ],
 ];

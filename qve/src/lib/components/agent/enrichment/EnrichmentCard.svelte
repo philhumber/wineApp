@@ -1,4 +1,9 @@
 <script lang="ts">
+	/**
+	 * EnrichmentCard (static version)
+	 * Displays completed enrichment data in chat history.
+	 * Layout matches EnrichmentCardStreaming for visual consistency.
+	 */
 	import type { AgentEnrichmentData } from '$lib/api/types';
 	import StyleProfileDisplay from './StyleProfileDisplay.svelte';
 	import CriticScores from './CriticScores.svelte';
@@ -8,11 +13,14 @@
 	export let data: AgentEnrichmentData;
 	export let source: 'cache' | 'web_search' | 'inference' | undefined = undefined;
 
+	// Section visibility - matches EnrichmentCardStreaming
+	$: hasOverview = !!data.overview;
 	$: hasStyleProfile = data.body || data.tannin || data.acidity;
-	$: hasCriticScores = data.criticScores && data.criticScores.length > 0;
-	$: hasDrinkWindow = data.drinkWindow?.start && data.drinkWindow?.end;
 	$: hasGrapes = data.grapeVarieties && data.grapeVarieties.length > 0;
-	$: hasNarrative = data.overview || data.tastingNotes || data.pairingNotes;
+	$: hasTastingNotes = !!data.tastingNotes;
+	$: hasPairingNotes = !!data.pairingNotes;
+	$: hasDrinkWindow = data.drinkWindow?.start || data.drinkWindow?.end;
+	$: hasCriticScores = data.criticScores && data.criticScores.length > 0;
 </script>
 
 <div class="enrichment-card">
@@ -26,6 +34,15 @@
 	</div>
 
 	<div class="card-content">
+		<!-- Overview Section -->
+		{#if hasOverview}
+			<section class="section">
+				<h4 class="section-title">Overview</h4>
+				<p class="narrative-text">{data.overview}</p>
+			</section>
+		{/if}
+
+		<!-- Style Profile Section -->
 		{#if hasStyleProfile}
 			<section class="section">
 				<h4 class="section-title">Style Profile</h4>
@@ -33,24 +50,7 @@
 			</section>
 		{/if}
 
-		{#if hasCriticScores}
-			<section class="section">
-				<h4 class="section-title">Critic Scores</h4>
-				<CriticScores scores={data.criticScores} />
-			</section>
-		{/if}
-
-		{#if hasDrinkWindow && data.drinkWindow}
-			<section class="section">
-				<h4 class="section-title">Drink Window</h4>
-				<DrinkWindow
-					start={data.drinkWindow.start}
-					end={data.drinkWindow.end}
-					maturity={data.drinkWindow.maturity}
-				/>
-			</section>
-		{/if}
-
+		<!-- Grape Composition Section -->
 		{#if hasGrapes}
 			<section class="section">
 				<h4 class="section-title">Grape Composition</h4>
@@ -58,30 +58,41 @@
 			</section>
 		{/if}
 
-		{#if hasNarrative}
-			<section class="section narrative-section">
-				{#if data.overview}
-					<div class="narrative-block">
-						<h4 class="section-title">Overview</h4>
-						<p class="narrative-text">{data.overview}</p>
-					</div>
-				{/if}
-				{#if data.tastingNotes}
-					<div class="narrative-block">
-						<h4 class="section-title">Tasting Notes</h4>
-						<p class="narrative-text">{data.tastingNotes}</p>
-					</div>
-				{/if}
-				{#if data.pairingNotes}
-					<div class="narrative-block">
-						<h4 class="section-title">Food Pairings</h4>
-						<p class="narrative-text">{data.pairingNotes}</p>
-					</div>
-				{/if}
+		<!-- Tasting Notes Section -->
+		{#if hasTastingNotes}
+			<section class="section">
+				<h4 class="section-title">Tasting Notes</h4>
+				<p class="narrative-text">{data.tastingNotes}</p>
 			</section>
 		{/if}
 
-		<!-- Primary source shown in header badge; data.sources array omitted to avoid confusion when merging -->
+		<!-- Food Pairings Section -->
+		{#if hasPairingNotes}
+			<section class="section">
+				<h4 class="section-title">Food Pairings</h4>
+				<p class="narrative-text">{data.pairingNotes}</p>
+			</section>
+		{/if}
+
+		<!-- Drink Window Section -->
+		{#if hasDrinkWindow && data.drinkWindow}
+			<section class="section">
+				<h4 class="section-title">Drink Window</h4>
+				<DrinkWindow
+					start={data.drinkWindow.start ?? null}
+					end={data.drinkWindow.end ?? null}
+					maturity={data.drinkWindow.maturity}
+				/>
+			</section>
+		{/if}
+
+		<!-- Critic Scores Section -->
+		{#if hasCriticScores}
+			<section class="section">
+				<h4 class="section-title">Critic Scores</h4>
+				<CriticScores scores={data.criticScores} />
+			</section>
+		{/if}
 	</div>
 </div>
 
@@ -147,24 +158,10 @@
 		letter-spacing: 0.5px;
 	}
 
-	.narrative-section {
-		border-top: 1px solid var(--divider);
-		padding-top: var(--space-4);
-	}
-
-	.narrative-block {
-		margin-bottom: var(--space-4);
-	}
-
-	.narrative-block:last-child {
-		margin-bottom: 0;
-	}
-
 	.narrative-text {
 		font-family: var(--font-serif);
 		font-size: 0.9375rem;
 		line-height: 1.6;
 		color: var(--text-primary);
 	}
-
 </style>

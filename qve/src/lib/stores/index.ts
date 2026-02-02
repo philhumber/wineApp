@@ -193,7 +193,13 @@ export {
   agentHasStarted,
   agentPendingNewSearch,
   // Add wine flow
-  agentAddState
+  agentAddState,
+  // Streaming (WIN-181)
+  agentIsStreaming,
+  agentStreamingFields,
+  agentStreamingChips,
+  agentEnrichmentStreamingChips,
+  agentPendingEnrichmentResult
 } from './agent';
 export type {
   AgentState,
@@ -209,5 +215,7 @@ export type {
   AgentAddRegionData,
   AgentAddProducerData,
   AgentAddWineData,
-  AgentAddBottleData
+  AgentAddBottleData,
+  // Streaming types (WIN-181)
+  StreamingFieldState
 } from './agent';

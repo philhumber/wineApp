@@ -23,9 +23,21 @@ import type {
 	DuplicateMatch,
 	Region,
 	Producer,
-	Wine
+	Wine,
+	StreamEvent
 } from '$lib/api/types';
 import { AgentError } from '$lib/api/types';
+
+// ─────────────────────────────────────────────────────────
+// STREAMING TYPES (WIN-181)
+// ─────────────────────────────────────────────────────────
+
+/** State for a single field being streamed */
+export interface StreamingFieldState {
+	value: unknown;
+	isTyping: boolean;
+	arrivedAt: number;
+}
 
 // ─────────────────────────────────────────────────────────
 // CONSTANTS
@@ -328,8 +340,9 @@ export interface AgentMessage {
 export interface AgentAugmentationContext {
 	originalInput: string;
 	originalInputType: AgentInputType;
-	originalResult: AgentIdentificationResult;
+	originalResult: AgentIdentificationResult | null; // WIN-181: Can be null for handle_incorrect phase (wrong result discarded)
 	userFeedback?: string;
+	isCorrection?: boolean; // User said "Not Correct" - give their clarifying info higher weight
 }
 
 /** Pending new search confirmation state */
@@ -445,6 +458,15 @@ export interface AgentState {
 
 	// Add wine flow state
 	addState: AgentAddState | null;
+
+	// Streaming state (WIN-181) - transient, not persisted
+	isStreaming: boolean;
+	streamingFields: Map<string, StreamingFieldState>;
+	streamingChips: { content: string; chips: AgentChip[] } | null;
+	// Enrichment streaming chips (separate from identification to avoid confusion)
+	enrichmentStreamingChips: { content: string; chips: AgentChip[] } | null;
+	// Store enrichment result for use when user acts on chips
+	pendingEnrichmentResult: AgentEnrichmentData | null;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -526,7 +548,13 @@ const initialState: AgentState = {
 	lastImageMimeType: null,
 	enrichmentForWine: null,
 	// Add wine flow
-	addState: null
+	addState: null,
+	// Streaming (WIN-181)
+	isStreaming: false,
+	streamingFields: new Map(),
+	streamingChips: null as { content: string; chips: AgentChip[] } | null,
+	enrichmentStreamingChips: null as { content: string; chips: AgentChip[] } | null,
+	pendingEnrichmentResult: null
 };
 
 function createAgentStore() {
@@ -607,64 +635,8 @@ function createAgentStore() {
 				imageQuality: null
 			}));
 
-			// Debug: Log query initiation
-			console.group('🍷 Agent: Text Identification Request');
-			console.log('Input:', text);
-			console.log('Timestamp:', new Date().toISOString());
-			console.groupEnd();
-
 			try {
 				const result = await api.identifyText(text);
-
-				// Debug: Log full context chain and escalation info
-				console.group('🍷 Agent: Text Identification Result');
-				console.log('Input:', text);
-				console.log('Success:', result.success ?? true);
-
-				if (result.escalation) {
-					console.group('📊 Escalation Chain');
-					console.log('Final Tier:', result.escalation.final_tier);
-
-					// Log each tier's context
-					Object.entries(result.escalation.tiers).forEach(([tier, data]) => {
-						console.group(`  Tier: ${tier}`);
-						console.log('Model:', (data as Record<string, unknown>).model);
-						console.log('Confidence:', (data as Record<string, unknown>).confidence);
-						if ((data as Record<string, unknown>).thinking_level) {
-							console.log('Thinking Level:', (data as Record<string, unknown>).thinking_level);
-						}
-						console.groupEnd();
-					});
-
-					console.log('Total Cost: $' + (result.escalation.total_cost?.toFixed(6) ?? '0'));
-					console.groupEnd();
-				}
-
-				console.group('📋 Parsed Result');
-				console.log('Producer:', result.parsed?.producer ?? 'null');
-				console.log('Wine Name:', result.parsed?.wineName ?? 'null');
-				console.log('Vintage:', result.parsed?.vintage ?? 'null');
-				console.log('Region:', result.parsed?.region ?? 'null');
-				console.log('Country:', result.parsed?.country ?? 'null');
-				console.log('Type:', result.parsed?.wineType ?? 'null');
-				console.groupEnd();
-
-				console.log('Confidence:', result.confidence);
-				console.log('Action:', result.action);
-
-				if (result.inferences_applied?.length) {
-					console.log('Inferences Applied:', result.inferences_applied);
-				}
-
-				if (result.usage) {
-					console.group('📈 Usage');
-					console.log('Input Tokens:', result.usage.tokens?.input);
-					console.log('Output Tokens:', result.usage.tokens?.output);
-					console.log('Latency:', result.usage.latencyMs + 'ms');
-					console.groupEnd();
-				}
-
-				console.groupEnd();
 
 				update((state) => {
 					const newState = {
@@ -689,6 +661,194 @@ function createAgentStore() {
 		},
 
 		/**
+		 * Identify wine from text with streaming response (WIN-181)
+		 * Fields are emitted progressively as they arrive from the LLM.
+		 * Falls back to non-streaming on error.
+		 */
+		identifyWithStreaming: async (text: string): Promise<AgentIdentificationResult | null> => {
+			update((state) => ({
+				...state,
+				isLoading: true,
+				isStreaming: true,
+				streamingFields: new Map(),
+				error: null,
+				currentInputType: 'text',
+				imageQuality: null
+			}));
+
+			try {
+				const result = await api.identifyTextStream(
+					text,
+					// onField callback - update streaming fields as they arrive
+					(field, value) => {
+						update((state) => {
+							const fields = new Map(state.streamingFields);
+							fields.set(field, {
+								value,
+								isTyping: true,
+								arrivedAt: Date.now()
+							});
+							return { ...state, streamingFields: fields };
+						});
+					}
+				);
+
+				update((state) => {
+					const newState = {
+						...state,
+						isLoading: false,
+						isStreaming: false,
+						// WIN-181: Keep streamingFields populated so streaming card stays visible
+						// Fields will be cleared when user takes action (correct/not correct)
+						lastResult: result,
+						error: null
+					};
+					persistCurrentState(newState, true);
+					return newState;
+				});
+
+				return result;
+			} catch (error) {
+				// Fallback to non-streaming on error
+				console.warn('Streaming failed, falling back to non-streaming:', error);
+				update((state) => ({
+					...state,
+					isStreaming: false,
+					streamingFields: new Map()
+				}));
+				// Use the regular identify method as fallback
+				return agent.identify(text);
+			}
+		},
+
+		/**
+		 * Identify wine from image with streaming response (WIN-181)
+		 */
+		identifyImageWithStreaming: async (file: File): Promise<AgentIdentificationResultWithMeta | null> => {
+			update((state) => ({
+				...state,
+				isLoading: true,
+				isStreaming: true,
+				streamingFields: new Map(),
+				error: null,
+				currentInputType: 'image',
+				imageQuality: null
+			}));
+
+			try {
+				// Compress image for upload
+				const { imageData, mimeType } = await api.compressImageForIdentification(file);
+
+				const result = await api.identifyImageStream(
+					imageData,
+					mimeType,
+					undefined, // supplementaryText
+					// onField callback
+					(field, value) => {
+						update((state) => {
+							const fields = new Map(state.streamingFields);
+							fields.set(field, {
+								value,
+								isTyping: true,
+								arrivedAt: Date.now()
+							});
+							return { ...state, streamingFields: fields };
+						});
+					}
+				);
+
+				update((state) => {
+					const newState = {
+						...state,
+						isLoading: false,
+						isStreaming: false,
+						// WIN-181: Keep streamingFields populated so streaming card stays visible
+						// Fields will be cleared when user takes action (correct/not correct)
+						lastResult: result,
+						error: null,
+						imageQuality: result.quality ?? null,
+						lastImageData: imageData,
+						lastImageMimeType: mimeType
+					};
+					persistCurrentState(newState, true);
+					return newState;
+				});
+
+				return result;
+			} catch (error) {
+				// Fallback to non-streaming on error
+				console.warn('Streaming failed, falling back to non-streaming:', error);
+				update((state) => ({
+					...state,
+					isStreaming: false,
+					streamingFields: new Map() // Clear on error - fallback will show regular result
+				}));
+				// Use the regular identifyImage method as fallback
+				return agent.identifyImage(file);
+			}
+		},
+
+		/**
+		 * Mark a streaming field as done typing (WIN-181)
+		 * Called by UI after typewriter animation completes
+		 */
+		markFieldTypingComplete: (field: string) => {
+			update((state) => {
+				const fields = new Map(state.streamingFields);
+				const fieldState = fields.get(field);
+				if (fieldState) {
+					fields.set(field, { ...fieldState, isTyping: false });
+				}
+				return { ...state, streamingFields: fields };
+			});
+		},
+
+		/**
+		 * Clear streaming result (WIN-181)
+		 * Called when user takes action on the streaming card (correct/not correct)
+		 */
+		clearStreamingResult: () => {
+			update((state) => ({
+				...state,
+				streamingFields: new Map(),
+				streamingChips: null
+			}));
+		},
+
+		/**
+		 * Set chips to display below streaming card (WIN-181)
+		 */
+		setStreamingChips: (content: string, chips: AgentChip[]) => {
+			update((state) => ({
+				...state,
+				streamingChips: { content, chips }
+			}));
+		},
+
+		/**
+		 * Set chips to display below enrichment streaming card (WIN-181)
+		 */
+		setEnrichmentStreamingChips: (content: string, chips: AgentChip[]) => {
+			update((state) => ({
+				...state,
+				enrichmentStreamingChips: { content, chips }
+			}));
+		},
+
+		/**
+		 * Clear enrichment streaming result (WIN-181)
+		 * Called when user takes action on the enrichment streaming card
+		 */
+		clearEnrichmentStreamingResult: () => {
+			update((state) => ({
+				...state,
+				streamingFields: new Map(),
+				enrichmentStreamingChips: null,
+				pendingEnrichmentResult: null
+			}));
+		},
+
+		/**
 		 * Identify wine from image file (Phase 2)
 		 * Compresses image and sends to backend with retry logic
 		 */
@@ -701,71 +861,12 @@ function createAgentStore() {
 				imageQuality: null
 			}));
 
-			// Debug: Log query initiation
-			console.group('🍷 Agent: Image Identification Request');
-			console.log('File:', file.name);
-			console.log('Size:', (file.size / 1024).toFixed(1) + ' KB');
-			console.log('Type:', file.type);
-			console.log('Timestamp:', new Date().toISOString());
-			console.groupEnd();
-
 			try {
 				// Compress image for upload
 				const { imageData, mimeType } = await api.compressImageForIdentification(file);
-				console.log('🖼️ Compressed image:', (imageData.length / 1024).toFixed(1) + ' KB base64');
 
 				// Call API with retry
 				const result = await withRetry(() => api.identifyImage(imageData, mimeType));
-
-				// Debug: Log full context chain and escalation info
-				console.group('🍷 Agent: Image Identification Result');
-				console.log('Success:', result.success ?? true);
-
-				if (result.quality) {
-					console.group('🖼️ Image Quality');
-					console.log('Score:', result.quality.score);
-					console.log('Valid:', result.quality.valid);
-					if (result.quality.issues?.length) {
-						console.log('Issues:', result.quality.issues);
-					}
-					console.groupEnd();
-				}
-
-				if (result.escalation) {
-					console.group('📊 Escalation Chain');
-					console.log('Final Tier:', result.escalation.final_tier);
-
-					Object.entries(result.escalation.tiers).forEach(([tier, data]) => {
-						console.group(`  Tier: ${tier}`);
-						console.log('Model:', (data as Record<string, unknown>).model);
-						console.log('Confidence:', (data as Record<string, unknown>).confidence);
-						if ((data as Record<string, unknown>).thinking_level) {
-							console.log('Thinking Level:', (data as Record<string, unknown>).thinking_level);
-						}
-						console.groupEnd();
-					});
-
-					console.log('Total Cost: $' + (result.escalation.total_cost?.toFixed(6) ?? '0'));
-					console.groupEnd();
-				}
-
-				console.group('📋 Parsed Result');
-				console.log('Producer:', result.parsed?.producer ?? 'null');
-				console.log('Wine Name:', result.parsed?.wineName ?? 'null');
-				console.log('Vintage:', result.parsed?.vintage ?? 'null');
-				console.log('Region:', result.parsed?.region ?? 'null');
-				console.log('Country:', result.parsed?.country ?? 'null');
-				console.log('Type:', result.parsed?.wineType ?? 'null');
-				console.groupEnd();
-
-				console.log('Confidence:', result.confidence);
-				console.log('Action:', result.action);
-
-				if (result.inferences_applied?.length) {
-					console.log('Inferences Applied:', result.inferences_applied);
-				}
-
-				console.groupEnd();
 
 				update((state) => {
 					const newState = {
@@ -809,43 +910,14 @@ function createAgentStore() {
 				imageQuality: null
 			}));
 
-			// Debug: Log query initiation with supplementary context
-			console.group('🍷 Agent: Image + Supplementary Text Request');
-			console.log('File:', file.name);
-			console.log('Size:', (file.size / 1024).toFixed(1) + ' KB');
-			console.log('Supplementary Text:', supplementaryText);
-			console.log('Timestamp:', new Date().toISOString());
-			console.groupEnd();
-
 			try {
 				// Compress image for upload
 				const { imageData, mimeType } = await api.compressImageForIdentification(file);
-				console.log('🖼️ Compressed image:', (imageData.length / 1024).toFixed(1) + ' KB base64');
 
 				// Call API with supplementary text and retry
 				const result = await withRetry(() =>
 					api.identifyImage(imageData, mimeType, supplementaryText)
 				);
-
-				// Debug: Log result with context chain
-				console.group('🍷 Agent: Image + Supplementary Result');
-				console.log('Supplementary Text Used:', supplementaryText);
-
-				if (result.escalation) {
-					console.group('📊 Escalation Chain');
-					console.log('Final Tier:', result.escalation.final_tier);
-					Object.entries(result.escalation.tiers).forEach(([tier, data]) => {
-						console.log(`  ${tier}: confidence=${(data as Record<string, unknown>).confidence}, model=${(data as Record<string, unknown>).model}`);
-					});
-					console.log('Total Cost: $' + (result.escalation.total_cost?.toFixed(6) ?? '0'));
-					console.groupEnd();
-				}
-
-				console.log('Confidence:', result.confidence);
-				console.log('Action:', result.action);
-				console.log('Producer:', result.parsed?.producer ?? 'null');
-				console.log('Wine Name:', result.parsed?.wineName ?? 'null');
-				console.groupEnd();
 
 				update((state) => {
 					const newState = {
@@ -891,64 +963,10 @@ function createAgentStore() {
 				error: null
 			}));
 
-			// Debug: Log Opus escalation request with full context
-			console.group('🚀 Agent: Opus Escalation Request (Tier 3)');
-			console.log('Input Type:', inputType);
-			console.log('Input Length:', input.length);
-			if (supplementaryText) {
-				console.log('Supplementary Text:', supplementaryText);
-			}
-			console.group('📋 Prior Result Context');
-			console.log('Prior Confidence:', priorResult.confidence);
-			console.log('Prior Action:', priorResult.action);
-			console.log('Prior Producer:', priorResult.parsed?.producer ?? 'null');
-			console.log('Prior Wine Name:', priorResult.parsed?.wineName ?? 'null');
-			console.log('Prior Tier:', priorResult.escalation?.final_tier ?? 'unknown');
-			console.groupEnd();
-			console.log('Timestamp:', new Date().toISOString());
-			console.groupEnd();
-
 			try {
 				const result = await withRetry(() =>
 					api.identifyWithOpus(input, inputType, priorResult, mimeType, supplementaryText)
 				);
-
-				// Debug: Log Opus result with full context chain
-				console.group('🍷 Agent: Opus (Tier 3) Result');
-				console.log('Success:', result.success ?? true);
-
-				if (result.escalation) {
-					console.group('📊 Escalation Chain');
-					console.log('Final Tier:', result.escalation.final_tier);
-
-					Object.entries(result.escalation.tiers).forEach(([tier, data]) => {
-						console.group(`  Tier: ${tier}`);
-						console.log('Model:', (data as Record<string, unknown>).model);
-						console.log('Confidence:', (data as Record<string, unknown>).confidence);
-						console.groupEnd();
-					});
-
-					console.log('Total Cost: $' + (result.escalation.total_cost?.toFixed(6) ?? '0'));
-					console.groupEnd();
-				}
-
-				console.group('📋 Parsed Result');
-				console.log('Producer:', result.parsed?.producer ?? 'null');
-				console.log('Wine Name:', result.parsed?.wineName ?? 'null');
-				console.log('Vintage:', result.parsed?.vintage ?? 'null');
-				console.log('Region:', result.parsed?.region ?? 'null');
-				console.log('Country:', result.parsed?.country ?? 'null');
-				console.log('Type:', result.parsed?.wineType ?? 'null');
-				console.groupEnd();
-
-				console.log('Confidence:', result.confidence);
-				console.log('Action:', result.action);
-
-				if (result.inferences_applied?.length) {
-					console.log('Inferences Applied:', result.inferences_applied);
-				}
-
-				console.groupEnd();
 
 				update((state) => {
 					const newState = {
@@ -1018,7 +1036,7 @@ function createAgentStore() {
 		/**
 		 * Set enrichment error
 		 */
-		setEnrichmentError: (error: string | null) => {
+		setEnrichmentError: (error: AgentErrorInfo | null) => {
 			update((state) => ({ ...state, isEnriching: false, enrichmentError: error }));
 		},
 
@@ -1157,6 +1175,146 @@ function createAgentStore() {
 		},
 
 		/**
+		 * Enrich wine with streaming response (WIN-181)
+		 * Fields are emitted progressively as they arrive from the LLM.
+		 */
+		enrichWineWithStreaming: async (parsed: AgentParsedWine, confirmMatch = false, forceRefresh = false): Promise<void> => {
+			// Validate required fields
+			if (!parsed.producer || !parsed.wineName) {
+				const errorMessage: AgentMessage = {
+					id: generateMessageId(),
+					role: 'agent',
+					type: 'text',
+					content: 'I need at least the producer and wine name to find more information.',
+					timestamp: Date.now(),
+					isNew: true
+				};
+				update((s) => ({
+					...s,
+					messages: [...s.messages, errorMessage]
+				}));
+				return;
+			}
+
+			update((s) => ({
+				...s,
+				isEnriching: true,
+				isStreaming: true,
+				streamingFields: new Map(),
+				enrichmentError: null
+			}));
+
+			try {
+				const result = await api.enrichWineStream(
+					parsed.producer,
+					parsed.wineName,
+					parsed.vintage,
+					parsed.wineType,
+					parsed.region,
+					confirmMatch,
+					forceRefresh,
+					// onField callback - update streaming fields as they arrive
+					(field, value) => {
+						update((state) => {
+							const fields = new Map(state.streamingFields);
+							fields.set(field, {
+								value,
+								isTyping: true,
+								arrivedAt: Date.now()
+							});
+							return { ...state, streamingFields: fields };
+						});
+					}
+				);
+
+				// Handle pending confirmation
+				if (result.pendingConfirmation && result.matchedTo) {
+					const resolvedMatchType: 'abbreviation' | 'alias' | 'fuzzy' =
+						result.matchType && result.matchType !== 'exact'
+							? (result.matchType as 'abbreviation' | 'alias' | 'fuzzy')
+							: 'alias';
+
+					const confirmMessage: AgentMessage = {
+						id: generateMessageId(),
+						role: 'agent',
+						type: 'cache_match_confirm',
+						content: `I found cached data for ${result.matchedTo.producer || ''} ${result.matchedTo.wineName || ''} ${result.matchedTo.vintage || ''}. Is this the wine you're looking for?`.trim(),
+						timestamp: Date.now(),
+						isNew: true,
+						cacheMatchType: resolvedMatchType,
+						searchedFor: result.searchedFor,
+						matchedTo: result.matchedTo,
+						cacheConfidence: result.confidence,
+						chips: [
+							{ id: 'confirm_cache_match', label: 'Yes, use cached data', icon: 'check', action: 'confirm_cache_match' },
+							{ id: 'force_refresh', label: 'No, search online', icon: 'search', action: 'force_refresh' }
+						]
+					};
+
+					update((s) => {
+						const newState = {
+							...s,
+							isEnriching: false,
+							isStreaming: false,
+							streamingFields: new Map(),
+							phase: 'confirm_cache_match' as AgentPhase,
+							pendingCacheMatch: {
+								parsed,
+								matchType: resolvedMatchType,
+								searchedFor: result.searchedFor!,
+								matchedTo: result.matchedTo!,
+								confidence: result.confidence || 0.9
+							},
+							messages: [...s.messages, confirmMessage]
+						};
+						persistCurrentState(newState, true);
+						return newState;
+					});
+					return;
+				}
+
+				// Normal enrichment result - keep streaming card visible and set chips below
+				// WIN-181: Don't add message, don't clear streamingFields - let the card stay visible
+				const enrichmentChips: AgentChip[] = [
+					{ id: 'add_to_cellar', label: 'Add to Cellar', icon: 'plus', action: 'add_to_cellar' },
+					{ id: 'remember_wine', label: 'Remember Wine', icon: 'heart', action: 'remember_wine' }
+				];
+
+				update((s) => {
+					const newState = {
+						...s,
+						isEnriching: false,
+						isStreaming: false,
+						// WIN-181: Keep streamingFields populated so enrichment card stays visible
+						// Fields will be cleared when user takes action
+						enrichmentData: result.data,
+						enrichmentForWine: { producer: parsed.producer!, wineName: parsed.wineName! },
+						pendingCacheMatch: null,
+						pendingEnrichmentResult: result.data ?? null,
+						enrichmentStreamingChips: {
+							content: "Here's what I found about this wine.",
+							chips: enrichmentChips
+						},
+						phase: 'action_select' as AgentPhase
+						// Don't add message - the streaming card will display the data
+					};
+					persistCurrentState(newState, true);
+					return newState;
+				});
+			} catch (error) {
+				// Fallback to non-streaming on error
+				console.warn('Streaming enrichment failed, falling back:', error);
+				update((state) => ({
+					...state,
+					isStreaming: false,
+					streamingFields: new Map()
+				}));
+				// Use the regular enrichment method as fallback
+				await agent.enrichWine(parsed, confirmMatch, forceRefresh);
+			}
+		},
+
+		/**
 		 * Clear enrichment data and error
 		 */
 		clearEnrichment: (): void => {
@@ -1259,7 +1417,13 @@ function createAgentStore() {
 				pendingNewSearch: null,
 				enrichmentData: null,
 				enrichmentError: null,
-				addState: null
+				addState: null,
+				// WIN-181: Clear streaming state on session start
+				isStreaming: false,
+				streamingFields: new Map(),
+				streamingChips: null,
+				enrichmentStreamingChips: null,
+				pendingEnrichmentResult: null
 			}));
 		},
 
@@ -1373,8 +1537,9 @@ function createAgentStore() {
 				const messages = [...state.messages];
 				// Find last message with chips and clear them
 				for (let i = messages.length - 1; i >= 0; i--) {
-					if (messages[i].chips && messages[i].chips.length > 0) {
-						messages[i] = { ...messages[i], chips: undefined };
+					const msg = messages[i];
+					if (msg.chips && msg.chips.length > 0) {
+						messages[i] = { ...msg, chips: undefined };
 						break;
 					}
 				}
@@ -1432,7 +1597,13 @@ function createAgentStore() {
 					isTyping: false,
 					enrichmentData: null,
 					enrichmentError: null,
-					addState: null
+					addState: null,
+					// WIN-181: Clear streaming state on conversation reset
+					isStreaming: false,
+					streamingFields: new Map(),
+					streamingChips: null,
+					enrichmentStreamingChips: null,
+					pendingEnrichmentResult: null
 				};
 
 				// Persist immediately to ensure greeting appears after error recovery
@@ -1801,4 +1972,38 @@ export const agentPendingNewSearch = derived<typeof agent, PendingNewSearch | nu
 export const agentAddState = derived<typeof agent, AgentAddState | null>(
 	agent,
 	($agent) => $agent.addState
+);
+
+// ─────────────────────────────────────────────────────────
+// STREAMING DERIVED STORES (WIN-181)
+// ─────────────────────────────────────────────────────────
+
+/** Whether agent is currently streaming a response */
+export const agentIsStreaming = derived<typeof agent, boolean>(
+	agent,
+	($agent) => $agent.isStreaming
+);
+
+/** Map of streaming field states */
+export const agentStreamingFields = derived<typeof agent, Map<string, StreamingFieldState>>(
+	agent,
+	($agent) => $agent.streamingFields
+);
+
+/** Chips to display below streaming card */
+export const agentStreamingChips = derived(
+	agent,
+	($agent) => $agent.streamingChips
+);
+
+/** Chips to display below enrichment streaming card */
+export const agentEnrichmentStreamingChips = derived(
+	agent,
+	($agent) => $agent.enrichmentStreamingChips
+);
+
+/** Pending enrichment result for when user acts on chips */
+export const agentPendingEnrichmentResult = derived(
+	agent,
+	($agent) => $agent.pendingEnrichmentResult
 );
