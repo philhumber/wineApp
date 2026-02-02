@@ -262,6 +262,7 @@ export type AgentPhase =
 export type AgentMessageType =
 	| 'greeting'
 	| 'text'
+	| 'divider' // Conversation separator (WIN-174)
 	| 'chips'
 	| 'image_preview'
 	| 'wine_result'
@@ -1204,6 +1205,40 @@ function createAgentStore() {
 		},
 
 		/**
+		 * Cancel identification in progress (WIN-174)
+		 * UI-only: resets state and shows friendly message
+		 */
+		cancelIdentification: () => {
+			update((state) => ({
+				...state,
+				isLoading: false,
+				isTyping: false,
+				phase: 'await_input' as AgentPhase
+			}));
+
+			// Add friendly cancellation message
+			const messageId = generateMessageId();
+			update((state) => ({
+				...state,
+				messages: [
+					...state.messages,
+					{
+						id: messageId,
+						role: 'agent' as const,
+						type: 'text' as AgentMessageType,
+						content: "No problem, I've stopped. What would you like to do?",
+						timestamp: Date.now(),
+						isNew: true,
+						chips: [
+							{ id: 'try_again', label: 'Try Again', icon: 'refresh', action: 'try_again' },
+							{ id: 'start_over', label: 'Start Over', icon: 'refresh', action: 'start_over' }
+						]
+					}
+				]
+			}));
+		},
+
+		/**
 		 * Set augmentation context for retry flow
 		 */
 		setAugmentationContext: (context: AgentAugmentationContext | null) => {
@@ -1250,14 +1285,14 @@ function createAgentStore() {
 		resetConversation: () => {
 			const greeting = getRandomGreeting();
 
-			// Add a divider message to show conversation restart
+			// Add a divider message to show conversation restart (WIN-174)
 			const dividerMessage: AgentMessage = {
 				id: generateMessageId(),
 				role: 'agent',
-				type: 'text',
-				content: '— New conversation —',
+				type: 'divider',
+				content: 'New conversation',
 				timestamp: Date.now(),
-				isNew: true
+				isNew: false // No typewriter animation for dividers
 			};
 
 			const greetingMessage: AgentMessage = {
