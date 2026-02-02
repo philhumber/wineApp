@@ -3,7 +3,7 @@
  * LLM Provider Interface
  *
  * Contract that all LLM provider adapters must implement.
- * Provides a unified interface for text completion, vision, and capabilities.
+ * Provides a unified interface for text completion, vision, streaming, and capabilities.
  *
  * @package Agent\LLM\Interfaces
  */
@@ -11,6 +11,7 @@
 namespace Agent\LLM\Interfaces;
 
 use Agent\LLM\LLMResponse;
+use Agent\LLM\LLMStreamingResponse;
 
 interface LLMProviderInterface
 {
@@ -71,4 +72,39 @@ interface LLMProviderInterface
      * @return bool True if provider is configured and available
      */
     public function isHealthy(): bool;
+
+    /**
+     * Stream completion with callback for field updates (WIN-181)
+     *
+     * Streams the LLM response and calls onChunk callback for each detected field.
+     * Returns a streaming response with TTFB and field timing metadata.
+     *
+     * @param string $prompt The prompt to complete
+     * @param array $options Options like max_tokens, temperature
+     * @param callable $onChunk Callback fn(string $field, mixed $value) for field events
+     * @return LLMStreamingResponse
+     */
+    public function streamComplete(
+        string $prompt,
+        array $options,
+        callable $onChunk
+    ): LLMStreamingResponse;
+
+    /**
+     * Stream completion with image (vision streaming) (WIN-181)
+     *
+     * @param string $prompt Text prompt
+     * @param string $imageBase64 Base64-encoded image
+     * @param string $mimeType Image MIME type
+     * @param array $options Additional options
+     * @param callable $onChunk Callback fn(string $field, mixed $value) for field events
+     * @return LLMStreamingResponse
+     */
+    public function streamCompleteWithImage(
+        string $prompt,
+        string $imageBase64,
+        string $mimeType,
+        array $options,
+        callable $onChunk
+    ): LLMStreamingResponse;
 }

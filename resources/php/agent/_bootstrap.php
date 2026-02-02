@@ -363,3 +363,130 @@ function agentLogInfo(string $message, array $context = []): void
 
     error_log($logMessage);
 }
+
+// ===========================================
+// SSE (Server-Sent Events) Helpers (WIN-181)
+// ===========================================
+
+/**
+ * Initialize SSE response headers
+ *
+ * Sets up headers for Server-Sent Events streaming.
+ * Must be called before any output.
+ *
+ * @return void
+ */
+function initSSE(): void
+{
+    // Disable output buffering
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+
+    // Set SSE headers
+    header('Content-Type: text/event-stream');
+    header('Cache-Control: no-cache');
+    header('Connection: keep-alive');
+    header('X-Accel-Buffering: no'); // Nginx
+
+    // Enable implicit flush
+    ob_implicit_flush(true);
+}
+
+/**
+ * Send an SSE event
+ *
+ * @param string $event Event name (field, result, error, done)
+ * @param array $data Event data (will be JSON encoded)
+ * @return void
+ */
+function sendSSE(string $event, array $data): void
+{
+    echo "event: {$event}\n";
+    echo "data: " . json_encode($data) . "\n\n";
+    flush();
+}
+
+/**
+ * Send an SSE error event and exit
+ *
+ * Classifies the exception and sends appropriate error event.
+ *
+ * @param \Exception $e The exception
+ * @param string $endpoint Endpoint name for logging
+ * @return void
+ */
+function sendSSEError(\Exception $e, string $endpoint = 'stream'): void
+{
+    $message = $e->getMessage();
+    $errorType = 'server_error';
+
+    // Check for error types in exception chain
+    $fullMessage = $message;
+    $prev = $e->getPrevious();
+    while ($prev) {
+        $fullMessage .= ' ' . $prev->getMessage();
+        $prev = $prev->getPrevious();
+    }
+
+    // Classify error type
+    if (stripos($fullMessage, 'timeout') !== false || stripos($fullMessage, 'timed out') !== false) {
+        $errorType = 'timeout';
+    } elseif (stripos($fullMessage, 'rate limit') !== false || stripos($fullMessage, '429') !== false) {
+        $errorType = 'rate_limit';
+    } elseif (stripos($fullMessage, 'token') !== false && stripos($fullMessage, 'limit') !== false) {
+        $errorType = 'limit_exceeded';
+    } elseif ($e instanceof \PDOException) {
+        $errorType = 'database_error';
+    }
+
+    // User-friendly messages
+    $userMessages = [
+        'timeout' => 'Our sommelier is taking longer than expected. Please try again.',
+        'rate_limit' => 'Our sommelier is quite busy. Please wait a moment and try again.',
+        'limit_exceeded' => 'We\'ve reached our tasting limit for today.',
+        'server_error' => 'Something unexpected happened. Please try again.',
+        'overloaded' => 'Our sommelier is overwhelmed with requests. Please try again shortly.',
+        'database_error' => 'We\'re having trouble accessing our cellar records. Please try again.',
+    ];
+
+    // Generate support reference
+    $supportRef = 'ERR-' . strtoupper(substr(md5(time() . $errorType . $endpoint), 0, 8));
+
+    // Log error
+    agentLogError("SSE Exception in {$endpoint}", [
+        'type' => $errorType,
+        'message' => $message,
+        'supportRef' => $supportRef,
+        'trace' => $e->getTraceAsString()
+    ]);
+
+    // Send error event
+    sendSSE('error', [
+        'type' => $errorType,
+        'message' => $userMessages[$errorType] ?? $userMessages['server_error'],
+        'retryable' => in_array($errorType, ['timeout', 'rate_limit', 'server_error', 'overloaded']),
+        'supportRef' => $supportRef,
+    ]);
+
+    sendSSE('done', []);
+    exit;
+}
+
+/**
+ * Check if streaming is enabled for a task
+ *
+ * @param string $taskType Task type (identify_text, identify_image, enrich)
+ * @return bool True if streaming is enabled
+ */
+function isStreamingEnabled(string $taskType): bool
+{
+    $config = getAgentConfig();
+
+    if (!($config['streaming']['enabled'] ?? false)) {
+        return false;
+    }
+
+    $enabledTasks = $config['streaming']['tasks'] ?? [];
+    return in_array($taskType, $enabledTasks);
+}

@@ -12,6 +12,9 @@ namespace Agent\LLM\Adapters;
 
 use Agent\LLM\Interfaces\LLMProviderInterface;
 use Agent\LLM\LLMResponse;
+use Agent\LLM\LLMStreamingResponse;
+use Agent\LLM\Streaming\SSEParser;
+use Agent\LLM\Streaming\StreamingFieldDetector;
 
 class GeminiAdapter implements LLMProviderInterface
 {
@@ -235,6 +238,261 @@ class GeminiAdapter implements LLMProviderInterface
         }
 
         return $this->parseSuccessResponse($response['data'], $latencyMs, $model);
+    }
+
+    /**
+     * Stream completion with callback for field updates (WIN-181)
+     *
+     * {@inheritdoc}
+     */
+    public function streamComplete(
+        string $prompt,
+        array $options,
+        callable $onChunk
+    ): LLMStreamingResponse {
+        $startTime = \microtime(true);
+        $model = $options['model'] ?? $this->model;
+
+        $payload = $this->buildStreamingPayload($prompt, null, null, $options);
+
+        // Streaming URL: streamGenerateContent?alt=sse
+        $url = "{$this->baseUrl}/models/{$model}:streamGenerateContent?alt=sse&key={$this->apiKey}";
+
+        return $this->executeStreaming($url, $payload, $options, $onChunk, $startTime, $model);
+    }
+
+    /**
+     * Stream completion with image (WIN-181)
+     *
+     * {@inheritdoc}
+     */
+    public function streamCompleteWithImage(
+        string $prompt,
+        string $imageBase64,
+        string $mimeType,
+        array $options,
+        callable $onChunk
+    ): LLMStreamingResponse {
+        $startTime = \microtime(true);
+        $model = $options['model'] ?? $this->model;
+
+        $payload = $this->buildStreamingPayload($prompt, $imageBase64, $mimeType, $options);
+
+        // Streaming URL: streamGenerateContent?alt=sse
+        $url = "{$this->baseUrl}/models/{$model}:streamGenerateContent?alt=sse&key={$this->apiKey}";
+
+        return $this->executeStreaming($url, $payload, $options, $onChunk, $startTime, $model);
+    }
+
+    /**
+     * Build payload for streaming requests
+     *
+     * @param string $prompt Text prompt
+     * @param string|null $imageBase64 Optional image data
+     * @param string|null $mimeType Optional image MIME type
+     * @param array $options Request options
+     * @return array Request payload
+     */
+    private function buildStreamingPayload(
+        string $prompt,
+        ?string $imageBase64,
+        ?string $mimeType,
+        array $options
+    ): array {
+        $parts = [['text' => $prompt]];
+
+        // Add image if provided
+        if ($imageBase64 && $mimeType) {
+            $parts[] = [
+                'inline_data' => [
+                    'mime_type' => $mimeType,
+                    'data' => $imageBase64,
+                ]
+            ];
+        }
+
+        $payload = [
+            'contents' => [['parts' => $parts]],
+            'generationConfig' => [
+                'maxOutputTokens' => $options['max_tokens'] ?? 1000,
+                'temperature' => $options['temperature'] ?? 0.7,
+            ],
+        ];
+
+        // Add thinking config for Gemini 3 models
+        $model = $options['model'] ?? $this->model;
+        if (isset($options['thinking_level']) && $this->supportsThinking($model)) {
+            $payload['generationConfig']['thinkingConfig'] = [
+                'thinkingLevel' => $options['thinking_level']
+            ];
+        }
+
+        // Add JSON response format if requested
+        if ($options['json_response'] ?? false) {
+            $payload['generationConfig']['responseMimeType'] = 'application/json';
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Execute streaming request with curl
+     *
+     * @param string $url Request URL
+     * @param array $payload Request payload
+     * @param array $options Request options
+     * @param callable $onChunk Field callback
+     * @param float $startTime Start timestamp
+     * @param string $model Model name
+     * @return LLMStreamingResponse
+     */
+    private function executeStreaming(
+        string $url,
+        array $payload,
+        array $options,
+        callable $onChunk,
+        float $startTime,
+        string $model
+    ): LLMStreamingResponse {
+        $parser = new SSEParser();
+        $detector = new StreamingFieldDetector();
+        $chunks = [];
+        $ttfb = null;
+        $fieldTimings = [];
+        $accumulatedText = '';
+        $error = null;
+        $httpCode = 0;
+
+        $ch = \curl_init($url);
+
+        $curlOptions = [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => \json_encode($payload),
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_TIMEOUT => $options['timeout'] ?? 30,
+            CURLOPT_WRITEFUNCTION => function ($ch, $data) use (
+                $parser,
+                $detector,
+                $onChunk,
+                &$chunks,
+                &$ttfb,
+                &$fieldTimings,
+                &$accumulatedText,
+                $startTime
+            ) {
+                // Track TTFB on first data
+                if ($ttfb === null) {
+                    $ttfb = (int)((\microtime(true) - $startTime) * 1000);
+                }
+
+                // Parse SSE chunks from Gemini
+                $jsonPayloads = $parser->parse($data);
+
+                foreach ($jsonPayloads as $json) {
+                    $chunks[] = $json;
+
+                    // Extract text from Gemini response structure
+                    $text = $json['candidates'][0]['content']['parts'][0]['text'] ?? '';
+
+                    if ($text) {
+                        $accumulatedText .= $text;
+
+                        // Detect complete fields and emit
+                        $detector->processChunk($text, function ($field, $value) use (
+                            $onChunk,
+                            &$fieldTimings,
+                            $startTime
+                        ) {
+                            $fieldTimings[$field] = (int)((\microtime(true) - $startTime) * 1000);
+                            $onChunk($field, $value);
+                        });
+                    }
+                }
+
+                return \strlen($data);
+            },
+        ];
+
+        // SSL configuration
+        $certPath = $this->getCertPath();
+        if ($certPath) {
+            $curlOptions[CURLOPT_SSL_VERIFYPEER] = true;
+            $curlOptions[CURLOPT_SSL_VERIFYHOST] = 2;
+            $curlOptions[CURLOPT_CAINFO] = $certPath;
+        } else {
+            $curlOptions[CURLOPT_SSL_VERIFYPEER] = false;
+            $curlOptions[CURLOPT_SSL_VERIFYHOST] = 0;
+        }
+
+        \curl_setopt_array($ch, $curlOptions);
+
+        $result = \curl_exec($ch);
+        $httpCode = \curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = \curl_error($ch);
+        \curl_close($ch);
+
+        $latencyMs = (int)((\microtime(true) - $startTime) * 1000);
+
+        // Handle curl errors
+        if ($curlError) {
+            return LLMStreamingResponse::error(
+                $curlError,
+                'network_error',
+                [
+                    'latencyMs' => $latencyMs,
+                    'provider' => 'gemini',
+                    'model' => $model,
+                    'streamed' => false,
+                ]
+            );
+        }
+
+        // Handle HTTP errors
+        if ($httpCode !== 200) {
+            $errorType = $this->classifyError($httpCode, '');
+            return LLMStreamingResponse::error(
+                "Streaming request failed with HTTP {$httpCode}",
+                $errorType,
+                [
+                    'latencyMs' => $latencyMs,
+                    'provider' => 'gemini',
+                    'model' => $model,
+                    'streamed' => false,
+                ]
+            );
+        }
+
+        // Try to parse complete JSON from accumulated text
+        $completeJson = $detector->tryParseComplete();
+        $content = $completeJson ? \json_encode($completeJson) : $accumulatedText;
+
+        // Calculate token counts from chunks (approximate)
+        $inputTokens = 0;
+        $outputTokens = 0;
+        foreach ($chunks as $chunk) {
+            $inputTokens = $chunk['usageMetadata']['promptTokenCount'] ?? $inputTokens;
+            $outputTokens += $chunk['usageMetadata']['candidatesTokenCount'] ?? 0;
+        }
+
+        // Calculate cost
+        $costConfig = $this->getCostConfig($model);
+        $costUSD = ($inputTokens * $costConfig['input'] / 1000000) +
+                   ($outputTokens * $costConfig['output'] / 1000000);
+
+        return new LLMStreamingResponse([
+            'success' => true,
+            'content' => $content,
+            'inputTokens' => $inputTokens,
+            'outputTokens' => $outputTokens,
+            'costUSD' => $costUSD,
+            'latencyMs' => $latencyMs,
+            'provider' => 'gemini',
+            'model' => $model,
+            'streamed' => true,
+            'ttfbMs' => $ttfb ?? $latencyMs,
+            'fieldTimings' => $fieldTimings,
+            'chunks' => $chunks,
+        ]);
     }
 
     /**

@@ -312,6 +312,302 @@ class IdentificationService
     }
 
     /**
+     * Identify wine from text input with SSE streaming (WIN-181)
+     *
+     * Streams the LLM response and calls onField callback for each detected field.
+     * Uses Tier 1 only - escalation happens after streaming completes if needed.
+     *
+     * @param array $input Input data with 'text' key
+     * @param callable $onField Callback fn(string $field, mixed $value) for field events
+     * @return array Identification result with streaming metadata
+     */
+    public function identifyStreaming(array $input, callable $onField): array
+    {
+        // Validate input
+        $classification = $this->classifier->classify($input);
+        if (!$classification['valid']) {
+            return [
+                'success' => false,
+                'error' => $classification['error'],
+                'stage' => 'classification',
+            ];
+        }
+
+        // Check streaming feature flag
+        if (!($this->config['streaming']['enabled'] ?? false)) {
+            // Fall back to non-streaming
+            return $this->identify($input);
+        }
+
+        $text = $classification['text'];
+        $intent = $this->intentDetector->detect($text);
+
+        // Build prompt (reuse TextProcessor logic)
+        $prompt = $this->buildIdentificationPrompt($text);
+
+        // Tier 1 only for streaming (per plan)
+        $tierConfig = $this->config['model_tiers']['fast'] ?? [];
+        $options = [
+            'provider' => $tierConfig['provider'] ?? 'gemini',
+            'model' => $tierConfig['model'] ?? 'gemini-3-flash-preview',
+            'temperature' => $tierConfig['temperature'] ?? 0.3,
+            'max_tokens' => $tierConfig['max_tokens'] ?? 4000,
+            'json_response' => true,
+        ];
+
+        // Add thinking level if configured
+        if (isset($tierConfig['thinking_level'])) {
+            $options['thinking_level'] = $tierConfig['thinking_level'];
+        }
+
+        // Execute streaming request
+        $response = $this->llmClient->streamComplete('identify_text', $prompt, $onField, $options);
+
+        if (!$response->success) {
+            // On streaming error, fall back to non-streaming if configured
+            if ($this->config['streaming']['fallback_on_error'] ?? true) {
+                \error_log("IdentificationService: Streaming failed, falling back to non-streaming");
+                return $this->identify($input);
+            }
+
+            return [
+                'success' => false,
+                'error' => $response->error ?? 'Streaming failed',
+                'errorType' => $response->errorType ?? 'streaming_error',
+                'stage' => 'streaming',
+            ];
+        }
+
+        // Parse the complete response
+        $parsed = \json_decode($response->content, true) ?? [];
+
+        // Apply inference to fill missing fields
+        $result = ['success' => true, 'parsed' => $parsed];
+        $result = $this->applyInference($result);
+
+        // Score the result
+        $scoring = $this->scorer->score($result['parsed']);
+
+        // Determine action based on confidence
+        $thresholds = $this->config['confidence'] ?? [];
+        $tier1Threshold = $thresholds['tier1_threshold'] ?? 85;
+
+        $action = $scoring['score'] >= $tier1Threshold ? 'auto_populate' : 'suggest';
+
+        return [
+            'success' => true,
+            'inputType' => 'text',
+            'intent' => $intent['intent'] ?? 'add',
+            'parsed' => $result['parsed'],
+            'confidence' => $scoring['score'],
+            'action' => $action,
+            'candidates' => [],
+            'streamed' => true,
+            'usage' => [
+                'ttfbMs' => $response->ttfbMs,
+                'fieldTimings' => $response->fieldTimings,
+                'latencyMs' => $response->latencyMs,
+                'tokens' => [
+                    'input' => $response->inputTokens,
+                    'output' => $response->outputTokens,
+                ],
+                'cost' => $response->costUSD,
+            ],
+            'escalation' => [
+                'tiers' => [
+                    'tier1' => [
+                        'confidence' => $scoring['score'],
+                        'model' => $options['model'],
+                        'streamed' => true,
+                    ],
+                ],
+                'final_tier' => 'tier1',
+                'total_cost' => $response->costUSD,
+            ],
+            'inferences_applied' => $result['inferences_applied'] ?? [],
+        ];
+    }
+
+    /**
+     * Identify wine from image with SSE streaming (WIN-181)
+     *
+     * @param array $input Input data with 'image' and 'mimeType' keys
+     * @param callable $onField Callback fn(string $field, mixed $value) for field events
+     * @return array Identification result with streaming metadata
+     */
+    public function identifyStreamingImage(array $input, callable $onField): array
+    {
+        // Validate input
+        $classification = $this->classifier->classify($input);
+        if (!$classification['valid']) {
+            return [
+                'success' => false,
+                'error' => $classification['error'],
+                'stage' => 'classification',
+            ];
+        }
+
+        // Check streaming feature flag
+        if (!($this->config['streaming']['enabled'] ?? false)) {
+            return $this->identify($input);
+        }
+
+        $imageData = $classification['imageData'];
+        $mimeType = $classification['mimeType'];
+        $supplementaryText = $classification['supplementaryText'] ?? null;
+
+        // Build prompt (reuse VisionProcessor logic)
+        $prompt = $this->buildVisionPrompt($supplementaryText);
+
+        // Tier 1 only for streaming
+        $tierConfig = $this->config['model_tiers']['fast'] ?? [];
+        $options = [
+            'provider' => $tierConfig['provider'] ?? 'gemini',
+            'model' => $tierConfig['model'] ?? 'gemini-3-flash-preview',
+            'temperature' => $tierConfig['temperature'] ?? 0.3,
+            'max_tokens' => $tierConfig['max_tokens'] ?? 4000,
+            'json_response' => true,
+        ];
+
+        if (isset($tierConfig['thinking_level'])) {
+            $options['thinking_level'] = $tierConfig['thinking_level'];
+        }
+
+        // Execute streaming request with image
+        $response = $this->llmClient->streamCompleteWithImage(
+            'identify_image',
+            $prompt,
+            $imageData,
+            $mimeType,
+            $onField,
+            $options
+        );
+
+        if (!$response->success) {
+            if ($this->config['streaming']['fallback_on_error'] ?? true) {
+                \error_log("IdentificationService: Image streaming failed, falling back");
+                return $this->identify($input);
+            }
+
+            return [
+                'success' => false,
+                'error' => $response->error ?? 'Streaming failed',
+                'errorType' => $response->errorType ?? 'streaming_error',
+                'stage' => 'streaming',
+            ];
+        }
+
+        // Parse the complete response
+        $parsed = \json_decode($response->content, true) ?? [];
+
+        // Apply inference
+        $result = ['success' => true, 'parsed' => $parsed];
+        $result = $this->applyInference($result);
+
+        // Score the result
+        $scoring = $this->scorer->score($result['parsed']);
+
+        $thresholds = $this->config['confidence'] ?? [];
+        $tier1Threshold = $thresholds['tier1_threshold'] ?? 85;
+        $action = $scoring['score'] >= $tier1Threshold ? 'auto_populate' : 'suggest';
+
+        return [
+            'success' => true,
+            'inputType' => 'image',
+            'intent' => 'add',
+            'parsed' => $result['parsed'],
+            'confidence' => $scoring['score'],
+            'action' => $action,
+            'candidates' => [],
+            'streamed' => true,
+            'usage' => [
+                'ttfbMs' => $response->ttfbMs,
+                'fieldTimings' => $response->fieldTimings,
+                'latencyMs' => $response->latencyMs,
+                'tokens' => [
+                    'input' => $response->inputTokens,
+                    'output' => $response->outputTokens,
+                ],
+                'cost' => $response->costUSD,
+            ],
+            'escalation' => [
+                'tiers' => [
+                    'tier1' => [
+                        'confidence' => $scoring['score'],
+                        'model' => $options['model'],
+                        'streamed' => true,
+                    ],
+                ],
+                'final_tier' => 'tier1',
+                'total_cost' => $response->costUSD,
+            ],
+            'inferences_applied' => $result['inferences_applied'] ?? [],
+        ];
+    }
+
+    /**
+     * Build identification prompt for text input (WIN-181)
+     *
+     * Replicates prompt from TextProcessor for streaming use.
+     *
+     * @param string $text Input text
+     * @return string Prompt for LLM
+     */
+    private function buildIdentificationPrompt(string $text): string
+    {
+        return <<<PROMPT
+You are an expert wine sommelier. Identify the wine from the following text and return ONLY a JSON object.
+
+TEXT: {$text}
+
+Return a JSON object with these fields:
+- producer: The winery/producer name (required)
+- wineName: The specific wine name/cuvée (required)
+- vintage: The year as a number, or null if not mentioned
+- region: The wine region (e.g., "Bordeaux", "Napa Valley")
+- country: The country of origin
+- wineType: One of "Red", "White", "Rosé", "Sparkling", "Dessert", "Fortified"
+- grapes: Array of grape varieties if known
+- confidence: Your confidence score 0-100 in this identification
+- confidenceRationale: Brief explanation of your confidence score
+
+Be precise. If unsure about a field, use null rather than guessing.
+PROMPT;
+    }
+
+    /**
+     * Build vision prompt for image input (WIN-181)
+     *
+     * @param string|null $supplementaryText Additional context from user
+     * @return string Prompt for LLM
+     */
+    private function buildVisionPrompt(?string $supplementaryText = null): string
+    {
+        $prompt = <<<PROMPT
+You are an expert wine sommelier analyzing a wine label image. Identify the wine and return ONLY a JSON object.
+
+Extract all visible information from the label image and return a JSON object with:
+- producer: The winery/producer name (required)
+- wineName: The specific wine name/cuvée (required)
+- vintage: The year as a number, or null if not visible
+- region: The wine region (e.g., "Bordeaux", "Napa Valley")
+- country: The country of origin
+- wineType: One of "Red", "White", "Rosé", "Sparkling", "Dessert", "Fortified"
+- grapes: Array of grape varieties if visible
+- confidence: Your confidence score 0-100 in this identification
+- confidenceRationale: Brief explanation of your confidence score
+
+Be precise. If unsure about a field, use null rather than guessing.
+PROMPT;
+
+        if ($supplementaryText) {
+            $prompt .= "\n\nAdditional context from user: {$supplementaryText}";
+        }
+
+        return $prompt;
+    }
+
+    /**
      * Identify wine from text input using four-tier escalation
      *
      * Escalation tiers:
