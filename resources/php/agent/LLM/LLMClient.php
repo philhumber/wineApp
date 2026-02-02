@@ -626,4 +626,29 @@ class LLMClient
     {
         $this->costTracker->setSessionId($sessionId);
     }
+
+    /**
+     * Log an identification result for analytics
+     *
+     * Call this after identification completes to track confidence
+     * scores and tier escalation for model performance analysis.
+     *
+     * @param array $result The identification result
+     * @return int The log entry ID
+     */
+    public function logIdentificationResult(array $result): int
+    {
+        return $this->costTracker->logIdentificationResult($result);
+    }
+
+    /**
+     * Get identification analytics
+     *
+     * @param int $days Number of days to analyze
+     * @return array Analytics data
+     */
+    public function getIdentificationAnalytics(int $days = 7): array
+    {
+        return $this->costTracker->getIdentificationAnalytics($days);
+    }
 }

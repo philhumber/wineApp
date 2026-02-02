@@ -249,4 +249,114 @@ class CostTracker
 
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
+
+    /**
+     * Log an identification result for analytics
+     *
+     * Logs confidence scores and tier escalation data for analyzing
+     * model performance across the tiered escalation system.
+     *
+     * @param array $result The identification result from IdentificationService
+     * @return int The inserted log ID
+     */
+    public function logIdentificationResult(array $result): int
+    {
+        // Extract escalation data
+        $escalation = $result['escalation'] ?? [];
+        $tiers = $escalation['tiers'] ?? [];
+        $parsed = $result['parsed'] ?? [];
+
+        $stmt = $this->pdo->prepare("
+            INSERT INTO agentIdentificationResults
+            (userId, sessionId, inputType, inputHash,
+             finalConfidence, finalAction, finalTier,
+             tier1Confidence, tier1_5Confidence, tier2Confidence, tier3Confidence,
+             tier1Model, tier1_5Model, tier2Model, tier3Model,
+             totalCostUSD, totalLatencyMs,
+             identifiedProducer, identifiedWineName, identifiedVintage, identifiedRegion,
+             inferencesApplied, createdAt)
+            VALUES (?, ?, ?, ?,
+                    ?, ?, ?,
+                    ?, ?, ?, ?,
+                    ?, ?, ?, ?,
+                    ?, ?,
+                    ?, ?, ?, ?,
+                    ?, NOW())
+        ");
+
+        $stmt->execute([
+            $this->userId,
+            $this->sessionId,
+            $result['inputType'] ?? 'text',
+            null, // inputHash - could be added later for dedup
+
+            $result['confidence'] ?? 0,
+            $result['action'] ?? 'unknown',
+            $escalation['final_tier'] ?? 'unknown',
+
+            $tiers['tier1']['confidence'] ?? null,
+            $tiers['tier1_5']['confidence'] ?? null,
+            $tiers['tier2']['confidence'] ?? null,
+            $tiers['tier3']['confidence'] ?? null,
+
+            $tiers['tier1']['model'] ?? null,
+            $tiers['tier1_5']['model'] ?? null,
+            $tiers['tier2']['model'] ?? null,
+            $tiers['tier3']['model'] ?? null,
+
+            $escalation['total_cost'] ?? 0,
+            $result['usage']['latencyMs'] ?? null,
+
+            $parsed['producer'] ?? null,
+            $parsed['wineName'] ?? null,
+            $parsed['vintage'] ?? null,
+            $parsed['region'] ?? null,
+
+            !empty($result['inferences_applied']) ? json_encode($result['inferences_applied']) : null,
+        ]);
+
+        return (int)$this->pdo->lastInsertId();
+    }
+
+    /**
+     * Get identification analytics summary
+     *
+     * @param int $days Number of days to analyze
+     * @return array Analytics data
+     */
+    public function getIdentificationAnalytics(int $days = 7): array
+    {
+        // Tier resolution stats
+        $tierStats = $this->pdo->prepare("
+            SELECT
+                finalTier,
+                COUNT(*) as count,
+                ROUND(AVG(finalConfidence), 1) as avgConfidence,
+                ROUND(SUM(totalCostUSD), 4) as totalCost
+            FROM agentIdentificationResults
+            WHERE userId = ? AND createdAt >= DATE_SUB(NOW(), INTERVAL ? DAY)
+            GROUP BY finalTier
+            ORDER BY count DESC
+        ");
+        $tierStats->execute([$this->userId, $days]);
+
+        // Model performance
+        $modelStats = $this->pdo->prepare("
+            SELECT * FROM vw_model_comparison
+        ");
+        $modelStats->execute();
+
+        // Daily trends
+        $dailyTrends = $this->pdo->prepare("
+            SELECT * FROM vw_tier_escalation_analysis
+            WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+        ");
+        $dailyTrends->execute([$days]);
+
+        return [
+            'tierStats' => $tierStats->fetchAll(\PDO::FETCH_ASSOC),
+            'modelStats' => $modelStats->fetchAll(\PDO::FETCH_ASSOC),
+            'dailyTrends' => $dailyTrends->fetchAll(\PDO::FETCH_ASSOC),
+        ];
+    }
 }
