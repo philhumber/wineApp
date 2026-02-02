@@ -42,7 +42,7 @@ class ConfidenceScorer
         $this->thresholds = [
             'auto_populate' => $config['confidence']['auto_populate'] ?? 85,
             'suggest' => $config['confidence']['suggest'] ?? 60,
-            'user_choice' => $config['confidence']['user_choice_threshold'] ?? 50,
+            'user_choice' => $config['confidence']['user_choice_threshold'] ?? 60,
         ];
     }
 
