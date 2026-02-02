@@ -51,8 +51,9 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--space-3);
-		justify-content: center;
+		justify-content: flex-end; /* WIN-174: Right-align chips */
 		margin-top: var(--space-4);
+		padding-right: var(--space-4);
 	}
 
 	.action-chip {
@@ -98,11 +99,15 @@
 		outline-offset: 2px;
 	}
 
+	/* WIN-174: Enhanced disabled styling - flattened appearance */
 	.action-chip.disabled,
 	.action-chip:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
+		opacity: 0.6;
+		cursor: default;
+		pointer-events: none;
 		box-shadow: none;
+		border-color: var(--divider-subtle);
+		background: var(--bg-subtle);
 	}
 
 	.action-chip :global(.icon) {

@@ -10,7 +10,7 @@
 	import { fly, fade } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { goto } from '$app/navigation';
-	import { onMount, tick } from 'svelte';
+	import { onMount, onDestroy, tick } from 'svelte';
 	import {
 		agent,
 		agentPanelOpen,
@@ -42,6 +42,7 @@
 	import ChatMessage from './ChatMessage.svelte';
 	import TypingIndicator from './TypingIndicator.svelte';
 	import { EnrichmentSkeleton } from './enrichment';
+	import { Icon } from '$lib/components'; // WIN-174: For footer Start Over button
 	import type { AgentParsedWine, AgentCandidate, AgentAction, AgentEscalationMeta, AgentIdentificationResult, Region, Producer, Wine, AddWinePayload, DuplicateMatch } from '$lib/api/types';
 	import { api } from '$lib/api';
 	import { detectCommand, detectChipResponse, isBriefInput, type CommandType } from '$lib/utils';
@@ -108,8 +109,53 @@
 	// CommandInput ref for triggering camera/gallery
 	let commandInputRef: CommandInput;
 
-	// Typing indicator text based on phase
-	$: typingText = phase === 'identifying' ? 'Consulting the cellar...' : 'Thinking...';
+	// WIN-174: Cycling loading messages with sommelier personality
+	const LOADING_MESSAGES: Record<string, string[]> = {
+		identifying: [
+			'Consulting the cellar...',
+			'Reading the label...',
+			'Swirling for clarity...',
+			'Checking the vintage...',
+			'Decanting the details...'
+		],
+		enriching: [
+			'Gathering tasting notes...',
+			'Consulting the critics...',
+			'Exploring the terroir...',
+			'Researching the producer...'
+		],
+		default: [
+			'Thinking...',
+			'One moment...'
+		]
+	};
+
+	let messageIndex = 0;
+	let messageInterval: ReturnType<typeof setInterval> | null = null;
+
+	$: loadingMessages = LOADING_MESSAGES[phase] || LOADING_MESSAGES.default;
+	$: typingText = loadingMessages[messageIndex % loadingMessages.length];
+
+	// Start/stop cycling when loading state changes
+	$: if (isTyping || isLoading) {
+		if (!messageInterval) {
+			messageIndex = 0;
+			messageInterval = setInterval(() => {
+				messageIndex = (messageIndex + 1) % loadingMessages.length;
+			}, 2500);
+		}
+	} else {
+		if (messageInterval) {
+			clearInterval(messageInterval);
+			messageInterval = null;
+			messageIndex = 0;
+		}
+	}
+
+	onDestroy(() => {
+		if (messageInterval) clearInterval(messageInterval);
+		if (advanceTimeoutId) clearTimeout(advanceTimeoutId); // WIN-174: Fix memory leak
+	});
 
 	// Input placeholder based on phase (input is always visible)
 	$: inputPlaceholder = (() => {
@@ -208,6 +254,13 @@
 		lastInputType = null;
 		lastAction = null;
 		agent.resetConversation();
+	}
+
+	/**
+	 * WIN-174: Cancel identification in progress
+	 */
+	function handleCancelIdentification() {
+		agent.cancelIdentification();
 	}
 
 	/**
@@ -3037,15 +3090,6 @@
 				<h2 id="panel-title">Wine Assistant</h2>
 			</div>
 			<div class="header-actions">
-				{#if hasStarted}
-					<button
-						class="start-over-btn"
-						on:click={handleStartOver}
-						aria-label="Start new conversation"
-					>
-						Start Over
-					</button>
-				{/if}
 				<button
 					class="close-btn"
 					on:click={handleClose}
@@ -3059,9 +3103,7 @@
 				</button>
 			</div>
 		</header>
-
-		<!-- Decorative flourish -->
-		<div class="header-flourish" aria-hidden="true">—◇—</div>
+		<!-- WIN-174: Removed header flourish and Start Over button from header -->
 
 		<!-- Message history -->
 		<div
@@ -3082,6 +3124,7 @@
 					<div bind:this={messageElements[index]}>
 						<ChatMessage
 							{message}
+							isLatest={index === messages.length - 1}
 							on:chipSelect={handleChipAction}
 							on:addToCellar={handleWineAddToCellar}
 							on:tryAgain={handleWineTryAgain}
@@ -3089,20 +3132,34 @@
 							on:edit={handleWineEdit}
 							on:selectCandidate={handleCandidateSelect}
 							on:formReady={scrollToFormContent}
-							on:chipsReady={scrollToFormContent}
+							on:chipsReady={scrollToNewMessage}
 						/>
 					</div>
 				{/each}
 			{/if}
 
 			{#if isTyping}
-				<TypingIndicator text={typingText} />
+				<TypingIndicator
+					text={typingText}
+					showCancel={true}
+					on:cancel={handleCancelIdentification}
+				/>
 			{/if}
 
 			{#if $agentEnriching}
 				<EnrichmentSkeleton />
 			{/if}
 		</div>
+
+		<!-- WIN-174: Footer with Start Over button (ghost style) -->
+		{#if hasStarted}
+			<div class="panel-footer">
+				<button class="footer-action" on:click={handleStartOver}>
+					<Icon name="refresh" size={14} />
+					<span>Start over</span>
+				</button>
+			</div>
+		{/if}
 
 		<!-- Input area (always visible) -->
 		<div class="panel-input">
@@ -3222,30 +3279,7 @@
 		gap: var(--space-2);
 	}
 
-	.start-over-btn {
-		font-family: var(--font-sans);
-		font-size: 0.6875rem;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		padding: var(--space-2) var(--space-3);
-		background: transparent;
-		border: 1px solid var(--divider);
-		border-radius: var(--radius-sm);
-		color: var(--text-tertiary);
-		cursor: pointer;
-		touch-action: manipulation;
-		transition:
-			background 0.15s var(--ease-out),
-			border-color 0.15s var(--ease-out),
-			color 0.15s var(--ease-out);
-	}
-
-	.start-over-btn:hover {
-		background: var(--bg-subtle);
-		border-color: var(--accent);
-		color: var(--text-secondary);
-	}
+	/* WIN-174: Removed .start-over-btn from header - moved to footer */
 
 	.close-btn {
 		width: 36px;
@@ -3281,15 +3315,7 @@
 		stroke-linecap: round;
 	}
 
-	/* Decorative flourish */
-	.header-flourish {
-		text-align: center;
-		color: var(--divider);
-		font-size: 0.625rem;
-		letter-spacing: 0.5em;
-		padding: var(--space-2) 0;
-		flex-shrink: 0;
-	}
+	/* WIN-174: Removed .header-flourish CSS */
 
 	/* Message history */
 	.message-history {
@@ -3307,6 +3333,38 @@
 	/* Spacer pushes messages to bottom while preserving scroll */
 	.message-spacer {
 		flex: 1 1 auto;
+	}
+
+	/* WIN-174: Footer with Start Over button (ghost style) */
+	.panel-footer {
+		flex-shrink: 0;
+		padding: var(--space-2) var(--space-5);
+		display: flex;
+		justify-content: center;
+	}
+
+	.footer-action {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-2) var(--space-3);
+		font-family: var(--font-sans);
+		font-size: 12px;
+		font-weight: 400;
+		color: var(--text-tertiary);
+		background: transparent;
+		border: none;
+		cursor: pointer;
+		transition: color 150ms ease;
+		min-height: 36px; /* Touch target */
+	}
+
+	.footer-action:hover {
+		color: var(--text-secondary);
+	}
+
+	.footer-action :global(svg) {
+		opacity: 0.7;
 	}
 
 	/* Input area */

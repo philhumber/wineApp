@@ -3,8 +3,12 @@
 	 * CommandInput
 	 * Text input with image picker and send button
 	 * Layout: [Camera] [Text Input] [Send]
+	 * WIN-174: Camera button conditionally visible based on phase
 	 */
 	import { createEventDispatcher } from 'svelte';
+	import { fade } from 'svelte/transition';
+	import { agentPhase } from '$lib/stores';
+	import { Icon } from '$lib/components';
 
 	const dispatch = createEventDispatcher<{
 		submit: { text: string };
@@ -14,6 +18,10 @@
 	export let placeholder: string = 'Type wine name...';
 	export let disabled: boolean = false;
 	export let value: string = '';
+
+	// WIN-174: Phases where camera button should be visible
+	const CAMERA_PHASES = ['greeting', 'path_selection', 'await_input', 'augment_input', 'handle_incorrect'];
+	$: showCamera = CAMERA_PHASES.includes($agentPhase);
 
 	let fileInput: HTMLInputElement;
 	let cameraInput: HTMLInputElement;
@@ -82,20 +90,19 @@
 		{disabled}
 	/>
 
-	<!-- Camera/Gallery button -->
-	<button
-		type="button"
-		class="camera-btn"
-		on:click={handleCameraClick}
-		{disabled}
-		aria-label="Take photo or select image"
-	>
-		<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-			<rect x="2" y="7" width="20" height="14" rx="2" />
-			<circle cx="12" cy="14" r="4" />
-			<path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-		</svg>
-	</button>
+	<!-- WIN-174: Camera/Gallery button - conditionally visible with fade -->
+	{#if showCamera}
+		<button
+			type="button"
+			class="camera-btn"
+			on:click={handleCameraClick}
+			{disabled}
+			aria-label="Take photo or select image"
+			transition:fade={{ duration: 150 }}
+		>
+			<Icon name="camera" size={20} />
+		</button>
+	{/if}
 
 	<!-- Text input -->
 	<input
@@ -170,7 +177,7 @@
 		cursor: not-allowed;
 	}
 
-	.camera-btn svg {
+	.camera-btn :global(svg) {
 		fill: none;
 		stroke: currentColor;
 		stroke-width: 1.5;
