@@ -3,9 +3,15 @@
 	 * TypingIndicator
 	 * Wine glass fill animation for loading states
 	 * Sommelier-style messaging
+	 * WIN-174: Added cancel link and text crossfade
 	 */
+	import { createEventDispatcher } from 'svelte';
+	import { fade } from 'svelte/transition';
+
+	const dispatch = createEventDispatcher<{ cancel: void }>();
 
 	export let text: string = 'Consulting the cellar...';
+	export let showCancel: boolean = false;
 </script>
 
 <div class="typing-indicator" role="status" aria-label="Thinking">
@@ -16,7 +22,15 @@
 		<div class="glass-stem"></div>
 		<div class="glass-base"></div>
 	</div>
-	<span class="typing-text">{text}</span>
+	<div class="typing-content">
+		<!-- WIN-174: Text crossfade on change -->
+		{#key text}
+			<span class="typing-text" in:fade={{ duration: 200 }}>{text}</span>
+		{/key}
+		{#if showCancel}
+			<button class="cancel-link" on:click={() => dispatch('cancel')}>cancel</button>
+		{/if}
+	</div>
 </div>
 
 <style>
@@ -90,12 +104,39 @@
 		border-radius: 1px;
 	}
 
+	/* WIN-174: Content wrapper for text + cancel link */
+	.typing-content {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+	}
+
 	.typing-text {
 		font-family: var(--font-sans);
 		font-size: 0.75rem;
 		font-style: italic;
 		color: var(--text-tertiary);
 		letter-spacing: 0.01em;
+	}
+
+	/* WIN-174: Cancel link */
+	.cancel-link {
+		font-family: var(--font-sans);
+		font-size: 0.6875rem;
+		color: var(--text-tertiary);
+		background: none;
+		border: none;
+		padding: 0;
+		cursor: pointer;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+		opacity: 0.7;
+		transition: opacity 150ms ease;
+		align-self: flex-start;
+	}
+
+	.cancel-link:hover {
+		opacity: 1;
 	}
 
 	/* Reduced motion */
