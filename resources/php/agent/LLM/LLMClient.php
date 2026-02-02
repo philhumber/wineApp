@@ -13,6 +13,7 @@ namespace Agent\LLM;
 use Agent\LLM\Interfaces\LLMProviderInterface;
 use Agent\LLM\Adapters\GeminiAdapter;
 use Agent\LLM\Adapters\ClaudeAdapter;
+use Agent\LLM\LLMStreamingResponse;
 
 class LLMClient
 {
@@ -325,6 +326,227 @@ class LLMClient
         $this->costTracker->log($response, $taskType);
 
         return $response;
+    }
+
+    /**
+     * Stream a completion for a specific task type (WIN-181)
+     *
+     * Streams the LLM response and calls onChunk callback for each detected field.
+     * No retry logic for streaming - too complex with partial data.
+     *
+     * @param string $taskType Task type (identify_text, identify_image, enrich)
+     * @param string $prompt The prompt to complete
+     * @param callable $onChunk Callback fn(string $field, mixed $value)
+     * @param array $options Additional options
+     * @return LLMStreamingResponse
+     */
+    public function streamComplete(
+        string $taskType,
+        string $prompt,
+        callable $onChunk,
+        array $options = []
+    ): LLMStreamingResponse {
+        // Check daily limits
+        $limitErrors = $this->costTracker->checkLimits($this->config['limits']);
+        if (!empty($limitErrors)) {
+            return LLMStreamingResponse::error(
+                implode('; ', $limitErrors),
+                'limit_exceeded',
+                ['provider' => 'none', 'model' => 'none']
+            );
+        }
+
+        // Get routing for task
+        $routing = $this->config['task_routing'][$taskType] ?? null;
+        if (!$routing) {
+            return LLMStreamingResponse::error(
+                "Unknown task type: {$taskType}",
+                'invalid_request',
+                ['provider' => 'none', 'model' => 'none']
+            );
+        }
+
+        // Allow provider override via options
+        $providerName = $options['provider'] ?? $routing['primary']['provider'];
+        $modelName = $options['model'] ?? $routing['primary']['model'] ?? null;
+
+        \error_log("LLMClient: Streaming with provider={$providerName}, model={$modelName} for task={$taskType}");
+
+        // Get provider
+        $provider = $this->providers[$providerName] ?? null;
+        $breaker = $this->circuitBreakers[$providerName] ?? null;
+
+        if (!$provider) {
+            return LLMStreamingResponse::error(
+                "Provider not available: {$providerName}",
+                'provider_unavailable',
+                ['provider' => $providerName, 'model' => $modelName ?? 'unknown']
+            );
+        }
+
+        if ($breaker && !$breaker->isAvailable()) {
+            return LLMStreamingResponse::error(
+                "Circuit breaker open for: {$providerName}",
+                'circuit_open',
+                ['provider' => $providerName, 'model' => $modelName ?? 'unknown']
+            );
+        }
+
+        // Check streaming capability
+        if (!$provider->supportsCapability('streaming')) {
+            // Fall back to buffered response
+            \error_log("LLMClient: Provider {$providerName} doesn't support streaming, falling back to buffered");
+            return $this->fallbackToBuffered($taskType, $prompt, $onChunk, $options);
+        }
+
+        // Set model if specified
+        if ($modelName && method_exists($provider, 'setModel')) {
+            $provider->setModel($modelName);
+        }
+
+        // Execute streaming (no retry for streaming - too complex with partial data)
+        $response = $provider->streamComplete($prompt, $options, $onChunk);
+
+        // Update circuit breaker
+        if ($breaker) {
+            if ($response->success) {
+                $breaker->recordSuccess();
+            } elseif ($response->isRetryable()) {
+                $breaker->recordFailure();
+            }
+        }
+
+        // Log usage
+        $this->costTracker->log($response, $taskType);
+
+        return $response;
+    }
+
+    /**
+     * Stream a completion with image (WIN-181)
+     *
+     * @param string $taskType Task type
+     * @param string $prompt Text prompt
+     * @param string $imageBase64 Base64-encoded image
+     * @param string $mimeType Image MIME type
+     * @param callable $onChunk Callback fn(string $field, mixed $value)
+     * @param array $options Additional options
+     * @return LLMStreamingResponse
+     */
+    public function streamCompleteWithImage(
+        string $taskType,
+        string $prompt,
+        string $imageBase64,
+        string $mimeType,
+        callable $onChunk,
+        array $options = []
+    ): LLMStreamingResponse {
+        // Check daily limits
+        $limitErrors = $this->costTracker->checkLimits($this->config['limits']);
+        if (!empty($limitErrors)) {
+            return LLMStreamingResponse::error(
+                implode('; ', $limitErrors),
+                'limit_exceeded',
+                ['provider' => 'none', 'model' => 'none']
+            );
+        }
+
+        // Get routing for task
+        $routing = $this->config['task_routing'][$taskType] ?? null;
+        if (!$routing) {
+            return LLMStreamingResponse::error(
+                "Unknown task type: {$taskType}",
+                'invalid_request',
+                ['provider' => 'none', 'model' => 'none']
+            );
+        }
+
+        // Allow provider override via options
+        $providerName = $options['provider'] ?? $routing['primary']['provider'];
+        $modelName = $options['model'] ?? $routing['primary']['model'] ?? null;
+
+        $provider = $this->providers[$providerName] ?? null;
+        $breaker = $this->circuitBreakers[$providerName] ?? null;
+
+        if (!$provider) {
+            return LLMStreamingResponse::error(
+                "Provider not available: {$providerName}",
+                'provider_unavailable',
+                ['provider' => $providerName, 'model' => $modelName ?? 'unknown']
+            );
+        }
+
+        if ($breaker && !$breaker->isAvailable()) {
+            return LLMStreamingResponse::error(
+                "Circuit breaker open for: {$providerName}",
+                'circuit_open',
+                ['provider' => $providerName, 'model' => $modelName ?? 'unknown']
+            );
+        }
+
+        if (!$provider->supportsCapability('vision')) {
+            return LLMStreamingResponse::error(
+                "Provider {$providerName} does not support vision",
+                'unsupported_capability',
+                ['provider' => $providerName, 'model' => $modelName ?? 'unknown']
+            );
+        }
+
+        // Set model if specified
+        if ($modelName && method_exists($provider, 'setModel')) {
+            $provider->setModel($modelName);
+        }
+
+        // Execute streaming
+        $response = $provider->streamCompleteWithImage($prompt, $imageBase64, $mimeType, $options, $onChunk);
+
+        // Update circuit breaker
+        if ($breaker) {
+            if ($response->success) {
+                $breaker->recordSuccess();
+            } elseif ($response->isRetryable()) {
+                $breaker->recordFailure();
+            }
+        }
+
+        // Log usage
+        $this->costTracker->log($response, $taskType);
+
+        return $response;
+    }
+
+    /**
+     * Fall back to buffered (non-streaming) response
+     *
+     * @param string $taskType Task type
+     * @param string $prompt Prompt
+     * @param callable $onChunk Chunk callback
+     * @param array $options Options
+     * @return LLMStreamingResponse
+     */
+    private function fallbackToBuffered(
+        string $taskType,
+        string $prompt,
+        callable $onChunk,
+        array $options
+    ): LLMStreamingResponse {
+        $response = $this->complete($taskType, $prompt, $options);
+
+        // Emit all fields at once if successful
+        if ($response->success && $response->content) {
+            $parsed = \json_decode($response->content, true);
+            if (\is_array($parsed)) {
+                foreach ($parsed as $field => $value) {
+                    $onChunk($field, $value);
+                }
+            }
+        }
+
+        return LLMStreamingResponse::fromLLMResponse($response, [
+            'streamed' => false,
+            'ttfbMs' => $response->latencyMs,
+            'fieldTimings' => [],
+        ]);
     }
 
     /**

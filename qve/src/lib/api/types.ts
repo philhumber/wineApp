@@ -610,3 +610,60 @@ export class AgentError extends Error {
     return error instanceof AgentError;
   }
 }
+
+// ─────────────────────────────────────────────────────────
+// SSE STREAMING TYPES (WIN-181)
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Individual field update from SSE stream.
+ * Emitted as fields are parsed from streaming LLM response.
+ */
+export interface StreamFieldEvent {
+  field: string;
+  value: unknown;
+}
+
+/**
+ * Error event from SSE stream.
+ * Contains structured error info for display and retry logic.
+ */
+export interface StreamErrorEvent {
+  type: AgentErrorType;
+  message: string;
+  retryable: boolean;
+  supportRef?: string;
+}
+
+/**
+ * Confirmation required event for canonical name resolution.
+ * Emitted when enrichment finds a non-exact cache match.
+ */
+export interface StreamConfirmationEvent {
+  matchType: CacheMatchType;
+  searchedFor: WineIdentificationSummary | null;
+  matchedTo: WineIdentificationSummary | null;
+  confidence: number;
+}
+
+/**
+ * Union type for all SSE stream events.
+ * Discriminated union allows type-safe event handling.
+ */
+export type StreamEvent =
+  | { type: 'field'; data: StreamFieldEvent }
+  | { type: 'result'; data: AgentIdentificationResultWithMeta }
+  | { type: 'escalating'; data: { message: string } }
+  | { type: 'confirmation_required'; data: StreamConfirmationEvent }
+  | { type: 'error'; data: StreamErrorEvent }
+  | { type: 'done'; data: Record<string, never> };
+
+/**
+ * Callback type for handling individual field updates during streaming.
+ */
+export type StreamFieldCallback = (field: string, value: unknown) => void;
+
+/**
+ * Callback type for handling complete stream events.
+ */
+export type StreamEventCallback = (event: StreamEvent) => void;
