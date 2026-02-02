@@ -184,11 +184,12 @@
 			case 'action_select':
 				return 'Or identify another wine...';
 			case 'confirm_new_search':
+			case 'escalation_choice':
 				return 'Choose an option above...';
 			case 'identifying':
 			case 'complete':
 				return 'Processing...';
-			// greeting, path_selection, coming_soon, await_input, escalation_choice
+			// greeting, path_selection, coming_soon, await_input
 			default:
 				return 'Type wine name or take a photo...';
 		}
@@ -799,12 +800,42 @@
 			return true;
 		}
 
-		// ── FIRST ATTEMPT: six-way branch ──
+		// ── FIRST ATTEMPT: seven-way branch ──
 		const confidence = result.confidence ?? 0;
 		const isValidWine = result.parsed &&
 			(result.parsed.wineName || result.parsed.producer) &&
 			result.parsed.wineName !== 'Unknown Wine' &&
 			result.parsed.producer !== 'Unknown';
+
+		// Handle user_choice action - escalation reached but below threshold
+		// Shows "Try Harder" (Opus), "Tell Me More" (conversational), and "See What I Found" (escape hatch)
+		if (result.action === 'user_choice') {
+			agent.addMessage({
+				role: 'agent',
+				type: 'low_confidence',
+				content: buildLowConfidenceMessage(result.parsed, false),
+				wineResult: result.parsed,
+				confidence: result.confidence,
+				chips: [
+					{ id: 'try_opus', label: 'Try Harder', icon: 'sparkle', action: 'try_opus' },
+					{ id: 'use_conversation', label: 'Tell Me More', icon: 'edit', action: 'use_conversation' },
+					{ id: 'see_result', label: 'See What I Found', icon: 'search', action: 'see_partial_result' }
+				]
+			});
+			agent.setAugmentationContext({
+				originalInput: inputText,
+				originalInputType: lastInputType || 'text',
+				originalResult: {
+					intent: 'add',
+					parsed: result.parsed,
+					confidence: result.confidence,
+					action: 'user_choice',
+					candidates: result.candidates ?? []
+				}
+			});
+			agent.setPhase('escalation_choice');
+			return true;
+		}
 
 		// All partial matches (< 85%) go through Yes/No confirmation first
 		if (hasCandidates) {
@@ -1715,6 +1746,38 @@
 				break;
 			}
 
+			case 'see_partial_result': {
+				// Escape hatch for rare wines - show whatever we found, even if incomplete
+				const augCtx = $agentAugmentationContext;
+				if (augCtx?.originalResult?.parsed) {
+					const isIncomplete = !hasMinimumFields(augCtx.originalResult.parsed);
+
+					// Different chips for incomplete vs complete wines
+					const chips: AgentChip[] = isIncomplete
+						? [
+							{ id: 'add_missing', label: 'Add Missing Details', icon: 'edit', action: 'add_missing_details' },
+							{ id: 'keep_identifying', label: 'Keep Identifying', icon: 'search', action: 'use_conversation' }
+						]
+						: [
+							{ id: 'correct', label: 'Correct', icon: 'check', action: 'correct' },
+							{ id: 'not_correct', label: 'Not Correct', icon: 'x', action: 'not_correct' }
+						];
+
+					agent.addMessage({
+						role: 'agent',
+						type: 'wine_result',
+						content: isIncomplete
+							? "Here's what I found so far. You can add the missing details manually, or we can keep trying to identify it."
+							: "Here's what I found — is this close?",
+						wineResult: augCtx.originalResult.parsed,
+						confidence: augCtx.originalResult.confidence,
+						chips
+					});
+					agent.setPhase('result_confirm');
+				}
+				break;
+			}
+
 			case 'start_fresh':
 				// Clear tracking state and restart
 				lastImageFile = null;
@@ -1736,6 +1799,12 @@
 			case 'use_conversation':
 				// User chose conversational flow instead of Opus
 				handleUseConversation();
+				break;
+
+			case 'add_missing_details':
+				// User wants to proceed with partial data and fill in missing fields manually
+				// Go directly to add-wine flow - the form will show fields that need completion
+				await handleAddToCellar();
 				break;
 
 			case 'what_wrong':
@@ -2362,11 +2431,12 @@
 
 			if (result) {
 				// Handle the Opus result with the standard flow
-				if (!handleIdentificationResult(result, augContext.originalInput)) {
+				const handledSuccessfully = handleIdentificationResult(result, augContext.originalInput);
+				if (!handledSuccessfully) {
 					showErrorWithRetry($agentErrorMessage || 'Premium analysis could not identify the wine.');
-				}
-				// Only clear augmentation context AFTER result handling, and only if result was complete
-				if (hasMinimumFields(result.parsed)) {
+					// Don't clear context on error - allow retry
+				} else if (hasMinimumFields(result.parsed)) {
+					// Only clear augmentation context if result handling succeeded AND result was complete
 					agent.setAugmentationContext(null);
 				}
 			} else {
@@ -3201,7 +3271,7 @@
 		<div class="panel-input">
 			<CommandInput
 				bind:this={commandInputRef}
-				disabled={isLoading || isTyping || phase === 'complete' || phase === 'confirm_new_search'}
+				disabled={isLoading || isTyping || phase === 'complete' || phase === 'confirm_new_search' || phase === 'escalation_choice'}
 				placeholder={inputPlaceholder}
 				on:submit={handleTextSubmit}
 				on:image={handleImageSubmit}
