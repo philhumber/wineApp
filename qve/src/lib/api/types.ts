@@ -506,6 +506,20 @@ export interface AgentEnrichmentData {
   sources: string[];
 }
 
+/**
+ * WIN-162: Match type for canonical resolution
+ */
+export type CacheMatchType = 'exact' | 'abbreviation' | 'alias' | 'fuzzy';
+
+/**
+ * WIN-162: Wine identification for confirmation display
+ */
+export interface WineIdentificationSummary {
+  producer: string | null;
+  wineName: string | null;
+  vintage: string | null;
+}
+
 export interface AgentEnrichmentResult {
   success: boolean;
   data: AgentEnrichmentData | null;
@@ -513,6 +527,12 @@ export interface AgentEnrichmentResult {
   warnings: string[];
   fieldSources: Record<string, string> | null;
   usage: AgentUsage | null;
+  // WIN-162: Canonical resolution confirmation fields
+  pendingConfirmation?: boolean;
+  matchType?: CacheMatchType;
+  searchedFor?: WineIdentificationSummary;
+  matchedTo?: WineIdentificationSummary;
+  confidence?: number;
 }
 
 // ─────────────────────────────────────────────────────────
