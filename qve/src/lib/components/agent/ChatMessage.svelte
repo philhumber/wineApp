@@ -28,6 +28,7 @@
 	}>();
 
 	export let message: AgentMessage;
+	export let isLatest: boolean = false; // WIN-174: Only latest message has active chips
 
 	// WIN-168: Chip delay until typewriter animation completes
 	// Message types without TypewriterText should show chips immediately
@@ -231,6 +232,13 @@
 				<p class="agent-text success-text">{message.content}</p>
 			{/if}
 			<!-- No chips - panel closes and navigates automatically -->
+		{:else if message.type === 'divider'}
+			<!-- WIN-174: Conversation divider -->
+			<div class="conversation-divider">
+				<span class="divider-line"></span>
+				<span class="divider-text">{message.content}</span>
+				<span class="divider-line"></span>
+			</div>
 		{:else}
 			<!-- Standard text message -->
 			{#if message.isNew}
@@ -242,7 +250,11 @@
 		{/if}
 
 		{#if message.chips && message.chips.length > 0 && chipsReady}
-			<ActionChips chips={message.chips} on:select={handleChipSelect} />
+			<!-- WIN-174: Disable chips for non-latest messages -->
+			<ActionChips
+				chips={isLatest ? message.chips : message.chips.map(c => ({ ...c, disabled: true }))}
+				on:select={handleChipSelect}
+			/>
 		{/if}
 	{:else}
 		<!-- User message: Subtle indented card -->
@@ -317,6 +329,29 @@
 		height: 1px;
 		background: var(--accent);
 		margin-top: var(--space-3);
+	}
+
+	/* WIN-174: Conversation divider (serif italic for sommelier voice) */
+	.conversation-divider {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		margin: var(--space-6) 0;
+		color: var(--text-tertiary);
+	}
+
+	.divider-line {
+		flex: 1;
+		height: 1px;
+		background: var(--divider-subtle);
+	}
+
+	.divider-text {
+		font-family: var(--font-serif);
+		font-size: 0.75rem;
+		font-style: italic;
+		white-space: nowrap;
+		letter-spacing: 0.02em;
 	}
 
 	/* User messages */
