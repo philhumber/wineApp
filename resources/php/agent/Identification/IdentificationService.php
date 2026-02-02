@@ -335,7 +335,7 @@ class IdentificationService
         $tier1Threshold = $thresholds['tier1_threshold'] ?? 85;
         $tier1_5Threshold = $thresholds['tier1_5_threshold'] ?? 70;
         $tier2Threshold = $thresholds['tier2_threshold'] ?? 60;
-        $userChoiceThreshold = $thresholds['user_choice_threshold'] ?? 50;
+        $userChoiceThreshold = $thresholds['user_choice_threshold'] ?? 60;
 
         // Track escalation metadata
         $escalationData = [
@@ -393,11 +393,12 @@ class IdentificationService
                 'model' => $detailedTierConfig['model'] ?? 'gemini-3-flash-preview',
                 'thinking_level' => $detailedTierConfig['thinking_level'] ?? 'HIGH',
             ];
-            $escalationData['total_cost'] += $result['cost'] ?? 0;
 
-            // Use better result
+            // Use better result - only add cost if we're using this tier's result
             if ($result['confidence'] < $tier1Result['confidence']) {
                 $result = $tier1Result; // Keep tier 1 result if it was better
+            } else {
+                $escalationData['total_cost'] += $result['cost'] ?? 0;
             }
         } else {
             // Tier 1.5 failed, keep tier 1 result
@@ -428,11 +429,11 @@ class IdentificationService
                     'confidence' => $claudeResult['confidence'],
                     'model' => 'claude-sonnet-4-5-20250929',
                 ];
-                $escalationData['total_cost'] += $claudeResult['cost'] ?? 0;
 
-                // Use better result
+                // Use better result - only add cost if we're using this tier's result
                 if ($claudeResult['confidence'] > $result['confidence']) {
                     $result = $claudeResult;
+                    $escalationData['total_cost'] += $claudeResult['cost'] ?? 0;
                 }
             }
         }
@@ -734,11 +735,12 @@ class IdentificationService
                 'model' => $detailedTierConfig['model'] ?? 'gemini-3-flash-preview',
                 'thinking_level' => $detailedTierConfig['thinking_level'] ?? 'HIGH',
             ];
-            $escalationData['total_cost'] += $result['cost'] ?? 0;
 
-            // Use better result
+            // Use better result - only add cost if we're using this tier's result
             if ($result['confidence'] < $tier1Result['confidence']) {
                 $result = $tier1Result; // Keep tier 1 result if it was better
+            } else {
+                $escalationData['total_cost'] += $result['cost'] ?? 0;
             }
         } else {
             // Tier 1.5 failed, keep tier 1 result
@@ -773,11 +775,11 @@ class IdentificationService
                     'confidence' => $claudeResult['confidence'],
                     'model' => 'claude-sonnet-4-5-20250929',
                 ];
-                $escalationData['total_cost'] += $claudeResult['cost'] ?? 0;
 
-                // Use better result
+                // Use better result - only add cost if we're using this tier's result
                 if ($claudeResult['confidence'] > $result['confidence']) {
                     $result = $claudeResult;
+                    $escalationData['total_cost'] += $claudeResult['cost'] ?? 0;
                 }
             }
         }

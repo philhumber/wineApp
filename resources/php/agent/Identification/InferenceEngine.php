@@ -277,10 +277,10 @@ class InferenceEngine
         }
 
         try {
-            // Normalize input
-            $normalized = strtolower(str_replace(' ', '', $text));
+            // Normalize input (must match migration normalization logic)
+            $normalized = strtolower(str_replace(['-', ' ', 'é', 'è', 'ê', 'à', 'ô', 'û', 'ï'], ['', '', 'e', 'e', 'e', 'a', 'o', 'u', 'i'], $text));
 
-            // Query refAppellations table
+            // Query refAppellations table using indexed normalizedName column
             $stmt = $this->pdo->prepare("
                 SELECT
                     a.appellationName,
@@ -289,7 +289,7 @@ class InferenceEngine
                     a.primaryGrapes,
                     a.wineTypes
                 FROM refAppellations a
-                WHERE LOWER(REPLACE(a.appellationName, ' ', '')) = :normalized
+                WHERE a.normalizedName = :normalized
                 LIMIT 1
             ");
             $stmt->execute(['normalized' => $normalized]);
@@ -305,8 +305,8 @@ class InferenceEngine
                 ];
             }
 
-            // Try fuzzy match with Levenshtein
-            $stmt = $this->pdo->query("SELECT appellationName, region, country, primaryGrapes, wineTypes FROM refAppellations");
+            // Try fuzzy match with Levenshtein using pre-computed normalizedName
+            $stmt = $this->pdo->query("SELECT appellationName, normalizedName, region, country, primaryGrapes, wineTypes FROM refAppellations");
             $appellations = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
             $bestMatch = null;
@@ -314,7 +314,9 @@ class InferenceEngine
             $threshold = 3; // Max edit distance
 
             foreach ($appellations as $app) {
-                $distance = levenshtein($normalized, strtolower(str_replace(' ', '', $app['appellationName'])));
+                // Use pre-computed normalizedName if available, otherwise normalize on the fly
+                $appNormalized = $app['normalizedName'] ?? strtolower(str_replace(['-', ' '], '', $app['appellationName']));
+                $distance = levenshtein($normalized, $appNormalized);
                 if ($distance < $bestDistance && $distance <= $threshold) {
                     $bestDistance = $distance;
                     $bestMatch = $app;
