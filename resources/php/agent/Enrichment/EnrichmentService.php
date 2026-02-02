@@ -5,6 +5,8 @@
  * Main entry point for wine enrichment. Orchestrates cache lookups,
  * web search enrichment, validation, and fallback strategies.
  *
+ * WIN-162: Added canonical name resolution with user confirmation for non-exact matches.
+ *
  * @package Agent\Enrichment
  */
 
@@ -39,9 +41,11 @@ class EnrichmentService
      * Enrich wine data from identification result
      *
      * @param array $identification Parsed identification data
+     * @param bool $confirmMatch If true, user has confirmed a non-exact cache match
+     * @param bool $forceRefresh If true, skip cache and do fresh web search
      * @return EnrichmentResult
      */
-    public function enrich(array $identification): EnrichmentResult
+    public function enrich(array $identification, bool $confirmMatch = false, bool $forceRefresh = false): EnrichmentResult
     {
         $producer = $identification['parsed']['producer'] ?? null;
         $wineName = $identification['parsed']['wineName'] ?? null;
@@ -61,14 +65,27 @@ class EnrichmentService
 
         $thresholds = $this->config['enrichment']['confidence_thresholds'];
 
-        // 1. Check cache
-        $cacheResult = $this->cache->get($producer ?? '', $wineName ?? '', $vintage);
-        if ($cacheResult && $cacheResult['data']->confidence >= $thresholds['cache_accept']) {
-            $this->cache->incrementHitCount($cacheResult['lookupKey']);
-            $result->success = true;
-            $result->data = $cacheResult['data'];
-            $result->source = 'cache';
-            return $result;
+        // Skip cache if forceRefresh requested
+        if (!$forceRefresh) {
+            // 1. Check cache with canonical resolution
+            $cacheResult = $this->cache->getWithResolution($producer ?? '', $wineName ?? '', $vintage);
+
+            if ($cacheResult && $cacheResult['data']->confidence >= $thresholds['cache_accept']) {
+                $matchType = $cacheResult['matchType'] ?? 'exact';
+
+                // For non-exact matches, require user confirmation
+                if ($matchType !== 'exact' && !$confirmMatch) {
+                    return $this->buildPendingConfirmation($cacheResult, $identification);
+                }
+
+                // Exact match or user confirmed - return cached data
+                $this->cache->incrementHitCount($cacheResult['lookupKey']);
+                $result->success = true;
+                $result->data = $cacheResult['data'];
+                $result->source = 'cache';
+                $result->matchType = $matchType;
+                return $result;
+            }
         }
 
         // 2. Web search enrichment
@@ -97,7 +114,11 @@ class EnrichmentService
         }
 
         // 6. Merge with cache/inference if needed
-        $cached = $cacheResult ? $cacheResult['data'] : null;
+        $cached = null;
+        if (!$forceRefresh) {
+            $cacheResult = $this->cache->get($producer ?? '', $wineName ?? '', $vintage);
+            $cached = $cacheResult ? $cacheResult['data'] : null;
+        }
         $inference = null;
 
         if (!$fresh || $fresh->confidence < $thresholds['merge_threshold']) {
@@ -115,6 +136,36 @@ class EnrichmentService
     }
 
     /**
+     * Build a pending confirmation response for non-exact cache matches
+     *
+     * @param array $cacheResult Cache result with matchType
+     * @param array $identification Original identification data
+     * @return EnrichmentResult
+     */
+    private function buildPendingConfirmation(array $cacheResult, array $identification): EnrichmentResult
+    {
+        $result = new EnrichmentResult();
+        $result->success = true;
+        $result->pendingConfirmation = true;
+        $result->matchType = $cacheResult['matchType'];
+        $result->searchedFor = [
+            'producer' => $identification['parsed']['producer'] ?? null,
+            'wineName' => $identification['parsed']['wineName'] ?? null,
+            'vintage' => $identification['parsed']['vintage'] ?? null,
+        ];
+        $result->matchedTo = $cacheResult['matchedTo'] ?? [
+            'producer' => null,
+            'wineName' => null,
+            'vintage' => null,
+        ];
+        $result->confidence = $cacheResult['confidence'] ?? 0.9;
+        $result->data = null;  // Data withheld until confirmed
+        $result->source = 'cache';
+
+        return $result;
+    }
+
+    /**
      * Enrich with simplified input parameters
      *
      * @param string $producer Producer name
@@ -122,6 +173,8 @@ class EnrichmentService
      * @param string|null $vintage Vintage year
      * @param string|null $wineType Wine type (Red, White, etc.)
      * @param string|null $region Region name
+     * @param bool $confirmMatch User confirmed non-exact match
+     * @param bool $forceRefresh Skip cache, do fresh search
      * @return EnrichmentResult
      */
     public function enrichSimple(
@@ -129,7 +182,9 @@ class EnrichmentService
         string $wineName,
         ?string $vintage = null,
         ?string $wineType = null,
-        ?string $region = null
+        ?string $region = null,
+        bool $confirmMatch = false,
+        bool $forceRefresh = false
     ): EnrichmentResult {
         return $this->enrich([
             'parsed' => [
@@ -139,6 +194,6 @@ class EnrichmentService
                 'wineType' => $wineType,
                 'region' => $region,
             ]
-        ]);
+        ], $confirmMatch, $forceRefresh);
     }
 }

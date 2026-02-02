@@ -81,14 +81,7 @@
 			</section>
 		{/if}
 
-		{#if data.sources && data.sources.length > 0}
-			<div class="sources">
-				<span class="sources-label">Sources:</span>
-				{#each data.sources as src}
-					<span class="source-tag">{src}</span>
-				{/each}
-			</div>
-		{/if}
+		<!-- Primary source shown in header badge; data.sources array omitted to avoid confusion when merging -->
 	</div>
 </div>
 
@@ -174,26 +167,4 @@
 		color: var(--text-primary);
 	}
 
-	.sources {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-2);
-		align-items: center;
-		padding-top: var(--space-3);
-		border-top: 1px solid var(--divider);
-		margin-top: var(--space-4);
-	}
-
-	.sources-label {
-		font-size: 0.75rem;
-		color: var(--text-tertiary);
-	}
-
-	.source-tag {
-		font-size: 0.75rem;
-		padding: var(--space-1) var(--space-2);
-		background: var(--bg-subtle);
-		border-radius: var(--radius-sm);
-		color: var(--text-secondary);
-	}
 </style>

@@ -41,6 +41,41 @@ class CacheKeyGenerator
         return $text;
     }
 
+    /**
+     * Generate both original and abbreviation-expanded keys
+     *
+     * Returns an array with both keys and metadata about whether expansion occurred.
+     *
+     * @param string|null $producer Producer name
+     * @param string|null $wineName Wine name
+     * @param string|null $vintage Vintage year
+     * @param CanonicalNameResolver $resolver Resolver for abbreviation expansion
+     * @return array{originalKey: string, expandedKey: string, wasExpanded: bool, expandedProducer: string, expandedWine: string}
+     */
+    public function generateExpandedKey(
+        ?string $producer,
+        ?string $wineName,
+        ?string $vintage,
+        CanonicalNameResolver $resolver
+    ): array {
+        $originalKey = $this->generateWineKey($producer, $wineName, $vintage);
+
+        $expandedProducer = $resolver->expandAbbreviations($producer ?? '', 'producer');
+        $expandedWine = $resolver->expandAbbreviations($wineName ?? '', 'wine');
+        $expandedKey = $this->generateWineKey($expandedProducer, $expandedWine, $vintage);
+
+        $producerExpanded = $resolver->wasExpanded($producer ?? '', $expandedProducer);
+        $wineExpanded = $resolver->wasExpanded($wineName ?? '', $expandedWine);
+
+        return [
+            'originalKey' => $originalKey,
+            'expandedKey' => $expandedKey,
+            'wasExpanded' => $producerExpanded || $wineExpanded,
+            'expandedProducer' => $expandedProducer,
+            'expandedWine' => $expandedWine,
+        ];
+    }
+
     private function normalizeAccents(string $text): string
     {
         if (class_exists('Transliterator')) {

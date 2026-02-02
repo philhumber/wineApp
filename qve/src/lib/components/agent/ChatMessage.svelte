@@ -107,6 +107,19 @@
 				<p class="agent-text">{message.content}</p>
 			{/if}
 			<EnrichmentCard data={message.enrichmentData} source={message.enrichmentSource} />
+		{:else if message.type === 'cache_match_confirm'}
+			<!-- WIN-162: Cache match confirmation prompt -->
+			{#if message.isNew}
+				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{message.content}</p>
+			{/if}
+			{#if message.searchedFor}
+				<p class="cache-match-subtext">
+					You searched for: {message.searchedFor.producer || ''} {message.searchedFor.wineName || ''} {message.searchedFor.vintage || ''}
+				</p>
+			{/if}
+			<!-- ActionChips: "Yes, use cached data" | "No, search online" provided via message.chips -->
 		{:else if message.type === 'low_confidence'}
 			<!-- Low confidence conversational message -->
 			{#if message.isNew}
@@ -322,6 +335,14 @@
 	.agent-text.partial-match-text {
 		color: var(--text-secondary);
 		line-height: 1.7;
+	}
+
+	/* WIN-162: Cache match confirmation subtext */
+	.cache-match-subtext {
+		font-family: var(--font-sans);
+		font-size: 0.85rem;
+		color: var(--text-tertiary);
+		margin: var(--space-2) 0 0 0;
 	}
 
 	.accent-divider {
