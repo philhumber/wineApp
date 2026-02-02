@@ -667,17 +667,23 @@ class WineApiClient {
    * Enrich wine with web search data
    * Returns grape varieties, critic scores, drink windows, style profiles
    * Called on-demand by Phase 2.6 UI
+   *
+   * WIN-162: Added confirmMatch and forceRefresh for canonical resolution
+   * - confirmMatch: User confirmed a non-exact cache match
+   * - forceRefresh: Skip cache entirely, do fresh web search
    */
   async enrichWine(
     producer: string,
     wineName: string,
     vintage?: string | null,
     wineType?: string | null,
-    region?: string | null
+    region?: string | null,
+    confirmMatch = false,
+    forceRefresh = false
   ): Promise<AgentEnrichmentResult> {
     const response = await this.fetchJSON<AgentEnrichmentResult>(
       'agent/agentEnrich.php',
-      { producer, wineName, vintage, wineType, region }
+      { producer, wineName, vintage, wineType, region, confirmMatch, forceRefresh }
     );
 
     if (!response.success) {

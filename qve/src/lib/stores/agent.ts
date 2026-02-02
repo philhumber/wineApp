@@ -246,6 +246,7 @@ export type AgentPhase =
 	| 'augment_input'
 	| 'escalation_choice' // User decides: try harder (Opus) or conversational
 	| 'confirm_new_search' // User typed during active identification, confirming intent
+	| 'confirm_cache_match' // WIN-162: User confirms non-exact cache match
 	| 'complete'
 	// Add wine flow phases
 	| 'add_confirm' // "Add to cellar?"
@@ -267,6 +268,7 @@ export type AgentMessageType =
 	| 'image_preview'
 	| 'wine_result'
 	| 'wine_enrichment'
+	| 'cache_match_confirm' // WIN-162: Confirm non-exact cache match
 	| 'low_confidence'
 	| 'partial_match'
 	| 'disambiguation'
@@ -313,6 +315,11 @@ export interface AgentMessage {
 	// Existing wine choice fields (WIN-145)
 	existingWineId?: number;
 	existingBottles?: number;
+	// WIN-162: Cache match confirmation fields
+	cacheMatchType?: 'abbreviation' | 'alias' | 'fuzzy';
+	searchedFor?: { producer: string | null; wineName: string | null; vintage: string | null };
+	matchedTo?: { producer: string | null; wineName: string | null; vintage: string | null };
+	cacheConfidence?: number;
 	// WIN-168: Typewriter animation flag
 	isNew?: boolean;
 }
@@ -394,6 +401,15 @@ function extractErrorInfo(error: unknown, fallbackMessage: string): AgentErrorIn
 // TYPES
 // ─────────────────────────────────────────────────────────
 
+/** WIN-162: Pending cache match confirmation context */
+export interface PendingCacheMatch {
+	parsed: AgentParsedWine;
+	matchType: 'abbreviation' | 'alias' | 'fuzzy';
+	searchedFor: { producer: string | null; wineName: string | null; vintage: string | null };
+	matchedTo: { producer: string | null; wineName: string | null; vintage: string | null };
+	confidence: number;
+}
+
 export interface AgentState {
 	// Core state
 	isLoading: boolean;
@@ -418,6 +434,9 @@ export interface AgentState {
 	augmentationContext: AgentAugmentationContext | null;
 	isTyping: boolean;
 	pendingNewSearch: PendingNewSearch | null;
+
+	// WIN-162: Pending cache match confirmation
+	pendingCacheMatch: PendingCacheMatch | null;
 
 	// Session persistence fields
 	lastImageData: string | null;
@@ -500,6 +519,8 @@ const initialState: AgentState = {
 	augmentationContext: null,
 	isTyping: false,
 	pendingNewSearch: null,
+	// WIN-162: Pending cache match confirmation
+	pendingCacheMatch: null,
 	// Session persistence
 	lastImageData: null,
 	lastImageMimeType: null,
@@ -1003,8 +1024,9 @@ function createAgentStore() {
 
 		/**
 		 * Enrich wine with additional details (grape composition, critic scores, etc.)
+		 * WIN-162: Now handles pendingConfirmation for non-exact cache matches
 		 */
-		enrichWine: async (parsed: AgentParsedWine): Promise<void> => {
+		enrichWine: async (parsed: AgentParsedWine, confirmMatch = false, forceRefresh = false): Promise<void> => {
 			// Validate required fields
 			if (!parsed.producer || !parsed.wineName) {
 				const errorMessage: AgentMessage = {
@@ -1030,10 +1052,58 @@ function createAgentStore() {
 					parsed.wineName,
 					parsed.vintage,
 					parsed.wineType,
-					parsed.region
+					parsed.region,
+					confirmMatch,
+					forceRefresh
 				);
 
-				// Add enrichment message to conversation with action chips
+				// WIN-162: Handle pending confirmation for non-exact cache matches
+				// Note: If pendingConfirmation is true, matchType should never be 'exact' (by backend design)
+				// But we add defensive fallback to 'alias' just in case
+				if (result.pendingConfirmation && result.matchedTo) {
+					const resolvedMatchType: 'abbreviation' | 'alias' | 'fuzzy' =
+						result.matchType && result.matchType !== 'exact'
+							? (result.matchType as 'abbreviation' | 'alias' | 'fuzzy')
+							: 'alias';
+
+					const confirmMessage: AgentMessage = {
+						id: generateMessageId(),
+						role: 'agent',
+						type: 'cache_match_confirm',
+						content: `I found cached data for ${result.matchedTo.producer || ''} ${result.matchedTo.wineName || ''} ${result.matchedTo.vintage || ''}. Is this the wine you're looking for?`.trim(),
+						timestamp: Date.now(),
+						isNew: true,
+						cacheMatchType: resolvedMatchType,
+						searchedFor: result.searchedFor,
+						matchedTo: result.matchedTo,
+						cacheConfidence: result.confidence,
+						chips: [
+							{ id: 'confirm_cache_match', label: 'Yes, use cached data', icon: 'check', action: 'confirm_cache_match' },
+							{ id: 'force_refresh', label: 'No, search online', icon: 'search', action: 'force_refresh' }
+						]
+					};
+
+					update((s) => {
+						const newState = {
+							...s,
+							isEnriching: false,
+							phase: 'confirm_cache_match' as AgentPhase,
+							pendingCacheMatch: {
+								parsed,
+								matchType: resolvedMatchType,
+								searchedFor: result.searchedFor!,
+								matchedTo: result.matchedTo!,
+								confidence: result.confidence || 0.9
+							},
+							messages: [...s.messages, confirmMessage]
+						};
+						persistCurrentState(newState, true);
+						return newState;
+					});
+					return;
+				}
+
+				// Normal enrichment result - add enrichment message
 				const enrichMessage: AgentMessage = {
 					id: generateMessageId(),
 					role: 'agent',
@@ -1055,6 +1125,8 @@ function createAgentStore() {
 						isEnriching: false,
 						enrichmentData: result.data,
 						enrichmentForWine: { producer: parsed.producer!, wineName: parsed.wineName! },
+						pendingCacheMatch: null,
+						phase: 'action_select' as AgentPhase, // WIN-162: Transition to action_select after enrichment
 						messages: [...s.messages, enrichMessage]
 					};
 					persistCurrentState(newState, true);
@@ -1077,6 +1149,8 @@ function createAgentStore() {
 					isEnriching: false,
 					enrichmentError: errorInfo,
 					enrichmentData: null,
+					pendingCacheMatch: null,
+					phase: 'await_input' as AgentPhase, // WIN-162: Return to await_input on error
 					messages: [...s.messages, errorMessage]
 				}));
 			}
@@ -1091,6 +1165,36 @@ function createAgentStore() {
 				enrichmentData: null,
 				enrichmentError: null
 			}));
+		},
+
+		/**
+		 * WIN-162: Confirm a non-exact cache match
+		 * User accepted the canonical resolution - fetch enrichment with confirmMatch=true
+		 */
+		confirmCacheMatch: async (): Promise<void> => {
+			const state = get({ subscribe });
+			const pending = state.pendingCacheMatch;
+			if (!pending) {
+				console.warn('confirmCacheMatch called without pendingCacheMatch');
+				return;
+			}
+			// Re-call enrichWine with confirmMatch=true
+			await agent.enrichWine(pending.parsed, true, false);
+		},
+
+		/**
+		 * WIN-162: Reject cache match and force fresh search
+		 * User rejected the canonical resolution - fetch enrichment with forceRefresh=true
+		 */
+		forceRefreshEnrichment: async (): Promise<void> => {
+			const state = get({ subscribe });
+			const pending = state.pendingCacheMatch;
+			if (!pending) {
+				console.warn('forceRefreshEnrichment called without pendingCacheMatch');
+				return;
+			}
+			// Re-call enrichWine with forceRefresh=true
+			await agent.enrichWine(pending.parsed, false, true);
 		},
 
 		// ─────────────────────────────────────────────────────
