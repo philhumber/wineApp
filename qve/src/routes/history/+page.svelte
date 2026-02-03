@@ -11,12 +11,14 @@
     drunkWineCount,
     filteredDrunkWineCount,
     clearHistoryFilters,
-    toasts,
     modal
   } from '$stores';
 
+  // Track if we had an editRating modal open (to refresh on close)
+  let wasEditingRating = false;
+
   // Import components
-  import { Header, HistoryGrid, HistorySortBar } from '$lib/components';
+  import { Header, HistoryGrid } from '$lib/components';
 
   // Fetch drunk wines from API
   async function fetchDrunkWines() {
@@ -49,6 +51,23 @@
       wine.countryName
     );
   }
+
+  // Handle Edit Rating action from history card
+  function handleEditRating(event: CustomEvent<{ wine: DrunkWine }>) {
+    const { wine } = event.detail;
+    modal.openEditRating(wine);
+  }
+
+  // Watch modal state - refresh history when editRating modal closes
+  $: {
+    if ($modal.type === 'editRating') {
+      wasEditingRating = true;
+    } else if (wasEditingRating && $modal.type === null) {
+      // Modal just closed after editing, refresh history
+      wasEditingRating = false;
+      fetchDrunkWines();
+    }
+  }
 </script>
 
 <svelte:head>
@@ -61,24 +80,6 @@
 <main class="page-container">
   <!-- History Section -->
   <section class="history-section">
-    <div class="section-header">
-      <h2 class="section-title">Drink History</h2>
-      <span class="wine-count">
-        {#if $historyLoading}
-          Loading...
-        {:else if $drunkWineCount !== $filteredDrunkWineCount}
-          {$filteredDrunkWineCount} of {$drunkWineCount} bottles
-        {:else}
-          {$drunkWineCount} bottles
-        {/if}
-      </span>
-    </div>
-
-    <!-- Sort bar (only show when we have wines) -->
-    {#if !$historyLoading && $drunkWineCount > 0}
-      <HistorySortBar />
-    {/if}
-
     <!-- Three-state UI -->
     {#if $historyLoading}
       <div class="loading-state">
@@ -105,7 +106,7 @@
         </button>
       </div>
     {:else}
-      <HistoryGrid wines={$sortedDrunkWines} on:addBottle={handleAddBottle} />
+      <HistoryGrid wines={$sortedDrunkWines} on:addBottle={handleAddBottle} on:editRating={handleEditRating} />
     {/if}
   </section>
 </main>
@@ -126,27 +127,6 @@
    * ───────────────────────────────────────────────────────── */
   .history-section {
     margin-bottom: var(--space-8);
-  }
-
-  .section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: var(--space-5);
-  }
-
-  .section-title {
-    font-family: var(--font-serif);
-    font-size: 1.5rem;
-    font-weight: 400;
-    color: var(--text-primary);
-    margin: 0;
-  }
-
-  .wine-count {
-    font-family: var(--font-sans);
-    font-size: 0.8125rem;
-    color: var(--text-tertiary);
   }
 
   /* ─────────────────────────────────────────────────────────

@@ -18,8 +18,11 @@ export type CellarSortKey =
   | 'year'
   | 'type'
   | 'rating'
+  | 'ratingOverall'
+  | 'ratingValue'
   | 'bottles'
-  | 'price';
+  | 'price'
+  | 'priceBottle';
 
 export type CellarSortDir = 'asc' | 'desc';
 
@@ -72,9 +75,27 @@ export function sortWines(wines: Wine[], sortKey: CellarSortKey, sortDir: Cellar
       case 'type':
         return direction * a.wineType.localeCompare(b.wineType);
       case 'rating': {
-        // Handle null ratings - put at end
+        // Handle null ratings - put at end (uses combined avgRating)
         const ratingA = a.avgRating ?? -1;
         const ratingB = b.avgRating ?? -1;
+        if (ratingA === -1 && ratingB === -1) return 0;
+        if (ratingA === -1) return 1;
+        if (ratingB === -1) return -1;
+        return direction * (ratingA - ratingB);
+      }
+      case 'ratingOverall': {
+        // Sort by average overall rating
+        const ratingA = a.avgOverallRating ?? -1;
+        const ratingB = b.avgOverallRating ?? -1;
+        if (ratingA === -1 && ratingB === -1) return 0;
+        if (ratingA === -1) return 1;
+        if (ratingB === -1) return -1;
+        return direction * (ratingA - ratingB);
+      }
+      case 'ratingValue': {
+        // Sort by average value rating
+        const ratingA = a.avgValueRating ?? -1;
+        const ratingB = b.avgValueRating ?? -1;
         if (ratingA === -1 && ratingB === -1) return 0;
         if (ratingA === -1) return 1;
         if (ratingB === -1) return -1;
@@ -83,9 +104,18 @@ export function sortWines(wines: Wine[], sortKey: CellarSortKey, sortDir: Cellar
       case 'bottles':
         return direction * (a.bottleCount - b.bottleCount);
       case 'price': {
-        // Use avgPricePerLiterEUR for comparison
+        // Use avgPricePerLiterEUR for comparison (value per liter)
         const priceA = parseFloat(a.avgPricePerLiterEUR || '0') || 0;
         const priceB = parseFloat(b.avgPricePerLiterEUR || '0') || 0;
+        if (priceA === 0 && priceB === 0) return 0;
+        if (priceA === 0) return 1;
+        if (priceB === 0) return -1;
+        return direction * (priceA - priceB);
+      }
+      case 'priceBottle': {
+        // Use median bottle price in EUR for comparison (absolute price)
+        const priceA = parseFloat(a.avgBottlePriceEUR || '0') || 0;
+        const priceB = parseFloat(b.avgBottlePriceEUR || '0') || 0;
         if (priceA === 0 && priceB === 0) return 0;
         if (priceA === 0) return 1;
         if (priceB === 0) return -1;

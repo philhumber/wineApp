@@ -18,6 +18,7 @@
 			wine.wineName,
 			wine.description,
 			wine.pictureURL,
+			wine.enrichment_status,
 			country.countryName,
 			wine.year,
 			wine.tastingNotes,
@@ -34,7 +35,7 @@
 			bottles.price AS bottlePrice,
 			bottles.currency AS bottleCurrency,
 			ratings.avgRating,
-			ratings.Notes,
+			ratings.Notes AS notes,
 			ratings.drinkDate,
 			ratings.overallRating,
 			ratings.valueRating,
@@ -55,7 +56,7 @@
 		try {
             // 8. Perform database operation
             $stmt = $pdo->prepare($sqlQuery);
-            $stmt->execute($params);
+            $stmt->execute();
             $bottleList = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             // 12. Set success response

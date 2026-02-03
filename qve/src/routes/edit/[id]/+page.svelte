@@ -172,10 +172,10 @@
 		editWine.selectBottle(event.detail.bottleID);
 	}
 
-	// Wine form input
-	function handleWineInput(event: CustomEvent<{ field: string; value: string }>) {
+	// Wine form input (WIN-176: value can be string or boolean for isNonVintage)
+	function handleWineInput(event: CustomEvent<{ field: string; value: string | boolean }>) {
 		const { field, value } = event.detail;
-		editWine.setWineField(field as keyof typeof state.wine, value);
+		editWine.setWineField(field as keyof typeof state.wine, value as never);
 	}
 
 	// Wine image handlers

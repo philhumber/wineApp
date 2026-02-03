@@ -4,7 +4,7 @@
    * Responsive container that manages wine card layout and expanded state
    */
   import { createEventDispatcher } from 'svelte';
-  import { viewDensity, expandedWineID, targetWineID } from '$lib/stores';
+  import { viewDensity, expandedWineIDs, toggleWineExpanded, targetWineID } from '$lib/stores';
   import type { Wine } from '$lib/api/types';
   import WineCard from './WineCard.svelte';
 
@@ -16,13 +16,8 @@
     edit: { wine: Wine };
   }>();
 
-  function handleExpand(event: CustomEvent<{ wineID: number }>) {
-    const { wineID } = event.detail;
-    expandedWineID.set(wineID);
-  }
-
-  function handleCollapse() {
-    expandedWineID.set(null);
+  function handleToggleExpand(event: CustomEvent<{ wineID: number }>) {
+    toggleWineExpanded(event.detail.wineID);
   }
 
   // Forward action events from WineCard
@@ -52,11 +47,11 @@
   {#each wines as wine, index (wine.wineID)}
     <WineCard
       {wine}
-      expanded={$expandedWineID === wine.wineID}
+      expanded={$expandedWineIDs.has(wine.wineID)}
       compact={$viewDensity === 'compact'}
-      targetHighlight={$targetWineID === wine.wineID}
-      on:expand={handleExpand}
-      on:collapse={handleCollapse}
+      targetHighlight={$targetWineID != null && Number($targetWineID) === Number(wine.wineID)}
+      on:expand={handleToggleExpand}
+      on:collapse={handleToggleExpand}
       on:drink={handleDrink}
       on:add={handleAdd}
       on:edit={handleEdit}
@@ -84,11 +79,11 @@
   }
 
   /* ─────────────────────────────────────────────────────────
-   * COMPACT VIEW (Grid Layout)
+   * COMPACT VIEW (Grid Layout) - Mobile-first approach
    * ───────────────────────────────────────────────────────── */
   .wine-grid.view-compact {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: var(--space-4);
   }
 
@@ -98,35 +93,29 @@
   }
 
   /* ─────────────────────────────────────────────────────────
-   * RESPONSIVE COLUMN COUNTS
+   * RESPONSIVE COLUMN COUNTS (mobile-first)
    * ───────────────────────────────────────────────────────── */
-  @media (min-width: 1200px) {
-    .wine-grid.view-compact {
-      grid-template-columns: repeat(6, 1fr);
-    }
-  }
-
-  @media (min-width: 992px) and (max-width: 1199px) {
-    .wine-grid.view-compact {
-      grid-template-columns: repeat(5, 1fr);
-    }
-  }
-
-  @media (min-width: 768px) and (max-width: 991px) {
-    .wine-grid.view-compact {
-      grid-template-columns: repeat(4, 1fr);
-    }
-  }
-
-  @media (min-width: 480px) and (max-width: 767px) {
+  @media (min-width: 560px) {
     .wine-grid.view-compact {
       grid-template-columns: repeat(3, 1fr);
     }
   }
 
-  @media (max-width: 479px) {
+  @media (min-width: 768px) {
     .wine-grid.view-compact {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  @media (min-width: 992px) {
+    .wine-grid.view-compact {
+      grid-template-columns: repeat(5, 1fr);
+    }
+  }
+
+  @media (min-width: 1200px) {
+    .wine-grid.view-compact {
+      grid-template-columns: repeat(6, 1fr);
     }
   }
 

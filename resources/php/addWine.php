@@ -2,6 +2,7 @@
   // 1. Include dependencies at the top
   require_once 'databaseConnection.php';
   require_once 'audit_log.php';
+  require_once 'validators.php';
 
   // 2. Initialize response
   $response = ['success' => false, 'message' => '', 'data' => null];
@@ -64,17 +65,25 @@
     $bottleCurrency = trim($data['bottleCurrency'] ?? null);
     $bottlePurchaseDate = !empty($data['bottlePurchaseDate']) ? trim($data['bottlePurchaseDate']) : null;
 
-    if (trim($data['wineYear']) == '') {
-      $wineYear = NULL;
-    }else{
-      $wineYear = trim($data['wineYear']);
-    }    
+    // WIN-176: Handle year and Non-Vintage flag
+    $yearInput = trim($data['wineYear'] ?? '');
+    $isNonVintageInput = !empty($data['isNonVintage']);
+
+    if ($isNonVintageInput) {
+      $wineYear = null;
+      $isNonVintage = 1;
+    } else {
+      $yearData = validateWineYear($yearInput);
+      $wineYear = $yearData['year'];
+      $isNonVintage = $yearData['isNonVintage'] ? 1 : 0;
+    }
+
     $wineDescription = trim($data['wineDescription']);
     $wineTasting = trim($data['wineTasting']);
     $winePairing = trim($data['winePairing']);
     $winePicture = trim($data['winePicture']);
     $wineType = trim($data['wineType']);
-    //TODO: Has to be here
+    $appellation = !empty($data['appellation']) ? trim($data['appellation']) : null;  // WIN-148: Specific appellation
 
     $pdo->beginTransaction();
 
@@ -232,14 +241,16 @@
 
         //add the wine  as we know it is new and new wine data is there
 
-        $stmt = $pdo->prepare("INSERT INTO `wine` (wineName, wineTypeID, producerID, year, description, tastingNotes, pairing, pictureURL) 
-                                VALUES (:wineName, :wineTypeID, :producerID, :wineYear, :wineDescription, :wineTasting, :winePairing, :winePicture)");    
+        $stmt = $pdo->prepare("INSERT INTO `wine` (wineName, wineTypeID, producerID, year, isNonVintage, appellation, description, tastingNotes, pairing, pictureURL, enrichment_status)
+                                VALUES (:wineName, :wineTypeID, :producerID, :wineYear, :isNonVintage, :appellation, :wineDescription, :wineTasting, :winePairing, :winePicture, 'pending')");
 
         $stmt->execute([
             ':wineName' => $newWineName,
             ':wineTypeID' => $wineTypeID,
-            ':producerID' => $producerID, // Make sure $regionID is a valid array
+            ':producerID' => $producerID,
             ':wineYear' => $wineYear,
+            ':isNonVintage' => $isNonVintage,  // WIN-176: Non-Vintage flag
+            ':appellation' => $appellation,  // WIN-148: Specific appellation
             ':wineDescription' => $wineDescription,
             ':wineTasting' => $wineTasting,
             ':winePairing' => $winePairing,

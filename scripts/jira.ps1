@@ -16,7 +16,7 @@
 
 param(
     [Parameter(Position=0)]
-    [ValidateSet("list", "get", "create", "status", "comment", "sprint", "help")]
+    [ValidateSet("list", "get", "create", "status", "comment", "sprint", "sprint-create", "sprint-add", "sprint-start", "help")]
     [string]$Command = "help",
 
     [Parameter(Position=1)]
@@ -97,6 +97,9 @@ function Show-Help {
     Write-Host "  status <key> <status>   Change status: 'To Do', 'In Progress', 'Done'"
     Write-Host "  comment <key> <text>    Add comment to issue"
     Write-Host "  sprint                  Show current sprint issues"
+    Write-Host "  sprint-create <name>    Create a new sprint"
+    Write-Host "  sprint-add <id> <keys>  Add issues to sprint (comma-separated keys)"
+    Write-Host "  sprint-start <id>       Start a sprint (2-week duration)"
     Write-Host "  help                    Show this help`n"
     Write-Host "Examples:" -ForegroundColor Yellow
     Write-Host "  .\jira.ps1 list"
@@ -104,6 +107,8 @@ function Show-Help {
     Write-Host "  .\jira.ps1 create `"Fix login bug`" Bug"
     Write-Host "  .\jira.ps1 status WIN-124 `"In Progress`""
     Write-Host "  .\jira.ps1 comment WIN-124 `"Started working on this`""
+    Write-Host "  .\jira.ps1 sprint-create `"Sprint 11: Stability`""
+    Write-Host "  .\jira.ps1 sprint-add 42 WIN-182,WIN-183,WIN-184"
     Write-Host ""
 }
 
@@ -321,16 +326,145 @@ function Get-Sprint {
     }
 }
 
+function Get-BoardId {
+    # Get the board ID for the project (needed for sprint operations)
+    $agileUrl = "$($config.baseUrl)/rest/agile/1.0"
+    $url = "$agileUrl/board?projectKeyOrId=$project"
+
+    try {
+        $response = Invoke-RestMethod -Uri $url -Method GET -Headers $headers
+        if ($response.values.Count -gt 0) {
+            return $response.values[0].id
+        }
+    }
+    catch {
+        Write-Host "Error getting board: $($_.Exception.Message)" -ForegroundColor Red
+    }
+    return $null
+}
+
+function New-Sprint {
+    param([string]$Name)
+
+    if (-not $Name) {
+        Write-Host "Usage: .\jira.ps1 sprint-create <sprint-name>" -ForegroundColor Yellow
+        Write-Host "Example: .\jira.ps1 sprint-create `"Sprint 11: Stability`"" -ForegroundColor Gray
+        return
+    }
+
+    $boardId = Get-BoardId
+    if (-not $boardId) {
+        Write-Host "Could not find board for project $project" -ForegroundColor Red
+        return
+    }
+
+    $agileUrl = "$($config.baseUrl)/rest/agile/1.0"
+    $body = @{
+        name = $Name
+        originBoardId = $boardId
+    } | ConvertTo-Json
+
+    try {
+        $response = Invoke-RestMethod -Uri "$agileUrl/sprint" -Method POST -Headers $headers -Body $body
+        Write-Host "`nCreated sprint: $($response.name)" -ForegroundColor Green
+        Write-Host "Sprint ID: $($response.id)" -ForegroundColor Gray
+        Write-Host "State: $($response.state)" -ForegroundColor Gray
+        Write-Host "`nTo add issues: .\jira.ps1 sprint-add $($response.id) WIN-123,WIN-124,WIN-125" -ForegroundColor Yellow
+        Write-Host ""
+        return $response.id
+    }
+    catch {
+        Write-Host "Error creating sprint: $($_.Exception.Message)" -ForegroundColor Red
+        if ($_.ErrorDetails.Message) {
+            Write-Host $_.ErrorDetails.Message -ForegroundColor Red
+        }
+    }
+}
+
+function Add-IssuesToSprint {
+    param(
+        [string]$SprintId,
+        [string]$IssueKeys
+    )
+
+    if (-not $SprintId -or -not $IssueKeys) {
+        Write-Host "Usage: .\jira.ps1 sprint-add <sprint-id> <issue-keys>" -ForegroundColor Yellow
+        Write-Host "Example: .\jira.ps1 sprint-add 42 WIN-182,WIN-183,WIN-184" -ForegroundColor Gray
+        return
+    }
+
+    $keys = $IssueKeys -split "," | ForEach-Object { $_.Trim() }
+
+    $agileUrl = "$($config.baseUrl)/rest/agile/1.0"
+    $body = @{
+        issues = $keys
+    } | ConvertTo-Json
+
+    try {
+        Invoke-RestMethod -Uri "$agileUrl/sprint/$SprintId/issue" -Method POST -Headers $headers -Body $body
+        Write-Host "`nAdded $($keys.Count) issue(s) to sprint $SprintId" -ForegroundColor Green
+        foreach ($key in $keys) {
+            Write-Host "  - $key" -ForegroundColor Gray
+        }
+        Write-Host ""
+    }
+    catch {
+        Write-Host "Error adding issues to sprint: $($_.Exception.Message)" -ForegroundColor Red
+        if ($_.ErrorDetails.Message) {
+            Write-Host $_.ErrorDetails.Message -ForegroundColor Red
+        }
+    }
+}
+
+function Start-Sprint {
+    param([string]$SprintId)
+
+    if (-not $SprintId) {
+        Write-Host "Usage: .\jira.ps1 sprint-start <sprint-id>" -ForegroundColor Yellow
+        Write-Host "Example: .\jira.ps1 sprint-start 219" -ForegroundColor Gray
+        return
+    }
+
+    $agileUrl = "$($config.baseUrl)/rest/agile/1.0"
+
+    # Start date is now, end date is 2 weeks from now
+    $startDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffzzz")
+    $endDate = (Get-Date).AddDays(14).ToString("yyyy-MM-ddTHH:mm:ss.fffzzz")
+
+    $body = @{
+        state = "active"
+        startDate = $startDate
+        endDate = $endDate
+    } | ConvertTo-Json
+
+    try {
+        $response = Invoke-RestMethod -Uri "$agileUrl/sprint/$SprintId" -Method POST -Headers $headers -Body $body
+        Write-Host "`nStarted sprint: $($response.name)" -ForegroundColor Green
+        Write-Host "State: $($response.state)" -ForegroundColor Gray
+        Write-Host "End Date: $($response.endDate)" -ForegroundColor Gray
+        Write-Host ""
+    }
+    catch {
+        Write-Host "Error starting sprint: $($_.Exception.Message)" -ForegroundColor Red
+        if ($_.ErrorDetails.Message) {
+            Write-Host $_.ErrorDetails.Message -ForegroundColor Red
+        }
+    }
+}
+
 # Main
 Add-Type -AssemblyName System.Web
 
 switch ($Command) {
-    "list"    { Get-Issues -Status $(if ($Arg1) { $Arg1 } else { "open" }) }
-    "get"     { Get-Issue -Key $Arg1 }
-    "create"  { New-Issue -Summary $Arg1 -Type $(if ($Arg2) { $Arg2 } else { "Task" }) }
-    "status"  { Set-IssueStatus -Key $Arg1 -StatusName $Arg2 }
-    "comment" { Add-Comment -Key $Arg1 -Text $Arg2 }
-    "sprint"  { Get-Sprint }
-    "help"    { Show-Help }
-    default   { Show-Help }
+    "list"          { Get-Issues -Status $(if ($Arg1) { $Arg1 } else { "open" }) }
+    "get"           { Get-Issue -Key $Arg1 }
+    "create"        { New-Issue -Summary $Arg1 -Type $(if ($Arg2) { $Arg2 } else { "Task" }) }
+    "status"        { Set-IssueStatus -Key $Arg1 -StatusName $Arg2 }
+    "comment"       { Add-Comment -Key $Arg1 -Text $Arg2 }
+    "sprint"        { Get-Sprint }
+    "sprint-create" { New-Sprint -Name $Arg1 }
+    "sprint-add"    { Add-IssuesToSprint -SprintId $Arg1 -IssueKeys $Arg2 }
+    "sprint-start"  { Start-Sprint -SprintId $Arg1 }
+    "help"          { Show-Help }
+    default         { Show-Help }
 }

@@ -16,7 +16,7 @@
 	import type { Wine, WineType, DuplicateMatch } from '$lib/api/types';
 
 	// Local state
-	let wines: Array<{ id: number; name: string; meta?: string }> = [];
+	let wines: Array<{ id: number; name: string; meta?: string; isNonVintage?: boolean }> = [];
 	let wineTypes: WineType[] = [];
 	let searchValue = '';
 
@@ -55,7 +55,8 @@
 				wines = winesData.map((w) => ({
 					id: w.wineID,
 					name: w.wineName,
-					meta: w.year ? `${w.year}` : undefined
+					meta: w.year ? `${w.year}` : (w.isNonVintage ? 'NV' : undefined),
+					isNonVintage: w.isNonVintage  // WIN-176
 				}));
 			}
 		} catch (error) {
@@ -80,12 +81,13 @@
 	// Select existing wine
 	function handleSelect(e: CustomEvent<{ id: number; name: string; meta?: string }>) {
 		const wine = e.detail;
-		// Find full wine data
+		// Find full wine data to get isNonVintage
 		const fullWine = wines.find(w => w.id === wine.id);
 		addWineStore.selectWine({
 			wineID: wine.id,
 			wineName: wine.name,
-			year: wine.meta || null,
+			year: fullWine?.isNonVintage ? null : (wine.meta || null),
+			isNonVintage: fullWine?.isNonVintage || false,  // WIN-176
 			wineType: '',
 			producerName: producerName,
 			regionName: '',
@@ -235,13 +237,31 @@
 		/>
 
 		<FormRow>
-			<FormInput
-				label="Vintage Year"
-				name="wineYear"
-				value={state.wine.wineYear}
-				placeholder="e.g., 2019"
-				on:input={(e) => addWineStore.updateWine('wineYear', e.detail)}
-			/>
+			<div class="year-field">
+				<FormInput
+					label="Vintage Year"
+					name="wineYear"
+					value={state.wine.wineYear}
+					placeholder="e.g., 2019"
+					disabled={state.wine.isNonVintage}
+					on:input={(e) => addWineStore.updateWine('wineYear', e.detail)}
+				/>
+				<!-- WIN-176: NV Toggle -->
+				<label class="nv-toggle">
+					<input
+						type="checkbox"
+						checked={state.wine.isNonVintage}
+						on:change={(e) => {
+							const isNV = e.currentTarget.checked;
+							addWineStore.updateWine('isNonVintage', isNV);
+							if (isNV) {
+								addWineStore.updateWine('wineYear', '');
+							}
+						}}
+					/>
+					<span>Non-Vintage (NV)</span>
+				</label>
+			</div>
 			<FormSelect
 				label="Wine Type"
 				name="wineType"
@@ -370,5 +390,34 @@
 
 	.manual-expand-link:hover {
 		text-decoration: underline;
+	}
+
+	/* WIN-176: NV Toggle Styles */
+	.year-field {
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+	}
+
+	.nv-toggle {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		margin-top: var(--space-1);
+		font-family: var(--font-sans);
+		font-size: 0.8125rem;
+		color: var(--text-secondary);
+		cursor: pointer;
+	}
+
+	.nv-toggle input[type="checkbox"] {
+		width: 1rem;
+		height: 1rem;
+		accent-color: var(--accent);
+		cursor: pointer;
+	}
+
+	.nv-toggle span {
+		user-select: none;
 	}
 </style>
