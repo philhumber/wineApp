@@ -15,7 +15,7 @@
 </script>
 
 <div class="confidence-section">
-	{#if state === 'skeleton' || !hasConfidence}
+	{#if state === 'skeleton' || !hasConfidence || confidence === null}
 		<span class="shimmer-inline shimmer-confidence"></span>
 	{:else}
 		<ConfidenceIndicator score={confidence} />
