@@ -10,13 +10,13 @@
 	import type { AgentMessage, AgentChip } from '$lib/stores';
 	import type { AgentCandidate, AgentParsedWine } from '$lib/api/types';
 	import ActionChips from './ActionChips.svelte';
-	import WineIdentificationCard from './WineIdentificationCard.svelte';
+	import WineCard from './WineCard.svelte'; // Universal wine card (skeleton/streaming/static)
+	import EnrichmentCard from './EnrichmentCard.svelte'; // Universal enrichment card (skeleton/streaming/static)
 	import DisambiguationList from './DisambiguationList.svelte';
 	import CandidateMiniCards from './CandidateMiniCards.svelte';
 	import MatchSelectionList from './MatchSelectionList.svelte';
 	import BottleDetailsForm from './BottleDetailsForm.svelte';
 	import ManualEntryForm from './ManualEntryForm.svelte';
-	import { EnrichmentCard } from './enrichment';
 	import { agentAddState } from '$lib/stores';
 	import TypewriterText from './TypewriterText.svelte';
 
@@ -95,8 +95,9 @@
 		<!-- Agent message: Editorial serif with accent divider -->
 		{#if message.type === 'wine_result' && message.wineResult}
 			<!-- Wine result card -->
-			<WineIdentificationCard
-				parsed={message.wineResult}
+			<WineCard
+				state="static"
+				data={message.wineResult}
 				confidence={message.confidence ?? 0}
 			/>
 		{:else if message.type === 'wine_enrichment' && message.enrichmentData}
@@ -106,7 +107,7 @@
 			{:else}
 				<p class="agent-text">{message.content}</p>
 			{/if}
-			<EnrichmentCard data={message.enrichmentData} source={message.enrichmentSource} />
+			<EnrichmentCard state="static" data={message.enrichmentData} source={message.enrichmentSource} />
 		{:else if message.type === 'cache_match_confirm'}
 			<!-- WIN-162: Cache match confirmation prompt -->
 			{#if message.isNew}
