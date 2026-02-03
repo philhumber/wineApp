@@ -136,6 +136,8 @@
 				onConfirm: () => {
 					modal.close();
 					allowNavigation = true;
+					// Set target wine so the list scrolls to it after navigation
+					targetWineID.set(wineID);
 					goto(`${base}/`);
 				},
 				onCancel: () => {
@@ -144,6 +146,8 @@
 			});
 		} else {
 			allowNavigation = true;
+			// Set target wine so the list scrolls to it after navigation
+			targetWineID.set(wineID);
 			goto(`${base}/`);
 		}
 	}

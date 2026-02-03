@@ -54,8 +54,8 @@ export { toasts, hasToasts, latestToast } from './toast';
 export type { Toast, ToastType, ToastAction } from './toast';
 
 // Modal
-export { modal, isModalOpen, isModalType, modalData } from './modal';
-export type { ModalState, ModalType, ConfirmModalData } from './modal';
+export { modal, isModalOpen, isModalType, modalData, confirmOverlay } from './modal';
+export type { ModalState, ModalType, ConfirmModalData, BeforeCloseResult, BeforeCloseHook } from './modal';
 
 // Add Wine Wizard
 export {

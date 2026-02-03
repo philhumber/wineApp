@@ -6,7 +6,7 @@
   <ModalContainer />
 -->
 <script lang="ts">
-  import { modal } from '$lib/stores';
+  import { modal, confirmOverlay } from '$lib/stores';
   import DrinkRateModal from './DrinkRateModal.svelte';
   import AddBottleModal from './AddBottleModal.svelte';
   import ConfirmModal from './ConfirmModal.svelte';
@@ -19,6 +19,7 @@
     modal.close();
   }
 
+  // Handlers for standalone confirm modal (type === 'confirm')
   function handleConfirm() {
     const data = $modal.data as ConfirmModalData | undefined;
     if (data?.onConfirm) {
@@ -33,6 +34,21 @@
       data.onCancel();
     }
     modal.close();
+  }
+
+  // Handlers for stacked confirm overlay (dirty check confirmations)
+  function handleOverlayConfirm() {
+    if ($confirmOverlay?.onConfirm) {
+      $confirmOverlay.onConfirm();
+    }
+    // Note: onConfirm callback handles closing the modal
+  }
+
+  function handleOverlayCancel() {
+    if ($confirmOverlay?.onCancel) {
+      $confirmOverlay.onCancel();
+    }
+    // Note: onCancel callback handles hiding the overlay
   }
 
   $: modalType = $modal.type;
@@ -76,6 +92,19 @@
     src={modalData.src as string}
     alt={(modalData.alt as string) || 'Wine image'}
     on:close={handleClose}
+  />
+{/if}
+
+<!-- Stacked confirmation overlay for dirty checks (renders on top of main modal) -->
+{#if $confirmOverlay}
+  <ConfirmModal
+    title={$confirmOverlay.title}
+    message={$confirmOverlay.message}
+    confirmLabel={$confirmOverlay.confirmLabel}
+    cancelLabel={$confirmOverlay.cancelLabel}
+    variant={$confirmOverlay.variant}
+    on:confirm={handleOverlayConfirm}
+    on:cancel={handleOverlayCancel}
   />
 {/if}
 

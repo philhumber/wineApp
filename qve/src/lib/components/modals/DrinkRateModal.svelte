@@ -5,7 +5,7 @@
   Design follows: design/qve-rebrand/qve-drink-rate-mockup.html
 -->
 <script lang="ts">
-  import { onMount, createEventDispatcher } from 'svelte';
+  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { drinkWine, isDirty, canSubmit, modal, updateWineInList, scrollToWine, collapseWine } from '$lib/stores';
   import { viewMode } from '$lib/stores/view';
   import { api } from '$lib/api';
@@ -20,32 +20,35 @@
 
   const dispatch = createEventDispatcher<{ close: void; confirm: void; rated: { isEdit: boolean } }>();
 
-  let showConfirmClose = false;
-
   onMount(async () => {
     if (isEdit && drunkWine) {
       drinkWine.initEdit(drunkWine);
     } else if (wine) {
       await drinkWine.init(wine);
     }
+
+    // Register dirty check hook for stacked confirmation
+    modal.registerBeforeCloseHook(() => ({
+      dirty: $isDirty,
+      confirmation: {
+        title: 'Discard changes?',
+        message: 'You have unsaved changes. Are you sure you want to close?',
+        confirmLabel: 'Discard',
+        cancelLabel: 'Keep editing',
+        variant: 'danger'
+      },
+      onConfirm: () => {
+        drinkWine.reset();
+      }
+    }));
+  });
+
+  onDestroy(() => {
+    modal.clearBeforeCloseHook();
   });
 
   function handleClose() {
-    if ($isDirty) {
-      showConfirmClose = true;
-    } else {
-      dispatch('close');
-    }
-  }
-
-  function handleConfirmClose() {
-    showConfirmClose = false;
-    drinkWine.reset();
-    dispatch('close');
-  }
-
-  function handleCancelClose() {
-    showConfirmClose = false;
+    modal.requestClose();
   }
 
   async function handleSubmit() {
@@ -87,7 +90,7 @@
   }
 
   function handleKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Escape' && !showConfirmClose) {
+    if (event.key === 'Escape') {
       handleClose();
     }
   }
@@ -133,27 +136,6 @@
 </script>
 
 <svelte:window on:keydown={handleKeyDown} />
-
-{#if showConfirmClose}
-  <!-- Confirm close dialog -->
-  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="confirm-overlay" on:click={() => (showConfirmClose = false)}>
-    <div class="confirm-content" role="alertdialog" aria-modal="true">
-      <div class="confirm-body">
-        <h3 class="confirm-title">Discard changes?</h3>
-        <p class="confirm-message">You have unsaved changes. Are you sure you want to close?</p>
-      </div>
-      <div class="confirm-footer">
-        <button type="button" class="btn btn-secondary" on:click={handleCancelClose}>
-          Keep editing
-        </button>
-        <button type="button" class="btn btn-danger" on:click={handleConfirmClose}>
-          Discard
-        </button>
-      </div>
-    </div>
-  </div>
-{/if}
 
 <!-- Main modal -->
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
@@ -708,82 +690,6 @@
   .btn:focus-visible {
     outline: 2px solid var(--accent, #a69b8a);
     outline-offset: 2px;
-  }
-
-  /* Confirm Dialog */
-  .confirm-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(45, 41, 38, 0.4);
-    backdrop-filter: blur(4px);
-    z-index: 1100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-4, 1rem);
-    animation: fadeIn 0.2s var(--ease-out, ease-out);
-  }
-
-  .confirm-content {
-    background: var(--surface, #ffffff);
-    border-radius: 12px;
-    box-shadow: var(--shadow-lg, 0 8px 24px rgba(45, 41, 38, 0.06));
-    width: 100%;
-    max-width: 360px;
-    animation: scaleIn 0.2s var(--ease-out, ease-out);
-  }
-
-  @keyframes scaleIn {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  .confirm-body {
-    padding: var(--space-6, 2rem);
-    text-align: center;
-  }
-
-  .confirm-title {
-    font-family: var(--font-serif, Georgia);
-    font-size: 1.125rem;
-    font-weight: 400;
-    color: var(--text-primary, #2d2926);
-    margin: 0 0 var(--space-2, 0.5rem) 0;
-  }
-
-  .confirm-message {
-    font-size: 0.875rem;
-    color: var(--text-secondary, #5c5652);
-    margin: 0;
-  }
-
-  .confirm-footer {
-    display: flex;
-    gap: var(--space-3, 0.75rem);
-    padding: var(--space-4, 1rem) var(--space-5, 1.5rem);
-    border-top: 1px solid var(--divider-subtle, #f0ede8);
-    background: var(--bg-subtle, #f5f3f0);
-    border-radius: 0 0 12px 12px;
-  }
-
-  .btn-danger {
-    background: var(--error, #b87a7a);
-    border-color: var(--error, #b87a7a);
-    color: white;
-  }
-
-  .btn-danger:hover {
-    background: #a06a6a;
-    border-color: #a06a6a;
   }
 
   /* Responsive */
