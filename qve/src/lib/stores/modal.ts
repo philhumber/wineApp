@@ -4,7 +4,7 @@
  */
 
 import { writable, derived, get } from 'svelte/store';
-import type { Wine } from '$lib/api/types';
+import type { Wine, DrunkWine } from '$lib/api/types';
 
 // ─────────────────────────────────────────────────────────
 // TYPES
@@ -12,6 +12,7 @@ import type { Wine } from '$lib/api/types';
 
 export type ModalType =
   | 'drink'          // Drink & rate bottle
+  | 'editRating'     // Edit existing rating
   | 'addBottle'      // Add bottle to existing wine
   | 'edit'           // Edit wine or bottle
   | 'confirm'        // Confirmation dialog
@@ -121,6 +122,15 @@ function createModalStore() {
     },
 
     /**
+     * Open edit rating modal for an existing rating
+     * Pass the full DrunkWine object to pre-populate the form
+     */
+    openEditRating: (drunkWine: DrunkWine): void => {
+      const pushed = pushHistoryForModal('editRating');
+      set({ type: 'editRating', data: { drunkWine }, pushedHistory: pushed });
+    },
+
+    /**
      * Open add bottle modal for a wine
      * Pass optional wine details for display (pictureURL, year, region)
      */
@@ -187,9 +197,8 @@ function createModalStore() {
      * Open image lightbox for fullscreen viewing
      */
     openImageLightbox: (src: string, alt?: string): void => {
-      set({ type: 'imageLightbox', data: { src, alt: alt || 'Wine image' } });
-      const pushed = pushHistoryForModal('settings');
-      set({ type: 'settings', data: {}, pushedHistory: pushed });
+      const pushed = pushHistoryForModal('imageLightbox');
+      set({ type: 'imageLightbox', data: { src, alt: alt || 'Wine image' }, pushedHistory: pushed });
     }
   };
 }

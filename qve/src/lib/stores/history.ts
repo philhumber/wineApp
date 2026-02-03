@@ -5,6 +5,7 @@
 
 import { writable, derived } from 'svelte/store';
 import type { DrunkWine } from '$api/types';
+import { availableCurrencies, getCurrencyByCode, convertToEUR } from './currency';
 
 // ─────────────────────────────────────────────────────────
 // TYPES
@@ -12,6 +13,7 @@ import type { DrunkWine } from '$api/types';
 
 export type HistorySortKey =
   | 'drinkDate'
+  | 'rating'
   | 'overallRating'
   | 'valueRating'
   | 'wineName'
@@ -71,8 +73,8 @@ export const activeHistoryFilterCount = derived(historyFilters, ($filters) =>
 
 /** Filtered and sorted drunk wines */
 export const sortedDrunkWines = derived(
-  [drunkWines, historySortKey, historySortDir, historyFilters],
-  ([$drunkWines, $sortKey, $sortDir, $filters]) => {
+  [drunkWines, historySortKey, historySortDir, historyFilters, availableCurrencies],
+  ([$drunkWines, $sortKey, $sortDir, $filters, $currencies]) => {
     // Filter first
     let filtered = $drunkWines.filter((wine) => {
       if ($filters.countryDropdown && wine.countryName !== $filters.countryDropdown) return false;
@@ -93,10 +95,35 @@ export const sortedDrunkWines = derived(
           if (!a.drinkDate) return 1;
           if (!b.drinkDate) return -1;
           return direction * (new Date(a.drinkDate).getTime() - new Date(b.drinkDate).getTime());
-        case 'overallRating':
-          return direction * ((a.overallRating ?? 0) - (b.overallRating ?? 0));
-        case 'valueRating':
-          return direction * ((a.valueRating ?? 0) - (b.valueRating ?? 0));
+        case 'rating': {
+          // Combined rating: (overall + value) / 2
+          const ratingA = (a.overallRating != null && a.valueRating != null)
+            ? (a.overallRating + a.valueRating) / 2
+            : a.overallRating ?? a.valueRating ?? -1;
+          const ratingB = (b.overallRating != null && b.valueRating != null)
+            ? (b.overallRating + b.valueRating) / 2
+            : b.overallRating ?? b.valueRating ?? -1;
+          if (ratingA === -1 && ratingB === -1) return 0;
+          if (ratingA === -1) return 1;
+          if (ratingB === -1) return -1;
+          return direction * (ratingA - ratingB);
+        }
+        case 'overallRating': {
+          const ratingA = a.overallRating ?? -1;
+          const ratingB = b.overallRating ?? -1;
+          if (ratingA === -1 && ratingB === -1) return 0;
+          if (ratingA === -1) return 1;
+          if (ratingB === -1) return -1;
+          return direction * (ratingA - ratingB);
+        }
+        case 'valueRating': {
+          const ratingA = a.valueRating ?? -1;
+          const ratingB = b.valueRating ?? -1;
+          if (ratingA === -1 && ratingB === -1) return 0;
+          if (ratingA === -1) return 1;
+          if (ratingB === -1) return -1;
+          return direction * (ratingA - ratingB);
+        }
         case 'wineName':
           return direction * a.wineName.localeCompare(b.wineName);
         case 'wineType':
@@ -116,8 +143,17 @@ export const sortedDrunkWines = derived(
           return direction * yearA.localeCompare(yearB);
         }
         case 'price': {
-          const priceA = parseFloat(String(a.bottlePrice || '0')) || 0;
-          const priceB = parseFloat(String(b.bottlePrice || '0')) || 0;
+          const rawPriceA = parseFloat(String(a.bottlePrice || '0')) || 0;
+          const rawPriceB = parseFloat(String(b.bottlePrice || '0')) || 0;
+
+          // Convert to EUR for fair comparison - default to EUR if currency null
+          const currencyA = getCurrencyByCode(a.bottleCurrency || 'EUR', $currencies);
+          const currencyB = getCurrencyByCode(b.bottleCurrency || 'EUR', $currencies);
+
+          // If currency not in list (store not loaded), fall back to raw comparison
+          const priceA = currencyA ? convertToEUR(rawPriceA, currencyA) : rawPriceA;
+          const priceB = currencyB ? convertToEUR(rawPriceB, currencyB) : rawPriceB;
+
           if (priceA === 0 && priceB === 0) return 0;
           if (priceA === 0) return 1;
           if (priceB === 0) return -1;

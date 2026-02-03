@@ -6,19 +6,28 @@
 -->
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
-  import { drinkWine, isDirty, canSubmit, modal, decrementBottleCount, scrollToWine, expandedWineID } from '$lib/stores';
+  import { drinkWine, isDirty, canSubmit, modal, updateWineInList, scrollToWine, collapseWine } from '$lib/stores';
+  import { viewMode } from '$lib/stores/view';
+  import { api } from '$lib/api';
   import { RatingDots, MiniRatingDots, ToggleSwitch } from '$lib/components/forms';
   import Icon from '$lib/components/ui/Icon.svelte';
-  import type { Wine } from '$lib/api/types';
+  import type { Wine, DrunkWine } from '$lib/api/types';
 
-  export let wine: Wine;
+  // Props - either wine (new rating) or drunkWine (edit mode)
+  export let wine: Wine | undefined = undefined;
+  export let drunkWine: DrunkWine | undefined = undefined;
+  export let isEdit: boolean = false;
 
-  const dispatch = createEventDispatcher<{ close: void; confirm: void }>();
+  const dispatch = createEventDispatcher<{ close: void; confirm: void; rated: { isEdit: boolean } }>();
 
   let showConfirmClose = false;
 
   onMount(async () => {
-    await drinkWine.init(wine);
+    if (isEdit && drunkWine) {
+      drinkWine.initEdit(drunkWine);
+    } else if (wine) {
+      await drinkWine.init(wine);
+    }
   });
 
   function handleClose() {
@@ -42,12 +51,29 @@
   async function handleSubmit() {
     const result = await drinkWine.submit();
     if (result.success) {
-      // Decrement bottle count in wines list
-      if (result.wineID) {
-        decrementBottleCount(result.wineID);
-        // Collapse the card and scroll to top of viewport
-        expandedWineID.set(null);
-        scrollToWine(result.wineID);
+      if (result.isEdit) {
+        // Edit mode - dispatch rated event for history refresh
+        dispatch('rated', { isEdit: true });
+      } else {
+        // New rating - update wine in list and handle view switching
+        if (result.wineID) {
+          // Fetch updated wine data from API (includes new rating, bottle count, etc.)
+          const updatedWine = await api.getWine(result.wineID);
+
+          if (updatedWine) {
+            // Update wine in store with fresh data
+            updateWineInList(result.wineID, updatedWine);
+
+            // If last bottle was drunk, switch to All Wines view
+            if (updatedWine.bottleCount === 0) {
+              viewMode.set('allWines');
+            }
+          }
+
+          // Collapse this wine's card and scroll to it
+          collapseWine(result.wineID);
+          scrollToWine(result.wineID);
+        }
       }
       drinkWine.reset();
       dispatch('close');
@@ -90,7 +116,15 @@
   }
 
   // Resolve image path (PHP returns path like "images/wines/...")
-  $: imageSrc = wine.pictureURL ? `/${wine.pictureURL}` : null;
+  $: imageSrc = (wine?.pictureURL || drunkWine?.pictureURL)
+    ? `/${wine?.pictureURL || drunkWine?.pictureURL}`
+    : null;
+
+  // Get wine display name (from either wine or drunkWine)
+  $: displayName = wine?.wineName || drunkWine?.wineName || '';
+  $: displayYear = wine?.year || drunkWine?.year;
+  $: displayRegion = wine?.regionName || drunkWine?.regionName || '';
+  $: displayCountry = wine?.countryName || drunkWine?.countryName || '';
 
   $: state = $drinkWine;
 
@@ -127,7 +161,7 @@
   <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <!-- Header -->
     <div class="modal-header">
-      <h2 id="modal-title" class="modal-title">Rate that wine!</h2>
+      <h2 id="modal-title" class="modal-title">{$drinkWine.isEditMode ? 'Edit Rating' : 'Rate that wine!'}</h2>
       <button type="button" class="modal-close" aria-label="Close" on:click={handleClose}>
         <Icon name="close" size={16} />
       </button>
@@ -139,48 +173,50 @@
       <div class="wine-info">
         <div class="wine-info-image">
           {#if imageSrc}
-            <img src={imageSrc} alt={wine.wineName} />
+            <img src={imageSrc} alt={displayName} />
           {:else}
             <Icon name="drink" size={24} />
           {/if}
         </div>
         <div class="wine-info-details">
           <div class="wine-info-name">
-            {wine.wineName}
-            {#if wine.year}
-              <span class="wine-year">{wine.year}</span>
+            {displayName}
+            {#if displayYear}
+              <span class="wine-year">{displayYear}</span>
             {/if}
           </div>
-          <div class="wine-info-meta">{wine.regionName} · {wine.countryName}</div>
+          <div class="wine-info-meta">{displayRegion} · {displayCountry}</div>
         </div>
       </div>
 
-      <!-- Bottle Selector -->
-      <div class="form-group">
-        <label class="form-label" for="bottle-select">Which Bottle?</label>
-        {#if state.isLoading}
-          <div class="loading-placeholder">Loading bottles...</div>
-        {:else if state.availableBottles.length === 0}
-          <div class="no-bottles">No bottles available</div>
-        {:else}
-          <select
-            id="bottle-select"
-            class="form-select"
-            value={state.bottleID ?? ''}
-            on:change={(e) => drinkWine.selectBottle(Number(e.currentTarget.value))}
-          >
-            <option value="" disabled>Select a bottle...</option>
-            {#each state.availableBottles as bottle}
-              <option value={bottle.bottleID}>
-                {formatBottle(bottle)}
-              </option>
-            {/each}
-          </select>
-        {/if}
-        {#if state.errors.bottleID}
-          <span class="form-error">{state.errors.bottleID}</span>
-        {/if}
-      </div>
+      <!-- Bottle Selector (hidden in edit mode) -->
+      {#if !$drinkWine.isEditMode}
+        <div class="form-group">
+          <label class="form-label" for="bottle-select">Which Bottle?</label>
+          {#if state.isLoading}
+            <div class="loading-placeholder">Loading bottles...</div>
+          {:else if state.availableBottles.length === 0}
+            <div class="no-bottles">No bottles available</div>
+          {:else}
+            <select
+              id="bottle-select"
+              class="form-select"
+              value={state.bottleID ?? ''}
+              on:change={(e) => drinkWine.selectBottle(Number(e.currentTarget.value))}
+            >
+              <option value="" disabled>Select a bottle...</option>
+              {#each state.availableBottles as bottle}
+                <option value={bottle.bottleID}>
+                  {formatBottle(bottle)}
+                </option>
+              {/each}
+            </select>
+          {/if}
+          {#if state.errors.bottleID}
+            <span class="form-error">{state.errors.bottleID}</span>
+          {/if}
+        </div>
+      {/if}
 
       <!-- Main Ratings Row -->
       <div class="ratings-row">
@@ -296,9 +332,9 @@
         on:click={handleSubmit}
       >
         {#if state.isSubmitting}
-          Rating...
+          {$drinkWine.isEditMode ? 'Updating...' : 'Rating...'}
         {:else}
-          Rate!
+          {$drinkWine.isEditMode ? 'Update' : 'Rate!'}
         {/if}
       </button>
     </div>

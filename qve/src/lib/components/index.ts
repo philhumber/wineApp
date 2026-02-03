@@ -18,7 +18,7 @@ export {
 } from './wizard';
 
 // UI Components
-export { default as Icon } from './ui/Icon.svelte';
+export { default as Icon, type IconName } from './ui/Icon.svelte';
 export { default as ThemeToggle } from './ui/ThemeToggle.svelte';
 export { default as ViewToggle } from './ui/ViewToggle.svelte';
 export { default as CurrencySelector } from './ui/CurrencySelector.svelte';
@@ -34,6 +34,7 @@ export { default as Header } from './layout/Header.svelte';
 export { default as FilterBar } from './layout/FilterBar.svelte';
 export { default as FilterPill } from './layout/FilterPill.svelte';
 export { default as FilterDropdown } from './layout/FilterDropdown.svelte';
+export { default as CollectionRow } from './layout/CollectionRow.svelte';
 export { default as CellarSortBar } from './layout/CellarSortBar.svelte';
 export { default as HistoryFilterBar } from './layout/HistoryFilterBar.svelte';
 export { default as HistorySortBar } from './layout/HistorySortBar.svelte';
@@ -59,5 +60,3 @@ export {
   DuplicateWarningModal
 } from './modals';
 
-// Note: IconName type is exported from Icon.svelte via context="module"
-// Import directly from ./ui/Icon.svelte if needed
