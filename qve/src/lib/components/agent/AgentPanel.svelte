@@ -47,9 +47,9 @@
 	import CommandInput from './CommandInput.svelte';
 	import ChatMessage from './ChatMessage.svelte';
 	import TypingIndicator from './TypingIndicator.svelte';
-	import WineCardStreaming from './WineCardStreaming.svelte'; // WIN-181: Streaming card
+	import WineCard from './WineCard.svelte'; // Universal wine card (skeleton/streaming/static)
+	import EnrichmentCard from './EnrichmentCard.svelte'; // Universal enrichment card (skeleton/streaming/static)
 	import ActionChips from './ActionChips.svelte'; // WIN-181: For streaming chips
-	import { EnrichmentSkeleton, EnrichmentCardStreaming } from './enrichment';
 	import { Icon } from '$lib/components'; // WIN-174: For footer Start Over button
 	import type { AgentParsedWine, AgentCandidate, AgentAction, AgentEscalationMeta, AgentIdentificationResult, Region, Producer, Wine, AddWinePayload, DuplicateMatch } from '$lib/api/types';
 	import { api } from '$lib/api';
@@ -205,9 +205,20 @@
 	})();
 
 	// Initialize conversation when panel opens
-	onMount(() => {
+	onMount(async () => {
 		if ($agentMessages.length === 0) {
 			agent.startSession();
+		} else {
+			// Existing session restored from storage - scroll to bottom
+			await tick();
+			requestAnimationFrame(() => {
+				if (messageContainer) {
+					messageContainer.scrollTo({
+						top: messageContainer.scrollHeight,
+						behavior: 'instant'
+					});
+				}
+			});
 		}
 	});
 
@@ -291,14 +302,70 @@
 		}
 	}
 
+	// ResizeObserver to handle multi-line text that grows during typewriter animation
+	let messageResizeObserver: ResizeObserver | null = null;
+	let observedMessageElement: HTMLElement | null = null;
+
+	function setupMessageResizeObserver() {
+		// Clean up previous observer
+		if (messageResizeObserver) {
+			messageResizeObserver.disconnect();
+		}
+
+		const lastMessage = messageElements[messageElements.length - 1];
+		if (!lastMessage || !messageContainer) return;
+
+		// Track initial height to detect growth
+		let lastHeight = lastMessage.offsetHeight;
+
+		messageResizeObserver = new ResizeObserver((entries) => {
+			if (userScrolledUp) return;
+
+			for (const entry of entries) {
+				const newHeight = entry.contentRect.height;
+				// Only scroll if height increased (text wrapped to new line)
+				if (newHeight > lastHeight + 10) {
+					lastHeight = newHeight;
+					// Scroll to keep bottom of message visible
+					messageContainer?.scrollTo({
+						top: messageContainer.scrollHeight,
+						behavior: 'smooth'
+					});
+				}
+			}
+		});
+
+		messageResizeObserver.observe(lastMessage);
+		observedMessageElement = lastMessage;
+	}
+
+	// Set up observer when new message arrives
+	$: if (messages.length > 0) {
+		tick().then(() => setupMessageResizeObserver());
+	}
+
+	onDestroy(() => {
+		if (messageResizeObserver) {
+			messageResizeObserver.disconnect();
+		}
+	});
+
 	/** Scroll to show wine card + chips area (scroll to bottom) */
 	async function scrollToStreamingWineCard() {
 		if (!messageContainer) return;
 		await tick();
+		// Use double RAF to ensure text wrapping/layout is complete before measuring scrollHeight
 		requestAnimationFrame(() => {
-			messageContainer.scrollTo({
-				top: messageContainer.scrollHeight,
-				behavior: 'smooth'
+			requestAnimationFrame(() => {
+				// Additional small delay to handle edge cases with font rendering
+				setTimeout(() => {
+					if (messageContainer) {
+						messageContainer.scrollTo({
+							top: messageContainer.scrollHeight,
+							behavior: 'smooth'
+						});
+					}
+				}, 50);
 			});
 		});
 	}
@@ -329,15 +396,50 @@
 		}
 	}
 
-	/** Legacy function - now just scrolls to bottom */
+	/** Scroll to bottom, accounting for chips that will appear */
 	async function scrollToStreamingChips() {
 		if (messageContainer) {
 			await tick();
+			// Double RAF to ensure layout is complete
 			requestAnimationFrame(() => {
-				messageContainer.scrollTo({
-					top: messageContainer.scrollHeight,
-					behavior: 'smooth'
+				requestAnimationFrame(() => {
+					if (messageContainer) {
+						// Add extra space for chips that will appear (~100px for chip height + margins)
+						const extraSpaceForChips = 100;
+						messageContainer.scrollTo({
+							top: messageContainer.scrollHeight + extraSpaceForChips,
+							behavior: 'smooth'
+						});
+					}
 				});
+			});
+		}
+	}
+
+	/**
+	 * Show streaming chips with natural pacing
+	 * 1. Show content text first
+	 * 2. Brief pause for reading
+	 * 3. Show chips
+	 * 4. Scroll to show chips
+	 */
+	async function showStreamingChipsWithPacing(content: string, chips: AgentChip[]) {
+		// First show just the content (empty chips array so container shows but no buttons)
+		agent.setStreamingChips(content, []);
+
+		// Wait for user to read the content
+		await new Promise(resolve => setTimeout(resolve, 600));
+
+		// Show the chips
+		agent.setStreamingChips(content, chips);
+
+		// Scroll to show the chips after they've rendered
+		await tick();
+		await new Promise(resolve => setTimeout(resolve, 50));
+		if (messageContainer) {
+			messageContainer.scrollTo({
+				top: messageContainer.scrollHeight,
+				behavior: 'smooth'
 			});
 		}
 	}
@@ -362,7 +464,7 @@
 		}
 	}
 
-	function handleStartOver() {
+	async function handleStartOver() {
 		cancelPendingAdvance();
 		agent.setPendingNewSearch(null);
 		agent.clearAddState();
@@ -400,6 +502,12 @@
 		lastInputType = null;
 		lastAction = null;
 		agent.resetConversation();
+
+		// Scroll to bottom after reset to show the new greeting
+		await tick();
+		if (messageContainer) {
+			messageContainer.scrollTo({ top: messageContainer.scrollHeight, behavior: 'smooth' });
+		}
 	}
 
 	/**
@@ -1039,8 +1147,7 @@
 			const contentText = buildPartialMatchMessage(result.parsed);
 
 			if (hasStreamingCard) {
-				agent.setStreamingChips(contentText, chips);
-				scrollToStreamingChips();
+				showStreamingChipsWithPacing(contentText, chips);
 			} else {
 				agent.addMessage({
 					role: 'agent',
@@ -1114,9 +1221,7 @@
 				: 'Is this the wine you\'re seeking?';
 
 			if (hasStreamingCard) {
-				agent.setStreamingChips(contentText, cardChips);
-				// WIN-181: Scroll to show the chips after a brief pause
-				scrollToStreamingChips();
+				showStreamingChipsWithPacing(contentText, cardChips);
 			} else {
 				agent.addMessage({
 					role: 'agent',
@@ -1137,9 +1242,7 @@
 			const errorChips: AgentChip[] = [{ id: 'not_correct', label: 'Try Again', icon: 'x', action: 'not_correct' }];
 
 			if (hasStreamingCard) {
-				agent.setStreamingChips('I couldn\'t identify this wine clearly.', errorChips);
-				// WIN-181: Scroll to show the chips after a brief pause
-				scrollToStreamingChips();
+				showStreamingChipsWithPacing('I couldn\'t identify this wine clearly.', errorChips);
 			} else {
 				agent.addMessage({
 					role: 'agent',
@@ -1669,8 +1772,11 @@
 		try {
 		const { action } = e.detail;
 
-		// Clear chips immediately to prevent reselection
-		agent.clearLastChips();
+		// Disable chips immediately to prevent reselection
+		// Don't highlight for reset/cancel actions
+		const noHighlightActions = ['start_over', 'start_over_error', 'start_fresh', 'cancel_new_search'];
+		const selectedAction = noHighlightActions.includes(action) ? undefined : action;
+		agent.clearLastChips(selectedAction);
 
 		switch (action) {
 			case 'retry':
@@ -1835,19 +1941,30 @@
 				break;
 
 			case 'correct': {
-				// Preserve wine card in chat history before clearing streaming state
+				// Capture values before clearing streaming state
 				const confirmedWine = $agentParsed;
-				if (confirmedWine) {
+				const preservedChips = $agentStreamingChips?.chips; // Already disabled by clearLastChips
+				const preservedContent = $agentStreamingChips?.content || '';
+				const preservedConfidence = $agent.lastResult?.confidence ?? 0.9;
+				// Only preserve if there's a streaming card visible (not already in messages)
+				const hasStreamingCard = $agentStreamingFields.size > 0;
+
+				// Clear streaming result FIRST so the streaming card disappears
+				agent.clearStreamingResult();
+
+				// Only add preserved wine card if it was streaming (not already in message history)
+				if (confirmedWine && hasStreamingCard) {
 					agent.addMessage({
 						role: 'agent',
 						type: 'wine_result',
-						content: '',
+						content: preservedContent,
 						wineResult: confirmedWine,
-						confidence: $agent.lastResult?.confidence ?? 0.9,
+						confidence: preservedConfidence,
+						chips: preservedChips,
 						isNew: false // Don't animate since it was already visible
 					});
 				}
-				agent.clearStreamingResult();
+
 				agent.setPhase('action_select');
 				agent.addMessage({
 					role: 'agent',
@@ -1862,11 +1979,34 @@
 				break;
 			}
 
-			case 'not_correct':
-				// WIN-181: Clear streaming card when user rejects
+			case 'not_correct': {
+				// Capture values before clearing streaming state
+				const rejectedWine = $agentParsed;
+				const preservedChips = $agentStreamingChips?.chips; // Already disabled by clearLastChips
+				const preservedContent = $agentStreamingChips?.content || '';
+				const preservedConfidence = $agent.lastResult?.confidence ?? 0.9;
+				// Only preserve if there's a streaming card visible (not already in messages)
+				const hasStreamingCardNC = $agentStreamingFields.size > 0;
+
+				// Clear streaming result FIRST so the streaming card disappears
 				agent.clearStreamingResult();
+
+				// Only add preserved wine card if it was streaming (not already in message history)
+				if (rejectedWine && hasStreamingCardNC) {
+					agent.addMessage({
+						role: 'agent',
+						type: 'wine_result',
+						content: preservedContent,
+						wineResult: rejectedWine,
+						confidence: preservedConfidence,
+						chips: preservedChips,
+						isNew: false // Don't animate since it was already visible
+					});
+				}
+
 				handleIncorrectResult();
 				break;
+			}
 
 			case 'add':
 				await handleAddToCellar();
@@ -1885,11 +2025,22 @@
 					agent.clearStreamingResult();
 					// Show typing indicator briefly before enrichment card appears
 					agent.setTyping(true);
+					// Scroll to show the typing indicator
+					await tick();
+					if (messageContainer) {
+						messageContainer.scrollTo({
+							top: messageContainer.scrollHeight,
+							behavior: 'smooth'
+						});
+					}
 					// Use streaming enrichment for progressive field display
 					await agent.enrichWineWithStreaming(wineToEnrich);
 					agent.setTyping(false);
-					// Smart scroll after enrichment completes
-					scrollToEnrichmentCard();
+					// Only scroll to enrichment card if we got actual enrichment data
+					// (not a cache confirmation which shows as a message instead)
+					if ($agentPhase !== 'confirm_cache_match') {
+						scrollToEnrichmentCard();
+					}
 				}
 				break;
 			}
@@ -2009,8 +2160,31 @@
 				await handleAddToCellar();
 				break;
 
-			case 'what_wrong':
+			case 'what_wrong': {
 				// User wants to provide correct information after a high-confidence miss
+				// Capture values before clearing streaming state
+				const rejectedWineWW = $agentParsed;
+				const preservedChipsWW = $agentStreamingChips?.chips;
+				const preservedContentWW = $agentStreamingChips?.content || '';
+				const preservedConfidenceWW = $agent.lastResult?.confidence ?? 0.9;
+				const hasStreamingCardWW = $agentStreamingFields.size > 0;
+
+				// Clear streaming result FIRST
+				agent.clearStreamingResult();
+
+				// Only preserve wine card if it was streaming (not already in message history)
+				if (rejectedWineWW && hasStreamingCardWW) {
+					agent.addMessage({
+						role: 'agent',
+						type: 'wine_result',
+						content: preservedContentWW,
+						wineResult: rejectedWineWW,
+						confidence: preservedConfidenceWW,
+						chips: preservedChipsWW,
+						isNew: false
+					});
+				}
+
 				agent.addMessage({
 					role: 'agent',
 					type: 'text',
@@ -2025,9 +2199,11 @@
 				});
 				agent.setPhase('augment_input');
 				break;
+			}
 
 			case 'new_input':
 				// Clear state and prompt for new image/text
+				agent.clearStreamingResult();
 				lastImageFile = null;
 				lastInputType = null;
 				agent.setAugmentationContext(null);
@@ -2042,6 +2218,30 @@
 			case 'confirm_direction': {
 				// User confirms partial match is on right track → Ask for clarifying details
 				const augCtx = $agentAugmentationContext;
+
+				// Capture values before clearing streaming state
+				const confirmedWineCD = $agentParsed;
+				const preservedChipsCD = $agentStreamingChips?.chips;
+				const preservedContentCD = $agentStreamingChips?.content || '';
+				const preservedConfidenceCD = $agent.lastResult?.confidence ?? 0.9;
+				const hasStreamingCardCD = $agentStreamingFields.size > 0;
+
+				// Clear streaming result FIRST
+				agent.clearStreamingResult();
+
+				// Only preserve wine card if it was streaming (not already in message history)
+				if (confirmedWineCD && hasStreamingCardCD) {
+					agent.addMessage({
+						role: 'agent',
+						type: 'wine_result',
+						content: preservedContentCD,
+						wineResult: confirmedWineCD,
+						confidence: preservedConfidenceCD,
+						chips: preservedChipsCD,
+						isNew: false
+					});
+				}
+
 				if (augCtx?.originalResult?.parsed) {
 					const missingPrompt = getMissingFieldsPrompt(augCtx.originalResult.parsed);
 					const quickFillChips = getMissingFieldChips(augCtx.originalResult.parsed);
@@ -2075,6 +2275,30 @@
 			case 'wrong_direction': {
 				// User says partial match is wrong → Clear wrong result, keep original input for re-identification
 				const augCtx = $agentAugmentationContext;
+
+				// Capture values before clearing streaming state
+				const rejectedWineWD = $agentParsed;
+				const preservedChipsWD = $agentStreamingChips?.chips;
+				const preservedContentWD = $agentStreamingChips?.content || '';
+				const preservedConfidenceWD = $agent.lastResult?.confidence ?? 0.9;
+				const hasStreamingCardWD = $agentStreamingFields.size > 0;
+
+				// Clear streaming result FIRST so the streaming card disappears
+				agent.clearStreamingResult();
+
+				// Only preserve wine card if it was streaming (not already in message history)
+				if (rejectedWineWD && hasStreamingCardWD) {
+					agent.addMessage({
+						role: 'agent',
+						type: 'wine_result',
+						content: preservedContentWD,
+						wineResult: rejectedWineWD,
+						confidence: preservedConfidenceWD,
+						chips: preservedChipsWD,
+						isNew: false
+					});
+				}
+
 				agent.addMessage({
 					role: 'agent',
 					type: 'text',
@@ -3271,7 +3495,25 @@
 		lastAction = { type: 'image', file };
 
 		// Compress image early for both preview and API call
-		const { imageData, mimeType } = await api.compressImageForIdentification(file);
+		let imageData: string;
+		let mimeType: string;
+		try {
+			const compressed = await api.compressImageForIdentification(file);
+			imageData = compressed.imageData;
+			mimeType = compressed.mimeType;
+		} catch (err) {
+			// Handle unsupported image formats or compression failures
+			const errorMessage = err instanceof Error ? err.message : 'Could not process this image.';
+			agent.addMessage({
+				role: 'agent',
+				type: 'text',
+				content: errorMessage
+			});
+			// Clear last action since we can't retry with this file
+			lastAction = null;
+			lastImageFile = null;
+			return;
+		}
 
 		// Use data URL for preview (persists across page reload)
 		const imageUrl = `data:${mimeType};base64,${imageData}`;
@@ -3521,7 +3763,7 @@
 			<!-- WIN-181: Streaming wine card - stays visible until user takes action -->
 			<!-- Only show for identification (not enrichment) -->
 			{#if $agentStreamingFields.size > 0 && !$agentEnriching && !$agentEnrichmentStreamingChips}
-				<WineCardStreaming />
+				<WineCard state="streaming" />
 				<!-- WIN-181: Streaming chips appear below the card once identification completes -->
 				{#if $agentStreamingChips}
 					<div class="streaming-chips-container">
@@ -3536,21 +3778,22 @@
 
 			<!-- WIN-181: Enrichment streaming card (subscribes directly to stores) -->
 			{#if $agentEnriching || $agentEnrichmentStreamingChips}
-				<!-- WIN-181: Show streaming card if we have streaming fields, otherwise skeleton -->
+				<!-- WIN-181: Show streaming/skeleton card based on field availability -->
 				{#if $agentStreamingFields.size > 0}
-					<EnrichmentCardStreaming />
-					<!-- WIN-181: Enrichment chips appear below the card once enrichment completes -->
-					{#if $agentEnrichmentStreamingChips}
-						<div class="streaming-chips-container">
-							<p class="streaming-chips-content">{$agentEnrichmentStreamingChips.content}</p>
-							<ActionChips
-								chips={$agentEnrichmentStreamingChips.chips}
-								on:select={(e) => handleChipAction(e)}
-							/>
-						</div>
-					{/if}
+					<EnrichmentCard state="streaming" />
 				{:else if $agentEnriching}
-					<EnrichmentSkeleton />
+					<EnrichmentCard state="skeleton" />
+				{/if}
+
+				<!-- WIN-181: Enrichment chips appear below the card once enrichment completes -->
+				{#if $agentEnrichmentStreamingChips}
+					<div class="streaming-chips-container">
+						<p class="streaming-chips-content">{$agentEnrichmentStreamingChips.content}</p>
+						<ActionChips
+							chips={$agentEnrichmentStreamingChips.chips}
+							on:select={(e) => handleChipAction(e)}
+						/>
+					</div>
 				{/if}
 			{/if}
 		</div>

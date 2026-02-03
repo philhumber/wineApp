@@ -12,10 +12,10 @@ namespace Agent\Enrichment;
 class GrapeVariety
 {
     public string $grape;
-    public ?int $percentage;
+    public ?string $percentage;
     public ?string $source;
 
-    public function __construct(string $grape, ?int $percentage = null, ?string $source = null)
+    public function __construct(string $grape, ?string $percentage = null, ?string $source = null)
     {
         $this->grape = $grape;
         $this->percentage = $percentage;
@@ -33,9 +33,14 @@ class GrapeVariety
 
     public static function fromArray(array $data): self
     {
+        $percentage = $data['percentage'] ?? null;
+        if ($percentage !== null) {
+            $percentage = (string)$percentage;
+        }
+
         return new self(
             $data['grape'] ?? '',
-            $data['percentage'] ?? null,
+            $percentage,
             $data['source'] ?? null
         );
     }
@@ -46,7 +51,7 @@ class GrapeVariety
     public static function fromString(string $str): self
     {
         if (preg_match('/^(.+):(\d+)$/', $str, $matches)) {
-            return new self(trim($matches[1]), (int)$matches[2]);
+            return new self(trim($matches[1]), $matches[2]);
         }
         return new self(trim($str), null);
     }

@@ -303,6 +303,7 @@ export interface AgentChip {
 	icon?: string;
 	action: string;
 	disabled?: boolean;
+	selected?: boolean;
 }
 
 /** Single message in conversation */
@@ -1529,21 +1530,55 @@ function createAgentStore() {
 		},
 
 		/**
-		 * Clear chips from the last message that has them
+		 * Disable chips from the last message and mark the selected one
 		 * Called when user selects a chip to prevent reselection
+		 * @param selectedAction - The action of the chip that was selected (optional, for highlighting)
 		 */
-		clearLastChips: () => {
+		clearLastChips: (selectedAction?: string) => {
 			update((state) => {
 				const messages = [...state.messages];
-				// Find last message with chips and clear them
+				// Find last message with chips and disable them
 				for (let i = messages.length - 1; i >= 0; i--) {
 					const msg = messages[i];
 					if (msg.chips && msg.chips.length > 0) {
-						messages[i] = { ...msg, chips: undefined };
+						messages[i] = {
+							...msg,
+							chips: msg.chips.map(chip => ({
+								...chip,
+								disabled: true,
+								selected: chip.action === selectedAction
+							}))
+						};
 						break;
 					}
 				}
-				return { ...state, messages };
+				// Also disable streaming chips if present
+				const newStreamingChips = state.streamingChips
+					? {
+						...state.streamingChips,
+						chips: state.streamingChips.chips.map(chip => ({
+							...chip,
+							disabled: true,
+							selected: chip.action === selectedAction
+						}))
+					}
+					: null;
+				const newEnrichmentChips = state.enrichmentStreamingChips
+					? {
+						...state.enrichmentStreamingChips,
+						chips: state.enrichmentStreamingChips.chips.map(chip => ({
+							...chip,
+							disabled: true,
+							selected: chip.action === selectedAction
+						}))
+					}
+					: null;
+				return {
+					...state,
+					messages,
+					streamingChips: newStreamingChips,
+					enrichmentStreamingChips: newEnrichmentChips
+				};
 			});
 		},
 

@@ -1075,8 +1075,37 @@ class WineApiClient {
   /**
    * Compress and convert image file for identification API
    * Returns base64-encoded image data with mime type
+   * @throws Error with specific message for unsupported formats
    */
   async compressImageForIdentification(file: File): Promise<{ imageData: string; mimeType: string }> {
+    // Browser-supported image types (most browsers cannot decode HEIC/HEIF)
+    const SUPPORTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'];
+    const SUPPORTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp'];
+    const HEIC_EXTENSIONS = ['.heic', '.heif'];
+
+    // Get file extension (browsers often don't set MIME type for HEIC)
+    const fileName = file.name.toLowerCase();
+    const extension = fileName.includes('.') ? '.' + fileName.split('.').pop() : '';
+
+    // Check for HEIC by extension first (file.type is often empty for HEIC)
+    if (HEIC_EXTENSIONS.includes(extension)) {
+      throw new Error('HEIC/HEIF images are not supported. Please convert to JPEG or take a new photo with your camera app set to "Most Compatible" format.');
+    }
+
+    // Check file type if available
+    const fileType = file.type.toLowerCase();
+    if (fileType) {
+      if (fileType === 'image/heic' || fileType === 'image/heif') {
+        throw new Error('HEIC/HEIF images are not supported. Please convert to JPEG or take a new photo with your camera app set to "Most Compatible" format.');
+      }
+      if (!SUPPORTED_TYPES.includes(fileType)) {
+        throw new Error(`Unsupported image format: ${fileType}. Please use JPEG, PNG, or WebP.`);
+      }
+    } else if (extension && !SUPPORTED_EXTENSIONS.includes(extension)) {
+      // No MIME type but unsupported extension
+      throw new Error(`Unsupported image format: ${extension}. Please use JPEG, PNG, or WebP.`);
+    }
+
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       const img = new Image();
