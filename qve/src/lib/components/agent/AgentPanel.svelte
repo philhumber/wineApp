@@ -47,9 +47,9 @@
 	import CommandInput from './CommandInput.svelte';
 	import ChatMessage from './ChatMessage.svelte';
 	import TypingIndicator from './TypingIndicator.svelte';
-	import WineCardStreaming from './WineCardStreaming.svelte'; // WIN-181: Streaming card
+	import WineCard from './WineCard.svelte'; // Universal wine card (skeleton/streaming/static)
+	import EnrichmentCard from './EnrichmentCard.svelte'; // Universal enrichment card (skeleton/streaming/static)
 	import ActionChips from './ActionChips.svelte'; // WIN-181: For streaming chips
-	import { EnrichmentSkeleton, EnrichmentCardStreaming } from './enrichment';
 	import { Icon } from '$lib/components'; // WIN-174: For footer Start Over button
 	import type { AgentParsedWine, AgentCandidate, AgentAction, AgentEscalationMeta, AgentIdentificationResult, Region, Producer, Wine, AddWinePayload, DuplicateMatch } from '$lib/api/types';
 	import { api } from '$lib/api';
@@ -3521,7 +3521,7 @@
 			<!-- WIN-181: Streaming wine card - stays visible until user takes action -->
 			<!-- Only show for identification (not enrichment) -->
 			{#if $agentStreamingFields.size > 0 && !$agentEnriching && !$agentEnrichmentStreamingChips}
-				<WineCardStreaming />
+				<WineCard state="streaming" />
 				<!-- WIN-181: Streaming chips appear below the card once identification completes -->
 				{#if $agentStreamingChips}
 					<div class="streaming-chips-container">
@@ -3536,21 +3536,22 @@
 
 			<!-- WIN-181: Enrichment streaming card (subscribes directly to stores) -->
 			{#if $agentEnriching || $agentEnrichmentStreamingChips}
-				<!-- WIN-181: Show streaming card if we have streaming fields, otherwise skeleton -->
+				<!-- WIN-181: Show streaming/skeleton card based on field availability -->
 				{#if $agentStreamingFields.size > 0}
-					<EnrichmentCardStreaming />
-					<!-- WIN-181: Enrichment chips appear below the card once enrichment completes -->
-					{#if $agentEnrichmentStreamingChips}
-						<div class="streaming-chips-container">
-							<p class="streaming-chips-content">{$agentEnrichmentStreamingChips.content}</p>
-							<ActionChips
-								chips={$agentEnrichmentStreamingChips.chips}
-								on:select={(e) => handleChipAction(e)}
-							/>
-						</div>
-					{/if}
+					<EnrichmentCard state="streaming" />
 				{:else if $agentEnriching}
-					<EnrichmentSkeleton />
+					<EnrichmentCard state="skeleton" />
+				{/if}
+
+				<!-- WIN-181: Enrichment chips appear below the card once enrichment completes -->
+				{#if $agentEnrichmentStreamingChips}
+					<div class="streaming-chips-container">
+						<p class="streaming-chips-content">{$agentEnrichmentStreamingChips.content}</p>
+						<ActionChips
+							chips={$agentEnrichmentStreamingChips.chips}
+							on:select={(e) => handleChipAction(e)}
+						/>
+					</div>
 				{/if}
 			{/if}
 		</div>
