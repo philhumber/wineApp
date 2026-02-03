@@ -70,6 +70,7 @@
 	{streamingFields}
 	{cardClass}
 	let:state={cardState}
+	let:fieldsMap
 	let:getFieldValue
 	let:hasField
 	let:isFieldTyping
@@ -77,6 +78,7 @@
 >
 	<WineNameSection
 		state={cardState}
+		{fieldsMap}
 		{getFieldValue}
 		{hasField}
 		{isFieldTyping}
@@ -85,6 +87,7 @@
 
 	<WineProducerSection
 		state={cardState}
+		{fieldsMap}
 		{getFieldValue}
 		{hasField}
 		{isFieldTyping}
@@ -93,6 +96,7 @@
 
 	<WineMetadataSection
 		state={cardState}
+		{fieldsMap}
 		{getFieldValue}
 		{hasField}
 		{isFieldTyping}
@@ -101,12 +105,14 @@
 
 	<WineConfidenceSection
 		state={cardState}
+		{fieldsMap}
 		{getFieldValue}
 		{hasField}
 	/>
 
 	<WineDetailsSection
 		state={cardState}
+		{fieldsMap}
 		{getFieldValue}
 		{hasField}
 		{isFieldTyping}

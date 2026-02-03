@@ -469,7 +469,7 @@ export interface AgentUsage {
 
 export interface GrapeVariety {
   grape: string;
-  percentage: number | null;
+  percentage: string | null;
   source?: string;
 }
 

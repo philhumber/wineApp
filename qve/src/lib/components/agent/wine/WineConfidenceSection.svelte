@@ -3,15 +3,21 @@
 	 * WineConfidenceSection
 	 * Displays confidence indicator with skeleton fallback
 	 */
+	import type { StreamingFieldState } from '$lib/stores/agent';
 	import ConfidenceIndicator from '../ConfidenceIndicator.svelte';
 
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
+	export let fieldsMap: Map<string, StreamingFieldState> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
 
-	$: confidence = getFieldValue('confidence') as number | null;
-	$: hasConfidence = hasField('confidence');
+	// For streaming mode, directly access fieldsMap to ensure proper Svelte reactivity
+	$: confidenceField = state === 'streaming' ? fieldsMap.get('confidence') : null;
+
+	// Derive values from field state or use accessor functions
+	$: confidence = (state === 'streaming' ? confidenceField?.value : getFieldValue('confidence')) as number | null;
+	$: hasConfidence = state === 'streaming' ? !!confidenceField : hasField('confidence');
 </script>
 
 <div class="confidence-section">

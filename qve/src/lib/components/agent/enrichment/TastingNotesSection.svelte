@@ -3,18 +3,23 @@
 	 * TastingNotesSection
 	 * Displays wine tasting notes
 	 */
+	import type { StreamingFieldState } from '$lib/stores/agent';
 	import FieldTypewriter from '../FieldTypewriter.svelte';
 
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
+	export let fieldsMap: Map<string, StreamingFieldState> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
 	export let isFieldTyping: (field: string) => boolean;
 	export let handleFieldComplete: (field: string) => void;
 
-	$: tastingNotes = getFieldValue('tastingNotes');
-	$: hasTastingNotes = hasField('tastingNotes');
-	$: isTyping = isFieldTyping('tastingNotes');
+	// For streaming mode, directly access fieldsMap to ensure proper Svelte reactivity
+	$: tastingNotesField = state === 'streaming' ? fieldsMap.get('tastingNotes') : null;
+
+	$: tastingNotes = state === 'streaming' ? tastingNotesField?.value : getFieldValue('tastingNotes');
+	$: hasTastingNotes = state === 'streaming' ? !!tastingNotesField : hasField('tastingNotes');
+	$: isTyping = state === 'streaming' ? (tastingNotesField?.isTyping ?? false) : false;
 </script>
 
 <section class="section">

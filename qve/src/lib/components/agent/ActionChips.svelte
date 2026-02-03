@@ -33,6 +33,7 @@
 		<button
 			class="action-chip"
 			class:disabled={chip.disabled}
+			class:selected={chip.selected}
 			disabled={chip.disabled}
 			on:click={() => handleClick(chip)}
 			on:keydown={(e) => handleKeydown(e, chip)}
@@ -102,12 +103,23 @@
 	/* WIN-174: Enhanced disabled styling - flattened appearance */
 	.action-chip.disabled,
 	.action-chip:disabled {
-		opacity: 0.6;
+		opacity: 0.5;
 		cursor: default;
 		pointer-events: none;
 		box-shadow: none;
 		border-color: var(--divider-subtle);
 		background: var(--bg-subtle);
+	}
+
+	/* Selected chip - highlighted when disabled */
+	.action-chip.selected {
+		opacity: 1;
+		border-color: var(--accent);
+		background: var(--accent-subtle, rgba(var(--accent-rgb, 139, 92, 246), 0.1));
+	}
+
+	.action-chip.selected :global(.icon) {
+		color: var(--accent);
 	}
 
 	.action-chip :global(.icon) {

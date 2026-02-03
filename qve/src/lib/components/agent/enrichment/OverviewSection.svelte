@@ -3,19 +3,24 @@
 	 * OverviewSection
 	 * Displays wine overview/description with skeleton/streaming/static states
 	 */
+	import type { StreamingFieldState } from '$lib/stores/agent';
 	import FieldTypewriter from '../FieldTypewriter.svelte';
 
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
+	export let fieldsMap: Map<string, StreamingFieldState> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
 	export let isFieldTyping: (field: string) => boolean;
 	export let handleFieldComplete: (field: string) => void;
 
+	// For streaming mode, directly access fieldsMap to ensure proper Svelte reactivity
+	$: overviewField = state === 'streaming' ? (fieldsMap.get('overview') || fieldsMap.get('description')) : null;
+
 	// Handle field name variations (overview or description)
-	$: overview = getFieldValue('overview') || getFieldValue('description');
-	$: hasOverview = hasField('overview') || hasField('description');
-	$: isTyping = isFieldTyping('overview') || isFieldTyping('description');
+	$: overview = state === 'streaming' ? overviewField?.value : (getFieldValue('overview') || getFieldValue('description'));
+	$: hasOverview = state === 'streaming' ? !!overviewField : (hasField('overview') || hasField('description'));
+	$: isTyping = state === 'streaming' ? (overviewField?.isTyping ?? false) : false;
 </script>
 
 <section class="section">

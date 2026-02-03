@@ -3,23 +3,30 @@
 	 * WineDetailsSection
 	 * Displays wine type badge and grape varieties
 	 */
+	import type { StreamingFieldState } from '$lib/stores/agent';
 	import FieldTypewriter from '../FieldTypewriter.svelte';
 
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
+	export let fieldsMap: Map<string, StreamingFieldState> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
 	export let isFieldTyping: (field: string) => boolean;
 	export let handleFieldComplete: (field: string) => void;
 
-	$: wineType = getFieldValue('wineType');
-	$: grapes = getFieldValue('grapes');
+	// For streaming mode, directly access fieldsMap to ensure proper Svelte reactivity
+	$: wineTypeField = state === 'streaming' ? fieldsMap.get('wineType') : null;
+	$: grapesField = state === 'streaming' ? fieldsMap.get('grapes') : null;
 
-	$: hasType = hasField('wineType');
-	$: hasGrapes = hasField('grapes');
+	// Derive values from field states or use accessor functions
+	$: wineType = state === 'streaming' ? wineTypeField?.value : getFieldValue('wineType');
+	$: grapes = state === 'streaming' ? grapesField?.value : getFieldValue('grapes');
 
-	$: typeTyping = isFieldTyping('wineType');
-	$: grapesTyping = isFieldTyping('grapes');
+	$: hasType = state === 'streaming' ? !!wineTypeField : hasField('wineType');
+	$: hasGrapes = state === 'streaming' ? !!grapesField : hasField('grapes');
+
+	$: typeTyping = state === 'streaming' ? (wineTypeField?.isTyping ?? false) : false;
+	$: grapesTyping = state === 'streaming' ? (grapesField?.isTyping ?? false) : false;
 
 	// Format grapes for display (handle array or string)
 	$: grapeList = Array.isArray(grapes) ? grapes.join(', ') : grapes;

@@ -3,18 +3,25 @@
 	 * WineNameSection
 	 * Displays wine name with skeleton/streaming/static states
 	 */
+	import type { StreamingFieldState } from '$lib/stores/agent';
 	import FieldTypewriter from '../FieldTypewriter.svelte';
 
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
+	export let fieldsMap: Map<string, StreamingFieldState> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
 	export let isFieldTyping: (field: string) => boolean;
 	export let handleFieldComplete: (field: string) => void;
 
-	$: wineName = getFieldValue('wineName');
-	$: hasWineName = hasField('wineName');
-	$: isTyping = isFieldTyping('wineName');
+	// For streaming mode, directly access fieldsMap to ensure proper Svelte reactivity
+	// (Calling functions in reactive statements doesn't track Map changes)
+	$: wineNameField = state === 'streaming' ? fieldsMap.get('wineName') : null;
+
+	// Derive values from field state or use accessor functions
+	$: wineName = state === 'streaming' ? wineNameField?.value : getFieldValue('wineName');
+	$: hasWineName = state === 'streaming' ? !!wineNameField : hasField('wineName');
+	$: isTyping = state === 'streaming' ? (wineNameField?.isTyping ?? false) : false;
 	$: hasName = hasWineName && wineName && wineName !== 'Unknown Wine';
 </script>
 

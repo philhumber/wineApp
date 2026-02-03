@@ -3,17 +3,22 @@
 	 * DrinkWindowSection
 	 * Displays optimal drinking window for the wine
 	 */
+	import type { StreamingFieldState } from '$lib/stores/agent';
 	import DrinkWindow from './DrinkWindow.svelte';
 
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
+	export let fieldsMap: Map<string, StreamingFieldState> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
 
-	$: drinkWindow = getFieldValue('drinkWindow') as
+	// For streaming mode, directly access fieldsMap to ensure proper Svelte reactivity
+	$: drinkWindowField = state === 'streaming' ? fieldsMap.get('drinkWindow') : null;
+
+	$: drinkWindow = (state === 'streaming' ? drinkWindowField?.value : getFieldValue('drinkWindow')) as
 		| { start?: number; end?: number; maturity?: 'young' | 'ready' | 'peak' | 'declining' }
 		| undefined;
-	$: hasDrinkWindow = hasField('drinkWindow');
+	$: hasDrinkWindow = state === 'streaming' ? !!drinkWindowField : hasField('drinkWindow');
 	$: hasWindowData = drinkWindow?.start || drinkWindow?.end;
 </script>
 
