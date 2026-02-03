@@ -187,6 +187,17 @@ try {
         ]);
     }
 
+    // Log identification result for analytics (WIN-181)
+    $llmClient = getAgentLLMClient($userId);
+    $finalResult = $needsEscalation && isset($escalatedResult) && $escalatedResult['success'] && $escalatedResult['confidence'] > $result['confidence']
+        ? $escalatedResult
+        : $result;
+    try {
+        $llmClient->logIdentificationResult($finalResult);
+    } catch (\Exception $logEx) {
+        error_log('Failed to log identification result: ' . $logEx->getMessage());
+    }
+
     sendSSE('done', []);
 
 } catch (\Exception $e) {

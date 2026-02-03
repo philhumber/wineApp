@@ -67,7 +67,6 @@ try {
     try {
         $llmClient->logIdentificationResult($result);
     } catch (\Exception $logEx) {
-        // Don't fail the request if logging fails
         error_log('Failed to log identification result: ' . $logEx->getMessage());
     }
 
