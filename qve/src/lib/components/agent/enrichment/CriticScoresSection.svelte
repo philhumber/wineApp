@@ -3,15 +3,20 @@
 	 * CriticScoresSection
 	 * Displays critic scores and ratings
 	 */
+	import type { StreamingFieldState } from '$lib/stores/agent';
 	import CriticScores from './CriticScores.svelte';
 
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
+	export let fieldsMap: Map<string, StreamingFieldState> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
 
-	$: criticScores = getFieldValue('criticScores');
-	$: hasCriticScores = hasField('criticScores');
+	// For streaming mode, directly access fieldsMap to ensure proper Svelte reactivity
+	$: criticScoresField = state === 'streaming' ? fieldsMap.get('criticScores') : null;
+
+	$: criticScores = state === 'streaming' ? criticScoresField?.value : getFieldValue('criticScores');
+	$: hasCriticScores = state === 'streaming' ? !!criticScoresField : hasField('criticScores');
 	$: isArray = Array.isArray(criticScores) && criticScores.length > 0;
 </script>
 

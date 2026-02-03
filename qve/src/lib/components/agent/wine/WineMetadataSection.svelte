@@ -3,26 +3,34 @@
 	 * WineMetadataSection
 	 * Displays vintage · region · country with flag
 	 */
+	import type { StreamingFieldState } from '$lib/stores/agent';
 	import FieldTypewriter from '../FieldTypewriter.svelte';
 
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
+	export let fieldsMap: Map<string, StreamingFieldState> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
 	export let isFieldTyping: (field: string) => boolean;
 	export let handleFieldComplete: (field: string) => void;
 
-	$: vintage = getFieldValue('vintage');
-	$: region = getFieldValue('region');
-	$: country = getFieldValue('country');
+	// For streaming mode, directly access fieldsMap to ensure proper Svelte reactivity
+	$: vintageField = state === 'streaming' ? fieldsMap.get('vintage') : null;
+	$: regionField = state === 'streaming' ? fieldsMap.get('region') : null;
+	$: countryField = state === 'streaming' ? fieldsMap.get('country') : null;
 
-	$: hasVintage = hasField('vintage');
-	$: hasRegion = hasField('region');
-	$: hasCountry = hasField('country');
+	// Derive values from field states or use accessor functions
+	$: vintage = state === 'streaming' ? vintageField?.value : getFieldValue('vintage');
+	$: region = state === 'streaming' ? regionField?.value : getFieldValue('region');
+	$: country = state === 'streaming' ? countryField?.value : getFieldValue('country');
 
-	$: vintageTyping = isFieldTyping('vintage');
-	$: regionTyping = isFieldTyping('region');
-	$: countryTyping = isFieldTyping('country');
+	$: hasVintage = state === 'streaming' ? !!vintageField : hasField('vintage');
+	$: hasRegion = state === 'streaming' ? !!regionField : hasField('region');
+	$: hasCountry = state === 'streaming' ? !!countryField : hasField('country');
+
+	$: vintageTyping = state === 'streaming' ? (vintageField?.isTyping ?? false) : false;
+	$: regionTyping = state === 'streaming' ? (regionField?.isTyping ?? false) : false;
+	$: countryTyping = state === 'streaming' ? (countryField?.isTyping ?? false) : false;
 
 	// Country flag emoji mapping
 	function getCountryFlag(country: string | null): string {

@@ -3,16 +3,21 @@
 	 * GrapeCompositionSection
 	 * Displays grape varieties composition
 	 */
+	import type { StreamingFieldState } from '$lib/stores/agent';
 	import GrapeComposition from './GrapeComposition.svelte';
 
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
+	export let fieldsMap: Map<string, StreamingFieldState> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
 
+	// For streaming mode, directly access fieldsMap to ensure proper Svelte reactivity
+	$: grapesField = state === 'streaming' ? (fieldsMap.get('grapes') || fieldsMap.get('grapeVarieties')) : null;
+
 	// Handle field name variations (grapes or grapeVarieties)
-	$: grapes = getFieldValue('grapes') || getFieldValue('grapeVarieties');
-	$: hasGrapes = hasField('grapes') || hasField('grapeVarieties');
+	$: grapes = state === 'streaming' ? grapesField?.value : (getFieldValue('grapes') || getFieldValue('grapeVarieties'));
+	$: hasGrapes = state === 'streaming' ? !!grapesField : (hasField('grapes') || hasField('grapeVarieties'));
 	$: isArray = Array.isArray(grapes);
 </script>
 

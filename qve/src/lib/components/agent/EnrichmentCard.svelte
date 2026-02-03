@@ -82,6 +82,7 @@
 	{header}
 	cardClass="enrichment-card"
 	let:state={cardState}
+	let:fieldsMap
 	let:getFieldValue
 	let:hasField
 	let:isFieldTyping
@@ -89,6 +90,7 @@
 >
 	<OverviewSection
 		state={cardState}
+		{fieldsMap}
 		{getFieldValue}
 		{hasField}
 		{isFieldTyping}
@@ -97,18 +99,21 @@
 
 	<StyleProfileSection
 		state={cardState}
+		{fieldsMap}
 		{getFieldValue}
 		{hasField}
 	/>
 
 	<GrapeCompositionSection
 		state={cardState}
+		{fieldsMap}
 		{getFieldValue}
 		{hasField}
 	/>
 
 	<TastingNotesSection
 		state={cardState}
+		{fieldsMap}
 		{getFieldValue}
 		{hasField}
 		{isFieldTyping}
@@ -117,6 +122,7 @@
 
 	<FoodPairingsSection
 		state={cardState}
+		{fieldsMap}
 		{getFieldValue}
 		{hasField}
 		{isFieldTyping}
@@ -125,12 +131,14 @@
 
 	<DrinkWindowSection
 		state={cardState}
+		{fieldsMap}
 		{getFieldValue}
 		{hasField}
 	/>
 
 	<CriticScoresSection
 		state={cardState}
+		{fieldsMap}
 		{getFieldValue}
 		{hasField}
 	/>

@@ -3,19 +3,24 @@
 	 * FoodPairingsSection
 	 * Displays food pairing recommendations
 	 */
+	import type { StreamingFieldState } from '$lib/stores/agent';
 	import FieldTypewriter from '../FieldTypewriter.svelte';
 
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
+	export let fieldsMap: Map<string, StreamingFieldState> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
 	export let isFieldTyping: (field: string) => boolean;
 	export let handleFieldComplete: (field: string) => void;
 
+	// For streaming mode, directly access fieldsMap to ensure proper Svelte reactivity
+	$: pairingField = state === 'streaming' ? (fieldsMap.get('pairingNotes') || fieldsMap.get('pairings')) : null;
+
 	// Handle field name variations (pairingNotes or pairings)
-	$: pairingNotes = getFieldValue('pairingNotes') || getFieldValue('pairings');
-	$: hasPairingNotes = hasField('pairingNotes') || hasField('pairings');
-	$: isTyping = isFieldTyping('pairingNotes') || isFieldTyping('pairings');
+	$: pairingNotes = state === 'streaming' ? pairingField?.value : (getFieldValue('pairingNotes') || getFieldValue('pairings'));
+	$: hasPairingNotes = state === 'streaming' ? !!pairingField : (hasField('pairingNotes') || hasField('pairings'));
+	$: isTyping = state === 'streaming' ? (pairingField?.isTyping ?? false) : false;
 </script>
 
 <section class="section">

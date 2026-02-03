@@ -3,18 +3,24 @@
 	 * WineProducerSection
 	 * Displays producer with skeleton/streaming/static states
 	 */
+	import type { StreamingFieldState } from '$lib/stores/agent';
 	import FieldTypewriter from '../FieldTypewriter.svelte';
 
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
+	export let fieldsMap: Map<string, StreamingFieldState> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
 	export let isFieldTyping: (field: string) => boolean;
 	export let handleFieldComplete: (field: string) => void;
 
-	$: producer = getFieldValue('producer');
-	$: hasProducer = hasField('producer');
-	$: isTyping = isFieldTyping('producer');
+	// For streaming mode, directly access fieldsMap to ensure proper Svelte reactivity
+	$: producerField = state === 'streaming' ? fieldsMap.get('producer') : null;
+
+	// Derive values from field state or use accessor functions
+	$: producer = state === 'streaming' ? producerField?.value : getFieldValue('producer');
+	$: hasProducer = state === 'streaming' ? !!producerField : hasField('producer');
+	$: isTyping = state === 'streaming' ? (producerField?.isTyping ?? false) : false;
 	$: showProducer = hasProducer && producer && producer !== 'Unknown';
 </script>
 

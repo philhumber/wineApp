@@ -3,23 +3,28 @@
 	 * StyleProfileSection
 	 * Displays wine style profile (body, tannin, acidity)
 	 */
+	import type { StreamingFieldState } from '$lib/stores/agent';
 	import StyleProfileDisplay from './StyleProfileDisplay.svelte';
 
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
+	export let fieldsMap: Map<string, StreamingFieldState> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
 
-	// Handle field name variations (body or style)
-	$: body = getFieldValue('body') || getFieldValue('style');
-	$: tannin = getFieldValue('tannin');
-	$: acidity = getFieldValue('acidity');
+	// For streaming mode, directly access fieldsMap to ensure proper Svelte reactivity
+	$: bodyField = state === 'streaming' ? (fieldsMap.get('body') || fieldsMap.get('style')) : null;
+	$: tanninField = state === 'streaming' ? fieldsMap.get('tannin') : null;
+	$: acidityField = state === 'streaming' ? fieldsMap.get('acidity') : null;
 
-	$: hasStyleProfile =
-		hasField('body') ||
-		hasField('style') ||
-		hasField('tannin') ||
-		hasField('acidity');
+	// Handle field name variations (body or style)
+	$: body = state === 'streaming' ? bodyField?.value : (getFieldValue('body') || getFieldValue('style'));
+	$: tannin = state === 'streaming' ? tanninField?.value : getFieldValue('tannin');
+	$: acidity = state === 'streaming' ? acidityField?.value : getFieldValue('acidity');
+
+	$: hasStyleProfile = state === 'streaming'
+		? !!(bodyField || tanninField || acidityField)
+		: (hasField('body') || hasField('style') || hasField('tannin') || hasField('acidity'));
 </script>
 
 <section class="section">
