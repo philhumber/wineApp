@@ -886,6 +886,141 @@ agentConversation.addMessage({
 
 ---
 
+## Additional Improvements
+
+### 4. Agent Speech Registry ✅
+
+Centralize all agent messages in one file for easy editing and future i18n.
+
+```typescript
+// lib/agent/messages.ts
+export const agentMessages = {
+  greeting: {
+    morning: "Good morning! I'm your wine sommelier.",
+    afternoon: "Good afternoon! Ready to explore some wines?",
+    evening: "Good evening! Let's find the perfect wine.",
+  },
+
+  identification: {
+    thinking: "Let me identify that wine...",
+    found: (wine: string) => `I found **${wine}**. Is this correct?`,
+    notFound: "I couldn't identify that wine. Can you tell me more?",
+    lowConfidence: "I'm not entirely sure, but this might be it.",
+    escalating: "Let me take a closer look...",
+  },
+
+  confirm: {
+    correct: "Great! What would you like to do next?",
+    incorrect: "No problem. What did I get wrong?",
+  },
+
+  addFlow: {
+    duplicateFound: (wine: string, count: number) =>
+      `I found **${wine}** already in your cellar with ${count} bottle${count > 1 ? 's' : ''}.`,
+    addComplete: (wine: string) => `Added **${wine}** to your cellar!`,
+  },
+
+  errors: {
+    timeout: "Our sommelier is taking longer than expected...",
+    rateLimit: "Our sommelier is quite busy. Please wait a moment.",
+    generic: "Something went wrong. Please try again.",
+  },
+
+  chips: {
+    correct: "Correct",
+    notCorrect: "Not Correct",
+    addToCellar: "Add to Cellar",
+    learnMore: "Learn More",
+    tryAgain: "Try Again",
+    startOver: "Start Over",
+  },
+} as const;
+
+// Helper with interpolation
+export function getMessage(path: string, params?: Record<string, any>): string {
+  const message = path.split('.').reduce((obj, key) => obj?.[key], agentMessages);
+  if (typeof message === 'function') return message(...Object.values(params ?? {}));
+  return message ?? path;
+}
+```
+
+**Benefits:**
+- Edit agent personality in ONE file
+- Find all messages with grep
+- i18n-ready (swap the object)
+- Consistent tone across app
+
+---
+
+### 5. Loading States Registry ✅
+
+Centralize loading state configuration:
+
+```typescript
+// lib/agent/loadingStates.ts
+export const loadingStates = {
+  identifying: {
+    message: () => getMessage('identification.thinking'),
+    icon: 'search',
+    timeout: 30000,
+  },
+  enriching: {
+    message: () => getMessage('enrichment.loading'),
+    icon: 'book',
+    timeout: 20000,
+  },
+  addingWine: {
+    message: 'Adding to cellar...',
+    icon: 'plus',
+    timeout: 10000,
+  },
+} as const;
+
+export type LoadingStateKey = keyof typeof loadingStates;
+```
+
+**Usage:**
+```svelte
+<script>
+  import { loadingStates } from '$lib/agent/loadingStates';
+  export let state: LoadingStateKey;
+  $: config = loadingStates[state];
+</script>
+
+<div class="loading">
+  <Icon name={config.icon} />
+  <span>{config.message()}</span>
+</div>
+```
+
+---
+
+### 6. Directory Structure (Updated)
+
+```
+qve/src/lib/
+├── agent/                     # NEW: Agent configuration
+│   ├── messages.ts            # All agent speech
+│   ├── loadingStates.ts       # Loading configurations
+│   ├── actions.ts             # AgentAction types + handler
+│   └── index.ts
+│
+├── components/agent/
+│   ├── AgentPanel.svelte      # Reduced to ~100 lines
+│   ├── conversation/          # Chat architecture
+│   ├── content/               # Message content components
+│   ├── forms/                 # Form components
+│   └── cards/                 # Card components
+│
+├── stores/
+│   ├── agentIdentification.ts # Identification state
+│   ├── agentEnrichment.ts     # Enrichment state
+│   ├── agentConversation.ts   # Messages, phase
+│   └── agentAddWine.ts        # Add-to-cellar flow
+```
+
+---
+
 ## Conclusion
 
 This architecture provides:
@@ -894,6 +1029,8 @@ This architecture provides:
 2. **Content agnosticism** — MessageWrapper doesn't care what's inside
 3. **Centralized scroll** — One place to debug scroll issues
 4. **Centralized disabled state** — One pattern for all messages
+5. **Centralized speech** — One file for all agent messages
+6. **Command pattern** — All actions flow through one handler
 5. **Easy extension** — New message types = new content component
 6. **Testability** — Each component can be tested in isolation
 
