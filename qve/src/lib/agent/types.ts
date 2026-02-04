@@ -120,18 +120,108 @@ export interface ImageMessageData {
 
 // ===========================================
 // Action Types (Command Pattern)
+// Expanded from 10 to ~50 typed actions based on Phase 4 review
 // ===========================================
-export type AgentAction =
+
+// Input Actions
+export type InputAction =
   | { type: 'submit_text'; payload: string }
-  | { type: 'submit_image'; payload: { data: string; mimeType: string } }
-  | { type: 'chip_tap'; payload: { action: string; messageId: string; data?: unknown } }
-  | { type: 'submit_bottle'; payload: BottleFormData }
-  | { type: 'select_match'; payload: { entityType: string; matchId: number } }
-  | { type: 'create_new'; payload: { entityType: string; name: string } }
-  | { type: 'manual_entry_submit'; payload: ManualEntryData }
+  | { type: 'submit_image'; payload: { data: string; mimeType: string } };
+
+// Navigation Actions
+export type NavigationAction =
   | { type: 'start_over' }
   | { type: 'go_back' }
-  | { type: 'cancel' };
+  | { type: 'cancel' }
+  | { type: 'retry' }
+  | { type: 'try_again' };
+
+// Confirmation Actions
+export type ConfirmationAction =
+  | { type: 'correct'; messageId: string }
+  | { type: 'not_correct'; messageId: string }
+  | { type: 'confirm_direction'; messageId: string }
+  | { type: 'wrong_direction'; messageId: string }
+  | { type: 'confirm_new_search'; messageId: string }
+  | { type: 'continue_current'; messageId: string }
+  | { type: 'confirm_brief_search'; messageId: string }
+  | { type: 'add_more_detail'; messageId: string }
+  | { type: 'confirm_cache_match'; messageId: string }
+  | { type: 'force_refresh'; messageId: string };
+
+// Identification Actions
+export type IdentificationAction =
+  | { type: 'identify'; messageId: string }
+  | { type: 'try_opus'; messageId: string }
+  | { type: 'see_result'; messageId: string }
+  | { type: 'see_partial_result'; messageId: string }
+  | { type: 'use_conversation'; messageId: string }
+  | { type: 'add_missing_details'; messageId: string }
+  | { type: 'use_producer_name'; messageId: string; payload?: { name: string } }
+  | { type: 'use_grape_as_name'; messageId: string; payload?: { name: string } }
+  | { type: 'nv_vintage'; messageId: string }
+  | { type: 'provide_more'; messageId: string }
+  | { type: 'new_input'; messageId: string }
+  | { type: 'start_fresh'; messageId: string };
+
+// Wine Flow Actions
+export type WineFlowAction =
+  | { type: 'add'; messageId: string }
+  | { type: 'add_to_cellar'; messageId: string }
+  | { type: 'learn'; messageId: string }
+  | { type: 'remember'; messageId: string }
+  | { type: 'remember_wine'; messageId: string }
+  | { type: 'recommend'; messageId: string }
+  | { type: 'enrich_now'; messageId: string }
+  | { type: 'add_quickly'; messageId: string };
+
+// Entity Matching Actions
+export type EntityMatchAction =
+  | { type: 'select_match'; payload: { entityType: EntityType; matchId: number }; messageId: string }
+  | { type: 'add_new'; payload: { entityType: EntityType }; messageId: string }
+  | { type: 'clarify'; payload: { entityType: EntityType }; messageId: string }
+  | { type: 'add_bottle_existing'; messageId: string }
+  | { type: 'create_new_wine'; messageId: string };
+
+// Form Actions
+export type FormAction =
+  | { type: 'submit_bottle'; payload: BottleFormData }
+  | { type: 'manual_entry_submit'; payload: ManualEntryData }
+  | { type: 'manual_entry_complete'; payload: ManualEntryData; messageId: string }
+  | { type: 'bottle_next'; messageId: string }
+  | { type: 'bottle_submit'; messageId: string }
+  | { type: 'retry_add'; messageId: string };
+
+// Camera Actions
+export type CameraAction =
+  | { type: 'take_photo'; messageId: string }
+  | { type: 'choose_photo'; messageId: string };
+
+// Error Actions
+export type ErrorAction =
+  | { type: 'start_over_error'; messageId: string };
+
+// Generic chip tap (fallback for unmapped actions)
+export type GenericChipAction = {
+  type: 'chip_tap';
+  payload: { action: string; messageId: string; data?: unknown }
+};
+
+// Union of all action types
+export type AgentAction =
+  | InputAction
+  | NavigationAction
+  | ConfirmationAction
+  | IdentificationAction
+  | WineFlowAction
+  | EntityMatchAction
+  | FormAction
+  | CameraAction
+  | ErrorAction
+  | GenericChipAction;
+
+// Entity types for matching
+export type EntityType = 'region' | 'producer' | 'wine';
 
 // ===========================================
 // Placeholder types (reference existing)

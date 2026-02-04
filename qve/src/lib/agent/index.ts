@@ -9,4 +9,6 @@
 export * from './types';
 export * from './messages';
 export * from './loadingStates';
-export * from './actions';
+
+// Action handler
+export { handleAgentAction } from './handleAgentAction';
