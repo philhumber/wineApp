@@ -743,21 +743,146 @@ const componentMap = {
 
 ---
 
-## Open Questions
+## Design Decisions
 
-1. **Streaming messages** — Should streaming be a separate category, or a flag on any message?
-   - Option A: `{ category: 'streaming', innerCategory: 'wine_result', ... }`
-   - Option B: `{ category: 'wine_result', isStreaming: true, streamingFields: Map }`
+### 1. Streaming: Flag, Not Category ✅
 
-2. **Form submission** — Should forms dispatch events or call store methods directly?
-   - Option A: `dispatch('submit', formData)` — container handles
-   - Option B: `submitForm(formData)` — form calls store
+Streaming is a **flag on any message**, not a separate category.
 
-3. **Chips within cards** — Wine cards have confirmation chips. Separate messages or embedded?
-   - Option A: Wine result message + separate chips message
-   - Option B: Wine result message with embedded chips
+```typescript
+interface AgentMessage {
+  id: string;
+  category: MessageCategory;  // 'wine_result', 'enrichment', etc.
+  data: MessageData;
 
-**Recommendation:** Start with Option A for all (maximum separation), optimize later if needed.
+  // Streaming state (optional, applies to any category)
+  isStreaming?: boolean;
+  streamingFields?: Map<string, { value: string; isTyping: boolean }>;
+}
+```
+
+**Why:** The current approach created duplicate components (WineCard + WineCardStreaming = 527 lines). With streaming as a flag:
+- ONE card component handles both states
+- No flashing when switching from streaming → complete
+- Delete WineCardStreaming.svelte (399 lines)
+- Delete EnrichmentCardStreaming.svelte
+
+**How cards handle it:**
+```svelte
+<!-- WineCard.svelte - handles both streaming and static -->
+{#if message.isStreaming && message.streamingFields?.has('wineName')}
+  <FieldTypewriter field={message.streamingFields.get('wineName')} />
+{:else}
+  {message.data.wineName}
+{/if}
+```
+
+---
+
+### 2. Form Submission: Command Pattern ✅
+
+Forms emit **typed commands**, a central handler routes to stores.
+
+```typescript
+// All possible actions (typed, serializable)
+type AgentAction =
+  | { type: 'submit_text'; payload: string }
+  | { type: 'submit_image'; payload: { data: string; mimeType: string } }
+  | { type: 'chip_tap'; payload: { action: string; data?: any } }
+  | { type: 'submit_bottle'; payload: BottleFormData }
+  | { type: 'select_match'; payload: { entityType: string; matchId: number } }
+  | { type: 'create_new'; payload: { entityType: string; name: string } }
+  | { type: 'manual_entry_submit'; payload: ManualEntryData };
+```
+
+**Forms don't import stores:**
+```svelte
+<!-- BottleDetailsForm.svelte -->
+<script>
+  const dispatch = createEventDispatcher<{ action: AgentAction }>();
+
+  function handleSubmit() {
+    dispatch('action', { type: 'submit_bottle', payload: formData });
+  }
+</script>
+```
+
+**Central action handler:**
+```typescript
+// stores/agentActions.ts
+export function handleAgentAction(action: AgentAction) {
+  switch (action.type) {
+    case 'submit_text':
+      agentIdentification.identifyText(action.payload);
+      break;
+    case 'chip_tap':
+      handleChipAction(action.payload);
+      break;
+    case 'submit_bottle':
+      agentAddWine.submitBottle(action.payload);
+      break;
+    // ...
+  }
+}
+```
+
+**Why:**
+- Forms/chips are decoupled from stores (testable)
+- All actions flow through one place (loggable, debuggable)
+- Actions are serializable (undo/redo possible)
+- Easy to extend: add action type + case
+
+---
+
+### 3. Chips: Separate Messages ✅
+
+Cards are **pure display**. Chips are **pure action**. Never embedded.
+
+**Before (embedded):**
+```
+┌───────────────────────────┐
+│  WineCard                 │
+│  Château Margaux 2018     │
+│  [Correct] [Not Correct]  │  ← chips inside
+└───────────────────────────┘
+```
+
+**After (separated):**
+```
+┌───────────────────────────┐
+│  WineCard (message 1)     │
+│  Château Margaux 2018     │
+└───────────────────────────┘
+┌───────────────────────────┐
+│  Chips (message 2)        │
+│  [Correct] [Not Correct]  │
+└───────────────────────────┘
+```
+
+**Implementation:**
+```typescript
+// After identification
+agentConversation.addMessage({
+  category: 'wine_result',
+  data: identificationResult,
+});
+
+agentConversation.addMessage({
+  category: 'chips',
+  data: {
+    chips: [
+      { label: 'Correct', action: 'correct', variant: 'primary' },
+      { label: 'Not Correct', action: 'not_correct' },
+    ]
+  }
+});
+```
+
+**Why:**
+- Disable chips without touching cards
+- Replace chips easily (confirm → action → enrichment)
+- Cards reusable across app (cellar, history, etc.)
+- Clear message history
 
 ---
 
