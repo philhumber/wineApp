@@ -4,7 +4,7 @@
 	 * Unified enrichment card supporting skeleton, streaming, and static states.
 	 * Replaces both EnrichmentCard and EnrichmentCardStreaming.
 	 */
-	import { agentStreamingFields, agentEnriching } from '$lib/stores';
+	import { enrichmentStreamingFields, isEnriching } from '$lib/stores/agentEnrichment';
 	import type { AgentEnrichmentData } from '$lib/api/types';
 	import DataCard from './DataCard.svelte';
 	import OverviewSection from '../enrichment/OverviewSection.svelte';
@@ -33,8 +33,8 @@
 	// ─────────────────────────────────────────────────────
 
 	// Subscribe to streaming state for reactive updates
-	$: streamingFields = $agentStreamingFields;
-	$: isStreaming = $agentEnriching;
+	$: currentStreamingFields = $enrichmentStreamingFields;
+	$: enriching = $isEnriching;
 
 	// ─────────────────────────────────────────────────────
 	// STATIC STATE TRANSFORMATION
@@ -62,7 +62,7 @@
 	$: header = {
 		title: 'Wine Details',
 		badge:
-			state === 'streaming' || isStreaming
+			state === 'streaming' || enriching
 				? 'Researching...'
 				: state === 'static' && source
 					? source === 'cache'
@@ -71,16 +71,22 @@
 							? 'Web'
 							: 'AI'
 					: 'Research complete',
-		badgeStreaming: state === 'streaming' || isStreaming
+		badgeStreaming: state === 'streaming' || enriching
+	};
+
+	// Data attributes for scroll targeting - always include enrichment-card
+	$: dataAttributes = {
+		'enrichment-card': true
 	};
 </script>
 
 <DataCard
 	{state}
 	data={staticData}
-	{streamingFields}
+	streamingFields={currentStreamingFields}
 	{header}
 	cardClass="enrichment-card"
+	{dataAttributes}
 	let:state={cardState}
 	let:fieldsMap
 	let:getFieldValue

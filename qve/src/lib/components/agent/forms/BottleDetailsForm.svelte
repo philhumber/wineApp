@@ -5,41 +5,42 @@
 	 * Part 1: Size, Location, Source (required)
 	 * Part 2: Price, Currency, Date (optional)
 	 *
-	 * Store-driven: binds directly to agentAddState.bottleData via agent.updateAddFormData
-	 * Events are for flow control only - no data payload needed
+	 * Clean architecture: No store imports, local state, events with data payloads
 	 */
 	import { createEventDispatcher, onMount } from 'svelte';
-	import { agent, agentAddState } from '$lib/stores';
 	import { api } from '$lib/api';
 	import type { BottleSize, Currency } from '$lib/api/types';
+	import type { BottleFormData } from '$lib/agent/types';
 
 	const dispatch = createEventDispatcher<{
-		next: void;
-		submit: void;
+		next: BottleFormData;
+		submit: BottleFormData;
 		ready: void;
 	}>();
 
 	export let part: 1 | 2 = 1;
+	export let initialData: Partial<BottleFormData> = {};
+	export let disabled: boolean = false;
 
 	// Options from API
 	let bottleSizes: BottleSize[] = [];
 	let currencies: Currency[] = [];
 	let loading = true;
 
-	// Local form state bound to store
-	$: bottleData = $agentAddState?.bottleData ?? {
-		bottleSize: '',
-		storageLocation: '',
-		source: '',
-		price: '',
-		currency: '',
-		purchaseDate: ''
+	// Local form state (not store-driven)
+	let formData: BottleFormData = {
+		size: initialData.size ?? '',
+		location: initialData.location ?? '',
+		source: initialData.source ?? '',
+		price: initialData.price,
+		currency: initialData.currency ?? '',
+		purchaseDate: initialData.purchaseDate ?? ''
 	};
 
 	// Validation
 	$: canProceed =
 		part === 1
-			? bottleData.bottleSize && bottleData.storageLocation && bottleData.source
+			? formData.size && formData.location && formData.source
 			: true; // Part 2 is all optional
 
 	onMount(async () => {
@@ -49,15 +50,15 @@
 			currencies = data.currencies || [];
 
 			// Set default currency if none selected
-			if (!bottleData.currency && currencies.length > 0) {
+			if (!formData.currency && currencies.length > 0) {
 				const defaultCurrency = currencies.find((c) => c.currencyCode === 'GBP') || currencies[0];
-				updateField('currency', defaultCurrency.currencyCode);
+				formData = { ...formData, currency: defaultCurrency.currencyCode };
 			}
 
 			// Set default size if none selected
-			if (!bottleData.bottleSize && bottleSizes.length > 0) {
+			if (!formData.size && bottleSizes.length > 0) {
 				const standardSize = bottleSizes.find((s) => s.sizeCode === 'standard') || bottleSizes[0];
-				updateField('bottleSize', standardSize.sizeCode);
+				formData = { ...formData, size: standardSize.sizeCode };
 			}
 		} catch (error) {
 			console.error('Failed to fetch currencies:', error);
@@ -68,18 +69,18 @@
 		}
 	});
 
-	function updateField(field: string, value: string) {
-		agent.updateAddFormData('bottle', { [field]: value });
+	function updateField<K extends keyof BottleFormData>(field: K, value: BottleFormData[K]) {
+		formData = { ...formData, [field]: value };
 	}
 
 	function handleNext() {
 		if (canProceed) {
-			dispatch('next');
+			dispatch('next', { ...formData });
 		}
 	}
 
 	function handleSubmit() {
-		dispatch('submit');
+		dispatch('submit', { ...formData });
 	}
 
 	// Convert bottle sizes to options format
@@ -108,8 +109,9 @@
 				<select
 					id="bottle-size"
 					class="form-select"
-					value={bottleData.bottleSize}
-					on:change={(e) => updateField('bottleSize', e.currentTarget.value)}
+					value={formData.size}
+					{disabled}
+					on:change={(e) => updateField('size', e.currentTarget.value)}
 				>
 					<option value="" disabled>Select size...</option>
 					{#each sizeOptions as option}
@@ -127,8 +129,9 @@
 					type="text"
 					class="form-input"
 					placeholder="e.g., Wine cellar, Rack A3"
-					value={bottleData.storageLocation}
-					on:input={(e) => updateField('storageLocation', e.currentTarget.value)}
+					value={formData.location}
+					{disabled}
+					on:input={(e) => updateField('location', e.currentTarget.value)}
 				/>
 			</div>
 
@@ -141,12 +144,13 @@
 					type="text"
 					class="form-input"
 					placeholder="e.g., Berry Bros, Gift, Auction"
-					value={bottleData.source}
+					value={formData.source}
+					{disabled}
 					on:input={(e) => updateField('source', e.currentTarget.value)}
 				/>
 			</div>
 
-			<button class="btn btn-primary" disabled={!canProceed} on:click={handleNext}>
+			<button class="btn btn-primary" disabled={!canProceed || disabled} on:click={handleNext}>
 				Next
 			</button>
 		</div>
@@ -163,8 +167,12 @@
 						min="0"
 						class="form-input"
 						placeholder="0.00"
-						value={bottleData.price}
-						on:input={(e) => updateField('price', e.currentTarget.value)}
+						value={formData.price ?? ''}
+						{disabled}
+						on:input={(e) => {
+							const val = e.currentTarget.value;
+							updateField('price', val ? parseFloat(val) : undefined);
+						}}
 					/>
 				</div>
 
@@ -173,7 +181,8 @@
 					<select
 						id="currency"
 						class="form-select"
-						value={bottleData.currency}
+						value={formData.currency}
+						{disabled}
 						on:change={(e) => updateField('currency', e.currentTarget.value)}
 					>
 						{#each currencyOptions as option}
@@ -189,12 +198,13 @@
 					id="purchase-date"
 					type="date"
 					class="form-input date-input"
-					value={bottleData.purchaseDate}
+					value={formData.purchaseDate}
+					{disabled}
 					on:input={(e) => updateField('purchaseDate', e.currentTarget.value)}
 				/>
 			</div>
 
-			<button class="btn btn-primary" on:click={handleSubmit}>
+			<button class="btn btn-primary" {disabled} on:click={handleSubmit}>
 				Add to Cellar
 			</button>
 		</div>

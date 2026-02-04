@@ -5,8 +5,8 @@
 
 export { default as AgentBubble } from './AgentBubble.svelte';
 export { default as AgentPanel } from './AgentPanel.svelte';
+export { default as AgentPanelNew } from './AgentPanelNew.svelte';
 export { default as CommandInput } from './CommandInput.svelte';
-export { default as WineIdentificationCard } from './WineIdentificationCard.svelte';
 export { default as ConfidenceIndicator } from './ConfidenceIndicator.svelte';
 export { default as DisambiguationList } from './DisambiguationList.svelte';
 export { default as AgentLoadingState } from './AgentLoadingState.svelte';
@@ -25,12 +25,10 @@ export { MatchSelectionList, BottleDetailsForm, ManualEntryForm } from './forms'
 
 // Enrichment components (from enrichment/ - backward compatible exports)
 export { default as EnrichmentCard } from './enrichment/EnrichmentCard.svelte';
-export { default as EnrichmentCardStreaming } from './enrichment/EnrichmentCardStreaming.svelte';
 export { default as StyleProfileDisplay } from './enrichment/StyleProfileDisplay.svelte';
 export { default as CriticScores } from './enrichment/CriticScores.svelte';
 export { default as DrinkWindow } from './enrichment/DrinkWindow.svelte';
 export { default as GrapeComposition } from './enrichment/GrapeComposition.svelte';
-export { default as EnrichmentSkeleton } from './enrichment/EnrichmentSkeleton.svelte';
 
 // Subdirectory re-exports for organized imports
 export * from './cards';

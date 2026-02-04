@@ -23,6 +23,9 @@
   --divider: #E8E4DE;
   --divider-subtle: #F0EDE8;
 
+  /* Elevated backgrounds (for shimmer highlights, etc.) */
+  --bg-elevated: #FFFFFF;
+
   /* Semantic colors */
   --success: #6B8E6B;
   --error: #B87A7A;
@@ -118,6 +121,9 @@
 
   --divider: #2A2826;
   --divider-subtle: #1F1E1C;
+
+  /* Elevated backgrounds (for shimmer highlights, etc.) */
+  --bg-elevated: #2A2826;
 
   /* Semantic colors - dark mode variants */
   --success: #8BA88B;

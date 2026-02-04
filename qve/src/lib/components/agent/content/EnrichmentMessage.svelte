@@ -19,7 +19,7 @@
       grapeVarieties:
         data.grapeComposition?.map((g) => ({
           grape: g.grape,
-          percentage: g.percentage?.toString() ?? null,
+          percentage: g.percentage ?? null,
         })) ?? null,
       appellation: null,
       alcoholContent: null,
@@ -33,10 +33,10 @@
         })) ?? null,
       averagePrice: null,
       priceSource: null,
-      body: data.styleProfile?.body?.toString() ?? null,
-      tannin: data.styleProfile?.tannin?.toString() ?? null,
-      acidity: data.styleProfile?.acidity?.toString() ?? null,
-      sweetness: data.styleProfile?.sweetness?.toString() ?? null,
+      body: data.styleProfile?.body ?? null,
+      tannin: data.styleProfile?.tannin ?? null,
+      acidity: data.styleProfile?.acidity ?? null,
+      sweetness: data.styleProfile?.sweetness ?? null,
       overview: data.overview ?? null,
       tastingNotes: data.tastingNotes
         ? [

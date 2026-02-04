@@ -31,8 +31,8 @@
   .message-list {
     display: flex;
     flex-direction: column;
-    gap: var(--space-sm, 8px);
-    padding: var(--space-md, 16px);
+    gap: var(--space-3);
+    padding: var(--space-4);
     min-height: 100%;
   }
 

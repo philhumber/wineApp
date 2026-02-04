@@ -4,7 +4,7 @@
 	 * Unified wine card supporting skeleton, streaming, and static states.
 	 * Replaces both WineIdentificationCard and WineCardStreaming.
 	 */
-	import { agentStreamingFields } from '$lib/stores';
+	import { streamingFields as identificationStreamingFields } from '$lib/stores/agentIdentification';
 	import type { AgentParsedWine } from '$lib/api/types';
 	import DataCard from './DataCard.svelte';
 	import WineNameSection from '../wine/WineNameSection.svelte';
@@ -31,7 +31,7 @@
 	// ─────────────────────────────────────────────────────
 
 	// Subscribe to streaming fields for reactive updates
-	$: streamingFields = $agentStreamingFields;
+	$: currentStreamingFields = $identificationStreamingFields;
 
 	// ─────────────────────────────────────────────────────
 	// STATIC STATE TRANSFORMATION
@@ -59,16 +59,22 @@
 	$: hasWineName =
 		state === 'static'
 			? data?.wineName && data.wineName !== 'Unknown Wine'
-			: streamingFields.has('wineName');
+			: currentStreamingFields.has('wineName');
 
 	$: cardClass = hasWineName ? '' : 'incomplete';
+
+	// Data attributes for scroll targeting
+	$: dataAttributes = {
+		'streaming-card': state === 'streaming'
+	};
 </script>
 
 <DataCard
 	{state}
 	data={staticData}
-	{streamingFields}
+	streamingFields={currentStreamingFields}
 	{cardClass}
+	{dataAttributes}
 	let:state={cardState}
 	let:fieldsMap
 	let:getFieldValue

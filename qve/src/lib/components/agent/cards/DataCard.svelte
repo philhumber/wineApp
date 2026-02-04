@@ -11,7 +11,7 @@
 	 * and field rendering logic via slot props.
 	 */
 	import { createEventDispatcher } from 'svelte';
-	import type { StreamingFieldState } from '$lib/stores/agent';
+	import type { StreamingField } from '$lib/agent/types';
 
 	const dispatch = createEventDispatcher();
 
@@ -26,13 +26,16 @@
 	export let data: Record<string, any> | null = null;
 
 	/** Streaming state: Map of field states */
-	export let streamingFields: Map<string, StreamingFieldState> = new Map();
+	export let streamingFields: Map<string, StreamingField> = new Map();
 
 	/** Optional header content */
 	export let header: { title: string; badge?: string; badgeStreaming?: boolean } | null = null;
 
 	/** Optional CSS class for styling */
 	export let cardClass: string = '';
+
+	/** Data attributes for scroll targeting */
+	export let dataAttributes: Record<string, string | boolean> = {};
 
 	// ─────────────────────────────────────────────────────
 	// FIELD ACCESSORS (exposed via slot props)
@@ -67,9 +70,26 @@
 
 	// Reactive fields map for section visibility
 	$: fieldsMap = streamingFields;
+
+	// Convert dataAttributes to spreadable object with data- prefix
+	$: spreadableAttributes = Object.entries(dataAttributes).reduce(
+		(acc, [key, value]) => {
+			// Only add truthy values (true or non-empty strings)
+			if (value) {
+				acc[`data-${key}`] = typeof value === 'boolean' ? '' : value;
+			}
+			return acc;
+		},
+		{} as Record<string, string>
+	);
 </script>
 
-<div class="data-card {cardClass}" class:skeleton={state === 'skeleton'} data-testid="data-card">
+<div
+	class="data-card {cardClass}"
+	class:skeleton={state === 'skeleton'}
+	data-testid="data-card"
+	{...spreadableAttributes}
+>
 	<!-- Header (optional) -->
 	{#if header}
 		<div class="card-header">

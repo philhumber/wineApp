@@ -1,21 +1,9 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
-  import type { AgentMessage, AgentAction } from '$lib/agent/types';
+  import type { AgentMessage } from '$lib/agent/types';
 
   export let message: AgentMessage;
 
-  const dispatch = createEventDispatcher<{ action: AgentAction }>();
-
   $: error = message.data.category === 'error' ? message.data.error : null;
-  $: retryable = message.data.category === 'error' ? message.data.retryable : false;
-
-  function handleRetry() {
-    dispatch('action', { type: 'chip_tap', payload: { action: 'try_again', messageId: message.id } });
-  }
-
-  function handleStartOver() {
-    dispatch('action', { type: 'start_over' });
-  }
 </script>
 
 {#if error}
@@ -27,69 +15,51 @@
         <p class="error-ref">Reference: {error.supportRef}</p>
       {/if}
     </div>
-    <div class="error-actions">
-      {#if retryable}
-        <button class="retry-btn" on:click={handleRetry}>Try Again</button>
-      {/if}
-      <button class="start-over-btn" on:click={handleStartOver}>Start Over</button>
-    </div>
   </div>
 {/if}
 
 <style>
   .error-message {
     display: flex;
-    flex-direction: column;
-    gap: var(--space-sm, 8px);
-    padding: var(--space-md, 16px);
-    background: var(--color-error-subtle, #fef2f2);
-    border-radius: var(--radius-md, 8px);
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background: var(--status-past-bg);
+    border: 1px solid var(--error);
+    border-radius: var(--radius-lg);
+    max-width: 85%;
   }
 
   .error-icon {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
-    background: var(--color-error, #dc2626);
-    color: white;
+    background: var(--error);
+    color: var(--bg);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
-    font-size: 14px;
+    font-weight: 700;
+    font-size: 0.875rem;
+    flex-shrink: 0;
   }
 
   .error-content {
     flex: 1;
+    min-width: 0;
   }
 
   .error-text {
-    color: var(--color-error, #dc2626);
+    color: var(--error);
     margin: 0;
+    font-size: 0.9375rem;
+    font-family: var(--font-sans);
+    line-height: 1.5;
   }
 
   .error-ref {
-    font-size: var(--font-size-sm, 14px);
-    color: var(--color-text-muted, #9ca3af);
-    margin: var(--space-xs, 4px) 0 0 0;
-  }
-
-  .error-actions {
-    display: flex;
-    gap: var(--space-sm, 8px);
-  }
-
-  .retry-btn, .start-over-btn {
-    padding: var(--space-xs, 4px) var(--space-md, 16px);
-    border-radius: var(--radius-md, 8px);
-    border: 1px solid var(--color-border, #e0e0e0);
-    background: var(--color-surface, #fff);
-    cursor: pointer;
-    font-size: var(--font-size-sm, 14px);
-    transition: background 0.2s;
-  }
-
-  .retry-btn:hover, .start-over-btn:hover {
-    background: var(--color-surface-hover, #f3f4f6);
+    font-size: 0.8125rem;
+    color: var(--text-tertiary);
+    margin: var(--space-2) 0 0 0;
+    font-family: ui-monospace, SFMono-Regular, monospace;
   }
 </style>

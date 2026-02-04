@@ -55,7 +55,7 @@
 
   @keyframes messageHighlight {
     from {
-      background-color: var(--color-accent-subtle, rgba(99, 102, 241, 0.1));
+      background-color: var(--accent-muted);
     }
     to {
       background-color: transparent;

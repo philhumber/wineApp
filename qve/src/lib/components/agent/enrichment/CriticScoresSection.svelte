@@ -3,12 +3,12 @@
 	 * CriticScoresSection
 	 * Displays critic scores and ratings
 	 */
-	import type { StreamingFieldState } from '$lib/stores/agent';
+	import type { StreamingField } from '$lib/agent/types';
 	import CriticScores from './CriticScores.svelte';
 
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
-	export let fieldsMap: Map<string, StreamingFieldState> = new Map();
+	export let fieldsMap: Map<string, StreamingField> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
 

@@ -1,6 +1,13 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { AgentMessage, AgentAction } from '$lib/agent/types';
+  import type {
+    AgentMessage,
+    AgentAction,
+    BottleFormData,
+    BottleDetailsFormData,
+    MatchSelectionFormData,
+    FormDataUnion,
+  } from '$lib/agent/types';
 
   // Form components
   import BottleDetailsForm from '../forms/BottleDetailsForm.svelte';
@@ -14,6 +21,18 @@
   $: formType = message.data.category === 'form' ? message.data.formType : null;
   $: formData = message.data.category === 'form' ? message.data.formData : null;
   $: isDisabled = message.disabled ?? false;
+
+  // Type guards for form data
+  function isBottleDetailsData(data: FormDataUnion | null): data is BottleDetailsFormData {
+    return data !== null && formType === 'bottle_details';
+  }
+
+  function isMatchSelectionData(data: FormDataUnion | null): data is MatchSelectionFormData {
+    return data !== null && formType === 'match_selection' && 'matches' in data;
+  }
+
+  // Extract part for bottle form (defaults to 1)
+  $: bottlePart = isBottleDetailsData(formData) ? (formData.part ?? formData.step ?? 1) : 1;
 
   // Map form types to components
   const formComponents: Record<string, any> = {
@@ -50,15 +69,41 @@
       },
     });
   }
+
+  function handleFormNext(event: CustomEvent<BottleFormData>) {
+    dispatch('action', {
+      type: 'bottle_next',
+      messageId: message.id,
+      payload: event.detail,
+    } as AgentAction);
+  }
 </script>
 
 <div class="form-message">
-  {#if FormComponent}
+  {#if FormComponent && formType === 'bottle_details' && isBottleDetailsData(formData)}
+    <BottleDetailsForm
+      part={bottlePart}
+      initialData={formData}
+      disabled={isDisabled}
+      on:submit={handleFormSubmit}
+      on:next={handleFormNext}
+    />
+  {:else if FormComponent && formType === 'match_selection' && isMatchSelectionData(formData)}
+    <MatchSelectionList
+      matches={formData.matches}
+      type={formData.entityType}
+      disabled={isDisabled}
+      on:submit={handleFormSubmit}
+      on:action={handleFormAction}
+    />
+  {:else if FormComponent}
     <svelte:component
       this={FormComponent}
       data={formData}
+      initialData={formData}
       disabled={isDisabled}
       on:submit={handleFormSubmit}
+      on:next={handleFormNext}
       on:action={handleFormAction}
     />
   {:else}
@@ -72,8 +117,9 @@
   }
 
   .form-placeholder {
-    padding: var(--space-md, 16px);
-    color: var(--color-text-muted, #9ca3af);
+    padding: var(--space-4);
+    color: var(--text-tertiary);
     font-style: italic;
+    font-family: var(--font-sans);
   }
 </style>

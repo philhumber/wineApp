@@ -115,7 +115,7 @@
 	.action-chip.selected {
 		opacity: 1;
 		border-color: var(--accent);
-		background: var(--accent-subtle, rgba(var(--accent-rgb, 139, 92, 246), 0.1));
+		background: var(--accent-muted);
 	}
 
 	.action-chip.selected :global(.icon) {

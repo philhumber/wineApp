@@ -6,25 +6,40 @@
 	 */
 	import { createEventDispatcher } from 'svelte';
 	import type { DuplicateMatch } from '$lib/api/types';
+	import type { EntityType } from '$lib/agent/types';
 
 	const dispatch = createEventDispatcher<{
-		chipSelect: { action: string; data?: unknown };
+		submit: { entityType: EntityType; matchId: number };
+		action: { action: string; data?: unknown };
 	}>();
 
 	export let matches: DuplicateMatch[] = [];
-	export let type: 'region' | 'producer' | 'wine' = 'region';
+	export let type: EntityType = 'region';
+	export let disabled: boolean = false;
 
 	let selectedIndex: number | null = null;
 
 	function handleSelect(index: number) {
+		if (disabled) return;
 		selectedIndex = index;
 	}
 
 	function handleConfirm() {
+		if (disabled) return;
 		if (selectedIndex !== null && matches[selectedIndex]) {
 			const match = matches[selectedIndex];
-			dispatch('chipSelect', { action: `select_match:${type}:${match.id}` });
+			dispatch('submit', { entityType: type, matchId: match.id });
 		}
+	}
+
+	function handleAddNew() {
+		if (disabled) return;
+		dispatch('action', { action: 'add_new', data: { entityType: type } });
+	}
+
+	function handleHelpDecide() {
+		if (disabled) return;
+		dispatch('action', { action: 'clarify', data: { entityType: type } });
 	}
 
 	// Dynamic header based on type
@@ -79,8 +94,18 @@
 		</div>
 
 		<div class="actions">
-			<button class="btn btn-primary" disabled={!canConfirm} on:click={handleConfirm}>
+			<button class="btn btn-primary" disabled={!canConfirm || disabled} on:click={handleConfirm}>
 				Use Selected
+			</button>
+		</div>
+
+		<div class="secondary-actions">
+			<button class="link-btn" disabled={disabled} on:click={handleAddNew}>
+				Add new {type}
+			</button>
+			<span class="separator">•</span>
+			<button class="link-btn" disabled={disabled} on:click={handleHelpDecide}>
+				Help me decide
 			</button>
 		</div>
 	{:else}
@@ -263,6 +288,42 @@
 	.btn-primary:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+
+	/* Secondary actions (Add new / Help me decide) */
+	.secondary-actions {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-2);
+		padding-top: var(--space-2);
+	}
+
+	.link-btn {
+		background: none;
+		border: none;
+		padding: var(--space-1) var(--space-2);
+		font-family: var(--font-sans);
+		font-size: 0.8125rem;
+		color: var(--accent);
+		cursor: pointer;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+		transition: opacity 0.15s var(--ease-out);
+	}
+
+	.link-btn:hover:not(:disabled) {
+		opacity: 0.8;
+	}
+
+	.link-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.separator {
+		color: var(--text-tertiary);
+		font-size: 0.75rem;
 	}
 
 	/* No matches state */

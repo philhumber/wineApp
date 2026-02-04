@@ -111,7 +111,7 @@ export const selectedEntities = derived(store, ($s) => $s.flow?.selectedEntities
 // Duplicate state
 export const existingWineId = derived(store, ($s) => $s.flow?.existingWineId ?? null);
 export const existingBottleCount = derived(store, ($s) => $s.flow?.existingBottleCount ?? 0);
-export const hasDuplicate = derived(store, ($s) => $s.flow?.existingWineId !== null);
+export const hasDuplicate = derived(store, ($s) => $s.flow !== null && $s.flow.existingWineId !== null);
 
 // Bottle form
 export const bottleFormData = derived(store, ($s) => $s.flow?.bottleFormData ?? {});

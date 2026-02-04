@@ -25,12 +25,22 @@ import type {
   MessageData,
   AgentChip,
 } from '$lib/agent/types';
+import { getTimeBasedGreeting } from '$lib/agent/messages';
 
 // ===========================================
 // Constants
 // ===========================================
 
 const MAX_MESSAGES = 30;
+const MESSAGE_DELAY_MS = 500; // Delay between consecutive agent messages
+
+// ===========================================
+// Delay Utility
+// ===========================================
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 // ===========================================
 // Internal State
@@ -144,6 +154,7 @@ export function createChipsMessage(
 /**
  * Add a message to the conversation.
  * Automatically trims old messages if exceeding MAX_MESSAGES.
+ * Disables all previous chip messages to prevent stale interactions.
  */
 export function addMessage(
   message: Omit<AgentMessage, 'id' | 'timestamp'> | AgentMessage
@@ -156,7 +167,15 @@ export function addMessage(
   } as AgentMessage;
 
   store.update((state) => {
-    let messages = [...state.messages, fullMessage];
+    // Disable all existing interactive messages (chips and errors) before adding the new one
+    let messages = state.messages.map((msg) =>
+      msg.category === 'chips' || msg.category === 'error'
+        ? { ...msg, disabled: true }
+        : msg
+    );
+
+    // Add the new message
+    messages = [...messages, fullMessage];
 
     // Trim old messages if needed
     if (messages.length > MAX_MESSAGES) {
@@ -174,6 +193,7 @@ export function addMessage(
 
 /**
  * Add multiple messages at once.
+ * Disables all previous chip messages to prevent stale interactions.
  */
 export function addMessages(
   messages: Array<Omit<AgentMessage, 'id' | 'timestamp'>>
@@ -186,7 +206,14 @@ export function addMessages(
   } as AgentMessage));
 
   store.update((state) => {
-    let allMessages = [...state.messages, ...fullMessages];
+    // Disable all existing interactive messages (chips and errors) before adding new ones
+    let existingMessages = state.messages.map((msg) =>
+      msg.category === 'chips' || msg.category === 'error'
+        ? { ...msg, disabled: true }
+        : msg
+    );
+
+    let allMessages = [...existingMessages, ...fullMessages];
 
     if (allMessages.length > MAX_MESSAGES) {
       allMessages = allMessages.slice(-MAX_MESSAGES);
@@ -198,6 +225,70 @@ export function addMessages(
   persistConversationState();
 
   return fullMessages;
+}
+
+/**
+ * Add a message with delay if needed for natural conversational pacing.
+ *
+ * Adds a delay before new agent text/card messages if the previous message
+ * was also from the agent. Chips messages are added immediately (no delay)
+ * since they should appear alongside their preceding text.
+ *
+ * @param message - The message to add
+ * @param options.skipDelay - Force skip delay even if conditions would trigger it
+ * @returns The added message
+ */
+export async function addMessageWithDelay(
+  message: Omit<AgentMessage, 'id' | 'timestamp'> | AgentMessage,
+  options: { skipDelay?: boolean } = {}
+): Promise<AgentMessage> {
+  const state = get(store);
+  const lastMsg = state.messages[state.messages.length - 1];
+
+  // Determine if delay is needed:
+  // 1. skipDelay is not set
+  // 2. There's a previous message
+  // 3. Previous message was from agent (and not chips - chips don't count as "agent speaking")
+  // 4. New message is from agent
+  // 5. New message is NOT chips (chips follow text immediately)
+  const shouldDelay =
+    !options.skipDelay &&
+    lastMsg &&
+    lastMsg.role === 'agent' &&
+    lastMsg.category !== 'chips' &&
+    (message.role ?? 'agent') === 'agent' &&
+    message.category !== 'chips';
+
+  if (shouldDelay) {
+    await delay(MESSAGE_DELAY_MS);
+  }
+
+  return addMessage(message);
+}
+
+/**
+ * Add multiple messages with delays between agent message groups.
+ * Messages are grouped: text + following chips appear together,
+ * then delay before the next text message.
+ */
+export async function addMessagesWithDelay(
+  messages: Array<Omit<AgentMessage, 'id' | 'timestamp'>>
+): Promise<AgentMessage[]> {
+  const results: AgentMessage[] = [];
+
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    const nextMsg = messages[i + 1];
+
+    // Use delay for this message (respects natural pacing)
+    const result = await addMessageWithDelay(msg);
+    results.push(result);
+
+    // If this is a text message and next is chips, add chips immediately (no extra delay)
+    // The delay logic in addMessageWithDelay handles this automatically
+  }
+
+  return results;
 }
 
 /**
@@ -225,13 +316,16 @@ export function disableMessage(messageId: string): void {
 }
 
 /**
- * Disable all chip messages (prevent interaction with old chips).
+ * Disable all interactive messages (chips and errors).
+ * Prevents interaction with old action buttons.
  */
 export function disableAllChips(): void {
   store.update((state) => ({
     ...state,
     messages: state.messages.map((msg) =>
-      msg.category === 'chips' ? { ...msg, disabled: true } : msg
+      msg.category === 'chips' || msg.category === 'error'
+        ? { ...msg, disabled: true }
+        : msg
     ),
   }));
 
@@ -305,7 +399,7 @@ export function resetConversation(
   const newMessages: AgentMessage[] = [];
   if (currentMessages.length > 0) {
     newMessages.push(
-      createTextMessage('---', { role: 'agent' })
+      createMessage('text', { content: '', variant: 'divider' }, { role: 'agent', isNew: false })
     );
   }
 
@@ -406,18 +500,6 @@ export function restoreFromCallbacks(data: {
 // Helpers
 // ===========================================
 
-function getTimeBasedGreeting(): string {
-  const hour = new Date().getHours();
-
-  if (hour < 12) {
-    return "Good morning! I'm your wine sommelier. What can I help you with today?";
-  } else if (hour < 17) {
-    return "Good afternoon! Ready to explore some wines?";
-  } else {
-    return "Good evening! Let's find the perfect wine for you.";
-  }
-}
-
 /**
  * Persist current conversation state.
  */
@@ -432,6 +514,32 @@ function persistConversationState(immediate = false): void {
     },
     immediate
   );
+}
+
+// ===========================================
+// Getters (for action handler)
+// ===========================================
+
+/**
+ * Get current phase synchronously.
+ */
+export function getCurrentPhase(): AgentPhase {
+  return get(store).phase;
+}
+
+/**
+ * Get all messages synchronously.
+ */
+export function getMessages(): AgentMessage[] {
+  return get(store).messages;
+}
+
+/**
+ * Get the most recent chips message (for chip response detection).
+ */
+export function getLastChipsMessage(): AgentMessage | null {
+  const messages = get(store).messages;
+  return [...messages].reverse().find((m) => m.category === 'chips' && !m.disabled) ?? null;
 }
 
 // ===========================================

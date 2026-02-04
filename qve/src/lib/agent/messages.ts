@@ -12,22 +12,54 @@
 // Message Registry
 // ===========================================
 
+/** Pick a random item from an array or return string as-is */
+function randomize(value: string | readonly string[]): string {
+  if (Array.isArray(value)) {
+    return value[Math.floor(Math.random() * value.length)];
+  }
+  return value as string;
+}
+
 export const agentMessages = {
   greeting: {
-    morning: "Good morning! I'm your wine sommelier. What can I help you with today?",
-    afternoon: "Good afternoon! Ready to explore some wines?",
-    evening: "Good evening! Let's find the perfect wine for you.",
+    morning: [
+      "Good morning! I'm your wine sommelier. What can I help you with today?",
+      "Morning! Ready to add some wines to your collection?",
+      "Good morning! What wine adventure shall we start today?",
+      "Rise and shine! Let's find your next great bottle.",
+      "Good morning! I'm here to help with your cellar.",
+    ],
+    afternoon: [
+      "Good afternoon! Ready to explore some wines?",
+      "Afternoon! What wine can I help you discover?",
+      "Good afternoon! Looking to add to your collection?",
+      "Hello there! What brings you to the cellar today?",
+      "Good afternoon! Let's find something special.",
+    ],
+    evening: [
+      "Good evening! Let's find the perfect wine for you.",
+      "Evening! Time to explore some wines?",
+      "Good evening! What can I help you uncork tonight?",
+      "Good evening! Ready to discover something special?",
+      "Evening! Let's find the perfect bottle for tonight.",
+    ],
     default: "Hello! I'm your wine sommelier. How can I help you today?",
   },
 
   identification: {
     thinking: "Let me identify that wine...",
-    found: "I found what you're looking for. Is this correct?",
+    analyzing: "Analyzing the label...",
+    found: "I think I found what you're looking for. Is this correct?",
     notFound: "I couldn't identify that wine. Could you tell me more about it?",
     lowConfidence: "I'm not entirely sure, but this might be what you're looking for.",
     escalating: "Let me take a closer look at this...",
     multipleMatches: "I found a few possibilities. Which one looks right?",
     needMoreInfo: "I need a bit more information to identify this wine.",
+    missingWineName: "I found the producer but couldn't identify the specific wine. Would you like to add details or use a suggestion?",
+    missingVintage: "I couldn't determine the vintage. Is this a non-vintage wine, or would you like to specify?",
+    missingProducer: "I identified the wine but couldn't determine the producer. Who makes this wine?",
+    incomplete: "This result is missing some details. How would you like to proceed?",
+    suggestReidentify: "Thanks for filling in the gaps! I can try to identify this wine again with the complete information - I might find a better match. Or you can continue with your manually entered details.",
   },
 
   confirm: {
@@ -77,6 +109,17 @@ export const agentMessages = {
     cancel: "Cancel",
     yes: "Yes",
     no: "No",
+    addDetails: "Add Details",
+    tryHarder: "Try Harder",
+    startFresh: "Start Fresh",
+    provideMore: "Provide More",
+    useProducerName: "Use Producer Name",
+    useGrapeName: "Use Grape Name",
+    nonVintage: "Non-Vintage",
+    specifyVintage: "Specify Vintage",
+    looksGood: "Looks Good",
+    reidentify: "Re-identify",
+    continueAsIs: "Continue As-Is",
   },
 } as const;
 
@@ -129,12 +172,12 @@ export function getMessage(path: string): string {
 export function getTimeBasedGreeting(): string {
   const hour = new Date().getHours();
 
-  if (hour < 12) {
-    return agentMessages.greeting.morning;
-  } else if (hour < 17) {
-    return agentMessages.greeting.afternoon;
+  if (3 < hour && hour < 12) {
+    return randomize(agentMessages.greeting.morning);
+  } else if (11 < hour && hour < 17 ) {
+    return randomize(agentMessages.greeting.afternoon);
   } else {
-    return agentMessages.greeting.evening;
+    return randomize(agentMessages.greeting.evening);
   }
 }
 
@@ -157,19 +200,34 @@ export function formatMessage(
 // Message Templates with Variables
 // ===========================================
 
+/** Wrap wine/producer names in styled span */
+export const wn = (name: string) => `<span class="wine-name">${name}</span>`;
+
 export const messageTemplates = {
   identification: {
-    found: (wineName: string) => `I found **${wineName}**. Is this correct?`,
+    found: (wineName: string) => `I found ${wn(wineName)}. Is this correct?`,
     foundWithConfidence: (wineName: string, confidence: number) =>
       confidence < 0.7
-        ? `I think this might be **${wineName}**, but I'm not entirely sure. Is this correct?`
-        : `I found **${wineName}**. Is this correct?`,
+        ? `I think this might be ${wn(wineName)}, but I'm not entirely sure. Is this correct?`
+        : `I found ${wn(wineName)}. Is this correct?`,
+    incompleteWithProducer: (producer: string) =>
+      `I identified ${wn(producer)} as the producer, but I couldn't determine the specific wine name. Would you like to:`,
+    incompleteWithGrapes: (producer: string | undefined, grape: string) =>
+      producer
+        ? `I found ${wn(producer)} and detected ${wn(grape)} as the grape variety. Should I use this as the wine name?`
+        : `I detected ${wn(grape)} as the grape variety but couldn't identify the producer. Should I use the grape as the wine name?`,
+    missingVintagePrompt: (wineName: string) =>
+      `I couldn't find a vintage for ${wn(wineName)}. Is this a non-vintage wine?`,
+    missingProducerPrompt: (wineName: string) =>
+      `I identified ${wn(wineName)} but couldn't determine the producer. Who makes this wine?`,
+    lowConfidencePrompt: (wineName: string, confidence: number) =>
+      `I'm only ${Math.round(confidence * 100)}% confident about ${wn(wineName)}. Would you like me to try harder, or would you like to add details?`,
   },
 
   addFlow: {
     duplicateFound: (wineName: string, bottleCount: number) =>
-      `I found **${wineName}** already in your cellar with ${bottleCount} bottle${bottleCount !== 1 ? 's' : ''}.`,
-    addComplete: (wineName: string) => `Added **${wineName}** to your cellar!`,
+      `I found ${wn(wineName)} already in your cellar with ${bottleCount} bottle${bottleCount !== 1 ? 's' : ''}.`,
+    addComplete: (wineName: string) => `Added ${wn(wineName)} to your cellar!`,
   },
 
   errors: {

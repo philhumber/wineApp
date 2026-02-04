@@ -8,20 +8,23 @@
 
 {#if src}
   <div class="image-message">
-    <img {src} alt="Uploaded wine photo" />
+    <img {src} alt="Uploaded wine label" />
   </div>
 {/if}
 
 <style>
   .image-message {
-    max-width: 200px;
+    display: inline-block;
     border-radius: var(--radius-md, 8px);
     overflow: hidden;
   }
 
   img {
-    width: 100%;
-    height: auto;
     display: block;
+    max-height: 240px;
+    max-width: 240px;
+    width: auto;
+    height: auto;
+    border-radius: var(--radius-md, 8px);
   }
 </style>

@@ -9,20 +9,28 @@
 
   let inputValue = '';
   let fileInput: HTMLInputElement;
+  let textareaEl: HTMLTextAreaElement;
+
+  // Auto-resize textarea on input (no reactive statement to avoid loops)
+  function autoResize() {
+    if (!textareaEl) return;
+    textareaEl.style.height = 'auto';
+    textareaEl.style.height = `${textareaEl.scrollHeight}px`;
+  }
 
   // Phases where input is disabled
   const disabledPhases = ['identifying', 'complete', 'confirm_new_search'];
   $: isDisabled = disabled || disabledPhases.includes(phase);
 
-  // Dynamic placeholder based on phase
+  // Dynamic placeholder based on phase (kept concise to avoid wrapping)
   const placeholders: Record<string, string> = {
-    greeting: 'Type wine name or take a photo...',
-    awaiting_input: 'Type wine name or take a photo...',
+    greeting: 'Wine name or photo...',
+    awaiting_input: 'Wine name or photo...',
     identifying: 'Processing...',
-    confirming: 'Or type to search again...',
-    adding_wine: 'Continue with current wine...',
-    enriching: 'Loading details...',
-    error: 'Try again or start over...',
+    confirming: 'Search again...',
+    adding_wine: 'Continue...',
+    enriching: 'Loading...',
+    error: 'Try again...',
     complete: 'Processing...',
   };
   $: placeholder = placeholders[phase] ?? 'Type a message...';
@@ -33,6 +41,8 @@
 
     dispatch('action', { type: 'submit_text', payload: text });
     inputValue = '';
+    // Reset height after clearing
+    if (textareaEl) textareaEl.style.height = 'auto';
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -71,9 +81,11 @@
   <div class="input-wrapper">
     <textarea
       bind:value={inputValue}
+      bind:this={textareaEl}
       {placeholder}
       disabled={isDisabled}
       on:keydown={handleKeydown}
+      on:input={autoResize}
       rows="1"
       class="input-field"
     ></textarea>
@@ -121,9 +133,10 @@
   .input-area {
     display: flex;
     align-items: flex-end;
-    gap: var(--space-sm, 8px);
-    padding: var(--space-md, 16px);
-    background: var(--color-surface, #fff);
+    gap: var(--space-2);
+    padding: var(--space-4);
+    background: var(--surface);
+    border-top: 1px solid var(--divider);
   }
 
   .input-area.disabled {
@@ -136,55 +149,63 @@
 
   .input-field {
     width: 100%;
-    min-height: 40px;
+    min-height: 44px;
     max-height: 120px;
-    padding: var(--space-sm, 8px) var(--space-md, 12px);
-    border: 1px solid var(--color-border, #e0e0e0);
-    border-radius: var(--radius-md, 8px);
-    background: var(--color-background, #fff);
-    font-size: var(--font-size-md, 16px);
-    font-family: inherit;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-family: var(--font-sans);
     resize: none;
     outline: none;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
   }
 
   .input-field:focus {
-    border-color: var(--color-primary, #6366f1);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-muted);
   }
 
   .input-field:disabled {
-    background: var(--color-surface-disabled, #f5f5f5);
+    background: var(--bg-subtle);
+    color: var(--text-tertiary);
     cursor: not-allowed;
   }
 
   .input-field::placeholder {
-    color: var(--color-text-muted, #9ca3af);
+    color: var(--text-tertiary);
   }
 
   .input-actions {
     display: flex;
-    gap: var(--space-xs, 4px);
+    gap: var(--space-1);
   }
 
   .action-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     padding: 0;
-    border: none;
-    border-radius: var(--radius-md, 8px);
-    background: var(--color-surface-hover, #f3f4f6);
-    color: var(--color-text, #374151);
+    border: 1px solid var(--divider-subtle);
+    border-radius: var(--radius-lg);
+    background: var(--bg-subtle);
+    color: var(--text-secondary);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s var(--ease-out);
   }
 
   .action-btn:hover:not(:disabled) {
-    background: var(--color-primary-subtle, #e0e7ff);
-    color: var(--color-primary, #6366f1);
+    background: var(--accent-muted);
+    border-color: var(--accent);
+    color: var(--text-primary);
+  }
+
+  .action-btn:active:not(:disabled) {
+    transform: scale(0.96);
   }
 
   .action-btn:disabled {
@@ -192,12 +213,15 @@
     cursor: not-allowed;
   }
 
+  /* Send button - prominent accent style */
   .send-btn:not(:disabled) {
-    background: var(--color-primary, #6366f1);
-    color: white;
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
   }
 
   .send-btn:hover:not(:disabled) {
-    background: var(--color-primary-dark, #4f46e5);
+    background: var(--accent-subtle);
+    border-color: var(--accent-subtle);
   }
 </style>

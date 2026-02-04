@@ -7,6 +7,12 @@
   import MessageList from '$lib/components/agent/conversation/MessageList.svelte';
   import InputArea from '$lib/components/agent/conversation/InputArea.svelte';
 
+  // New slim panel
+  import AgentPanelNew from '$lib/components/agent/AgentPanelNew.svelte';
+
+  // Panel open state for testing slim panel
+  import { agent, agentPanelOpen } from '$lib/stores';
+
   // New stores
   import {
     agentMessages,
@@ -56,6 +62,12 @@
   // Debug state
   let showDebug = true;
   let actionLog: Array<{ timestamp: Date; action: AgentAction }> = [];
+  let showSlimPanel = false;
+
+  function toggleSlimPanel() {
+    agent.togglePanel();
+    showSlimPanel = !showSlimPanel;
+  }
 
   // Handle actions with logging
   async function handleAction(event: CustomEvent<AgentAction>) {
@@ -166,8 +178,11 @@
 <div class="test-page">
   <!-- Header -->
   <header class="test-header">
-    <button class="back-btn" on:click={goBack}>← Back</button>
+    <button class="back-btn" on:click={goBack}>Back</button>
     <h1>Agent Architecture Test</h1>
+    <button class="slim-panel-toggle" on:click={toggleSlimPanel}>
+      {$agentPanelOpen ? 'Close' : 'Open'} Slim Panel
+    </button>
     <button class="debug-toggle" on:click={() => (showDebug = !showDebug)}>
       {showDebug ? 'Hide' : 'Show'} Debug
     </button>
@@ -308,6 +323,9 @@
       </div>
     {/if}
   </div>
+
+  <!-- New Slim Panel (for comparison testing) -->
+  <AgentPanelNew />
 </div>
 
 <style>
@@ -335,7 +353,8 @@
   }
 
   .back-btn,
-  .debug-toggle {
+  .debug-toggle,
+  .slim-panel-toggle {
     padding: 0.5rem 1rem;
     border: 1px solid var(--color-border, #e5e7eb);
     border-radius: var(--radius-md, 8px);
@@ -345,8 +364,19 @@
   }
 
   .back-btn:hover,
-  .debug-toggle:hover {
+  .debug-toggle:hover,
+  .slim-panel-toggle:hover {
     background: var(--color-surface-hover, #f3f4f6);
+  }
+
+  .slim-panel-toggle {
+    background: var(--color-primary, #6366f1);
+    color: white;
+    border-color: var(--color-primary, #6366f1);
+  }
+
+  .slim-panel-toggle:hover {
+    background: var(--color-primary-dark, #4f46e5);
   }
 
   .test-content {

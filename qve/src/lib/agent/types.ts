@@ -51,7 +51,7 @@ export interface AgentMessage {
 }
 
 export interface StreamingField {
-  value: string;
+  value: unknown; // Using 'unknown' for compatibility with old StreamingFieldState
   isTyping: boolean;
 }
 
@@ -70,7 +70,7 @@ export type MessageData =
 export interface TextMessageData {
   category: 'text';
   content: string;
-  variant?: 'greeting' | 'info' | 'warning' | 'success';
+  variant?: 'greeting' | 'info' | 'warning' | 'success' | 'divider';
 }
 
 export interface ChipsMessageData {
@@ -99,10 +99,28 @@ export interface EnrichmentMessageData {
 
 export type FormType = 'bottle_details' | 'manual_entry' | 'match_selection';
 
+// Form-specific data types
+export interface BottleDetailsFormData extends Partial<BottleFormData> {
+  part?: 1 | 2;
+  step?: 1 | 2;
+}
+
+export interface MatchSelectionFormData {
+  matches: Array<{ id: number; name: string; [key: string]: unknown }>;
+  entityType: EntityType;
+}
+
+export interface ManualEntryFormData {
+  [key: string]: string | number | undefined;
+}
+
+// Union of all form data types
+export type FormDataUnion = BottleDetailsFormData | MatchSelectionFormData | ManualEntryFormData;
+
 export interface FormMessageData {
   category: 'form';
   formType: FormType;
-  formData: unknown;
+  formData: FormDataUnion;
   step?: number;
 }
 
@@ -162,7 +180,9 @@ export type IdentificationAction =
   | { type: 'nv_vintage'; messageId: string }
   | { type: 'provide_more'; messageId: string }
   | { type: 'new_input'; messageId: string }
-  | { type: 'start_fresh'; messageId: string };
+  | { type: 'start_fresh'; messageId: string }
+  | { type: 'reidentify'; messageId: string }
+  | { type: 'continue_as_is'; messageId: string };
 
 // Wine Flow Actions
 export type WineFlowAction =
@@ -188,7 +208,7 @@ export type FormAction =
   | { type: 'submit_bottle'; payload: BottleFormData }
   | { type: 'manual_entry_submit'; payload: ManualEntryData }
   | { type: 'manual_entry_complete'; payload: ManualEntryData; messageId: string }
-  | { type: 'bottle_next'; messageId: string }
+  | { type: 'bottle_next'; messageId: string; payload?: BottleFormData }
   | { type: 'bottle_submit'; messageId: string }
   | { type: 'retry_add'; messageId: string };
 
@@ -241,8 +261,8 @@ export interface WineIdentificationResult {
 
 export interface EnrichmentData {
   overview?: string;
-  grapeComposition?: Array<{ grape: string; percentage?: number }>;
-  styleProfile?: Record<string, number>;
+  grapeComposition?: Array<{ grape: string; percentage?: string }>;
+  styleProfile?: { body?: string; tannin?: string; acidity?: string; sweetness?: string };
   tastingNotes?: { nose?: string[]; palate?: string[]; finish?: string };
   criticScores?: Array<{ critic: string; score: number; vintage?: number }>;
   drinkWindow?: { start: number; end: number; peak?: number };
