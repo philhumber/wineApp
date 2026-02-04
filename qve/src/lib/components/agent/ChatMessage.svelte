@@ -10,13 +10,13 @@
 	import type { AgentMessage, AgentChip } from '$lib/stores';
 	import type { AgentCandidate, AgentParsedWine } from '$lib/api/types';
 	import ActionChips from './ActionChips.svelte';
-	import WineCard from './WineCard.svelte'; // Universal wine card (skeleton/streaming/static)
-	import EnrichmentCard from './EnrichmentCard.svelte'; // Universal enrichment card (skeleton/streaming/static)
+	import WineCard from './cards/WineCard.svelte'; // Universal wine card (skeleton/streaming/static)
+	import EnrichmentCard from './cards/EnrichmentCard.svelte'; // Universal enrichment card (skeleton/streaming/static)
 	import DisambiguationList from './DisambiguationList.svelte';
 	import CandidateMiniCards from './CandidateMiniCards.svelte';
-	import MatchSelectionList from './MatchSelectionList.svelte';
-	import BottleDetailsForm from './BottleDetailsForm.svelte';
-	import ManualEntryForm from './ManualEntryForm.svelte';
+	import MatchSelectionList from './forms/MatchSelectionList.svelte';
+	import BottleDetailsForm from './forms/BottleDetailsForm.svelte';
+	import ManualEntryForm from './forms/ManualEntryForm.svelte';
 	import { agentAddState } from '$lib/stores';
 	import TypewriterText from './TypewriterText.svelte';
 

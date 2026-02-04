@@ -7,13 +7,13 @@
 	import { agentStreamingFields, agentEnriching } from '$lib/stores';
 	import type { AgentEnrichmentData } from '$lib/api/types';
 	import DataCard from './DataCard.svelte';
-	import OverviewSection from './enrichment/OverviewSection.svelte';
-	import StyleProfileSection from './enrichment/StyleProfileSection.svelte';
-	import GrapeCompositionSection from './enrichment/GrapeCompositionSection.svelte';
-	import TastingNotesSection from './enrichment/TastingNotesSection.svelte';
-	import FoodPairingsSection from './enrichment/FoodPairingsSection.svelte';
-	import DrinkWindowSection from './enrichment/DrinkWindowSection.svelte';
-	import CriticScoresSection from './enrichment/CriticScoresSection.svelte';
+	import OverviewSection from '../enrichment/OverviewSection.svelte';
+	import StyleProfileSection from '../enrichment/StyleProfileSection.svelte';
+	import GrapeCompositionSection from '../enrichment/GrapeCompositionSection.svelte';
+	import TastingNotesSection from '../enrichment/TastingNotesSection.svelte';
+	import FoodPairingsSection from '../enrichment/FoodPairingsSection.svelte';
+	import DrinkWindowSection from '../enrichment/DrinkWindowSection.svelte';
+	import CriticScoresSection from '../enrichment/CriticScoresSection.svelte';
 
 	// ─────────────────────────────────────────────────────
 	// PROPS

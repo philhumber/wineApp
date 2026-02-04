@@ -7,11 +7,11 @@
 	import { agentStreamingFields } from '$lib/stores';
 	import type { AgentParsedWine } from '$lib/api/types';
 	import DataCard from './DataCard.svelte';
-	import WineNameSection from './wine/WineNameSection.svelte';
-	import WineProducerSection from './wine/WineProducerSection.svelte';
-	import WineMetadataSection from './wine/WineMetadataSection.svelte';
-	import WineConfidenceSection from './wine/WineConfidenceSection.svelte';
-	import WineDetailsSection from './wine/WineDetailsSection.svelte';
+	import WineNameSection from '../wine/WineNameSection.svelte';
+	import WineProducerSection from '../wine/WineProducerSection.svelte';
+	import WineMetadataSection from '../wine/WineMetadataSection.svelte';
+	import WineConfidenceSection from '../wine/WineConfidenceSection.svelte';
+	import WineDetailsSection from '../wine/WineDetailsSection.svelte';
 
 	// ─────────────────────────────────────────────────────
 	// PROPS

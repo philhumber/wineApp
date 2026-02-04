@@ -47,8 +47,8 @@
 	import CommandInput from './CommandInput.svelte';
 	import ChatMessage from './ChatMessage.svelte';
 	import TypingIndicator from './TypingIndicator.svelte';
-	import WineCard from './WineCard.svelte'; // Universal wine card (skeleton/streaming/static)
-	import EnrichmentCard from './EnrichmentCard.svelte'; // Universal enrichment card (skeleton/streaming/static)
+	import WineCard from './cards/WineCard.svelte'; // Universal wine card (skeleton/streaming/static)
+	import EnrichmentCard from './cards/EnrichmentCard.svelte'; // Universal enrichment card (skeleton/streaming/static)
 	import ActionChips from './ActionChips.svelte'; // WIN-181: For streaming chips
 	import { Icon } from '$lib/components'; // WIN-174: For footer Start Over button
 	import type { AgentParsedWine, AgentCandidate, AgentAction, AgentEscalationMeta, AgentIdentificationResult, Region, Producer, Wine, AddWinePayload, DuplicateMatch } from '$lib/api/types';
