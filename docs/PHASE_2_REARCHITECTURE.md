@@ -531,18 +531,193 @@ export const withValidation: Middleware = (handler) => async (action) => {
 - Chips are defined inline throughout handlers
 - No type safety for message keys
 - No consistency for chip labels/actions
+- No support for different personalities or languages
 
-### Solution: Type-Safe Registries
+### Solution: Type-Safe Registries with Personality Support
 
-### Message Registry
+The message registry supports multiple **personalities** - distinct voice/tone variants that give the agent different characters. Each personality has its own set of phrases for every message key, allowing users to customize their experience.
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    getMessage(key, context)                  │
+├─────────────────────────────────────────────────────────────┤
+│  1. Get personality from settings store (default: SOMMELIER)│
+│  2. Get language from settings store (default: EN)          │
+│  3. Look up: messages[key][personality][language]           │
+│  4. Select random phrase from variants array                │
+│  5. Apply context interpolation if template function        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Personality Definitions
+
+```typescript
+// registry/personalities.ts
+
+/**
+ * Agent Personalities
+ *
+ * Each personality has a distinct voice, vocabulary, and level of formality.
+ * Personalities affect ALL agent messages - greetings, confirmations, errors, etc.
+ */
+export enum Personality {
+  /**
+   * Classic sommelier - refined, knowledgeable, slightly formal
+   * "Good evening. I'd be delighted to help you identify this wine."
+   */
+  SOMMELIER = 'sommelier',
+
+  /**
+   * Friendly casual - warm, approachable, conversational
+   * "Hey! Let's figure out what wine you've got there."
+   */
+  CASUAL = 'casual',
+
+  /**
+   * Concise professional - minimal, efficient, to-the-point
+   * "Wine identified. Confirm or provide more details."
+   */
+  CONCISE = 'concise',
+
+  /**
+   * Enthusiastic expert - excited, passionate, expressive
+   * "Ooh, what a fascinating bottle! Let me take a closer look..."
+   */
+  ENTHUSIAST = 'enthusiast',
+}
+
+export const personalityMetadata: Record<Personality, PersonalityMeta> = {
+  [Personality.SOMMELIER]: {
+    name: 'Sommelier',
+    description: 'Refined and knowledgeable, like a classic wine steward',
+    icon: 'wine-glass',
+  },
+  [Personality.CASUAL]: {
+    name: 'Friendly',
+    description: 'Warm and approachable, like chatting with a friend',
+    icon: 'smile',
+  },
+  [Personality.CONCISE]: {
+    name: 'Concise',
+    description: 'Efficient and to-the-point, minimal chatter',
+    icon: 'zap',
+  },
+  [Personality.ENTHUSIAST]: {
+    name: 'Enthusiast',
+    description: 'Passionate and expressive, loves talking wine',
+    icon: 'heart',
+  },
+};
+
+interface PersonalityMeta {
+  name: string;
+  description: string;
+  icon: string;
+}
+```
+
+### Settings Store Integration
+
+```typescript
+// stores/agentSettings.ts
+import { writable, get } from 'svelte/store';
+import { Personality } from '$lib/agent/registry/personalities';
+
+export type Language = 'en' | 'fr' | 'es' | 'de' | 'it';
+
+interface AgentSettings {
+  personality: Personality;
+  language: Language;
+}
+
+const STORAGE_KEY = 'agent_settings';
+
+function loadSettings(): AgentSettings {
+  if (typeof window === 'undefined') {
+    return { personality: Personality.SOMMELIER, language: 'en' };
+  }
+
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch {
+    // Ignore parse errors
+  }
+
+  return { personality: Personality.SOMMELIER, language: 'en' };
+}
+
+function createSettingsStore() {
+  const { subscribe, set, update } = writable<AgentSettings>(loadSettings());
+
+  return {
+    subscribe,
+
+    setPersonality(personality: Personality) {
+      update(s => {
+        const newSettings = { ...s, personality };
+        persistSettings(newSettings);
+        return newSettings;
+      });
+    },
+
+    setLanguage(language: Language) {
+      update(s => {
+        const newSettings = { ...s, language };
+        persistSettings(newSettings);
+        return newSettings;
+      });
+    },
+
+    reset() {
+      const defaults = { personality: Personality.SOMMELIER, language: 'en' as Language };
+      set(defaults);
+      persistSettings(defaults);
+    },
+  };
+}
+
+function persistSettings(settings: AgentSettings): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export const agentSettings = createSettingsStore();
+
+// Convenience getters
+export function getPersonality(): Personality {
+  return get(agentSettings).personality;
+}
+
+export function getLanguage(): Language {
+  return get(agentSettings).language;
+}
+```
+
+### Message Registry with Personalities
 
 ```typescript
 // registry/messages.ts
+import { Personality } from './personalities';
+import { getPersonality, getLanguage, type Language } from '$lib/stores/agentSettings';
+
+// ===========================================
+// Message Keys (Type-Safe Enum)
+// ===========================================
+
 export enum MessageKey {
   // Greetings
   GREETING_MORNING = 'greeting.morning',
   GREETING_AFTERNOON = 'greeting.afternoon',
   GREETING_EVENING = 'greeting.evening',
+  GREETING_GENERIC = 'greeting.generic',
 
   // Identification
   IDENTIFYING_START = 'identification.start',
@@ -550,86 +725,525 @@ export enum MessageKey {
   IDENTIFYING_LOW_CONFIDENCE = 'identification.lowConfidence',
   IDENTIFYING_NEEDS_MORE = 'identification.needsMore',
   IDENTIFYING_FAILED = 'identification.failed',
+  IDENTIFYING_THINKING = 'identification.thinking',
 
   // Add Wine
   ADD_WINE_START = 'addWine.start',
   ADD_WINE_DUPLICATE = 'addWine.duplicate',
-  ADD_WINE_MATCHING = 'addWine.matching',
+  ADD_WINE_MATCHING_REGION = 'addWine.matchingRegion',
+  ADD_WINE_MATCHING_PRODUCER = 'addWine.matchingProducer',
+  ADD_WINE_MATCHING_WINE = 'addWine.matchingWine',
+  ADD_WINE_BOTTLE_FORM = 'addWine.bottleForm',
   ADD_WINE_SUCCESS = 'addWine.success',
 
   // Enrichment
   ENRICHMENT_START = 'enrichment.start',
   ENRICHMENT_COMPLETE = 'enrichment.complete',
+  ENRICHMENT_FAILED = 'enrichment.failed',
 
   // Errors
   ERROR_TIMEOUT = 'error.timeout',
   ERROR_RATE_LIMIT = 'error.rateLimit',
   ERROR_SERVER = 'error.server',
+  ERROR_QUOTA = 'error.quota',
+
+  // Navigation
+  START_FRESH = 'navigation.startFresh',
+  CANCELLED = 'navigation.cancelled',
 }
 
-interface MessageTemplate {
-  content: string | ((context: MessageContext) => string);
-  variants?: string[];  // Random variants for natural feel
-}
+// ===========================================
+// Types
+// ===========================================
 
 interface MessageContext {
   wineName?: string;
   producer?: string;
+  vintage?: string | number;
   confidence?: number;
   bottleCount?: number;
+  region?: string;
   [key: string]: unknown;
 }
 
-const messageTemplates: Record<MessageKey, MessageTemplate> = {
+type MessageContent = string | ((context: MessageContext) => string);
+
+/**
+ * Phrases for a single message key within one personality.
+ * Array allows random selection for natural variation.
+ */
+type PersonalityPhrases = MessageContent[];
+
+/**
+ * All personalities' phrases for a single message key.
+ */
+type MessagePhrases = Record<Personality, PersonalityPhrases>;
+
+/**
+ * Full message registry: MessageKey → Personality → Phrases[]
+ */
+type MessageRegistry = Record<MessageKey, MessagePhrases>;
+
+// ===========================================
+// Message Definitions
+// ===========================================
+
+const messages: MessageRegistry = {
+  // ─────────────────────────────────────────
+  // GREETINGS
+  // ─────────────────────────────────────────
   [MessageKey.GREETING_MORNING]: {
-    variants: [
-      "Good morning! What wine can I help you with?",
-      "Morning! Ready to explore some wines?",
-      "Good morning! Let's find your next favorite wine.",
+    [Personality.SOMMELIER]: [
+      "Good morning. What wine may I assist you with today?",
+      "Good morning! I'm ready to help identify your wine.",
+      "A fine morning for wine discovery. How may I help?",
+    ],
+    [Personality.CASUAL]: [
+      "Morning! What wine are we looking at today?",
+      "Hey, good morning! Got a wine you need help with?",
+      "Morning! Let's find out what you've got there.",
+    ],
+    [Personality.CONCISE]: [
+      "Good morning. Ready when you are.",
+      "Morning. What wine?",
+      "Good morning. Describe or photograph your wine.",
+    ],
+    [Personality.ENTHUSIAST]: [
+      "Good morning! Oh, I can't wait to see what wine you've brought!",
+      "Morning! What exciting bottle do we have today?",
+      "Good morning, wine friend! Show me what you've got!",
+    ],
+  },
+
+  [MessageKey.GREETING_AFTERNOON]: {
+    [Personality.SOMMELIER]: [
+      "Good afternoon. How may I assist with your wine selection?",
+      "Good afternoon! What wine would you like me to identify?",
+      "A pleasant afternoon for exploring wines. What do you have?",
+    ],
+    [Personality.CASUAL]: [
+      "Hey there! What wine can I help you with?",
+      "Afternoon! Got a bottle you're curious about?",
+      "Hi! Let's figure out what wine you've got.",
+    ],
+    [Personality.CONCISE]: [
+      "Good afternoon. Ready.",
+      "Afternoon. What wine?",
+      "Hello. Describe or photograph your wine.",
+    ],
+    [Personality.ENTHUSIAST]: [
+      "Good afternoon! Ooh, what wine adventure awaits us today?",
+      "Afternoon! I'm so excited to help you discover your wine!",
+      "Hello, fellow wine lover! What treasure do you have?",
+    ],
+  },
+
+  [MessageKey.GREETING_EVENING]: {
+    [Personality.SOMMELIER]: [
+      "Good evening. A perfect time to explore a fine wine.",
+      "Good evening! I'm at your service for wine identification.",
+      "Evening. What wine shall we discover together?",
+    ],
+    [Personality.CASUAL]: [
+      "Evening! What wine are you checking out?",
+      "Hey! Got a bottle for tonight?",
+      "Hi there! What's the wine for this evening?",
+    ],
+    [Personality.CONCISE]: [
+      "Good evening. Ready.",
+      "Evening. What wine?",
+      "Hello. Show me the wine.",
+    ],
+    [Personality.ENTHUSIAST]: [
+      "Good evening! The perfect time for wine! What do you have?",
+      "Evening! I'm thrilled to help you with tonight's selection!",
+      "What a lovely evening for wine discovery! Show me!",
+    ],
+  },
+
+  // ─────────────────────────────────────────
+  // IDENTIFICATION
+  // ─────────────────────────────────────────
+  [MessageKey.IDENTIFYING_THINKING]: {
+    [Personality.SOMMELIER]: [
+      "Examining the details...",
+      "Allow me a moment to identify this...",
+      "Analyzing the wine characteristics...",
+    ],
+    [Personality.CASUAL]: [
+      "Let me take a look...",
+      "Hmm, checking this out...",
+      "One sec, figuring this out...",
+    ],
+    [Personality.CONCISE]: [
+      "Identifying...",
+      "Processing...",
+      "Analyzing...",
+    ],
+    [Personality.ENTHUSIAST]: [
+      "Ooh, let me see what we have here!",
+      "This is exciting! Analyzing now...",
+      "Can't wait to find out! Checking...",
     ],
   },
 
   [MessageKey.IDENTIFYING_FOUND]: {
-    content: (ctx) => `I found ${ctx.wineName} by ${ctx.producer}. Is this correct?`,
+    [Personality.SOMMELIER]: [
+      (ctx) => `I believe this is ${ctx.wineName} from ${ctx.producer}. Is that correct?`,
+      (ctx) => `This appears to be ${ctx.wineName} by ${ctx.producer}. May I confirm?`,
+      (ctx) => `I've identified this as ${ctx.wineName}, ${ctx.producer}. Correct?`,
+    ],
+    [Personality.CASUAL]: [
+      (ctx) => `Looks like ${ctx.wineName} from ${ctx.producer}. Right?`,
+      (ctx) => `I think this is ${ctx.wineName} by ${ctx.producer}. Sound right?`,
+      (ctx) => `Got it! ${ctx.wineName}, ${ctx.producer}. Is that the one?`,
+    ],
+    [Personality.CONCISE]: [
+      (ctx) => `${ctx.wineName}, ${ctx.producer}. Confirm?`,
+      (ctx) => `Identified: ${ctx.wineName} by ${ctx.producer}. Correct?`,
+      (ctx) => `Result: ${ctx.wineName} (${ctx.producer}). Yes/No?`,
+    ],
+    [Personality.ENTHUSIAST]: [
+      (ctx) => `Oh wonderful! This is ${ctx.wineName} from ${ctx.producer}! Am I right?`,
+      (ctx) => `I found it! ${ctx.wineName} by ${ctx.producer}! Is that correct?`,
+      (ctx) => `How exciting! This appears to be ${ctx.wineName}, ${ctx.producer}!`,
+    ],
   },
 
   [MessageKey.IDENTIFYING_LOW_CONFIDENCE]: {
-    content: (ctx) =>
-      `I'm ${Math.round((ctx.confidence || 0) * 100)}% confident this is ${ctx.wineName}. ` +
-      `Can you confirm or provide more details?`,
+    [Personality.SOMMELIER]: [
+      (ctx) => `I'm ${Math.round((ctx.confidence || 0) * 100)}% confident this is ${ctx.wineName}. Could you provide additional details to confirm?`,
+      (ctx) => `This may be ${ctx.wineName}, though I'm only ${Math.round((ctx.confidence || 0) * 100)}% certain. Can you help clarify?`,
+    ],
+    [Personality.CASUAL]: [
+      (ctx) => `I think it might be ${ctx.wineName}, but I'm only ${Math.round((ctx.confidence || 0) * 100)}% sure. Can you tell me more?`,
+      (ctx) => `Hmm, could be ${ctx.wineName}? I'm about ${Math.round((ctx.confidence || 0) * 100)}% on this one. Any more details?`,
+    ],
+    [Personality.CONCISE]: [
+      (ctx) => `Possible: ${ctx.wineName} (${Math.round((ctx.confidence || 0) * 100)}% confidence). More details needed.`,
+      (ctx) => `Low confidence: ${ctx.wineName}. Provide more information.`,
+    ],
+    [Personality.ENTHUSIAST]: [
+      (ctx) => `Ooh, tricky one! I think it might be ${ctx.wineName}, but I'm only ${Math.round((ctx.confidence || 0) * 100)}% sure. Help me out?`,
+      (ctx) => `Interesting! Could this be ${ctx.wineName}? I'm about ${Math.round((ctx.confidence || 0) * 100)}% confident. Tell me more!`,
+    ],
   },
 
+  [MessageKey.IDENTIFYING_NEEDS_MORE]: {
+    [Personality.SOMMELIER]: [
+      "I need a bit more information to identify this wine accurately. Could you provide additional details?",
+      "The details are somewhat unclear. May I ask for more information about this wine?",
+    ],
+    [Personality.CASUAL]: [
+      "I need a bit more to go on. Can you tell me more about this wine?",
+      "Hmm, I'm not quite getting enough here. Got any more details?",
+    ],
+    [Personality.CONCISE]: [
+      "More details needed.",
+      "Insufficient information. Please provide more.",
+    ],
+    [Personality.ENTHUSIAST]: [
+      "Ooh, I want to help but I need more clues! Can you share more details?",
+      "This is a mystery! I need more information to crack it. What else can you tell me?",
+    ],
+  },
+
+  // ─────────────────────────────────────────
+  // ADD WINE
+  // ─────────────────────────────────────────
   [MessageKey.ADD_WINE_DUPLICATE]: {
-    content: (ctx) =>
-      `I found ${ctx.wineName} already in your cellar with ${ctx.bottleCount} bottle${ctx.bottleCount === 1 ? '' : 's'}. ` +
-      `Would you like to add another bottle or create a new entry?`,
+    [Personality.SOMMELIER]: [
+      (ctx) => `I found ${ctx.wineName} already in your cellar with ${ctx.bottleCount} bottle${ctx.bottleCount === 1 ? '' : 's'}. Would you like to add another bottle, or create a new entry?`,
+    ],
+    [Personality.CASUAL]: [
+      (ctx) => `Hey, you already have ${ctx.wineName} in your cellar - ${ctx.bottleCount} bottle${ctx.bottleCount === 1 ? '' : 's'}! Want to add another, or start fresh?`,
+    ],
+    [Personality.CONCISE]: [
+      (ctx) => `Existing: ${ctx.wineName} (${ctx.bottleCount} bottle${ctx.bottleCount === 1 ? '' : 's'}). Add bottle or create new?`,
+    ],
+    [Personality.ENTHUSIAST]: [
+      (ctx) => `Oh, you already have ${ctx.wineName}! ${ctx.bottleCount} bottle${ctx.bottleCount === 1 ? '' : 's'} in the cellar. Adding to your collection? Or is this a different vintage?`,
+    ],
   },
 
-  // ... etc
+  [MessageKey.ADD_WINE_SUCCESS]: {
+    [Personality.SOMMELIER]: [
+      (ctx) => `Excellent. ${ctx.wineName} has been added to your cellar.`,
+      (ctx) => `${ctx.wineName} is now in your collection. A fine addition.`,
+    ],
+    [Personality.CASUAL]: [
+      (ctx) => `Done! ${ctx.wineName} is in your cellar now.`,
+      (ctx) => `Added! ${ctx.wineName} is all set.`,
+    ],
+    [Personality.CONCISE]: [
+      (ctx) => `Added: ${ctx.wineName}`,
+      (ctx) => `${ctx.wineName} saved to cellar.`,
+    ],
+    [Personality.ENTHUSIAST]: [
+      (ctx) => `Woohoo! ${ctx.wineName} is now part of your collection! How exciting!`,
+      (ctx) => `Amazing! ${ctx.wineName} added! Your cellar is looking great!`,
+    ],
+  },
+
+  // ─────────────────────────────────────────
+  // ERRORS
+  // ─────────────────────────────────────────
+  [MessageKey.ERROR_TIMEOUT]: {
+    [Personality.SOMMELIER]: [
+      "My apologies, the identification is taking longer than expected. Please try again.",
+      "I'm afraid the process timed out. Would you like to try once more?",
+    ],
+    [Personality.CASUAL]: [
+      "Sorry, that took too long. Want to try again?",
+      "Oops, timed out there. Let's give it another shot?",
+    ],
+    [Personality.CONCISE]: [
+      "Request timed out. Retry?",
+      "Timeout. Try again.",
+    ],
+    [Personality.ENTHUSIAST]: [
+      "Oh no, it's taking too long! Let's try again - I really want to help!",
+      "Aw, timed out! Don't worry, let's give it another go!",
+    ],
+  },
+
+  [MessageKey.ERROR_RATE_LIMIT]: {
+    [Personality.SOMMELIER]: [
+      "I'm receiving many requests at the moment. Please allow me a moment before trying again.",
+      "We're quite busy at present. Kindly wait a moment and retry.",
+    ],
+    [Personality.CASUAL]: [
+      "Whoa, lots of requests right now! Give it a sec and try again.",
+      "Things are busy! Wait a moment and try again.",
+    ],
+    [Personality.CONCISE]: [
+      "Rate limited. Wait and retry.",
+      "Too many requests. Try again shortly.",
+    ],
+    [Personality.ENTHUSIAST]: [
+      "So many wine lovers today! Things are busy - let's wait a moment and try again!",
+      "Wow, everyone's curious about wine! Give it a sec and we'll try again!",
+    ],
+  },
+
+  // ... Additional messages follow same pattern
+  // Simplified for document - full implementation would include all MessageKey values
+
+  [MessageKey.GREETING_GENERIC]: {
+    [Personality.SOMMELIER]: ["How may I assist you with your wine?"],
+    [Personality.CASUAL]: ["What wine can I help you with?"],
+    [Personality.CONCISE]: ["Ready. What wine?"],
+    [Personality.ENTHUSIAST]: ["I'm so excited to help! What wine do you have?"],
+  },
+
+  [MessageKey.IDENTIFYING_START]: {
+    [Personality.SOMMELIER]: ["Let me examine this for you..."],
+    [Personality.CASUAL]: ["Checking it out..."],
+    [Personality.CONCISE]: ["Analyzing..."],
+    [Personality.ENTHUSIAST]: ["Ooh, let me see!"],
+  },
+
+  [MessageKey.IDENTIFYING_FAILED]: {
+    [Personality.SOMMELIER]: ["I'm unable to identify this wine. Could you provide more details?"],
+    [Personality.CASUAL]: ["Hmm, I can't figure this one out. Got more info?"],
+    [Personality.CONCISE]: ["Identification failed. More details needed."],
+    [Personality.ENTHUSIAST]: ["Oh no, this one's stumping me! Can you help with more details?"],
+  },
+
+  [MessageKey.ADD_WINE_START]: {
+    [Personality.SOMMELIER]: ["Let's add this to your cellar."],
+    [Personality.CASUAL]: ["Cool, let's get this added!"],
+    [Personality.CONCISE]: ["Adding to cellar."],
+    [Personality.ENTHUSIAST]: ["Yay! Let's add this beauty to your collection!"],
+  },
+
+  [MessageKey.ADD_WINE_MATCHING_REGION]: {
+    [Personality.SOMMELIER]: ["Which region matches best?"],
+    [Personality.CASUAL]: ["Which region is right?"],
+    [Personality.CONCISE]: ["Select region:"],
+    [Personality.ENTHUSIAST]: ["Ooh, which region is this from?"],
+  },
+
+  [MessageKey.ADD_WINE_MATCHING_PRODUCER]: {
+    [Personality.SOMMELIER]: ["Which producer is correct?"],
+    [Personality.CASUAL]: ["Which producer?"],
+    [Personality.CONCISE]: ["Select producer:"],
+    [Personality.ENTHUSIAST]: ["Which producer made this lovely wine?"],
+  },
+
+  [MessageKey.ADD_WINE_MATCHING_WINE]: {
+    [Personality.SOMMELIER]: ["Which wine entry matches?"],
+    [Personality.CASUAL]: ["Which wine is it?"],
+    [Personality.CONCISE]: ["Select wine:"],
+    [Personality.ENTHUSIAST]: ["Which wine is the one?"],
+  },
+
+  [MessageKey.ADD_WINE_BOTTLE_FORM]: {
+    [Personality.SOMMELIER]: ["Please provide the bottle details."],
+    [Personality.CASUAL]: ["Tell me about the bottle."],
+    [Personality.CONCISE]: ["Enter bottle details."],
+    [Personality.ENTHUSIAST]: ["Now for the fun part - tell me about this bottle!"],
+  },
+
+  [MessageKey.ENRICHMENT_START]: {
+    [Personality.SOMMELIER]: ["Allow me to gather more information about this wine."],
+    [Personality.CASUAL]: ["Let me find out more about this wine."],
+    [Personality.CONCISE]: ["Fetching wine details."],
+    [Personality.ENTHUSIAST]: ["Ooh, let me dig up some fascinating facts about this wine!"],
+  },
+
+  [MessageKey.ENRICHMENT_COMPLETE]: {
+    [Personality.SOMMELIER]: ["I've gathered the available information."],
+    [Personality.CASUAL]: ["Here's what I found!"],
+    [Personality.CONCISE]: ["Details retrieved."],
+    [Personality.ENTHUSIAST]: ["Look at all this wonderful information I found!"],
+  },
+
+  [MessageKey.ENRICHMENT_FAILED]: {
+    [Personality.SOMMELIER]: ["I wasn't able to find additional information for this wine."],
+    [Personality.CASUAL]: ["Sorry, couldn't find more info on this one."],
+    [Personality.CONCISE]: ["No additional data found."],
+    [Personality.ENTHUSIAST]: ["Aw, I couldn't find more details. This wine is a mystery!"],
+  },
+
+  [MessageKey.ERROR_SERVER]: {
+    [Personality.SOMMELIER]: ["I apologize, something went wrong. Please try again."],
+    [Personality.CASUAL]: ["Oops, something broke. Try again?"],
+    [Personality.CONCISE]: ["Error. Retry."],
+    [Personality.ENTHUSIAST]: ["Oh no, something went wrong! Let's try again!"],
+  },
+
+  [MessageKey.ERROR_QUOTA]: {
+    [Personality.SOMMELIER]: ["We've reached our limit for today. Please try again tomorrow."],
+    [Personality.CASUAL]: ["Hit the daily limit! Try again tomorrow."],
+    [Personality.CONCISE]: ["Daily limit reached. Try tomorrow."],
+    [Personality.ENTHUSIAST]: ["We've been so busy today we hit our limit! Let's continue tomorrow!"],
+  },
+
+  [MessageKey.START_FRESH]: {
+    [Personality.SOMMELIER]: ["Let's start fresh. What wine can I help you with?"],
+    [Personality.CASUAL]: ["Alright, starting over! What wine?"],
+    [Personality.CONCISE]: ["Reset. What wine?"],
+    [Personality.ENTHUSIAST]: ["Fresh start! What exciting wine do you have now?"],
+  },
+
+  [MessageKey.CANCELLED]: {
+    [Personality.SOMMELIER]: ["Very well. Let me know if you need assistance."],
+    [Personality.CASUAL]: ["No problem! Let me know if you need anything."],
+    [Personality.CONCISE]: ["Cancelled."],
+    [Personality.ENTHUSIAST]: ["Okay! I'll be here when you're ready for more wine adventures!"],
+  },
 };
 
-export function getMessage(key: MessageKey, context?: MessageContext): string {
-  const template = messageTemplates[key];
+// ===========================================
+// getMessage Function
+// ===========================================
 
-  if (!template) {
-    console.warn(`Unknown message key: ${key}`);
+/**
+ * Get a message for the given key, using current personality and language settings.
+ *
+ * @param key - The message key enum value
+ * @param context - Optional context for template interpolation
+ * @returns A randomly selected phrase for the current personality
+ *
+ * @example
+ * // Simple message
+ * getMessage(MessageKey.GREETING_MORNING)
+ * // → "Good morning. What wine may I assist you with today?"
+ *
+ * @example
+ * // With context interpolation
+ * getMessage(MessageKey.IDENTIFYING_FOUND, { wineName: 'Margaux', producer: 'Château Margaux' })
+ * // → "I believe this is Margaux from Château Margaux. Is that correct?"
+ */
+export function getMessage(key: MessageKey, context?: MessageContext): string {
+  const personality = getPersonality();
+  const language = getLanguage();
+
+  // Get messages for this key
+  const keyMessages = messages[key];
+  if (!keyMessages) {
+    console.warn(`[MessageRegistry] Unknown message key: ${key}`);
     return '';
   }
 
-  // Handle variants
-  if (template.variants) {
-    const index = Math.floor(Math.random() * template.variants.length);
-    return template.variants[index];
+  // Get phrases for current personality
+  let phrases = keyMessages[personality];
+
+  // Fallback to SOMMELIER if personality not found
+  if (!phrases || phrases.length === 0) {
+    console.warn(`[MessageRegistry] No phrases for personality ${personality}, key ${key}`);
+    phrases = keyMessages[Personality.SOMMELIER];
   }
 
-  // Handle template function
-  if (typeof template.content === 'function') {
-    return template.content(context || {});
+  if (!phrases || phrases.length === 0) {
+    console.warn(`[MessageRegistry] No phrases found for key: ${key}`);
+    return '';
   }
 
-  return template.content;
+  // Select random phrase
+  const phraseIndex = Math.floor(Math.random() * phrases.length);
+  const phrase = phrases[phraseIndex];
+
+  // Apply context if template function
+  if (typeof phrase === 'function') {
+    return phrase(context || {});
+  }
+
+  return phrase;
+}
+
+/**
+ * Get all phrases for a message key (useful for testing/preview).
+ */
+export function getAllPhrases(key: MessageKey, personality?: Personality): MessageContent[] {
+  const p = personality || getPersonality();
+  return messages[key]?.[p] || [];
+}
+
+/**
+ * Preview a message for a specific personality (for settings UI).
+ */
+export function previewMessage(key: MessageKey, personality: Personality): string {
+  const phrases = messages[key]?.[personality];
+  if (!phrases || phrases.length === 0) return '';
+
+  const phrase = phrases[0];
+  if (typeof phrase === 'function') {
+    // Use sample context for preview
+    return phrase({
+      wineName: 'Château Margaux',
+      producer: 'Château Margaux',
+      vintage: 2018,
+      confidence: 0.95,
+      bottleCount: 3,
+      region: 'Bordeaux',
+    });
+  }
+  return phrase;
 }
 ```
+
+### Future: Language Support
+
+The architecture supports adding language variants. Each personality would have nested language keys:
+
+```typescript
+// Future structure for i18n
+type MessagePhrases = Record<Personality, Record<Language, MessageContent[]>>;
+
+// Example
+[MessageKey.GREETING_MORNING]: {
+  [Personality.SOMMELIER]: {
+    en: ["Good morning. What wine may I assist you with today?"],
+    fr: ["Bonjour. Quel vin puis-je vous aider à identifier?"],
+    es: ["Buenos días. ¿Con qué vino puedo ayudarle hoy?"],
+  },
+  // ...
+}
+```
+
+For Phase 2, we'll keep language at English-only but structure the code to easily add languages later.
 
 ### Chip Registry
 
