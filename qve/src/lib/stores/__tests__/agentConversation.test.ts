@@ -11,6 +11,7 @@ import {
 	isInAddWineFlow,
 	isInEnrichmentFlow,
 	isInLoadingPhase,
+	agentOrigin,
 	addMessage,
 	addMessages,
 	updateMessage,
@@ -28,6 +29,9 @@ import {
 	createTextMessage,
 	createChipsMessage,
 	createMessage,
+	setOrigin,
+	clearOrigin,
+	getOrigin,
 } from '../agentConversation';
 import { clearState } from '../agentPersistence';
 import type { AgentMessage, TextMessageData, ChipsMessageData } from '$lib/agent/types';
@@ -648,6 +652,109 @@ describe('agentConversation', () => {
 			// Should still have same greeting (not duplicated)
 			expect(get(agentMessages)).toHaveLength(1);
 			expect(get(agentMessages)[0].id).toBe(firstGreeting.id);
+		});
+	});
+
+	describe('origin tracking', () => {
+		describe('setOrigin', () => {
+			it('should set origin state', () => {
+				setOrigin({ path: '/qve/', viewMode: 'ourWines' });
+
+				const origin = get(agentOrigin);
+				expect(origin).not.toBeNull();
+				expect(origin?.path).toBe('/qve/');
+				expect(origin?.viewMode).toBe('ourWines');
+			});
+
+			it('should update existing origin', () => {
+				setOrigin({ path: '/qve/', viewMode: 'ourWines' });
+				setOrigin({ path: '/qve/history', viewMode: 'allWines' });
+
+				const origin = get(agentOrigin);
+				expect(origin?.path).toBe('/qve/history');
+				expect(origin?.viewMode).toBe('allWines');
+			});
+		});
+
+		describe('clearOrigin', () => {
+			it('should clear origin state', () => {
+				setOrigin({ path: '/qve/', viewMode: 'ourWines' });
+				expect(get(agentOrigin)).not.toBeNull();
+
+				clearOrigin();
+				expect(get(agentOrigin)).toBeNull();
+			});
+
+			it('should be safe to call when origin is already null', () => {
+				clearOrigin();
+				expect(get(agentOrigin)).toBeNull();
+			});
+		});
+
+		describe('getOrigin', () => {
+			it('should return current origin synchronously', () => {
+				setOrigin({ path: '/qve/', viewMode: 'allWines' });
+
+				const origin = getOrigin();
+				expect(origin?.path).toBe('/qve/');
+				expect(origin?.viewMode).toBe('allWines');
+			});
+
+			it('should return null when no origin set', () => {
+				clearOrigin();
+				expect(getOrigin()).toBeNull();
+			});
+		});
+
+		describe('agentOrigin derived store', () => {
+			it('should be reactive to origin changes', () => {
+				const values: (typeof import('../agentConversation').OriginState | null)[] = [];
+				const unsubscribe = agentOrigin.subscribe((v) => values.push(v));
+
+				setOrigin({ path: '/qve/', viewMode: 'ourWines' });
+				setOrigin({ path: '/qve/history', viewMode: 'ourWines' });
+				clearOrigin();
+
+				unsubscribe();
+
+				// Initial null + 2 setOrigins + 1 clearOrigin = 4 values
+				expect(values).toHaveLength(4);
+				expect(values[0]).toBeNull();
+				expect(values[1]?.path).toBe('/qve/');
+				expect(values[2]?.path).toBe('/qve/history');
+				expect(values[3]).toBeNull();
+			});
+		});
+
+		describe('origin preservation across operations', () => {
+			it('should preserve origin when adding messages', () => {
+				setOrigin({ path: '/qve/', viewMode: 'ourWines' });
+				addMessage(createTextMessage('Test'));
+
+				expect(get(agentOrigin)?.path).toBe('/qve/');
+			});
+
+			it('should preserve origin when changing phase', () => {
+				setOrigin({ path: '/qve/', viewMode: 'ourWines' });
+				setPhase('identifying');
+
+				expect(get(agentOrigin)?.path).toBe('/qve/');
+			});
+
+			it('should reset origin to null on startSession', () => {
+				setOrigin({ path: '/qve/', viewMode: 'ourWines' });
+				startSession();
+
+				// Origin is reset on new session
+				expect(get(agentOrigin)).toBeNull();
+			});
+
+			it('should reset origin to null on fullReset', () => {
+				setOrigin({ path: '/qve/', viewMode: 'ourWines' });
+				fullReset();
+
+				expect(get(agentOrigin)).toBeNull();
+			});
 		});
 	});
 });

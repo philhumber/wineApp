@@ -43,6 +43,17 @@ function delay(ms: number): Promise<void> {
 }
 
 // ===========================================
+// Origin Tracking Types
+// ===========================================
+
+export type OriginViewMode = 'ourWines' | 'allWines';
+
+export interface OriginState {
+  path: string;
+  viewMode: OriginViewMode;
+}
+
+// ===========================================
 // Internal State
 // ===========================================
 
@@ -51,6 +62,7 @@ interface ConversationState {
   phase: AgentPhase;
   addWineStep: AddWineStep | null;
   isInitialized: boolean;
+  origin: OriginState | null;
 }
 
 const initialState: ConversationState = {
@@ -58,6 +70,7 @@ const initialState: ConversationState = {
   phase: 'greeting',
   addWineStep: null,
   isInitialized: false,
+  origin: null,
 };
 
 const store = writable<ConversationState>(initialState);
@@ -70,6 +83,7 @@ export const agentMessages = derived(store, ($store) => $store.messages);
 export const agentPhase = derived(store, ($store) => $store.phase);
 export const addWineStep = derived(store, ($store) => $store.addWineStep);
 export const isConversationInitialized = derived(store, ($store) => $store.isInitialized);
+export const agentOrigin = derived(store, ($store) => $store.origin);
 
 // Convenience derived stores
 export const hasMessages = derived(store, ($store) => $store.messages.length > 0);
@@ -375,6 +389,34 @@ export function setPhase(phase: AgentPhase, step?: AddWineStep | null): void {
 }
 
 /**
+ * Set the origin state (where user was when opening the panel).
+ * Used for navigation after adding a wine.
+ */
+export function setOrigin(origin: OriginState): void {
+  store.update((state) => ({
+    ...state,
+    origin,
+  }));
+}
+
+/**
+ * Clear the origin state.
+ */
+export function clearOrigin(): void {
+  store.update((state) => ({
+    ...state,
+    origin: null,
+  }));
+}
+
+/**
+ * Get current origin synchronously.
+ */
+export function getOrigin(): OriginState | null {
+  return get(store).origin;
+}
+
+/**
  * Set just the add-wine step without changing phase.
  */
 export function setAddWineStep(step: AddWineStep | null): void {
@@ -427,6 +469,7 @@ export function startSession(): void {
     phase: 'greeting',
     addWineStep: null,
     isInitialized: true,
+    origin: null,
   });
 
   persistConversationState(true); // Immediate persist
@@ -473,6 +516,7 @@ export function initializeConversation(): void {
       phase: persisted.phase,
       addWineStep: persisted.addWineStep,
       isInitialized: true,
+      origin: null, // Origin is not persisted, set fresh when panel opens
     });
   } else {
     // Start fresh session
@@ -493,6 +537,7 @@ export function restoreFromCallbacks(data: {
     phase: data.phase,
     addWineStep: data.addWineStep,
     isInitialized: true,
+    origin: null, // Origin is not persisted, set fresh when panel opens
   });
 }
 

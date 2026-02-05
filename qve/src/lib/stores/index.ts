@@ -237,6 +237,7 @@ export {
   isInAddWineFlow as isInAddWineFlow2,
   isInEnrichmentFlow,
   isInLoadingPhase,
+  agentOrigin,
   addMessage,
   addMessages,
   updateMessage,
@@ -255,7 +256,11 @@ export {
   createMessage,
   createTextMessage,
   createChipsMessage,
+  setOrigin,
+  clearOrigin,
+  getOrigin,
 } from './agentConversation';
+export type { OriginState, OriginViewMode } from './agentConversation';
 
 // Agent Identification (new)
 export {
