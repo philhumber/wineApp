@@ -190,7 +190,8 @@ describe('conversation handlers', () => {
 
 			expect(result).toEqual(action);
 			expect(identification.clearError).toHaveBeenCalled();
-			expect(conversation.setPhase).toHaveBeenCalledWith('identifying');
+			// Note: setPhase is NOT called here - the re-dispatched action handler manages its own phase
+			// This prevents invalid phase transitions like identifying → identifying
 		});
 	});
 

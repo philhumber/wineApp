@@ -32,6 +32,7 @@ import {
 	setOrigin,
 	clearOrigin,
 	getOrigin,
+	type OriginState,
 } from '../agentConversation';
 import { clearState } from '../agentPersistence';
 import type { AgentMessage, TextMessageData, ChipsMessageData } from '$lib/agent/types';
@@ -45,6 +46,50 @@ const getTextContent = (msg: AgentMessage | undefined | null): string | undefine
 const getChips = (msg: AgentMessage | undefined | null) => {
 	if (!msg || msg.category !== 'chips') return undefined;
 	return (msg.data as ChipsMessageData).chips;
+};
+
+// Helper to transition to a target phase following valid paths
+// The state machine requires valid transitions, so tests need to follow proper paths
+const transitionToPhase = (target: Parameters<typeof setPhase>[0], step?: Parameters<typeof setPhase>[1]) => {
+	// Get current phase after fullReset (greeting)
+	// Valid paths from greeting:
+	// - greeting → awaiting_input → confirming/adding_wine/enriching
+	// - greeting → identifying → confirming
+	// - greeting → error
+
+	switch (target) {
+		case 'greeting':
+			// Already at greeting after fullReset
+			break;
+		case 'awaiting_input':
+			setPhase('awaiting_input');
+			break;
+		case 'identifying':
+			setPhase('identifying');
+			break;
+		case 'confirming':
+			setPhase('awaiting_input');
+			setPhase('confirming');
+			break;
+		case 'adding_wine':
+			setPhase('awaiting_input');
+			setPhase('adding_wine', step ?? 'confirm');
+			break;
+		case 'enriching':
+			setPhase('awaiting_input');
+			setPhase('enriching');
+			break;
+		case 'error':
+			setPhase('error');
+			break;
+		case 'complete':
+			setPhase('awaiting_input');
+			setPhase('confirming');
+			setPhase('complete');
+			break;
+		default:
+			setPhase(target as any);
+	}
 };
 
 describe('agentConversation', () => {
@@ -293,31 +338,39 @@ describe('agentConversation', () => {
 
 	describe('setPhase', () => {
 		it('should update phase', () => {
-			setPhase('identifying');
+			setPhase('identifying'); // greeting → identifying is valid
 			expect(get(agentPhase)).toBe('identifying');
 		});
 
 		it('should set addWineStep when provided', () => {
+			// greeting → awaiting_input → adding_wine (valid path)
+			setPhase('awaiting_input');
 			setPhase('adding_wine', 'confirm');
 			expect(get(agentPhase)).toBe('adding_wine');
 			expect(get(addWineStep)).toBe('confirm');
 		});
 
 		it('should clear addWineStep when leaving adding_wine phase', () => {
+			// greeting → awaiting_input → adding_wine → confirming (valid path)
+			setPhase('awaiting_input');
 			setPhase('adding_wine', 'confirm');
 			setPhase('confirming');
 			expect(get(addWineStep)).toBeNull();
 		});
 
 		it('should preserve addWineStep when changing to adding_wine without step', () => {
+			// greeting → awaiting_input → adding_wine → adding_wine (valid path)
+			setPhase('awaiting_input');
 			setPhase('adding_wine', 'entity_matching');
-			setPhase('adding_wine'); // No step provided
+			setPhase('adding_wine'); // No step provided, self-transition is valid
 			expect(get(addWineStep)).toBe('entity_matching');
 		});
 	});
 
 	describe('setAddWineStep', () => {
 		it('should update addWineStep without changing phase', () => {
+			// greeting → awaiting_input → adding_wine (valid path)
+			setPhase('awaiting_input');
 			setPhase('adding_wine', 'confirm');
 			setAddWineStep('bottle_details');
 			expect(get(addWineStep)).toBe('bottle_details');
@@ -325,6 +378,8 @@ describe('agentConversation', () => {
 		});
 
 		it('should allow setting to null', () => {
+			// greeting → awaiting_input → adding_wine (valid path)
+			setPhase('awaiting_input');
 			setPhase('adding_wine', 'confirm');
 			setAddWineStep(null);
 			expect(get(addWineStep)).toBeNull();
@@ -467,13 +522,19 @@ describe('agentConversation', () => {
 		});
 
 		it('should reset phase to awaiting_input', () => {
+			// greeting → awaiting_input → confirming (valid path)
+			setPhase('awaiting_input');
 			setPhase('confirming');
+			// resetConversation can go from any phase to awaiting_input (special reset)
 			resetConversation();
 			expect(get(agentPhase)).toBe('awaiting_input');
 		});
 
 		it('should clear addWineStep', () => {
+			// greeting → awaiting_input → adding_wine (valid path)
+			setPhase('awaiting_input');
 			setPhase('adding_wine', 'bottle_details');
+			// resetConversation is a special reset operation
 			resetConversation();
 			expect(get(addWineStep)).toBeNull();
 		});
@@ -499,7 +560,9 @@ describe('agentConversation', () => {
 		});
 
 		it('should set phase to greeting', () => {
+			// greeting → error (valid path)
 			setPhase('error');
+			// startSession is a special reset, allowed from any phase
 			startSession();
 			expect(get(agentPhase)).toBe('greeting');
 		});
@@ -514,13 +577,19 @@ describe('agentConversation', () => {
 		});
 
 		it('should reset phase to greeting', () => {
+			// greeting → awaiting_input → confirming (valid path)
+			setPhase('awaiting_input');
 			setPhase('confirming');
+			// fullReset is a special operation that bypasses state machine
 			fullReset();
 			expect(get(agentPhase)).toBe('greeting');
 		});
 
 		it('should clear addWineStep', () => {
+			// greeting → awaiting_input → adding_wine (valid path)
+			setPhase('awaiting_input');
 			setPhase('adding_wine', 'bottle_details');
+			// fullReset is a special operation
 			fullReset();
 			expect(get(addWineStep)).toBeNull();
 		});
@@ -585,11 +654,15 @@ describe('agentConversation', () => {
 
 		describe('isInAddWineFlow', () => {
 			it('should be true when phase is adding_wine', () => {
+				// greeting → awaiting_input → adding_wine (valid path)
+				setPhase('awaiting_input');
 				setPhase('adding_wine');
 				expect(get(isInAddWineFlow)).toBe(true);
 			});
 
 			it('should be false for other phases', () => {
+				// greeting → awaiting_input → confirming (valid path)
+				setPhase('awaiting_input');
 				setPhase('confirming');
 				expect(get(isInAddWineFlow)).toBe(false);
 			});
@@ -597,11 +670,15 @@ describe('agentConversation', () => {
 
 		describe('isInEnrichmentFlow', () => {
 			it('should be true when phase is enriching', () => {
+				// greeting → awaiting_input → enriching (valid path)
+				setPhase('awaiting_input');
 				setPhase('enriching');
 				expect(get(isInEnrichmentFlow)).toBe(true);
 			});
 
 			it('should be false for other phases', () => {
+				// greeting → awaiting_input → adding_wine (valid path)
+				setPhase('awaiting_input');
 				setPhase('adding_wine');
 				expect(get(isInEnrichmentFlow)).toBe(false);
 			});
@@ -609,20 +686,26 @@ describe('agentConversation', () => {
 
 		describe('isInLoadingPhase', () => {
 			it('should be true when identifying', () => {
+				// greeting → identifying (valid)
 				setPhase('identifying');
 				expect(get(isInLoadingPhase)).toBe(true);
 			});
 
 			it('should be true when enriching', () => {
+				// greeting → awaiting_input → enriching (valid path)
+				setPhase('awaiting_input');
 				setPhase('enriching');
 				expect(get(isInLoadingPhase)).toBe(true);
 			});
 
 			it('should be false for non-loading phases', () => {
+				// greeting → awaiting_input → confirming (valid path)
+				setPhase('awaiting_input');
 				setPhase('confirming');
 				expect(get(isInLoadingPhase)).toBe(false);
 
-				setPhase('greeting');
+				// confirming → awaiting_input (valid), then reset to greeting
+				fullReset();
 				expect(get(isInLoadingPhase)).toBe(false);
 			});
 		});
@@ -708,7 +791,7 @@ describe('agentConversation', () => {
 
 		describe('agentOrigin derived store', () => {
 			it('should be reactive to origin changes', () => {
-				const values: (typeof import('../agentConversation').OriginState | null)[] = [];
+				const values: (OriginState | null)[] = [];
 				const unsubscribe = agentOrigin.subscribe((v) => values.push(v));
 
 				setOrigin({ path: '/qve/', viewMode: 'ourWines' });
@@ -736,7 +819,7 @@ describe('agentConversation', () => {
 
 			it('should preserve origin when changing phase', () => {
 				setOrigin({ path: '/qve/', viewMode: 'ourWines' });
-				setPhase('identifying');
+				setPhase('identifying'); // greeting → identifying (valid)
 
 				expect(get(agentOrigin)?.path).toBe('/qve/');
 			});

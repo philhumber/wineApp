@@ -28,7 +28,10 @@ type ConversationActionType =
   | 'go_back'
   | 'cancel'
   | 'retry'
-  | 'try_again';
+  | 'try_again'
+  | 'new_input'
+  | 'start_fresh'
+  | 'start_over_error';
 
 // ===========================================
 // Handlers
@@ -121,6 +124,49 @@ export function handleCancel(): void {
 }
 
 /**
+ * Handle new_input action.
+ * Clears identification and awaits fresh input.
+ */
+export function handleNewInput(messageId?: string): void {
+  console.log('[Conversation] new_input');
+
+  if (messageId) {
+    conversation.disableMessage(messageId);
+  }
+
+  identification.clearIdentification();
+  conversation.setPhase('awaiting_input');
+}
+
+/**
+ * Handle start_fresh action.
+ * Alias for start_over.
+ */
+export function handleStartFresh(messageId?: string): void {
+  console.log('[Conversation] start_fresh');
+
+  if (messageId) {
+    conversation.disableMessage(messageId);
+  }
+
+  handleStartOver();
+}
+
+/**
+ * Handle start_over_error action.
+ * Error recovery variant - clears state and starts fresh.
+ */
+export function handleStartOverError(messageId?: string): void {
+  console.log('[Conversation] start_over_error');
+
+  if (messageId) {
+    conversation.disableMessage(messageId);
+  }
+
+  handleStartOver();
+}
+
+/**
  * Handle retry/try_again action.
  * Re-executes the last tracked action.
  *
@@ -142,7 +188,8 @@ export function handleRetry(): AgentAction | null {
 
   // Clear error state if present
   identification.clearError();
-  conversation.setPhase('identifying');
+  // Don't set phase here - let the re-dispatched action handler manage its own phase
+  // This prevents invalid phase transitions like identifying → identifying
 
   // Return the action to be re-dispatched by the router
   return lastAction;
@@ -156,7 +203,16 @@ export function handleRetry(): AgentAction | null {
  * Check if an action type is a conversation action.
  */
 export function isConversationAction(type: string): type is ConversationActionType {
-  return ['start_over', 'go_back', 'cancel', 'retry', 'try_again'].includes(type);
+  return [
+    'start_over',
+    'go_back',
+    'cancel',
+    'retry',
+    'try_again',
+    'new_input',
+    'start_fresh',
+    'start_over_error',
+  ].includes(type);
 }
 
 /**
@@ -182,6 +238,18 @@ export async function handleConversationAction(
     case 'retry':
     case 'try_again':
       return handleRetry();
+
+    case 'new_input':
+      handleNewInput(action.messageId);
+      return null;
+
+    case 'start_fresh':
+      handleStartFresh(action.messageId);
+      return null;
+
+    case 'start_over_error':
+      handleStartOverError(action.messageId);
+      return null;
 
     default:
       return null;

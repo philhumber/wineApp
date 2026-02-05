@@ -30,6 +30,14 @@ export interface EnrichmentWineInfo {
   country?: string;
 }
 
+export interface EnrichmentRequest {
+  producer: string;
+  wineName: string;
+  vintage: string | null;
+  type: string | null;
+  region: string | null;
+}
+
 interface EnrichmentState {
   isEnriching: boolean;
   data: EnrichmentData | null;
@@ -37,6 +45,7 @@ interface EnrichmentState {
   source: 'cache' | 'web_search' | 'inference' | null;
   streamingFields: Map<string, StreamingField>;
   forWine: EnrichmentWineInfo | null;
+  lastRequest: EnrichmentRequest | null; // For retry support
   pendingResult: EnrichmentData | null; // Buffered during streaming
 }
 
@@ -51,6 +60,7 @@ const initialState: EnrichmentState = {
   source: null,
   streamingFields: new Map(),
   forWine: null,
+  lastRequest: null,
   pendingResult: null,
 };
 
@@ -66,6 +76,7 @@ export const enrichmentError = derived(store, ($s) => $s.error);
 export const enrichmentSource = derived(store, ($s) => $s.source);
 export const enrichmentStreamingFields = derived(store, ($s) => $s.streamingFields);
 export const enrichmentForWine = derived(store, ($s) => $s.forWine);
+export const lastEnrichmentRequest = derived(store, ($s) => $s.lastRequest);
 
 // Computed derived stores
 export const hasEnrichmentData = derived(store, ($s) => $s.data !== null);
@@ -116,6 +127,23 @@ export function startEnrichment(wineInfo: EnrichmentWineInfo): void {
     streamingFields: new Map(),
     pendingResult: null,
   }));
+}
+
+/**
+ * Set last enrichment request (for retry support).
+ */
+export function setLastRequest(request: EnrichmentRequest): void {
+  store.update((state) => ({
+    ...state,
+    lastRequest: request,
+  }));
+}
+
+/**
+ * Get and clear last enrichment request.
+ */
+export function getLastRequest(): EnrichmentRequest | null {
+  return get(store).lastRequest;
 }
 
 /**

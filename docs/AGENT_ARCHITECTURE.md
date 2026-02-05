@@ -3,29 +3,82 @@
 This document describes the rearchitected wine sommelier agent system, including state machines, message flows, and component relationships.
 
 **Last Updated**: 2026-02-05
+**Phase**: 2 (Rearchitecture Complete - Sprint 5)
+**Tests**: 534 passing
 
 ---
 
 ## Table of Contents
 
 1. [High-Level Architecture](#high-level-architecture)
-2. [Phase State Machine](#phase-state-machine)
-3. [Store Architecture](#store-architecture)
-4. [Message System](#message-system)
-5. [Action System](#action-system)
-6. [Text Input Processing](#text-input-processing)
-7. [Identification Flow](#identification-flow)
-8. [Add Wine Flow](#add-wine-flow)
-9. [Enrichment Flow](#enrichment-flow)
-10. [Chip Configurations](#chip-configurations)
-11. [Command Detection](#command-detection)
-12. [Error Handling](#error-handling)
+2. [Request Flow](#request-flow)
+3. [Directory Structure](#directory-structure)
+4. [Middleware System](#middleware-system)
+5. [Handler Modules](#handler-modules)
+6. [Phase State Machine](#phase-state-machine)
+7. [Store Architecture](#store-architecture)
+8. [Message System](#message-system)
+9. [Action System](#action-system)
+10. [Text Input Processing](#text-input-processing)
+11. [Identification Flow](#identification-flow)
+12. [Add Wine Flow](#add-wine-flow)
+13. [Enrichment Flow](#enrichment-flow)
+14. [Chip Configurations](#chip-configurations)
+15. [Command Detection](#command-detection)
+16. [Error Handling](#error-handling)
+17. [Handler Contribution Guide](#handler-contribution-guide)
+18. [Migration Notes](#migration-notes)
 
 ---
 
 ## High-Level Architecture
 
-The agent is built on a **Command Pattern** with centralized action routing and split stores for separation of concerns.
+The agent uses a **Router + Middleware + Handlers** pattern with split stores for separation of concerns.
+
+```
+                            ┌─────────────────────────────────────────────────────────────┐
+                            │                        UI Layer                             │
+                            │  AgentPanel.svelte  │  ChatMessage.svelte  │  ActionChips   │
+                            └───────────────────────────────┬─────────────────────────────┘
+                                                            │ dispatchAction()
+                                                            ▼
+┌───────────────────────────────────────────────────────────────────────────────────────────┐
+│                                    router.ts                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────────────────┐  │
+│  │                              Middleware Chain                                       │  │
+│  │  ┌───────────────────┐   ┌───────────────────┐   ┌──────────────────┐               │  │
+│  │  │ withErrorHandling │ → │ withRetryTracking │ → │  withValidation  │ → routeAction │  │
+│  │  └───────────────────┘   └───────────────────┘   └──────────────────┘               │  │
+│  └─────────────────────────────────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────────────────────────────────────┘
+                                                            │
+                     ┌──────────────┬──────────────┬────────┴────────┬──────────────┐
+                     ▼              ▼              ▼                 ▼              ▼
+            ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐
+            │conversation│  │identificat │  │ enrichment │  │  addWine   │  │   forms    │
+            │   .ts      │  │    ion.ts  │  │    .ts     │  │    .ts     │  │    .ts     │
+            └────────────┘  └────────────┘  └────────────┘  └────────────┘  └────────────┘
+                     │              │              │                 │              │
+                     └──────────────┴──────────────┴────────┬────────┴──────────────┘
+                                                            │
+┌───────────────────────────────────────────────────────────────────────────────────────────┐
+│                                       Stores                                              │
+│  ┌─────────────────┐  ┌───────────────────┐  ┌────────────────┐  ┌────────────────────┐   │
+│  │agentConversation│  │agentIdentification│  │ agentEnrichment│  │   agentAddWine     │   │
+│  │  - messages     │  │  - result         │  │  - data        │  │  - flow state      │   │
+│  │  - phase        │  │  - streaming      │  │  - cache       │  │  - entity matching │   │
+│  │  - chips        │  │  - error          │  │  - loading     │  │  - bottle form     │   │
+│  └─────────────────┘  └───────────────────┘  └────────────────┘  └────────────────────┘   │
+└───────────────────────────────────────────────────────────────────────────────────────────┘
+                                                            │
+                                                            ▼
+                              ┌─────────────────────────────────────────┐
+                              │              API Layer                  │
+                              │  $lib/api/client.ts → PHP Backend       │
+                              └─────────────────────────────────────────┘
+```
+
+### Mermaid Version
 
 ```mermaid
 flowchart TB
@@ -35,8 +88,18 @@ flowchart TB
         MessageComponents["Message Components<br/>(Text, Chips, WineCard, etc.)"]
     end
 
-    subgraph ActionLayer["Action Layer"]
-        ActionHandler["handleAgentAction.ts<br/>(Central Router)"]
+    subgraph Router["Router Layer"]
+        DispatchAction["dispatchAction()"]
+        Middleware["Middleware Chain<br/>(error → retry → validation)"]
+        RouteAction["routeAction()"]
+    end
+
+    subgraph Handlers["Handler Modules"]
+        Conversation["conversation.ts"]
+        Identification["identification.ts"]
+        Enrichment["enrichment.ts"]
+        AddWine["addWine.ts"]
+        Forms["forms.ts"]
     end
 
     subgraph StoreLayer["Store Layer"]
@@ -44,33 +107,293 @@ flowchart TB
         IdentificationStore["agentIdentification.ts<br/>(Result, Streaming)"]
         EnrichmentStore["agentEnrichment.ts<br/>(Wine Details)"]
         AddWineStore["agentAddWine.ts<br/>(Add Flow State)"]
-        PersistenceStore["agentPersistence.ts<br/>(sessionStorage)"]
     end
 
     subgraph API["API Layer"]
         ApiClient["api/client.ts"]
-        BackendPHP["PHP Backend<br/>(identifyText, identifyImage, etc.)"]
+        BackendPHP["PHP Backend"]
     end
 
-    InputArea -->|"dispatch action"| ActionHandler
-    MessageComponents -->|"chip tap"| ActionHandler
-    ActionHandler -->|"updates"| ConversationStore
-    ActionHandler -->|"updates"| IdentificationStore
-    ActionHandler -->|"updates"| EnrichmentStore
-    ActionHandler -->|"updates"| AddWineStore
-    ActionHandler -->|"API calls"| ApiClient
+    InputArea -->|"dispatch action"| DispatchAction
+    MessageComponents -->|"chip tap"| DispatchAction
+    DispatchAction --> Middleware
+    Middleware --> RouteAction
+    RouteAction --> Handlers
+
+    Handlers -->|"updates"| StoreLayer
+    Handlers -->|"API calls"| ApiClient
     ApiClient --> BackendPHP
 
-    ConversationStore -->|"subscribe"| ChatContainer
-    IdentificationStore -->|"subscribe"| MessageComponents
-    EnrichmentStore -->|"subscribe"| MessageComponents
-    AddWineStore -->|"subscribe"| MessageComponents
-
-    ConversationStore --> PersistenceStore
-    IdentificationStore --> PersistenceStore
-    EnrichmentStore --> PersistenceStore
-    AddWineStore --> PersistenceStore
+    StoreLayer -->|"subscribe"| UI
 ```
+
+---
+
+## Request Flow
+
+All user interactions flow through the same pipeline:
+
+```
+User Action (tap chip / submit text)
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  dispatchAction({ type: 'submit_text', payload: 'Margaux' })   │
+└─────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  1. withErrorHandling                                           │
+│     - Wraps entire chain in try/catch                           │
+│     - On error: extracts info, shows message, sets error phase  │
+└─────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  2. withRetryTracking                                           │
+│     - Stores action in lastAction store (if retryable)          │
+│     - Enables 'Try Again' chip functionality                    │
+└─────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  3. withValidation                                              │
+│     - Checks action prerequisites (phase, identification, etc.) │
+│     - Skips action if prerequisites not met                     │
+└─────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  4. routeAction                                                 │
+│     - Checks action type against handler type guards            │
+│     - Routes to appropriate handler module                      │
+│     - Delegates to legacy handler if no match                   │
+└─────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  5. Handler (e.g., identification.handleSubmitText)             │
+│     - Updates stores (messages, phase, result)                  │
+│     - Makes API calls if needed                                 │
+│     - Generates response chips                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Directory Structure
+
+```
+qve/src/lib/agent/
+├── router.ts                 # Entry point - dispatchAction()
+├── types.ts                  # AgentAction, AgentPhase, etc.
+├── stateMachine.ts           # Phase transition validation
+├── messages.ts               # getMessage() - message lookups
+├── messageKeys.ts            # MessageKey enum
+├── personalities.ts          # Personality types for messages
+│
+├── handlers/
+│   ├── index.ts              # Barrel exports + type guards
+│   ├── conversation.ts       # start_over, go_back, cancel, retry
+│   ├── identification.ts     # submit_text, submit_image, correct, not_correct
+│   ├── enrichment.ts         # learn, remember, cache handling
+│   ├── addWine.ts            # add_to_cellar, entity matching
+│   └── forms.ts              # bottle form, manual entry
+│
+├── middleware/
+│   ├── index.ts              # Barrel exports
+│   ├── types.ts              # ActionHandler, Middleware types
+│   ├── compose.ts            # compose() utility
+│   ├── errorHandler.ts       # withErrorHandling
+│   ├── retryTracker.ts       # withRetryTracking
+│   └── validator.ts          # withValidation
+│
+├── services/
+│   ├── index.ts              # Barrel exports
+│   ├── chipGenerator.ts      # generateXxxChips() functions
+│   └── chipRegistry.ts       # ChipKey enum, getChip()
+│
+├── messages/
+│   ├── index.ts              # Registry loader
+│   └── sommelier.ts          # Sommelier personality messages
+│
+└── __tests__/
+    ├── handlers.test.ts      # Handler unit tests
+    ├── middleware.test.ts    # Middleware unit tests
+    ├── router.test.ts        # Router unit tests
+    ├── errorScenarios.test.ts
+    ├── streaming.test.ts
+    └── integration/
+        └── addWineFlow.test.ts
+```
+
+---
+
+## Middleware System
+
+### Middleware Chain
+
+Middleware wraps the route function to add cross-cutting concerns:
+
+```typescript
+// Composition order (outermost to innermost)
+const middlewareChain = compose(
+  withErrorHandling,    // 1. Catches all errors
+  withRetryTracking,    // 2. Records retryable actions
+  withValidation        // 3. Checks prerequisites
+);
+
+const wrappedRouter = middlewareChain(routeAction);
+```
+
+### withErrorHandling
+
+Catches errors from any handler and displays user-friendly messages:
+
+```typescript
+export const withErrorHandling: Middleware = (handler) => async (action) => {
+  try {
+    await handler(action);
+  } catch (error) {
+    const errorInfo = extractErrorInfo(error);
+    showErrorInConversation(errorInfo);
+    conversation.setPhase('error');
+  }
+};
+```
+
+### withRetryTracking
+
+Stores the last action in a Svelte store for retry functionality:
+
+```typescript
+const retryableActions = new Set([
+  'submit_text', 'submit_image', 'enrich_now', 'add_to_cellar', 'submit_bottle'
+]);
+
+export const withRetryTracking: Middleware = (handler) => async (action) => {
+  if (retryableActions.has(action.type)) {
+    lastActionStore.set({ action, timestamp: Date.now() });
+  }
+  await handler(action);
+};
+```
+
+### withValidation
+
+Checks prerequisites before executing an action:
+
+```typescript
+const prerequisites = {
+  'correct': { requiresIdentification: true, requiresPhase: ['confirming'] },
+  'add_to_cellar': { requiresIdentification: true },
+  'submit_bottle': { requiresAddWineFlow: true },
+};
+
+export const withValidation: Middleware = (handler) => async (action) => {
+  const prereqs = prerequisites[action.type];
+  if (prereqs && !validatePrerequisites(prereqs)) {
+    console.warn(`Action ${action.type} prerequisites not met`);
+    return; // Skip action
+  }
+  await handler(action);
+};
+```
+
+### Creating Custom Middleware
+
+```typescript
+import type { Middleware } from '$lib/agent/middleware';
+
+const withLogging: Middleware = (handler) => async (action) => {
+  console.log(`[Action] Start: ${action.type}`);
+  const start = performance.now();
+
+  await handler(action);
+
+  console.log(`[Action] Done: ${action.type} (${performance.now() - start}ms)`);
+};
+
+// Use in a custom router
+const customRouter = createRouter(
+  withErrorHandling,
+  withLogging,  // Add custom middleware
+  withValidation
+);
+```
+
+---
+
+## Handler Modules
+
+Each handler module follows the same pattern:
+
+### conversation.ts
+
+Navigation and session control.
+
+| Action | Description |
+|--------|-------------|
+| `start_over` | Reset all stores, new greeting |
+| `go_back` | Return to previous phase |
+| `cancel` | Close agent panel |
+| `retry` / `try_again` | Re-dispatch last tracked action |
+
+### identification.ts
+
+Wine identification flow.
+
+| Action | Description |
+|--------|-------------|
+| `submit_text` | Text-based identification |
+| `submit_image` | Image-based identification |
+| `try_opus` | Escalate to premium model |
+| `reidentify` | Re-run identification |
+| `correct` | User confirms result is correct |
+| `not_correct` | User says result is wrong |
+| `confirm_brief_search` | Confirm single-word search |
+| `search_anyway` | Proceed with brief input |
+| `use_producer_name` | Use producer as wine name |
+| `use_grape_as_name` | Use grape variety as wine name |
+| `nv_vintage` | Set vintage to NV (non-vintage) |
+
+### enrichment.ts
+
+Wine information lookup.
+
+| Action | Description |
+|--------|-------------|
+| `learn` / `enrich_now` | Fetch wine details |
+| `remember` | Save for later (no-op) |
+| `recommend` | Get food pairings |
+| `confirm_cache_match` | Use cached enrichment |
+| `force_refresh` | Bypass cache |
+
+### addWine.ts
+
+Add wine to cellar flow.
+
+| Action | Description |
+|--------|-------------|
+| `add_to_cellar` | Start add wine flow |
+| `add_bottle_existing` | Add bottle to existing wine |
+| `create_new_wine` | Create new wine entry |
+| `select_match` | Select entity from matches |
+| `add_new` | Create new entity |
+| `clarify` | Provide more matching details |
+| `enrich_now` | Enrich before adding |
+| `add_quickly` | Skip enrichment |
+
+### forms.ts
+
+Form submission handlers.
+
+| Action | Description |
+|--------|-------------|
+| `submit_bottle` | Submit bottle form |
+| `bottle_next` | Move to next form step |
+| `manual_entry_submit` | Submit manual wine entry |
+| `retry_add` | Retry failed submission |
 
 ---
 
@@ -811,27 +1134,416 @@ Loading states (`isIdentifying`, `isEnriching`, `isSubmitting`) are **NOT** pers
 
 ## Key Files Reference
 
+### Router Layer
+
+| File | Purpose |
+|------|---------|
+| `lib/agent/router.ts` | Entry point - `dispatchAction()`, middleware composition |
+| `lib/agent/stateMachine.ts` | Phase transition validation |
+
+### Handlers
+
+| File | Purpose |
+|------|---------|
+| `lib/agent/handlers/index.ts` | Barrel exports, type guards (`isConversationAction`, etc.) |
+| `lib/agent/handlers/conversation.ts` | Navigation: start_over, go_back, cancel, retry |
+| `lib/agent/handlers/identification.ts` | Text/image identification, confirmation, field completion |
+| `lib/agent/handlers/enrichment.ts` | Wine info lookup, cache handling |
+| `lib/agent/handlers/addWine.ts` | Add to cellar, entity matching flow |
+| `lib/agent/handlers/forms.ts` | Bottle form, manual entry |
+
+### Middleware
+
+| File | Purpose |
+|------|---------|
+| `lib/agent/middleware/index.ts` | Barrel exports |
+| `lib/agent/middleware/types.ts` | `ActionHandler`, `Middleware` types |
+| `lib/agent/middleware/compose.ts` | `compose()` utility |
+| `lib/agent/middleware/errorHandler.ts` | `withErrorHandling` middleware |
+| `lib/agent/middleware/retryTracker.ts` | `withRetryTracking` middleware, `lastAction` store |
+| `lib/agent/middleware/validator.ts` | `withValidation` middleware |
+
+### Services
+
+| File | Purpose |
+|------|---------|
+| `lib/agent/services/chipGenerator.ts` | `generateXxxChips()` functions |
+| `lib/agent/services/chipRegistry.ts` | `ChipKey` enum, `getChip()` |
+
+### Messages
+
+| File | Purpose |
+|------|---------|
+| `lib/agent/messages.ts` | `getMessage()`, legacy message templates |
+| `lib/agent/messageKeys.ts` | `MessageKey` enum |
+| `lib/agent/personalities.ts` | Personality types |
+| `lib/agent/messages/sommelier.ts` | Sommelier personality messages |
+
+### Stores
+
+| File | Purpose |
+|------|---------|
+| `lib/stores/agentConversation.ts` | Messages, phase, addWineStep |
+| `lib/stores/agentIdentification.ts` | Identification result, streaming, error |
+| `lib/stores/agentEnrichment.ts` | Enrichment data, streaming |
+| `lib/stores/agentAddWine.ts` | Add-to-cellar flow state |
+| `lib/stores/agentSettings.ts` | Personality preference (localStorage) |
+| `lib/stores/agentPersistence.ts` | sessionStorage coordination |
+
+### Other
+
 | File | Purpose |
 |------|---------|
 | `lib/agent/types.ts` | All TypeScript types for agent system |
-| `lib/agent/messages.ts` | Message templates, i18n support, chip labels |
-| `lib/agent/handleAgentAction.ts` | Central action router (~2700 lines) |
-| `lib/stores/agentConversation.ts` | Messages, phase state |
-| `lib/stores/agentIdentification.ts` | Identification state, streaming, augmentation |
-| `lib/stores/agentEnrichment.ts` | Enrichment data, streaming |
-| `lib/stores/agentAddWine.ts` | Add-to-cellar flow state |
-| `lib/stores/agentPersistence.ts` | sessionStorage coordination |
+| `lib/agent/handleAgentAction.ts` | Legacy monolithic handler (being replaced) |
 | `lib/utils/commandDetector.ts` | Command/chip response detection |
 
 ---
 
 ## Design Principles
 
-1. **Command Pattern** - All interactions become typed actions routed through a single handler
+1. **Router + Middleware + Handlers** - Clean separation of routing, cross-cutting concerns, and business logic
 2. **Store Separation** - Single-responsibility stores for each domain
 3. **Phase-Driven UI** - Phase determines what's shown and what inputs are accepted
-4. **Streaming Support** - Real-time field updates during API calls
-5. **Mobile Resilience** - sessionStorage persistence survives tab switches
-6. **Error Recovery** - Typed errors with retry support and support references
-7. **Graceful Degradation** - Incomplete results still usable with field-specific prompts
-8. **Re-identification Option** - User can retry identification with accumulated context
+4. **State Machine** - Explicit phase transitions with validation
+5. **Streaming Support** - Real-time field updates during API calls
+6. **Mobile Resilience** - sessionStorage persistence survives tab switches
+7. **Error Recovery** - Typed errors with retry support and support references
+8. **Graceful Degradation** - Incomplete results still usable with field-specific prompts
+9. **Type Safety** - MessageKey and ChipKey enums eliminate string literals
+
+---
+
+## Handler Contribution Guide
+
+This guide explains how to add a new handler module to the agent system.
+
+### 1. Create the Handler File
+
+Create a new file in `qve/src/lib/agent/handlers/`:
+
+```typescript
+// handlers/myFeature.ts
+
+/**
+ * My Feature Handlers
+ *
+ * Handles [description of what this module does]:
+ * - action_one: [description]
+ * - action_two: [description]
+ */
+
+import type { AgentAction } from '../types';
+import * as conversation from '$lib/stores/agentConversation';
+import * as identification from '$lib/stores/agentIdentification';
+// Import other stores as needed
+
+// ===========================================
+// Action Types
+// ===========================================
+
+type MyFeatureActionType =
+  | 'action_one'
+  | 'action_two'
+  | 'action_three';
+
+// ===========================================
+// Handlers
+// ===========================================
+
+/**
+ * Handle action_one.
+ * [Detailed description]
+ */
+export async function handleActionOne(action: AgentAction): Promise<void> {
+  console.log('[MyFeature] action_one');
+
+  // 1. Update stores
+  conversation.setPhase('some_phase');
+
+  // 2. Add messages
+  conversation.addMessage(
+    conversation.createTextMessage('Processing your request...')
+  );
+
+  // 3. Make API calls if needed
+  // const result = await api.someEndpoint();
+
+  // 4. Update with results
+  conversation.addMessage(
+    conversation.createChipsMessage([
+      { id: 'next', label: 'Continue', action: 'continue' },
+      { id: 'cancel', label: 'Cancel', action: 'cancel' },
+    ])
+  );
+}
+
+// Additional handlers...
+
+// ===========================================
+// Type Guard and Router
+// ===========================================
+
+/**
+ * Check if an action type belongs to this module.
+ */
+export function isMyFeatureAction(type: string): type is MyFeatureActionType {
+  return ['action_one', 'action_two', 'action_three'].includes(type);
+}
+
+/**
+ * Route to the appropriate handler.
+ */
+export async function handleMyFeatureAction(action: AgentAction): Promise<void> {
+  switch (action.type) {
+    case 'action_one':
+      await handleActionOne(action);
+      break;
+    case 'action_two':
+      await handleActionTwo(action);
+      break;
+    case 'action_three':
+      await handleActionThree(action);
+      break;
+    default:
+      console.warn(`[MyFeature] Unknown action: ${action.type}`);
+  }
+}
+```
+
+### 2. Export from handlers/index.ts
+
+```typescript
+// handlers/index.ts
+
+// ... existing exports ...
+
+// My Feature handlers
+export {
+  isMyFeatureAction,
+  handleMyFeatureAction,
+} from './myFeature';
+```
+
+### 3. Register in router.ts
+
+Add the type guard check and handler call:
+
+```typescript
+// router.ts
+
+import {
+  // ... existing imports ...
+  isMyFeatureAction,
+  handleMyFeatureAction,
+} from './handlers';
+
+async function routeAction(action: AgentAction): Promise<void> {
+  // ... existing handler checks ...
+
+  // Check for my feature actions
+  if (isMyFeatureAction(action.type)) {
+    console.log('[Router] Handling my feature action:', action.type);
+    await handleMyFeatureAction(action);
+    return;
+  }
+
+  // Fallback to legacy handler
+  await legacyHandler(action);
+}
+```
+
+### 4. Add Validation Prerequisites (if needed)
+
+If your actions have prerequisites, add them to `middleware/validator.ts`:
+
+```typescript
+// middleware/validator.ts
+
+const prerequisites: Record<string, ActionPrerequisites> = {
+  // ... existing prerequisites ...
+
+  // My Feature actions
+  'action_one': { requiresIdentification: true },
+  'action_two': { requiresPhase: ['confirming'] },
+};
+```
+
+### 5. Add State Machine Transitions (if needed)
+
+If your handler introduces new phases or transitions, update `stateMachine.ts`:
+
+```typescript
+// stateMachine.ts
+
+export const PHASE_TRANSITIONS: Record<AgentPhase, AgentPhase[]> = {
+  // ... existing transitions ...
+
+  my_new_phase: [
+    'confirming',  // Can go back to confirming
+    'complete',    // Can complete from here
+    'error',       // Can error
+  ],
+};
+```
+
+### 6. Write Tests
+
+Create a test file in `__tests__/`:
+
+```typescript
+// __tests__/myFeature.test.ts
+
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { get } from 'svelte/store';
+import { handleActionOne, isMyFeatureAction } from '../handlers/myFeature';
+import * as conversation from '$lib/stores/agentConversation';
+
+describe('MyFeature Handlers', () => {
+  beforeEach(() => {
+    // Reset stores
+    conversation.resetConversation();
+  });
+
+  describe('isMyFeatureAction', () => {
+    it('should return true for my feature actions', () => {
+      expect(isMyFeatureAction('action_one')).toBe(true);
+      expect(isMyFeatureAction('action_two')).toBe(true);
+    });
+
+    it('should return false for other actions', () => {
+      expect(isMyFeatureAction('start_over')).toBe(false);
+      expect(isMyFeatureAction('submit_text')).toBe(false);
+    });
+  });
+
+  describe('handleActionOne', () => {
+    it('should add message and update phase', async () => {
+      await handleActionOne({ type: 'action_one' });
+
+      const messages = get(conversation.messages);
+      expect(messages.length).toBeGreaterThan(0);
+    });
+  });
+});
+```
+
+### Handler Checklist
+
+- [ ] Create handler file with JSDoc comments
+- [ ] Define action type union
+- [ ] Implement individual handler functions
+- [ ] Create type guard function (`isXxxAction`)
+- [ ] Create routing function (`handleXxxAction`)
+- [ ] Export from `handlers/index.ts`
+- [ ] Register in `router.ts`
+- [ ] Add validation prerequisites if needed
+- [ ] Update state machine if new phases
+- [ ] Write unit tests
+- [ ] Run `npm run check` and `npm test`
+
+---
+
+## Migration Notes
+
+### Migrating from Legacy handleAgentAction.ts
+
+The legacy monolithic `handleAgentAction.ts` (~2,700 lines) is being replaced by the modular router/handler system.
+
+### Current Migration Status
+
+| Category | Status | Handler File |
+|----------|--------|--------------|
+| Conversation (start_over, go_back, cancel, retry) | ✅ Complete | `conversation.ts` |
+| Identification (submit_text, submit_image, correct, etc.) | ✅ Complete | `identification.ts` |
+| Enrichment (learn, remember, cache) | ✅ Complete | `enrichment.ts` |
+| Add Wine (add_to_cellar, entity matching) | ✅ Complete | `addWine.ts` |
+| Forms (bottle form, manual entry) | ✅ Complete | `forms.ts` |
+| Legacy fallback | Active | `handleAgentAction.ts` |
+
+### How Migration Works
+
+1. **Gradual Migration**: The router checks new handlers first, then falls back to the legacy handler for any unhandled actions.
+
+2. **Type Guard Priority**: The router checks handlers in order:
+   ```typescript
+   if (isConversationAction(type)) { /* new handler */ }
+   else if (isIdentificationAction(type)) { /* new handler */ }
+   // ... other handlers ...
+   else { /* legacy fallback */ }
+   ```
+
+3. **Backwards Compatible**: The legacy handler continues to work for any actions not yet migrated.
+
+### Extracting Code from Legacy Handler
+
+When migrating a case from the legacy handler:
+
+1. **Find the case** in `handleAgentAction.ts`
+
+2. **Copy the logic** to a new handler function:
+   ```typescript
+   // Before (in handleAgentAction.ts)
+   case 'my_action': {
+     // 50 lines of code
+     break;
+   }
+
+   // After (in handlers/myHandler.ts)
+   export async function handleMyAction(action: AgentAction): Promise<void> {
+     // Same 50 lines, cleaned up
+   }
+   ```
+
+3. **Replace module-level state** with store access:
+   ```typescript
+   // Before
+   let lastAction: AgentAction | null = null;
+
+   // After
+   import { getLastAction, setLastAction } from '../middleware/retryTracker';
+   ```
+
+4. **Remove from legacy handler** once tests pass:
+   ```typescript
+   // Remove the case from handleAgentAction.ts
+   ```
+
+### Differences from Legacy System
+
+| Aspect | Legacy | New System |
+|--------|--------|------------|
+| Error handling | Try/catch in each case | `withErrorHandling` middleware |
+| Retry tracking | Module-level variable | `withRetryTracking` middleware + store |
+| Validation | Inline checks | `withValidation` middleware |
+| Phase transitions | Implicit | `stateMachine.ts` validates |
+| Messages | String paths | `MessageKey` enum |
+| Chips | Inline objects | `ChipKey` enum + registry |
+
+### Testing During Migration
+
+Run tests frequently to catch regressions:
+
+```bash
+cd qve
+npm test                           # Run all tests
+npm test -- handlers               # Run handler tests
+npm test -- router                 # Run router tests
+npm test -- integration            # Run integration tests
+```
+
+### Final Migration Steps
+
+Once all actions are migrated:
+
+1. Remove the legacy `handleAgentAction.ts`
+2. Remove the fallback in `router.ts`
+3. Update imports throughout the codebase
+4. Delete any orphaned helper functions
+
+### Known Tech Debt
+
+See [PHASE_2_REARCHITECTURE.md](./PHASE_2_REARCHITECTURE.md#8-deferred-items--tech-debt) for:
+- Legacy `getMessage()` calls needing migration to `getMessageByKey()`
+- Legacy `agentMessages` object to remove
+- Circular dependency in forms.ts/addWine.ts

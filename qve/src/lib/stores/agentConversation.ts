@@ -26,6 +26,7 @@ import type {
   AgentChip,
 } from '$lib/agent/types';
 import { getTimeBasedGreeting } from '$lib/agent/messages';
+import { assertValidTransition } from '$lib/agent/stateMachine';
 
 // ===========================================
 // Constants
@@ -377,8 +378,28 @@ export function removeMessage(messageId: string): void {
 
 /**
  * Set the conversation phase.
+ *
+ * Validates the transition using the state machine:
+ * - In DEV mode: Throws on invalid transitions
+ * - In production: Logs and allows (fail-safe)
+ *
+ * @param phase - Target phase
+ * @param step - Optional target substep (for adding_wine phase)
  */
 export function setPhase(phase: AgentPhase, step?: AddWineStep | null): void {
+  const currentState = get(store);
+  const currentPhase = currentState.phase;
+  const currentStep = currentState.addWineStep;
+
+  // Validate transition (throws in DEV, logs in production)
+  assertValidTransition(
+    currentPhase,
+    phase,
+    step,
+    currentStep,
+    `setPhase(${phase}${step ? `, ${step}` : ''})`
+  );
+
   store.update((state) => ({
     ...state,
     phase,

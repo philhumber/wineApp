@@ -35,6 +35,7 @@ export interface PersistedState {
   identificationResult: WineIdentificationResult | null;
   augmentationContext: AugmentationContext | null;
   pendingNewSearch: string | null;
+  pendingBriefSearch: string | null;
 
   // Enrichment state
   enrichmentData: EnrichmentData | null;
@@ -322,6 +323,7 @@ export function createEmptyState(): PersistedState {
     identificationResult: null,
     augmentationContext: null,
     pendingNewSearch: null,
+    pendingBriefSearch: null,
     enrichmentData: null,
     addWineState: null,
     imageData: null,

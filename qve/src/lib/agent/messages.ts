@@ -6,14 +6,116 @@
  * - Consistent tone and personality
  * - Easy i18n support in the future
  * - Single source of truth for message content
+ *
+ * Phase 2 Sprint 4 adds:
+ * - Type-safe MessageKey enum access via getMessageByKey()
+ * - Personality support (SOMMELIER default, others planned)
+ *
+ * @see messageKeys.ts for MessageKey enum
+ * @see personalities.ts for Personality types
+ * @see messages/sommelier.ts for sommelier messages
  */
 
+import { MessageKey } from './messageKeys';
+import {
+  Personality,
+  wn,
+  type MessageContext,
+  type MessageVariant,
+  type MessageTemplate,
+} from './personalities';
+import { getPersonalityMessages } from './messages/index';
+import { getPersonality } from '$lib/stores/agentSettings';
+
+// Re-export wn for backwards compatibility with existing imports
+export { wn };
+
 // ===========================================
-// Message Registry
+// Message Registry (NEW - Type-Safe Access)
 // ===========================================
 
-/** Pick a random item from an array or return string as-is */
-function randomize(value: string | readonly string[]): string {
+/**
+ * Pick a random item from an array or return value as-is.
+ * For the new MessageVariant type system.
+ */
+function randomizeVariant(value: MessageVariant): string | MessageTemplate {
+  if (Array.isArray(value)) {
+    return value[Math.floor(Math.random() * value.length)];
+  }
+  return value as string | MessageTemplate;
+}
+
+/**
+ * Get a message by key with personality support.
+ *
+ * Looks up the message for the current personality setting.
+ * Falls back to SOMMELIER if the message isn't defined for the current personality.
+ *
+ * @param key - MessageKey enum value
+ * @param context - Optional context for template functions
+ * @returns Resolved message string
+ *
+ * @example
+ * // Simple message
+ * getMessageByKey(MessageKey.CONFIRM_CORRECT)
+ * // → "Great! What would you like to do next?"
+ *
+ * @example
+ * // Template message
+ * getMessageByKey(MessageKey.ID_FOUND, { wineName: 'Château Margaux' })
+ * // → "I found <span class=\"wine-name\">Château Margaux</span>. Is this correct?"
+ */
+export function getMessageByKey(key: MessageKey, context?: MessageContext): string {
+  const personality = getPersonality();
+
+  // Get personality-specific messages
+  const messages = getPersonalityMessages(personality);
+  let variant = messages[key];
+
+  // Fallback to SOMMELIER if message not found for this personality
+  if (variant === undefined && personality !== Personality.SOMMELIER) {
+    const fallbackMessages = getPersonalityMessages(Personality.SOMMELIER);
+    variant = fallbackMessages[key];
+  }
+
+  // Final fallback: throw in DEV, return user-friendly message in production
+  if (variant === undefined) {
+    const errorMsg = `[AgentMessages] No message found for key: ${key}`;
+    if (import.meta.env.DEV) {
+      throw new Error(errorMsg);
+    }
+    console.error(errorMsg);
+    return 'Message unavailable';
+  }
+
+  // Handle array (random selection)
+  const resolved = randomizeVariant(variant);
+
+  // Handle template function
+  if (typeof resolved === 'function') {
+    if (!context) {
+      const errorMsg = `[AgentMessages] Template function requires context: ${key}`;
+      if (import.meta.env.DEV) {
+        throw new Error(errorMsg);
+      }
+      console.error(errorMsg);
+      return 'Message unavailable';
+    }
+    return (resolved as MessageTemplate)(context);
+  }
+
+  return resolved as string;
+}
+
+// ===========================================
+// Legacy Message Registry (Backwards Compatible)
+// ===========================================
+
+/**
+ * Pick a random item from an array or return string as-is.
+ * For legacy agentMessages object (readonly string arrays).
+ */
+function randomizeLegacy(value: string | readonly string[]): string {
   if (Array.isArray(value)) {
     return value[Math.floor(Math.random() * value.length)];
   }
@@ -127,7 +229,8 @@ export const agentMessages = {
 // Type-Safe Message Access
 // ===========================================
 
-type MessagePath = {
+// Type for legacy getMessage path validation (kept for reference)
+type _MessagePath = {
   greeting: keyof typeof agentMessages.greeting;
   identification: keyof typeof agentMessages.identification;
   confirm: keyof typeof agentMessages.confirm;
@@ -173,11 +276,11 @@ export function getTimeBasedGreeting(): string {
   const hour = new Date().getHours();
 
   if (3 < hour && hour < 12) {
-    return randomize(agentMessages.greeting.morning);
-  } else if (11 < hour && hour < 17 ) {
-    return randomize(agentMessages.greeting.afternoon);
+    return randomizeLegacy(agentMessages.greeting.morning);
+  } else if (11 < hour && hour < 17) {
+    return randomizeLegacy(agentMessages.greeting.afternoon);
   } else {
-    return randomize(agentMessages.greeting.evening);
+    return randomizeLegacy(agentMessages.greeting.evening);
   }
 }
 
@@ -199,9 +302,6 @@ export function formatMessage(
 // ===========================================
 // Message Templates with Variables
 // ===========================================
-
-/** Wrap wine/producer names in styled span */
-export const wn = (name: string) => `<span class="wine-name">${name}</span>`;
 
 export const messageTemplates = {
   identification: {

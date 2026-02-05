@@ -2,12 +2,11 @@
  * Agent Action Router
  *
  * Central router that:
- * 1. Applies middleware chain (error handling, retry tracking, validation)
- * 2. Dispatches actions to appropriate handler modules
- * 3. Delegates to legacy handler for actions not yet migrated
+ * 1. Normalizes action aliases
+ * 2. Applies middleware chain (error handling, retry tracking, validation)
+ * 3. Dispatches actions to appropriate handler modules
  *
- * This enables gradual migration from the monolithic handleAgentAction.ts
- * to modular handlers while maintaining backwards compatibility.
+ * Sprint 6: Final migration - legacy handler removed.
  *
  * @example
  * import { dispatchAction } from '$lib/agent/router';
@@ -27,36 +26,65 @@ import {
 import {
   isConversationAction,
   handleConversationAction,
+  isIdentificationAction,
+  handleIdentificationAction,
+  isEnrichmentAction,
+  handleEnrichmentAction,
+  isAddWineAction,
+  handleAddWineAction,
+  isFormAction,
+  handleFormAction,
+  isCameraAction,
+  handleCameraAction,
+  getHandlerCategory,
 } from './handlers';
 
-// Import legacy handler for gradual migration
-import { handleAgentAction as legacyHandler } from './handleAgentAction';
+// ===========================================
+// Action Aliases
+// ===========================================
+
+/**
+ * Action aliases for backwards compatibility and UI convenience.
+ * Maps old/convenience names to canonical action types.
+ */
+const ACTION_ALIASES: Record<string, string> = {
+  // Add Wine aliases
+  add: 'add_to_cellar',
+
+  // Enrichment aliases
+  remember_wine: 'remember',
+};
+
+/**
+ * Normalize action by resolving aliases.
+ */
+function normalizeAction(action: AgentAction): AgentAction {
+  const normalizedType = ACTION_ALIASES[action.type] || action.type;
+
+  if (normalizedType !== action.type) {
+    console.log(`[Router] Alias resolved: ${action.type} → ${normalizedType}`);
+    return { ...action, type: normalizedType } as AgentAction;
+  }
+
+  return action;
+}
 
 // ===========================================
 // Handler Registry
 // ===========================================
 
 /**
- * Registry of action handlers by category.
- * Each handler returns:
- * - null if the action was fully handled
- * - An AgentAction if it should be re-dispatched (e.g., retry)
- */
-type CategoryHandler = (action: AgentAction) => Promise<AgentAction | null>;
-
-const handlerRegistry: Map<string, CategoryHandler> = new Map([
-  // Conversation actions are handled by the conversation module
-  // Other categories will be added as they are extracted from the monolith
-]);
-
-/**
  * Check if an action type has a dedicated handler.
  */
 function hasHandler(actionType: string): boolean {
-  return isConversationAction(actionType);
-  // Future: || isIdentificationAction(actionType)
-  //         || isConfirmationAction(actionType)
-  //         || etc.
+  return (
+    isConversationAction(actionType) ||
+    isIdentificationAction(actionType) ||
+    isEnrichmentAction(actionType) ||
+    isAddWineAction(actionType) ||
+    isFormAction(actionType) ||
+    isCameraAction(actionType)
+  );
 }
 
 // ===========================================
@@ -68,9 +96,31 @@ function hasHandler(actionType: string): boolean {
  * Handles re-dispatch for retry actions.
  */
 async function routeAction(action: AgentAction): Promise<void> {
+  // Normalize aliases first
+  action = normalizeAction(action);
+
   console.log('[Router] Routing action:', action.type);
 
-  // Check for conversation actions (start_over, go_back, cancel, retry)
+  // Safety net: Handle generic chip_tap (unwrap and re-route)
+  if (action.type === 'chip_tap') {
+    const payload = action.payload as {
+      action: string;
+      messageId: string;
+      data?: unknown;
+    };
+    console.warn('[Router] Generic chip_tap used - should be specific action', payload);
+
+    const unwrapped: AgentAction = {
+      type: payload.action,
+      messageId: payload.messageId,
+      payload: payload.data,
+    } as AgentAction;
+
+    await routeAction(unwrapped);
+    return;
+  }
+
+  // Check for conversation actions (start_over, go_back, cancel, retry, etc.)
   if (isConversationAction(action.type)) {
     const retryAction = await handleConversationAction(action);
 
@@ -82,15 +132,47 @@ async function routeAction(action: AgentAction): Promise<void> {
     return;
   }
 
-  // Future: Add more handler checks here as modules are extracted
-  // if (isIdentificationAction(action.type)) {
-  //   await handleIdentificationAction(action);
-  //   return;
-  // }
+  // Check for identification actions
+  if (isIdentificationAction(action.type)) {
+    console.log('[Router] Handling identification action:', action.type);
+    await handleIdentificationAction(action);
+    return;
+  }
 
-  // Fallback to legacy handler for actions not yet migrated
-  console.log('[Router] Delegating to legacy handler:', action.type);
-  await legacyHandler(action);
+  // Check for enrichment actions
+  if (isEnrichmentAction(action.type)) {
+    console.log('[Router] Handling enrichment action:', action.type);
+    await handleEnrichmentAction(action);
+    return;
+  }
+
+  // Check for add wine actions
+  if (isAddWineAction(action.type)) {
+    console.log('[Router] Handling add wine action:', action.type);
+    await handleAddWineAction(action);
+    return;
+  }
+
+  // Check for form actions
+  if (isFormAction(action.type)) {
+    console.log('[Router] Handling form action:', action.type);
+    await handleFormAction(action);
+    return;
+  }
+
+  // Check for camera actions
+  if (isCameraAction(action.type)) {
+    console.log('[Router] Handling camera action:', action.type);
+    handleCameraAction(action);
+    return;
+  }
+
+  // No handler found - log error
+  console.error('[Router] No handler found for action:', action.type);
+
+  if (import.meta.env.DEV) {
+    throw new Error(`No handler for action: ${action.type}`);
+  }
 }
 
 // ===========================================
@@ -127,6 +209,7 @@ const wrappedRouter: ActionHandler = middlewareChain(routeAction);
  *
  * This is the main entry point for handling agent actions.
  * All actions pass through:
+ * - Alias normalization
  * - Error handling (catches and displays errors)
  * - Retry tracking (stores action for potential retry)
  * - Validation (checks prerequisites)
@@ -159,7 +242,19 @@ export function createRouter(...middleware: Parameters<typeof compose>): ActionH
 }
 
 /**
+ * Export for use in index.ts barrel
+ * Backwards-compatible alias for handleAgentAction
+ */
+export { dispatchAction as handleAgentAction };
+
+/**
  * Export the raw route function for testing.
  * @internal
  */
 export { routeAction as _routeAction };
+
+/**
+ * Export hasHandler for testing.
+ * @internal
+ */
+export { hasHandler as _hasHandler };

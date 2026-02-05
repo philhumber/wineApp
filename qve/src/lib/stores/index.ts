@@ -393,3 +393,7 @@ export type {
   PanelState,
   RestoreCallbacks,
 } from './agentPersistence';
+
+// Agent Settings (new - Sprint 4)
+export { agentSettings, getPersonality } from './agentSettings';
+export type { AgentSettings } from './agentSettings';

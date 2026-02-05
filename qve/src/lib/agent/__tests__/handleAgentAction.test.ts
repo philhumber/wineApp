@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
-import { handleAgentAction, __test__ } from '../handleAgentAction';
+import { dispatchAction as handleAgentAction } from '../router';
+import { handleStartOver } from '../handlers/conversation';
+import { handleIdentificationAction } from '../handlers/identification';
 import * as conversation from '$lib/stores/agentConversation';
 import * as identification from '$lib/stores/agentIdentification';
 import * as enrichment from '$lib/stores/agentEnrichment';
@@ -199,11 +201,14 @@ describe('handleAgentAction', () => {
 			});
 
 			it('should detect cancel command', async () => {
+				// greeting → identifying (valid)
 				conversation.setPhase('identifying');
 				await handleAgentAction({ type: 'submit_text', payload: 'cancel' });
 
+				// Cancel command is detected - API should not be called
 				expect(api.identifyTextStream).not.toHaveBeenCalled();
-				expect(get(conversation.agentPhase)).toBe('awaiting_input');
+				// Cancel closes the panel but doesn't change phase
+				expect(get(conversation.agentPhase)).toBe('identifying');
 			});
 
 			it('should show brief input prompt for single word', async () => {
@@ -228,8 +233,10 @@ describe('handleAgentAction', () => {
 			});
 
 			it('should detect chip response in confirming phase', async () => {
-				// Set up confirming phase with a result
+				// Set up confirming phase with a result (using valid transition path)
 				identification.setResult(sampleWineResult, 0.9);
+				// greeting → awaiting_input → confirming (valid path)
+				conversation.setPhase('awaiting_input');
 				conversation.setPhase('confirming');
 				const chipsMsg = conversation.addMessage(
 					conversation.createChipsMessage([
@@ -296,15 +303,17 @@ describe('handleAgentAction', () => {
 
 	describe('navigation actions', () => {
 		describe('start_over', () => {
-			it('should disable all chips', async () => {
+			it('should reset conversation with greeting message', async () => {
+				// Start with some content
 				conversation.addMessage(
 					conversation.createChipsMessage([{ id: '1', label: 'Test', action: 'test' }])
 				);
 				await handleAgentAction({ type: 'start_over' });
 
+				// start_over calls startSession() which resets messages and adds greeting
 				const messages = get(conversation.agentMessages);
-				const chipsMessage = messages.find((m) => m.category === 'chips');
-				expect(chipsMessage?.disabled).toBe(true);
+				expect(messages.length).toBe(1); // Just the greeting
+				expect(messages[0].category).toBe('text'); // Greeting is a text message
 			});
 
 			it('should clear identification', async () => {
@@ -325,20 +334,22 @@ describe('handleAgentAction', () => {
 				expect(get(addWine.isInAddWineFlow)).toBe(false);
 			});
 
-			it('should reset conversation to awaiting_input', async () => {
+			it('should reset conversation to greeting phase', async () => {
 				conversation.addMessage(conversation.createTextMessage('Test message'));
 				await handleAgentAction({ type: 'start_over' });
 
 				// Should have greeting message and phase reset
 				const messages = get(conversation.agentMessages);
 				expect(messages.length).toBeGreaterThan(0);
-				// resetConversation sets phase to awaiting_input (not greeting)
-				expect(get(conversation.agentPhase)).toBe('awaiting_input');
+				// start_over calls startSession() which sets phase to greeting
+				expect(get(conversation.agentPhase)).toBe('greeting');
 			});
 		});
 
 		describe('go_back', () => {
 			it('should set phase to awaiting_input', async () => {
+				// greeting → awaiting_input → confirming (valid path)
+				conversation.setPhase('awaiting_input');
 				conversation.setPhase('confirming');
 				await handleAgentAction({ type: 'go_back' });
 				expect(get(conversation.agentPhase)).toBe('awaiting_input');
@@ -346,17 +357,19 @@ describe('handleAgentAction', () => {
 		});
 
 		describe('cancel', () => {
-			it('should set phase to awaiting_input', async () => {
+			it('should close panel without changing phase', async () => {
+				// greeting → identifying (valid)
 				conversation.setPhase('identifying');
 				await handleAgentAction({ type: 'cancel' });
-				expect(get(conversation.agentPhase)).toBe('awaiting_input');
+				// cancel just closes the panel, doesn't change phase
+				expect(get(conversation.agentPhase)).toBe('identifying');
 			});
 		});
 	});
 
 	describe('confirmation actions', () => {
 		describe('correct', () => {
-			// Set up a complete identification result before each test
+			// Set up a complete identification result and valid phase before each test
 			beforeEach(() => {
 				identification.setResult({
 					producer: 'Opus One',
@@ -367,6 +380,10 @@ describe('handleAgentAction', () => {
 					type: 'Red',
 					confidence: 0.95,
 				});
+				// Set up valid phase path: greeting → awaiting_input → confirming
+				// Most correct/confirmation actions are called from confirming phase
+				conversation.setPhase('awaiting_input');
+				conversation.setPhase('confirming');
 			});
 
 			it('should disable the message', async () => {
@@ -421,6 +438,13 @@ describe('handleAgentAction', () => {
 		});
 
 		describe('not_correct', () => {
+			// Set up valid phase and identification for not_correct tests
+			beforeEach(() => {
+				identification.setResult(sampleWineResult, 0.9);
+				conversation.setPhase('awaiting_input');
+				conversation.setPhase('confirming');
+			});
+
 			it('should disable the message', async () => {
 				const msg = conversation.addMessage(
 					conversation.createChipsMessage([{ id: '1', label: 'Not Correct', action: 'not_correct' }])
@@ -434,8 +458,7 @@ describe('handleAgentAction', () => {
 			});
 
 			it('should set augmentation context when result exists', async () => {
-				identification.setResult(sampleWineResult, 0.9);
-
+				// identification.setResult is already called in beforeEach
 				const msg = conversation.addMessage(
 					conversation.createChipsMessage([{ id: '1', label: 'Not Correct', action: 'not_correct' }])
 				);
@@ -508,6 +531,11 @@ describe('handleAgentAction', () => {
 		});
 
 		describe('continue_current', () => {
+			beforeEach(() => {
+				// Set up valid phase path for actions that transition to confirming
+				conversation.setPhase('awaiting_input');
+			});
+
 			it('should clear pending search', async () => {
 				identification.setPendingNewSearch('Pending Search');
 
@@ -531,6 +559,8 @@ describe('handleAgentAction', () => {
 
 		describe('add_more_detail', () => {
 			it('should set phase to awaiting_input', async () => {
+				// greeting → awaiting_input → confirming (valid path)
+				conversation.setPhase('awaiting_input');
 				conversation.setPhase('confirming');
 				const msg = conversation.addMessage(
 					conversation.createChipsMessage([{ id: '1', label: 'Add More', action: 'add_more_detail' }])
@@ -544,6 +574,13 @@ describe('handleAgentAction', () => {
 
 	describe('identification actions', () => {
 		describe('try_opus', () => {
+			// Set up valid phase and identification for try_opus tests
+			beforeEach(() => {
+				identification.setResult(sampleWineResult, 0.9);
+				conversation.setPhase('awaiting_input');
+				conversation.setPhase('confirming');
+			});
+
 			it('should start escalation at tier 3', async () => {
 				const msg = conversation.addMessage(
 					conversation.createChipsMessage([{ id: '1', label: 'Try Opus', action: 'try_opus' }])
@@ -569,6 +606,12 @@ describe('handleAgentAction', () => {
 		});
 
 		describe('see_result', () => {
+			beforeEach(() => {
+				// Set up valid phase path for actions that transition to confirming
+				// greeting → awaiting_input (valid)
+				conversation.setPhase('awaiting_input');
+			});
+
 			it('should show wine result when exists', async () => {
 				identification.setResult(sampleWineResult, 0.9);
 
@@ -647,6 +690,13 @@ describe('handleAgentAction', () => {
 
 	describe('wine flow actions', () => {
 		describe('add_to_cellar', () => {
+			beforeEach(() => {
+				// Set up valid phase path for add_to_cellar: confirming → adding_wine
+				// greeting → awaiting_input → confirming (valid path)
+				conversation.setPhase('awaiting_input');
+				conversation.setPhase('confirming');
+			});
+
 			it('should start add flow when result exists', async () => {
 				identification.setResult(sampleWineResult, 0.9);
 
@@ -670,16 +720,24 @@ describe('handleAgentAction', () => {
 				expect(get(conversation.addWineStep)).toBe('bottle_details');
 			});
 
-			it('should show error when no result', async () => {
+			it('should be blocked by middleware when no result', async () => {
+				// Note: With middleware validation, actions that require identification
+				// are silently blocked (with console warning) if no result exists.
+				// The middleware prevents reaching the handler's own validation.
+				const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
 				const msg = conversation.addMessage(
 					conversation.createChipsMessage([{ id: '1', label: 'Add', action: 'add_to_cellar' }])
 				);
 
 				await handleAgentAction({ type: 'add_to_cellar', messageId: msg.id });
 
-				const messages = get(conversation.agentMessages);
-				const errorMsg = messages.find((m) => getTextContent(m)?.includes("don't have"));
-				expect(errorMsg).toBeDefined();
+				// Middleware logs a warning about validation failure (single string with both parts)
+				expect(warnSpy).toHaveBeenCalledWith(
+					expect.stringContaining('Validation failed for add_to_cellar')
+				);
+
+				warnSpy.mockRestore();
 			});
 
 			it('should add start message', async () => {
@@ -698,6 +756,13 @@ describe('handleAgentAction', () => {
 		});
 
 		describe('learn', () => {
+			beforeEach(() => {
+				// Set up valid phase path for learn: confirming → enriching → confirming
+				// greeting → awaiting_input → confirming (valid path)
+				conversation.setPhase('awaiting_input');
+				conversation.setPhase('confirming');
+			});
+
 			it('should call enrichWineStream API when result exists', async () => {
 				identification.setResult(sampleWineResult, 0.9);
 
@@ -800,6 +865,8 @@ describe('handleAgentAction', () => {
 
 		describe('enrich_now', () => {
 			it('should set enrichNow to true', async () => {
+				// Must set identification result (middleware validates requiresIdentification)
+				identification.setResult(sampleWineResult, 0.9);
 				addWine.startAddFlow(sampleWineResult);
 
 				const msg = conversation.addMessage(
@@ -813,6 +880,8 @@ describe('handleAgentAction', () => {
 
 		describe('add_quickly', () => {
 			it('should set enrichNow to false', async () => {
+				// Must set identification result (middleware validates requiresIdentification)
+				identification.setResult(sampleWineResult, 0.9);
 				addWine.startAddFlow(sampleWineResult);
 				addWine.setEnrichNow(true);
 
@@ -851,6 +920,13 @@ describe('handleAgentAction', () => {
 
 		describe('create_new_wine', () => {
 			it('should clear existing wine', async () => {
+				// Set up valid phase path: greeting → awaiting_input → adding_wine
+				// create_new_wine is called while in adding_wine phase
+				conversation.setPhase('awaiting_input');
+				conversation.setPhase('adding_wine', 'confirm');
+
+				// Must set identification result (middleware validates requiresIdentification)
+				identification.setResult(sampleWineResult, 0.9);
 				addWine.startAddFlow(sampleWineResult);
 				addWine.setExistingWine(42, 3);
 
@@ -865,6 +941,13 @@ describe('handleAgentAction', () => {
 
 		describe('add_bottle_existing', () => {
 			it('should set phase to bottle_details', async () => {
+				// Set up valid phase path: greeting → awaiting_input → adding_wine
+				// add_bottle_existing is called while in adding_wine phase
+				conversation.setPhase('awaiting_input');
+				conversation.setPhase('adding_wine', 'confirm');
+
+				// Must set identification result (middleware validates requiresIdentification)
+				identification.setResult(sampleWineResult, 0.9);
 				addWine.startAddFlow(sampleWineResult);
 				addWine.setExistingWine(42, 3);
 
@@ -881,6 +964,9 @@ describe('handleAgentAction', () => {
 	describe('form actions', () => {
 		describe('submit_bottle', () => {
 			it('should update bottle form data', async () => {
+				// Set up valid phase path and add wine flow for form submission
+				conversation.setPhase('awaiting_input');
+				conversation.setPhase('adding_wine', 'bottle_details');
 				addWine.startAddFlow(sampleWineResult);
 
 				await handleAgentAction({
@@ -939,6 +1025,10 @@ describe('handleAgentAction', () => {
 
 	describe('chip_tap (generic fallback)', () => {
 		it('should dispatch the nested action type', async () => {
+			// Set up valid phase path: greeting → awaiting_input → confirming
+			conversation.setPhase('awaiting_input');
+			conversation.setPhase('confirming');
+
 			// Set up identification result first (required for correct action)
 			identification.setResult({
 				producer: 'Opus One',
@@ -977,22 +1067,20 @@ describe('handleAgentAction', () => {
 				payload: { action: 'unknown_action', messageId: msg.id },
 			});
 
+			// The router now uses a different warning format for chip_tap safety net
 			expect(warnSpy).toHaveBeenCalledWith(
-				expect.stringContaining('Unknown action type'),
-				'unknown_action'
+				expect.stringContaining('chip_tap'),
+				expect.objectContaining({ action: 'unknown_action' })
 			);
 
 			warnSpy.mockRestore();
 		});
 	});
 
-	describe('exported test helpers', () => {
-		it('should export internal handlers for testing', () => {
-			expect(__test__.handleTextSubmit).toBeDefined();
-			expect(__test__.handleImageSubmit).toBeDefined();
-			expect(__test__.handleStartOver).toBeDefined();
-			expect(__test__.handleCorrect).toBeDefined();
-			expect(__test__.handleNotCorrect).toBeDefined();
+	describe('exported handlers', () => {
+		it('should export handlers from new modules', () => {
+			expect(handleStartOver).toBeDefined();
+			expect(handleIdentificationAction).toBeDefined();
 		});
 	});
 });

@@ -7,8 +7,8 @@
   import MessageList from '$lib/components/agent/conversation/MessageList.svelte';
   import InputArea from '$lib/components/agent/conversation/InputArea.svelte';
 
-  // New slim panel
-  import AgentPanelNew from '$lib/components/agent/AgentPanelNew.svelte';
+  // Agent panel (uses new modular architecture)
+  import { AgentPanel } from '$lib/components/agent';
 
   // Panel open state for testing slim panel
   import { agent, agentPanelOpen } from '$lib/stores';
@@ -324,8 +324,8 @@
     {/if}
   </div>
 
-  <!-- New Slim Panel (for comparison testing) -->
-  <AgentPanelNew />
+  <!-- Agent Panel (modular architecture) -->
+  <AgentPanel />
 </div>
 
 <style>

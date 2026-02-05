@@ -43,6 +43,7 @@ interface IdentificationState {
   streamingFields: Map<string, StreamingField>;
   augmentationContext: AugmentationContext | null;
   pendingNewSearch: string | null;
+  pendingBriefSearch: string | null;
   lastImageData: ImageData | null;
   inputType: 'text' | 'image' | null;
   isEscalating: boolean;
@@ -61,6 +62,7 @@ const initialState: IdentificationState = {
   streamingFields: new Map(),
   augmentationContext: null,
   pendingNewSearch: null,
+  pendingBriefSearch: null,
   lastImageData: null,
   inputType: null,
   isEscalating: false,
@@ -81,6 +83,7 @@ export const streamingFields = derived(store, ($s) => $s.streamingFields);
 export const augmentationContext = derived(store, ($s) => $s.augmentationContext);
 export const hasAugmentationContext = derived(store, ($s) => $s.augmentationContext !== null);
 export const pendingNewSearch = derived(store, ($s) => $s.pendingNewSearch);
+export const pendingBriefSearch = derived(store, ($s) => $s.pendingBriefSearch);
 export const lastImageData = derived(store, ($s) => $s.lastImageData);
 export const inputType = derived(store, ($s) => $s.inputType);
 export const isEscalating = derived(store, ($s) => $s.isEscalating);
@@ -236,6 +239,31 @@ export function setPendingNewSearch(text: string | null): void {
 }
 
 /**
+ * Set pending brief search (for "Search Anyway" confirmation).
+ */
+export function setPendingBriefSearch(text: string | null): void {
+  store.update((state) => ({
+    ...state,
+    pendingBriefSearch: text,
+  }));
+
+  // Persist for mobile tab switch survival (same as pendingNewSearch)
+  persistIdentificationState(true);
+}
+
+/**
+ * Get and clear pending brief search (atomic operation for handlers).
+ */
+export function consumePendingBriefSearch(): string | null {
+  const state = get(store);
+  const text = state.pendingBriefSearch;
+  if (text) {
+    store.update((s) => ({ ...s, pendingBriefSearch: null }));
+  }
+  return text;
+}
+
+/**
  * Set last image data.
  */
 export function setLastImageData(data: string, mimeType: string): void {
@@ -308,6 +336,7 @@ export function restoreFromPersistence(data: {
   result: WineIdentificationResult | null;
   augmentationContext: AugmentationContext | null;
   pendingNewSearch: string | null;
+  pendingBriefSearch?: string | null;
   imageData: { data: string; mimeType: string } | null;
 }): void {
   store.set({
@@ -315,6 +344,7 @@ export function restoreFromPersistence(data: {
     result: data.result,
     augmentationContext: data.augmentationContext,
     pendingNewSearch: data.pendingNewSearch,
+    pendingBriefSearch: data.pendingBriefSearch ?? null,
     lastImageData: data.imageData,
     // Note: isIdentifying is NOT restored (prevents orphan loading states)
     confidence: data.result?.confidence ?? null,
@@ -333,6 +363,7 @@ function persistIdentificationState(immediate = false): void {
       identificationResult: state.result,
       augmentationContext: state.augmentationContext,
       pendingNewSearch: state.pendingNewSearch,
+      pendingBriefSearch: state.pendingBriefSearch,
       imageData: state.lastImageData,
     },
     immediate

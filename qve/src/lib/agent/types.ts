@@ -41,6 +41,7 @@ export interface AgentMessage {
   timestamp: number;
   disabled?: boolean;
   isNew?: boolean;
+  animated?: boolean;
 
   // Streaming support (flag, not category)
   isStreaming?: boolean;

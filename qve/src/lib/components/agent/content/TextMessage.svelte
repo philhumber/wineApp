@@ -1,10 +1,24 @@
 <script lang="ts">
+  import { createEventDispatcher } from 'svelte';
   import type { AgentMessage, TextMessageData } from '$lib/agent/types';
+  import TypewriterText from '../TypewriterText.svelte';
+  import { clearNewFlag } from '$lib/stores';
+
   export let message: AgentMessage;
+
+  const dispatch = createEventDispatcher<{ typewriterComplete: void }>();
 
   $: role = message.role ?? 'agent';
   $: variant = (message.data as TextMessageData).variant;
   $: isDivider = variant === 'divider';
+  $: isNew = message.isNew ?? false;
+  $: content = message.data.category === 'text' ? message.data.content : '';
+  $: shouldAnimate = isNew && role === 'agent' && !isDivider;
+
+  function handleTypewriterComplete() {
+    clearNewFlag(message.id);
+    dispatch('typewriterComplete');
+  }
 </script>
 
 {#if isDivider}
@@ -16,8 +30,10 @@
   </div>
 {:else}
   <div class="text-message" class:user={role === 'user'} class:agent={role === 'agent'}>
-    {#if message.data.category === 'text'}
-      {@html message.data.content}
+    {#if shouldAnimate}
+      <TypewriterText text={content} on:complete={handleTypewriterComplete} />
+    {:else}
+      {@html content}
     {/if}
   </div>
 {/if}

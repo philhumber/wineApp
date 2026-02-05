@@ -10,5 +10,5 @@ export * from './types';
 export * from './messages';
 export * from './loadingStates';
 
-// Action handler
-export { handleAgentAction } from './handleAgentAction';
+// Action dispatcher (replaces legacy handleAgentAction)
+export { dispatchAction, handleAgentAction } from './router';

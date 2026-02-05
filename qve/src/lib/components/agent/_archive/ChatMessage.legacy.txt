@@ -5,6 +5,9 @@
 	 * Agent: Editorial serif with accent divider
 	 * User: Subtle indented card
 	 * WIN-168: Typewriter effect for agent messages
+	 *
+	 * Supports both old message format (message.type, message.wineResult)
+	 * and new architecture format (message.category, message.data.result)
 	 */
 	import { createEventDispatcher } from 'svelte';
 	import type { AgentMessage, AgentChip } from '$lib/stores';
@@ -17,7 +20,7 @@
 	import MatchSelectionList from './forms/MatchSelectionList.svelte';
 	import BottleDetailsForm from './forms/BottleDetailsForm.svelte';
 	import ManualEntryForm from './forms/ManualEntryForm.svelte';
-	import { agentAddState } from '$lib/stores';
+	import { agentAddState, clearNewFlag } from '$lib/stores';
 	import TypewriterText from './TypewriterText.svelte';
 
 	const dispatch = createEventDispatcher<{
@@ -30,13 +33,46 @@
 	export let message: AgentMessage;
 	export let isLatest: boolean = false; // WIN-174: Only latest message has active chips
 
+	// ─────────────────────────────────────────────
+	// Message format compatibility layer
+	// Supports both old (message.type) and new (message.category) formats
+	// ─────────────────────────────────────────────
+	$: msgType = (message as any).type ?? (message as any).category ?? 'text';
+
+	// Extract wine result from either format
+	$: wineResult = (message as any).wineResult ??
+		((message as any).data?.category === 'wine_result' ? (message as any).data?.result : null);
+	$: wineConfidence = (message as any).confidence ??
+		((message as any).data?.category === 'wine_result' ? (message as any).data?.confidence : null) ?? 0;
+
+	// Extract enrichment data from either format
+	$: enrichmentData = (message as any).enrichmentData ??
+		((message as any).data?.category === 'enrichment' ? (message as any).data?.data : null);
+	$: enrichmentSource = (message as any).enrichmentSource ??
+		((message as any).data?.category === 'enrichment' ? (message as any).data?.source : null);
+
+	// Extract text content from either format
+	$: msgContent = (message as any).content ??
+		((message as any).data?.category === 'text' ? (message as any).data?.content : '') ?? '';
+
+	// Extract chips from either format
+	$: msgChips = (message as any).chips ??
+		((message as any).data?.category === 'chips' ? (message as any).data?.chips : null);
+
+	// Extract image URL from either format
+	$: msgImageUrl = (message as any).imageUrl ??
+		((message as any).data?.category === 'image' ? (message as any).data?.src : null);
+
 	// WIN-168: Chip delay until typewriter animation completes
 	// Message types without TypewriterText should show chips immediately
 	const noTypewriterTypes = ['wine_result', 'bottle_form'];
-	let chipsReady = !message.isNew || noTypewriterTypes.includes(message.type);
+	$: chipsReadyInit = !message.isNew || noTypewriterTypes.includes(msgType);
+	let chipsReady = !message.isNew || noTypewriterTypes.includes((message as any).type ?? (message as any).category ?? 'text');
 
 	function handleTypewriterComplete() {
 		chipsReady = true;
+		// WIN-168: Clear isNew flag so animation won't replay
+		clearNewFlag(message.id);
 		// WIN-168: Notify parent to scroll when chips become visible
 		if (message.chips && message.chips.length > 0) {
 			dispatch('chipsReady');
@@ -85,135 +121,135 @@
 	class="chat-message"
 	class:agent={message.role === 'agent'}
 	class:user={message.role === 'user'}
-	class:has-wine-result={message.type === 'wine_result'}
-	class:has-wine-enrichment={message.type === 'wine_enrichment'}
-	class:has-low-confidence={message.type === 'low_confidence'}
-	class:has-partial-match={message.type === 'partial_match'}
-	class:has-disambiguation={message.type === 'disambiguation'}
+	class:has-wine-result={msgType === 'wine_result'}
+	class:has-wine-enrichment={msgType === 'wine_enrichment' || msgType === 'enrichment'}
+	class:has-low-confidence={msgType === 'low_confidence'}
+	class:has-partial-match={msgType === 'partial_match'}
+	class:has-disambiguation={msgType === 'disambiguation'}
 >
 	{#if message.role === 'agent'}
 		<!-- Agent message: Editorial serif with accent divider -->
-		{#if message.type === 'wine_result' && message.wineResult}
+		{#if msgType === 'wine_result' && wineResult}
 			<!-- Wine result card -->
 			<WineCard
 				state="static"
-				data={message.wineResult}
-				confidence={message.confidence ?? 0}
+				data={wineResult}
+				confidence={wineConfidence}
 			/>
-		{:else if message.type === 'wine_enrichment' && message.enrichmentData}
+		{:else if (msgType === 'wine_enrichment' || msgType === 'enrichment') && enrichmentData}
 			<!-- Wine enrichment card -->
 			{#if message.isNew}
-				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
 			{:else}
-				<p class="agent-text">{message.content}</p>
+				<p class="agent-text">{msgContent}</p>
 			{/if}
-			<EnrichmentCard state="static" data={message.enrichmentData} source={message.enrichmentSource} />
-		{:else if message.type === 'cache_match_confirm'}
+			<EnrichmentCard state="static" data={enrichmentData} source={enrichmentSource} />
+		{:else if msgType === 'cache_match_confirm'}
 			<!-- WIN-162: Cache match confirmation prompt -->
 			{#if message.isNew}
-				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
 			{:else}
-				<p class="agent-text">{message.content}</p>
+				<p class="agent-text">{msgContent}</p>
 			{/if}
-			{#if message.searchedFor}
+			{#if (message as any).searchedFor}
 				<p class="cache-match-subtext">
-					You searched for: {message.searchedFor.producer || ''} {message.searchedFor.wineName || ''} {message.searchedFor.vintage || ''}
+					You searched for: {(message as any).searchedFor.producer || ''} {(message as any).searchedFor.wineName || ''} {(message as any).searchedFor.vintage || ''}
 				</p>
 			{/if}
 			<!-- ActionChips: "Yes, use cached data" | "No, search online" provided via message.chips -->
-		{:else if message.type === 'low_confidence'}
+		{:else if msgType === 'low_confidence'}
 			<!-- Low confidence conversational message -->
 			{#if message.isNew}
-				<TypewriterText text={message.content} className="agent-text low-confidence-text" on:complete={handleTypewriterComplete} />
+				<TypewriterText text={msgContent} className="agent-text low-confidence-text" on:complete={handleTypewriterComplete} />
 			{:else}
-				<p class="agent-text low-confidence-text">{message.content}</p>
+				<p class="agent-text low-confidence-text">{msgContent}</p>
 			{/if}
 			<div class="accent-divider"></div>
-		{:else if message.type === 'partial_match'}
+		{:else if msgType === 'partial_match'}
 			<!-- Partial match conversational message with optional mini-cards -->
 			{#if message.isNew}
-				<TypewriterText text={message.content} className="agent-text partial-match-text" on:complete={handleTypewriterComplete} />
+				<TypewriterText text={msgContent} className="agent-text partial-match-text" on:complete={handleTypewriterComplete} />
 			{:else}
-				<p class="agent-text partial-match-text">{message.content}</p>
+				<p class="agent-text partial-match-text">{msgContent}</p>
 			{/if}
-			{#if message.candidates && message.candidates.length > 0}
+			{#if (message as any).candidates && (message as any).candidates.length > 0}
 				<CandidateMiniCards
-					candidates={message.candidates}
+					candidates={(message as any).candidates}
 					on:select={handleSelectCandidate}
 				/>
 			{/if}
 			<div class="accent-divider"></div>
-		{:else if message.type === 'disambiguation' && message.candidates}
+		{:else if msgType === 'disambiguation' && (message as any).candidates}
 			<!-- Disambiguation list -->
 			{#if message.isNew}
-				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
 			{:else}
-				<p class="agent-text">{message.content}</p>
+				<p class="agent-text">{msgContent}</p>
 			{/if}
 			<DisambiguationList
-				candidates={message.candidates}
+				candidates={(message as any).candidates}
 				on:select={handleSelectCandidate}
 			/>
-		{:else if message.type === 'error'}
+		{:else if msgType === 'error'}
 			<!-- Error message -->
 			{#if message.isNew}
-				<TypewriterText text={message.content} className="agent-text error-text" on:complete={handleTypewriterComplete} />
+				<TypewriterText text={msgContent} className="agent-text error-text" on:complete={handleTypewriterComplete} />
 			{:else}
-				<p class="agent-text error-text">{message.content}</p>
+				<p class="agent-text error-text">{msgContent}</p>
 			{/if}
-		{:else if message.type === 'coming_soon'}
+		{:else if msgType === 'coming_soon'}
 			<!-- Coming soon message -->
 			{#if message.isNew}
-				<TypewriterText text={message.content} className="agent-text coming-soon-text" on:complete={handleTypewriterComplete} />
+				<TypewriterText text={msgContent} className="agent-text coming-soon-text" on:complete={handleTypewriterComplete} />
 			{:else}
-				<p class="agent-text coming-soon-text">{message.content}</p>
+				<p class="agent-text coming-soon-text">{msgContent}</p>
 			{/if}
 			<div class="accent-divider"></div>
-		{:else if message.type === 'add_confirm'}
+		{:else if msgType === 'add_confirm'}
 			<!-- Add to cellar confirmation -->
 			{#if message.isNew}
-				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
 			{:else}
-				<p class="agent-text">{message.content}</p>
+				<p class="agent-text">{msgContent}</p>
 			{/if}
 			<!-- ActionChips provided via message.chips -->
-		{:else if message.type === 'match_selection'}
+		{:else if msgType === 'match_selection'}
 			<!-- Match selection list -->
 			{#if message.isNew}
-				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
 			{:else}
-				<p class="agent-text">{message.content}</p>
+				<p class="agent-text">{msgContent}</p>
 			{/if}
-			{#if message.matches && message.matchType}
+			{#if (message as any).matches && (message as any).matchType}
 				<MatchSelectionList
-					matches={message.matches}
-					type={message.matchType}
+					matches={(message as any).matches}
+					type={(message as any).matchType}
 					on:chipSelect={handleChipSelect}
 				/>
 			{/if}
 			<!-- ActionChips for "Add as new" | "Help me decide" provided via message.chips -->
-		{:else if message.type === 'match_confirmed'}
+		{:else if msgType === 'match_confirmed'}
 			<!-- Match confirmed message -->
 			{#if message.isNew}
-				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
 			{:else}
-				<p class="agent-text">{message.content}</p>
+				<p class="agent-text">{msgContent}</p>
 			{/if}
 			<!-- No chips - auto-advance after brief display -->
-		{:else if message.type === 'existing_wine_choice'}
+		{:else if msgType === 'existing_wine_choice'}
 			<!-- WIN-145: Wine exists - add bottle or create new? -->
 			{#if message.isNew}
-				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
 			{:else}
-				<p class="agent-text">{message.content}</p>
+				<p class="agent-text">{msgContent}</p>
 			{/if}
 			<!-- ActionChips: "Add Another Bottle" | "Create New Wine" provided via message.chips -->
-		{:else if message.type === 'manual_entry'}
+		{:else if msgType === 'manual_entry'}
 			<!-- Manual entry form for missing fields -->
 			{#if message.isNew}
-				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
 			{:else}
-				<p class="agent-text">{message.content}</p>
+				<p class="agent-text">{msgContent}</p>
 			{/if}
 			{#if partialData}
 				<ManualEntryForm
@@ -222,61 +258,65 @@
 					on:complete={handleManualEntryComplete}
 				/>
 			{/if}
-		{:else if message.type === 'bottle_form'}
+		{:else if msgType === 'bottle_form' || msgType === 'form'}
 			<!-- Bottle details form -->
 			<BottleDetailsForm
-				part={message.bottleFormPart ?? 1}
+				part={(message as any).bottleFormPart ?? (message as any).data?.formData?.part ?? 1}
 				on:next={handleBottleNext}
 				on:submit={handleBottleSubmit}
 				on:ready={handleFormReady}
 			/>
-		{:else if message.type === 'enrichment_choice'}
+		{:else if msgType === 'enrichment_choice'}
 			<!-- Enrichment choice message -->
 			{#if message.isNew}
-				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
 			{:else}
-				<p class="agent-text">{message.content}</p>
+				<p class="agent-text">{msgContent}</p>
 			{/if}
 			<!-- ActionChips: "Enrich now" | "Add quickly" provided via message.chips -->
-		{:else if message.type === 'add_complete'}
+		{:else if msgType === 'add_complete'}
 			<!-- Add complete success message -->
 			{#if message.isNew}
-				<TypewriterText text={message.content} className="agent-text success-text" on:complete={handleTypewriterComplete} />
+				<TypewriterText text={msgContent} className="agent-text success-text" on:complete={handleTypewriterComplete} />
 			{:else}
-				<p class="agent-text success-text">{message.content}</p>
+				<p class="agent-text success-text">{msgContent}</p>
 			{/if}
 			<!-- No chips - panel closes and navigates automatically -->
-		{:else if message.type === 'divider'}
+		{:else if msgType === 'divider'}
 			<!-- WIN-174: Conversation divider -->
 			<div class="conversation-divider">
 				<span class="divider-line"></span>
-				<span class="divider-text">{message.content}</span>
+				<span class="divider-text">{msgContent}</span>
 				<span class="divider-line"></span>
 			</div>
+		{:else if msgType === 'chips'}
+			<!-- Standalone chips message (new architecture) -->
+			<!-- Chips will be rendered below -->
 		{:else}
 			<!-- Standard text message -->
 			{#if message.isNew}
-				<TypewriterText text={message.content} className="agent-text" on:complete={handleTypewriterComplete} />
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
 			{:else}
-				<p class="agent-text">{message.content}</p>
+				<p class="agent-text">{msgContent}</p>
 			{/if}
 			<div class="accent-divider"></div>
 		{/if}
 
-		{#if message.chips && message.chips.length > 0 && chipsReady}
+		{@const chips = msgChips || (message as any).chips}
+		{#if chips && chips.length > 0 && chipsReady}
 			<!-- WIN-174: Disable chips for non-latest messages -->
 			<ActionChips
-				chips={isLatest ? message.chips : message.chips.map(c => ({ ...c, disabled: true }))}
+				chips={isLatest ? chips : chips.map((c: any) => ({ ...c, disabled: true }))}
 				on:select={handleChipSelect}
 			/>
 		{/if}
 	{:else}
 		<!-- User message: Subtle indented card -->
 		<div class="user-card">
-			{#if message.type === 'image_preview' && message.imageUrl}
-				<img src={message.imageUrl} alt="Wine label" class="user-image" />
+			{#if (msgType === 'image_preview' || msgType === 'image') && msgImageUrl}
+				<img src={msgImageUrl} alt="Wine label" class="user-image" />
 			{:else}
-				<p class="user-text">{message.content}</p>
+				<p class="user-text">{msgContent}</p>
 			{/if}
 		</div>
 	{/if}

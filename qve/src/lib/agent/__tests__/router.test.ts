@@ -7,7 +7,7 @@ import * as identification from '$lib/stores/agentIdentification';
 import * as enrichment from '$lib/stores/agentEnrichment';
 import * as addWine from '$lib/stores/agentAddWine';
 import { agent } from '$lib/stores/agent';
-import { handleAgentAction as legacyHandler } from '../handleAgentAction';
+import * as handlers from '../handlers';
 
 // Mock all stores
 vi.mock('$lib/stores/agentConversation', async () => {
@@ -17,6 +17,7 @@ vi.mock('$lib/stores/agentConversation', async () => {
 	return {
 		...actual,
 		addMessage: vi.fn(),
+		disableMessage: vi.fn(),
 		createTextMessage: vi.fn((content) => ({
 			id: 'test-id',
 			category: 'text' as const,
@@ -46,6 +47,7 @@ vi.mock('$lib/stores/agentIdentification', async () => {
 	return {
 		...actual,
 		resetIdentification: vi.fn(),
+		clearIdentification: vi.fn(),
 		clearError: vi.fn(),
 		setError: vi.fn(),
 		getResult: vi.fn().mockReturnValue(null),
@@ -73,10 +75,18 @@ vi.mock('$lib/stores/agent', () => ({
 	},
 }));
 
-// Mock the legacy handler
-vi.mock('../handleAgentAction', () => ({
-	handleAgentAction: vi.fn(),
-}));
+// Mock the handlers module
+vi.mock('../handlers', async () => {
+	const actual = await vi.importActual<typeof import('../handlers')>('../handlers');
+	return {
+		...actual,
+		handleIdentificationAction: vi.fn(),
+		handleEnrichmentAction: vi.fn(),
+		handleAddWineAction: vi.fn(),
+		handleFormAction: vi.fn(),
+		handleCameraAction: vi.fn(),
+	};
+});
 
 // ===========================================
 // Router Tests
@@ -94,8 +104,6 @@ describe('router', () => {
 
 			expect(conversation.resetConversation).toHaveBeenCalled();
 			expect(conversation.startSession).toHaveBeenCalled();
-			// Should NOT delegate to legacy handler
-			expect(legacyHandler).not.toHaveBeenCalled();
 		});
 
 		it('should route go_back to conversation handler', async () => {
@@ -104,14 +112,12 @@ describe('router', () => {
 			await dispatchAction({ type: 'go_back' });
 
 			expect(conversation.setPhase).toHaveBeenCalled();
-			expect(legacyHandler).not.toHaveBeenCalled();
 		});
 
 		it('should route cancel to conversation handler', async () => {
 			await dispatchAction({ type: 'cancel' });
 
 			expect(agent.closePanel).toHaveBeenCalled();
-			expect(legacyHandler).not.toHaveBeenCalled();
 		});
 
 		it('should route retry to conversation handler', async () => {
@@ -119,26 +125,24 @@ describe('router', () => {
 
 			// Should show "nothing to retry" message since no last action
 			expect(conversation.addMessage).toHaveBeenCalled();
-			expect(legacyHandler).not.toHaveBeenCalled();
 		});
 
 		it('should route try_again to conversation handler', async () => {
 			await dispatchAction({ type: 'try_again' });
 
 			expect(conversation.addMessage).toHaveBeenCalled();
-			expect(legacyHandler).not.toHaveBeenCalled();
 		});
 
-		it('should delegate non-conversation actions to legacy handler', async () => {
+		it('should route submit_text to identification handler', async () => {
 			await dispatchAction({ type: 'submit_text', payload: 'test wine' });
 
-			expect(legacyHandler).toHaveBeenCalledWith({
+			expect(handlers.handleIdentificationAction).toHaveBeenCalledWith({
 				type: 'submit_text',
 				payload: 'test wine',
 			});
 		});
 
-		it('should delegate add_to_cellar to legacy handler', async () => {
+		it('should route add_to_cellar to addWine handler', async () => {
 			vi.mocked(conversation.getCurrentPhase).mockReturnValue('confirming');
 			vi.mocked(identification.getResult).mockReturnValue({
 				producer: 'Test',
@@ -147,13 +151,13 @@ describe('router', () => {
 
 			await dispatchAction({ type: 'add_to_cellar', messageId: 'test' });
 
-			expect(legacyHandler).toHaveBeenCalledWith({
+			expect(handlers.handleAddWineAction).toHaveBeenCalledWith({
 				type: 'add_to_cellar',
 				messageId: 'test',
 			});
 		});
 
-		it('should delegate enrich_now to legacy handler', async () => {
+		it('should route enrich_now to addWine handler', async () => {
 			vi.mocked(identification.getResult).mockReturnValue({
 				producer: 'Test',
 				wineName: 'Wine',
@@ -161,10 +165,111 @@ describe('router', () => {
 
 			await dispatchAction({ type: 'enrich_now', messageId: 'test' });
 
-			expect(legacyHandler).toHaveBeenCalledWith({
+			expect(handlers.handleAddWineAction).toHaveBeenCalledWith({
 				type: 'enrich_now',
 				messageId: 'test',
 			});
+		});
+
+		it('should route new_input to conversation handler', async () => {
+			await dispatchAction({ type: 'new_input', messageId: 'test' });
+
+			expect(identification.clearIdentification).toHaveBeenCalled();
+			expect(conversation.setPhase).toHaveBeenCalledWith('awaiting_input');
+		});
+
+		it('should route start_fresh to conversation handler', async () => {
+			await dispatchAction({ type: 'start_fresh', messageId: 'test' });
+
+			expect(conversation.resetConversation).toHaveBeenCalled();
+		});
+
+		it('should route start_over_error to conversation handler', async () => {
+			await dispatchAction({ type: 'start_over_error', messageId: 'test' });
+
+			expect(conversation.resetConversation).toHaveBeenCalled();
+		});
+
+		it('should route take_photo to camera handler', async () => {
+			await dispatchAction({ type: 'take_photo', messageId: 'test' });
+
+			expect(handlers.handleCameraAction).toHaveBeenCalledWith({
+				type: 'take_photo',
+				messageId: 'test',
+			});
+		});
+
+		it('should route choose_photo to camera handler', async () => {
+			await dispatchAction({ type: 'choose_photo', messageId: 'test' });
+
+			expect(handlers.handleCameraAction).toHaveBeenCalledWith({
+				type: 'choose_photo',
+				messageId: 'test',
+			});
+		});
+	});
+
+	describe('action aliases', () => {
+		it('should normalize "add" to "add_to_cellar"', async () => {
+			vi.mocked(conversation.getCurrentPhase).mockReturnValue('confirming');
+			vi.mocked(identification.getResult).mockReturnValue({
+				producer: 'Test',
+				wineName: 'Wine',
+			});
+
+			await dispatchAction({ type: 'add', messageId: 'test' });
+
+			expect(handlers.handleAddWineAction).toHaveBeenCalledWith({
+				type: 'add_to_cellar',
+				messageId: 'test',
+			});
+		});
+
+		it('should normalize "remember_wine" to "remember"', async () => {
+			vi.mocked(identification.getResult).mockReturnValue({
+				producer: 'Test',
+				wineName: 'Wine',
+			});
+
+			await dispatchAction({ type: 'remember_wine', messageId: 'test' });
+
+			expect(handlers.handleEnrichmentAction).toHaveBeenCalledWith({
+				type: 'remember',
+				messageId: 'test',
+			});
+		});
+	});
+
+	describe('chip_tap safety net', () => {
+		it('should unwrap chip_tap and re-dispatch', async () => {
+			await dispatchAction({
+				type: 'chip_tap',
+				payload: {
+					action: 'start_over',
+					messageId: 'test',
+				},
+			});
+
+			expect(conversation.resetConversation).toHaveBeenCalled();
+		});
+
+		it('should unwrap chip_tap with data payload', async () => {
+			vi.mocked(conversation.getCurrentPhase).mockReturnValue('confirming');
+			vi.mocked(identification.getResult).mockReturnValue({
+				producer: 'Test',
+				wineName: 'Wine',
+			});
+
+			await dispatchAction({
+				type: 'chip_tap',
+				payload: {
+					action: 'add_to_cellar',
+					messageId: 'test',
+					data: { some: 'data' },
+				},
+			});
+
+			expect(handlers.handleAddWineAction).toHaveBeenCalled();
 		});
 	});
 
@@ -190,17 +295,13 @@ describe('router', () => {
 
 			expect(conversation.resetConversation).toHaveBeenCalled();
 		});
-
-		it('should fall back to legacy handler for unknown actions', async () => {
-			await _routeAction({ type: 'submit_text', payload: 'test' });
-
-			expect(legacyHandler).toHaveBeenCalled();
-		});
 	});
 
 	describe('error handling', () => {
-		it('should catch errors from legacy handler and show in conversation', async () => {
-			vi.mocked(legacyHandler).mockRejectedValueOnce(new Error('Test error'));
+		it('should catch errors from handlers and show in conversation', async () => {
+			vi.mocked(handlers.handleIdentificationAction).mockRejectedValueOnce(
+				new Error('Identification error')
+			);
 
 			await dispatchAction({ type: 'submit_text', payload: 'test' });
 
@@ -212,14 +313,14 @@ describe('router', () => {
 
 	describe('validation', () => {
 		it('should skip invalid actions', async () => {
-			// correct action requires identification result and result_confirm phase
+			// correct action requires identification result and confirming phase
 			vi.mocked(conversation.getCurrentPhase).mockReturnValue('greeting');
 			vi.mocked(identification.getResult).mockReturnValue(null);
 
 			await dispatchAction({ type: 'correct', messageId: 'test' });
 
-			// Should not call legacy handler because validation fails
-			expect(legacyHandler).not.toHaveBeenCalled();
+			// Validation middleware skips the action when prerequisites not met
+			expect(handlers.handleIdentificationAction).not.toHaveBeenCalled();
 		});
 	});
 });
