@@ -1,6 +1,6 @@
 # Phase 2: Agent Rearchitecture Plan
 
-**Status**: Planning
+**Status**: In Progress (Sprint 1 Complete)
 **Created**: 2026-02-05
 **Last Updated**: 2026-02-05
 **Prerequisites**: Phase 1 complete (store split, action handler, 422 tests passing)
@@ -34,25 +34,28 @@ Phase 1 delivered a functional agent rearchitecture with clean store separation 
 
 ```
 qve/src/lib/agent/
-├── handleAgentAction.ts      # Slim router (~150 lines)
+├── handleAgentAction.ts      # Legacy monolith (to be replaced by router.ts)
+├── router.ts                 # ✅ Slim router with middleware chain
 ├── types.ts                  # Existing
 ├── messages.ts               # Existing
 │
 ├── handlers/
-│   ├── index.ts              # Barrel export
-│   ├── identification.ts     # Text/image/Opus identification
-│   ├── enrichment.ts         # Wine enrichment flow
-│   ├── addWine.ts            # Add to cellar, entity matching
-│   ├── conversation.ts       # Navigation, phase changes
-│   └── forms.ts              # Bottle, manual entry forms
+│   ├── index.ts              # ✅ Barrel export with type guards
+│   ├── conversation.ts       # ✅ Navigation, phase changes (start_over, go_back, cancel, retry)
+│   ├── identification.ts     # [Sprint 2] Text/image/Opus identification
+│   ├── enrichment.ts         # [Sprint 2] Wine enrichment flow
+│   ├── addWine.ts            # [Sprint 3] Add to cellar, entity matching
+│   └── forms.ts              # [Sprint 3] Bottle, manual entry forms
 │
 ├── middleware/
-│   ├── index.ts
-│   ├── errorHandler.ts       # Unified error handling
-│   ├── retryTracker.ts       # Action history for retry
-│   └── validator.ts          # Pre-action validation
+│   ├── index.ts              # ✅ Barrel export
+│   ├── types.ts              # ✅ ActionHandler, Middleware types
+│   ├── compose.ts            # ✅ Compose utility, createPipeline
+│   ├── errorHandler.ts       # ✅ Unified error handling
+│   ├── retryTracker.ts       # ✅ Action history for retry (Svelte store)
+│   └── validator.ts          # ✅ Pre-action validation
 │
-└── services/
+└── services/                 # [Sprint 2]
     ├── resultAnalyzer.ts     # Quality analysis, confidence checks
     ├── chipGenerator.ts      # Context-aware chip generation
     └── messageBuilder.ts     # Multi-message sequences
@@ -1580,25 +1583,55 @@ describe('Streaming Field Updates', () => {
 
 ## 6. Implementation Order
 
-### Sprint 1: Foundation (Week 1)
+### Sprint 1: Foundation ✅ COMPLETE
 
-1. **Create handler module structure**
-   - Create `/handlers/` directory
-   - Create `/middleware/` directory
-   - Create `/services/` directory
-   - Setup barrel exports
+**Completed**: 2026-02-05
+**Tests Added**: 62 new tests (422 → 496 total, all passing)
+**Files Created**: 12 new files
 
-2. **Implement middleware system**
-   - Error handler middleware
-   - Retry tracker middleware (with store)
-   - Validation middleware
-   - Compose utility
+1. **Create handler module structure** ✅
+   - Created `/handlers/` directory with barrel exports
+   - Created `/middleware/` directory with barrel exports
+   - `/services/` directory deferred to Sprint 2
 
-3. **Extract conversation handlers**
-   - `start_over`, `go_back`, `cancel`, `retry`
-   - Simplest handlers, good for validating pattern
+2. **Implement middleware system** ✅
+   - `middleware/types.ts` - ActionHandler, Middleware, MiddlewareContext types
+   - `middleware/compose.ts` - Compose utility, applyMiddleware, createPipeline
+   - `middleware/errorHandler.ts` - withErrorHandling, extractErrorInfo, formatErrorMessage
+   - `middleware/retryTracker.ts` - withRetryTracking with Svelte store for retry state
+   - `middleware/validator.ts` - withValidation with configurable prerequisites
+   - `middleware/index.ts` - Barrel exports
 
-### Sprint 2: Core Handlers (Week 2)
+3. **Extract conversation handlers** ✅
+   - `handlers/conversation.ts` - handleStartOver, handleGoBack, handleCancel, handleRetry
+   - `handlers/index.ts` - Barrel exports with type guards (isConversationAction)
+
+4. **Create router with middleware chain** ✅
+   - `router.ts` - dispatchAction with composed middleware
+   - Supports gradual migration (delegates to legacy handler for non-conversation actions)
+   - Exports createRouter for custom middleware chains in tests
+
+**Sprint 1 File Summary**:
+| File | Lines | Purpose |
+|------|-------|---------|
+| `middleware/types.ts` | 68 | Core types |
+| `middleware/compose.ts` | 97 | Composition utilities |
+| `middleware/errorHandler.ts` | 142 | Error handling middleware |
+| `middleware/retryTracker.ts` | 180 | Retry tracking with store |
+| `middleware/validator.ts` | 200 | Pre-action validation |
+| `handlers/conversation.ts` | 168 | Conversation handlers |
+| `router.ts` | 127 | Action routing with middleware |
+
+**Sprint 1 Test Summary**:
+| Test File | Tests | Coverage |
+|-----------|-------|----------|
+| `middleware.test.ts` | 36 | Compose, retry, errors, validation |
+| `handlers.test.ts` | 14 | Conversation handler functions |
+| `router.test.ts` | 12 | Dispatch, delegation, middleware |
+
+---
+
+### Sprint 2: Core Handlers (Next)
 
 4. **Extract identification handlers**
    - `submit_text`, `submit_image`
@@ -1652,13 +1685,13 @@ describe('Streaming Field Updates', () => {
 ### Code Quality
 
 - [ ] `handleAgentAction.ts` reduced to <200 lines (router only)
-- [ ] Each handler module <500 lines
-- [ ] No module-level mutable state (all in stores)
+- [x] Each handler module <500 lines (conversation.ts: 168 lines)
+- [x] No module-level mutable state (all in stores) - retryTracker uses Svelte store
 - [ ] 100% type coverage for actions and messages
 
 ### Testing
 
-- [ ] 600+ tests (up from 422)
+- [ ] 600+ tests (up from 422) - Currently at 496 (74 to go)
 - [ ] Integration tests for all major flows
 - [ ] Error scenario coverage >90%
 - [ ] Streaming field tests
@@ -1666,7 +1699,7 @@ describe('Streaming Field Updates', () => {
 ### Architecture
 
 - [ ] State machine validates all transitions
-- [ ] Middleware handles all cross-cutting concerns
+- [x] Middleware handles all cross-cutting concerns (error, retry, validation)
 - [ ] Message/chip registries eliminate inline strings
 - [ ] Clear dependency graph documented
 
@@ -1685,13 +1718,18 @@ describe('Streaming Field Updates', () => {
 
 ## Appendix: File Size Targets
 
-| File | Current | Target | Notes |
-|------|---------|--------|-------|
-| `handleAgentAction.ts` | 2,831 | <200 | Router only |
-| `handlers/identification.ts` | - | ~400 | Text, image, Opus |
-| `handlers/enrichment.ts` | - | ~300 | Enrichment flow |
-| `handlers/addWine.ts` | - | ~400 | Entity matching, submission |
-| `handlers/conversation.ts` | - | ~200 | Navigation, phase changes |
-| `handlers/forms.ts` | - | ~200 | Form submissions |
-| `middleware/*.ts` | - | ~100 each | Small, focused |
-| `services/*.ts` | - | ~150 each | Shared utilities |
+| File | Current | Target | Status |
+|------|---------|--------|--------|
+| `handleAgentAction.ts` | 2,831 | <200 | Pending (router migration) |
+| `router.ts` | 127 | ~150 | ✅ Complete |
+| `handlers/identification.ts` | - | ~400 | Sprint 2 |
+| `handlers/enrichment.ts` | - | ~300 | Sprint 2 |
+| `handlers/addWine.ts` | - | ~400 | Sprint 3 |
+| `handlers/conversation.ts` | 168 | ~200 | ✅ Complete |
+| `handlers/forms.ts` | - | ~200 | Sprint 3 |
+| `middleware/types.ts` | 68 | ~100 | ✅ Complete |
+| `middleware/compose.ts` | 97 | ~100 | ✅ Complete |
+| `middleware/errorHandler.ts` | 142 | ~150 | ✅ Complete |
+| `middleware/retryTracker.ts` | 180 | ~150 | ✅ Complete |
+| `middleware/validator.ts` | 200 | ~150 | ✅ Complete |
+| `services/*.ts` | - | ~150 each | Sprint 2 |
