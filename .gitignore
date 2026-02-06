@@ -20,19 +20,6 @@ images/wines/
 # ===================
 deploy.ps1
 
-
-# ===================
-# User Content
-# ===================
-images/wines/
-design/AI-Agent/
-
-# ===================
-# DEPLOYMENT FILES
-# ===================
-deploy.ps1
-
-
 # ===================
 # OS FILES
 # ===================
@@ -66,6 +53,11 @@ tmpclaude-*
 # ===================
 jira_*.json
 jira_*.txt
+
+# ===================
+# ARCHIVE
+# ===================
+archive/
 
 # ===================
 # TRASH FOLDER

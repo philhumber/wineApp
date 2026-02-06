@@ -177,9 +177,6 @@ GROUP BY scenario;
 ## Database Connection
 
 ```bash
-# Test database
-mysql -h 10.0.0.16 -u root -pDedoSQL1! winelist_test
-
-# Production database
-mysql -h 10.0.0.16 -u root -pDedoSQL1! winelist
+# Use credentials from ../wineapp-config/config.local.php
+mysql -h <host> -u <user> -p <database>
 ```
