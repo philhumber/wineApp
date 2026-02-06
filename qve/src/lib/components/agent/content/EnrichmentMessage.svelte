@@ -1,9 +1,18 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { AgentMessage, EnrichmentData } from '$lib/agent/types';
   import type { AgentEnrichmentData } from '$lib/api/types';
   import EnrichmentCard from '../cards/EnrichmentCard.svelte';
+  import { clearNewFlag } from '$lib/stores';
 
   export let message: AgentMessage;
+
+  // Signal readiness immediately on mount (no typewriter animation)
+  onMount(() => {
+    if (message.isNew) {
+      clearNewFlag(message.id);
+    }
+  });
 
   // Extract data from message
   $: messageData = message.data.category === 'enrichment' ? message.data.data : null;

@@ -21,6 +21,8 @@
  */
 
 import type { AgentAction, BottleFormData, ManualEntryData, WineIdentificationResult } from '../types';
+import { getMessageByKey } from '../messages';
+import { MessageKey } from '../messageKeys';
 import * as conversation from '$lib/stores/agentConversation';
 import { addMessageWithDelay } from '$lib/stores/agentConversation';
 import * as addWine from '$lib/stores/agentAddWine';
@@ -54,7 +56,7 @@ async function handleBottleSubmit(data: BottleFormData): Promise<void> {
 
   await addMessageWithDelay(
     conversation.createTextMessage(
-      'Almost done! Would you like to add enrichment data (grape info, critic scores)?'
+      getMessageByKey(MessageKey.BOTTLE_ENRICHMENT_OFFER)
     )
   );
 
@@ -160,7 +162,7 @@ async function startEntityMatchingInline(wineResult: WineIdentificationResult): 
 
   // For now, let's show a message and let the user continue
   await addMessageWithDelay(
-    conversation.createTextMessage('Continuing with your wine details...')
+    conversation.createTextMessage(getMessageByKey(MessageKey.BOTTLE_CONTINUING))
   );
 
   // Re-dispatch to add wine handler to continue entity matching
@@ -178,7 +180,7 @@ async function startEntityMatchingInline(wineResult: WineIdentificationResult): 
   conversation.setPhase('adding_wine', 'bottle_details');
 
   await addMessageWithDelay(
-    conversation.createTextMessage("Great! Now let's add the bottle details.")
+    conversation.createTextMessage(getMessageByKey(MessageKey.BOTTLE_DETAILS_PROMPT))
   );
 
   conversation.addMessage({
@@ -211,7 +213,7 @@ async function startProducerMatchingInline(wineResult: WineIdentificationResult)
   conversation.setPhase('adding_wine', 'bottle_details');
 
   await addMessageWithDelay(
-    conversation.createTextMessage("Great! Now let's add the bottle details.")
+    conversation.createTextMessage(getMessageByKey(MessageKey.BOTTLE_DETAILS_PROMPT))
   );
 
   conversation.addMessage({
@@ -267,7 +269,7 @@ async function handleRetryAdd(messageId: string): Promise<void> {
   const flow = addWine.getCurrentFlow();
   if (!flow) {
     conversation.addMessage(
-      conversation.createTextMessage('Unable to retry. Please start over.')
+      conversation.createTextMessage(getMessageByKey(MessageKey.BOTTLE_RETRY_FAILED))
     );
     return;
   }

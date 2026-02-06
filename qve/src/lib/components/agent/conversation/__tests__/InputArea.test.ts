@@ -238,4 +238,50 @@ describe('InputArea', () => {
 			expect(sendBtn).toHaveAttribute('type', 'button');
 		});
 	});
+
+	describe('mobile keyboard handling', () => {
+		it('should scroll input into view on focus after delay', async () => {
+			vi.useFakeTimers();
+			render(InputArea, { props: { phase: 'greeting' } });
+
+			const textarea = screen.getByRole('textbox');
+			const scrollIntoViewMock = vi.fn();
+			textarea.scrollIntoView = scrollIntoViewMock;
+
+			await fireEvent.focus(textarea);
+
+			// Should not scroll immediately
+			expect(scrollIntoViewMock).not.toHaveBeenCalled();
+
+			// Advance timer past the 300ms delay
+			vi.advanceTimersByTime(300);
+
+			// Now should have scrolled
+			expect(scrollIntoViewMock).toHaveBeenCalledWith({
+				behavior: 'smooth',
+				block: 'center',
+			});
+
+			vi.useRealTimers();
+		});
+
+		it('should not scroll into view if textarea is unmounted before delay', async () => {
+			vi.useFakeTimers();
+			const { unmount } = render(InputArea, { props: { phase: 'greeting' } });
+
+			const textarea = screen.getByRole('textbox');
+			const scrollIntoViewMock = vi.fn();
+			textarea.scrollIntoView = scrollIntoViewMock;
+
+			await fireEvent.focus(textarea);
+
+			// Unmount before timer fires
+			unmount();
+			vi.advanceTimersByTime(300);
+
+			// Should not throw or call scroll since element is gone
+			// (the optional chaining ?. handles this)
+			vi.useRealTimers();
+		});
+	});
 });

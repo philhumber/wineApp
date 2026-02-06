@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
   import type { AgentMessage, TextMessageData } from '$lib/agent/types';
   import TypewriterText from '../TypewriterText.svelte';
-  import { clearNewFlag } from '$lib/stores';
+  import { clearNewFlag, agentMessages } from '$lib/stores/agentConversation';
 
   export let message: AgentMessage;
 
@@ -14,6 +14,19 @@
   $: isNew = message.isNew ?? false;
   $: content = message.data.category === 'text' ? message.data.content : '';
   $: shouldAnimate = isNew && role === 'agent' && !isDivider;
+
+  // Track preceding message for sequencing
+  $: messageIndex = $agentMessages.findIndex((m) => m.id === message.id);
+  $: precedingMessage = messageIndex > 0 ? $agentMessages[messageIndex - 1] : null;
+  $: isPrecedingReady = !precedingMessage || precedingMessage.isNew === false;
+
+  // For non-animating messages (user, divider), clear flag when preceding is ready
+  // This ensures proper sequencing even for user messages
+  let hasClearedFlag = false;
+  $: if (message.isNew && !shouldAnimate && isPrecedingReady && !hasClearedFlag) {
+    hasClearedFlag = true;
+    clearNewFlag(message.id);
+  }
 
   function handleTypewriterComplete() {
     clearNewFlag(message.id);

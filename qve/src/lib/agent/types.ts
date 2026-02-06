@@ -77,6 +77,7 @@ export interface TextMessageData {
 export interface ChipsMessageData {
   category: 'chips';
   chips: AgentChip[];
+  selectedChipId?: string;
 }
 
 export interface AgentChip {

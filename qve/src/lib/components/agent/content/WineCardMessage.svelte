@@ -1,9 +1,18 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { AgentMessage, WineIdentificationResult } from '$lib/agent/types';
   import type { AgentParsedWine } from '$lib/api/types';
   import WineCard from '../cards/WineCard.svelte';
+  import { clearNewFlag } from '$lib/stores';
 
   export let message: AgentMessage;
+
+  // Signal readiness immediately on mount (no typewriter animation)
+  onMount(() => {
+    if (message.isNew) {
+      clearNewFlag(message.id);
+    }
+  });
 
   // Extract result from message data
   // Handle both new architecture (message.data.result) and potential edge cases

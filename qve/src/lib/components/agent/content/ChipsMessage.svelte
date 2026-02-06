@@ -1,6 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import { fly } from 'svelte/transition';
   import type { AgentMessage, AgentAction } from '$lib/agent/types';
+  import { updateMessage, agentMessages, clearNewFlag } from '$lib/stores/agentConversation';
 
   export let message: AgentMessage;
 
@@ -8,9 +10,43 @@
 
   $: chips = message.data.category === 'chips' ? message.data.chips : [];
   $: isDisabled = message.disabled ?? false;
+  $: selectedChipId = message.data.category === 'chips' ? message.data.selectedChipId : undefined;
+
+  // Find the preceding message and check if it's ready (isNew === false)
+  // Chips wait for the preceding message to complete its animation
+  $: messageIndex = $agentMessages.findIndex((m) => m.id === message.id);
+  $: precedingMessage = messageIndex > 0 ? $agentMessages[messageIndex - 1] : null;
+  $: isPrecedingReady = !precedingMessage || precedingMessage.isNew === false;
+
+  let chipsElement: HTMLElement;
+
+  /**
+   * Handle intro animation complete - scroll into view and clear isNew flag.
+   * Clearing the flag signals to following messages that this one is ready.
+   */
+  function handleIntroEnd() {
+    if (chipsElement) {
+      chipsElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+    // Signal completion so following messages can appear
+    if (message.isNew) {
+      clearNewFlag(message.id);
+    }
+  }
 
   function handleChipClick(chip: { id: string; action: string; payload?: unknown }) {
     if (isDisabled) return;
+    if (message.data.category !== 'chips') return;
+
+    // Record which chip was selected before dispatching
+    updateMessage(message.id, {
+      data: {
+        category: 'chips',
+        chips: message.data.chips,
+        selectedChipId: chip.id
+      }
+    });
+
     dispatch('action', {
       type: 'chip_tap',
       payload: { action: chip.action, messageId: message.id, data: chip.payload }
@@ -18,18 +54,29 @@
   }
 </script>
 
-<div class="chips-message">
-  {#each chips as chip (chip.id)}
-    <button
-      class="chip"
-      class:primary={chip.variant === 'primary'}
-      disabled={isDisabled}
-      on:click={() => handleChipClick(chip)}
-    >
-      {chip.label}
-    </button>
-  {/each}
-</div>
+{#if isPrecedingReady}
+  <div
+    class="chips-message"
+    bind:this={chipsElement}
+    transition:fly={{ y: 8, duration: 200 }}
+    on:introend={handleIntroEnd}
+  >
+    {#each chips as chip (chip.id)}
+      <button
+        class="chip"
+        class:primary={chip.variant === 'primary'}
+        class:selected={isDisabled && selectedChipId === chip.id}
+        disabled={isDisabled}
+        on:click={() => handleChipClick(chip)}
+      >
+        {#if isDisabled && selectedChipId === chip.id}
+          <span class="checkmark">✓</span>
+        {/if}
+        {chip.label}
+      </button>
+    {/each}
+  </div>
+{/if}
 
 <style>
   .chips-message {
@@ -82,5 +129,15 @@
     cursor: not-allowed;
     background: var(--bg-subtle);
     border-color: var(--divider-subtle);
+  }
+
+  /* Selected chip - stands out when disabled */
+  .chip.selected {
+    opacity: 0.9;
+  }
+
+  .checkmark {
+    margin-right: var(--space-1);
+    font-size: 0.75em;
   }
 </style>

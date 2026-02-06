@@ -211,7 +211,7 @@ export const sommelierMessages: PersonalityMessages = {
   [MessageKey.CHIP_START_FRESH]: 'Start Fresh',
   [MessageKey.CHIP_PROVIDE_MORE]: 'I Can Help',
   [MessageKey.CHIP_USE_PRODUCER_NAME]: 'Use Producer Name',
-  [MessageKey.CHIP_USE_GRAPE_NAME]: 'Use Grape Name',
+  [MessageKey.CHIP_USE_GRAPE_NAME]: 'Use the Grape Name',
   [MessageKey.CHIP_NON_VINTAGE]: 'Non-Vintage',
   [MessageKey.CHIP_SPECIFY_VINTAGE]: 'Specify Vintage',
   [MessageKey.CHIP_LOOKS_GOOD]: 'Looks Good',
@@ -233,4 +233,150 @@ export const sommelierMessages: PersonalityMessages = {
   [MessageKey.CHIP_ADD_WITHOUT_DETAILS]: 'Add Without Details',
   [MessageKey.CHIP_USE_THIS_RESULT]: 'Use This',
   [MessageKey.CHIP_SEARCH_AGAIN]: 'Search Again',
+
+  // ===========================================
+  // IDENTIFICATION - Extended
+  // ===========================================
+  [MessageKey.ID_GRAPE_ONLY]: (ctx: MessageContext) =>
+    `I detected ${wn(ctx.grape || 'a grape variety')} as the grape variety, but couldn't identify the wine or producer. We could use the grape name as the wine name, add details manually, or try searching again with more information.`,
+
+  [MessageKey.ID_BRIEF_INPUT_CONFIRM]: (ctx: MessageContext) =>
+    `Just '${ctx.text}'? Adding more detail will improve the match.`,
+
+  [MessageKey.ID_SEARCH_UNCLEAR]:
+    "I'm not sure what you wanted to search. Please try again.",
+
+  [MessageKey.ID_INSUFFICIENT_INFO]:
+    "I don't have enough information to search. Please provide more details.",
+
+  [MessageKey.ID_REIDENTIFYING]:
+    'Let me try to find a better match...',
+
+  [MessageKey.ID_LOW_CONFIDENCE_COMPLETE]: (ctx: MessageContext) =>
+    `I've gathered the details for ${wn(ctx.wineName || 'this wine')}. Would you like me to try matching this wine in my database, or add it manually?`,
+
+  [MessageKey.ID_PROMPT_PRODUCER]:
+    'Who makes this wine? Enter the producer or winery name.',
+
+  [MessageKey.ID_PROMPT_WINE_NAME]:
+    "What's the name of this wine? You can also include the vintage.",
+
+  [MessageKey.ID_PROMPT_VINTAGE]:
+    "What year is this wine? Enter the vintage (e.g., 2019) or type 'NV' for non-vintage.",
+
+  [MessageKey.ID_PROMPT_DETAILS]:
+    'What details would you like to add or correct?',
+
+  [MessageKey.ID_PROVIDE_MORE_CONTEXT]:
+    "Tell me what's different about this wine, and I'll try again. The producer, country, region, or grape variety would help.",
+
+  [MessageKey.ID_INCOMPLETE_GRAPES_WITH_PRODUCER]: (ctx: MessageContext) =>
+    `I found ${wn(ctx.producer || 'the producer')} and detected ${wn(ctx.grape || 'a grape')} as the grape variety. Should I use this as the wine name?`,
+
+  [MessageKey.ID_INCOMPLETE_GRAPES_NO_PRODUCER]: (ctx: MessageContext) =>
+    `I detected ${wn(ctx.grape || 'a grape')} as the grape variety but couldn't identify the producer. Should I use the grape as the wine name?`,
+
+  // ===========================================
+  // CONFIRMATION - Extended
+  // ===========================================
+  [MessageKey.CONFIRM_ACTION_PROMPT]: (ctx: MessageContext) =>
+    `Excellent. What would you like to do with ${wn(ctx.wineName || 'this wine')}?`,
+
+  // ===========================================
+  // CONVERSATION FLOW
+  // ===========================================
+  [MessageKey.CONV_AWAITING_INPUT]:
+    'Let me know what wine you\'d like to identify.',
+
+  [MessageKey.CONV_ACTION_PROMPT]:
+    'What would you like to do with this wine?',
+
+  [MessageKey.CONV_NOTHING_TO_RETRY]:
+    'Nothing to retry. What would you like to identify?',
+
+  // ===========================================
+  // ADD WINE FLOW - Extended
+  // ===========================================
+  [MessageKey.ADD_SUBMITTING]:
+    'Adding to your cellar...',
+
+  [MessageKey.ADD_BOTTLE_SUBMITTING]:
+    'Adding bottle to your cellar...',
+
+  [MessageKey.ADD_BOTTLE_COMPLETE]: (ctx: MessageContext) =>
+    `Added another bottle of ${wn(ctx.wineName || 'the wine')} to your cellar!`,
+
+  [MessageKey.ADD_BOTTLE_FAILED]:
+    'Something went wrong adding the bottle.',
+
+  [MessageKey.ADD_CREATE_NEW_WINE]:
+    "I'll create this as a new wine entry.",
+
+  // ===========================================
+  // ENTITY MATCHING
+  // ===========================================
+  [MessageKey.ENTITY_AUTO_CREATE]: (ctx: MessageContext) =>
+    `I'll create a new ${ctx.entityType} entry.`,
+
+  [MessageKey.ENTITY_NO_MATCH]: (ctx: MessageContext) =>
+    `No existing ${ctx.entityType}s match "${ctx.searchTerm}". I'll create a new entry.`,
+
+  [MessageKey.ENTITY_FOUND]: (ctx: MessageContext) =>
+    `Found existing ${ctx.entityType}: ${wn(ctx.wineName || ctx.displayName || 'match')}`,
+
+  [MessageKey.ENTITY_MULTIPLE]: (ctx: MessageContext) => {
+    const plural = ctx.matchCount !== 1 ? 's' : '';
+    return `I found ${ctx.matchCount} ${ctx.entityType}${plural} that might match "${ctx.searchTerm}".`;
+  },
+
+  [MessageKey.ENTITY_SELECTED]: (ctx: MessageContext) =>
+    `Selected: ${wn(ctx.wineName || ctx.displayName || 'item')}`,
+
+  [MessageKey.ENTITY_CREATING]: (ctx: MessageContext) =>
+    `Creating new ${ctx.entityType}: ${wn(ctx.wineName || ctx.displayName || 'entry')}`,
+
+  [MessageKey.ENTITY_CLARIFYING]:
+    'Let me help you decide...',
+
+  [MessageKey.ENTITY_CLARIFY_FAILED]:
+    "I couldn't get more details. Please select from the options above or create a new entry.",
+
+  [MessageKey.ENTITY_NO_CLARIFY_MATCHES]:
+    'No matches to clarify. Creating new entry.',
+
+  // ===========================================
+  // BOTTLE & FORM FLOW
+  // ===========================================
+  [MessageKey.BOTTLE_DETAILS_PROMPT]:
+    "Great! Now let's add the bottle details.",
+
+  [MessageKey.BOTTLE_ENRICHMENT_OFFER]:
+    'Almost done! Would you like to add enrichment data (grape info, critic scores)?',
+
+  [MessageKey.BOTTLE_CONTINUING]:
+    'Continuing with your wine details...',
+
+  [MessageKey.BOTTLE_RETRY_FAILED]:
+    'Unable to retry. Please start over.',
+
+  // ===========================================
+  // ENRICHMENT - Extended
+  // ===========================================
+  [MessageKey.ENRICH_FOUND_DETAILS]: (ctx: MessageContext) =>
+    `Here's what I found about ${wn(ctx.wineName || 'this wine')}. What would you like to do next?`,
+
+  [MessageKey.ENRICH_CACHE_CONFIRM]: (ctx: MessageContext) =>
+    `I found cached data for ${wn(ctx.wineName || 'a similar wine')}. Is this the wine you're looking for?`,
+
+  [MessageKey.ENRICH_USING_CACHE]:
+    'Using cached data...',
+
+  [MessageKey.ENRICH_REFRESHING]:
+    'Searching for fresh data...',
+
+  [MessageKey.ENRICH_RECOMMEND_SOON]:
+    'Recommendations coming soon!',
+
+  [MessageKey.ENRICH_REMEMBER_SOON]: (ctx: MessageContext) =>
+    `Memories are a function coming later. You'll have to remember ${wn(ctx.wineName || 'this wine')} yourself!`,
 };

@@ -52,6 +52,16 @@ export interface MessageContext {
   grape?: string;
   message?: string;
   ref?: string;
+  /** Entity type for entity matching flow (region, producer, wine) */
+  entityType?: string;
+  /** Search term for entity matching */
+  searchTerm?: string;
+  /** Generic text input (brief search, user query) */
+  text?: string;
+  /** Number of entity matches found */
+  matchCount?: number;
+  /** Pre-formatted display name */
+  displayName?: string;
   [key: string]: unknown;
 }
 

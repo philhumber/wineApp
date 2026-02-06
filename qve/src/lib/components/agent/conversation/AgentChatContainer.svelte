@@ -271,11 +271,13 @@
 		display: flex;
 		flex-direction: column;
 		height: 100%;
+		min-height: 0; /* Critical: allows nested flex containers to shrink */
 		/* Inherit background from parent panel for visual consistency */
 	}
 
 	.chat-viewport {
 		flex: 1;
+		min-height: 0; /* Critical: allows flex child to shrink and enable scrolling */
 		overflow-y: auto;
 		-webkit-overflow-scrolling: touch;
 		overscroll-behavior: contain;

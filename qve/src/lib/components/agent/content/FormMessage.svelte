@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
   import type {
     AgentMessage,
     AgentAction,
@@ -8,6 +8,7 @@
     MatchSelectionFormData,
     FormDataUnion,
   } from '$lib/agent/types';
+  import { clearNewFlag } from '$lib/stores';
 
   // Form components
   import BottleDetailsForm from '../forms/BottleDetailsForm.svelte';
@@ -17,6 +18,13 @@
   export let message: AgentMessage;
 
   const dispatch = createEventDispatcher<{ action: AgentAction }>();
+
+  // Signal readiness immediately on mount (no typewriter animation)
+  onMount(() => {
+    if (message.isNew) {
+      clearNewFlag(message.id);
+    }
+  });
 
   $: formType = message.data.category === 'form' ? message.data.formType : null;
   $: formData = message.data.category === 'form' ? message.data.formData : null;

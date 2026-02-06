@@ -103,16 +103,13 @@ describe('conversation handlers', () => {
 			expect(addWine.resetAddWine).toHaveBeenCalled();
 		});
 
-		it('should reset conversation', () => {
+		it('should reset conversation with divider (not start fresh session)', () => {
 			handleStartOver();
 
+			// Should call resetConversation which preserves history with a divider
 			expect(conversation.resetConversation).toHaveBeenCalled();
-		});
-
-		it('should start new session', () => {
-			handleStartOver();
-
-			expect(conversation.startSession).toHaveBeenCalled();
+			// Should NOT call startSession - that would wipe all messages
+			expect(conversation.startSession).not.toHaveBeenCalled();
 		});
 
 		it('should clear last action', () => {

@@ -75,6 +75,14 @@
   function openCamera() {
     fileInput?.click();
   }
+
+  // Handle focus - scroll input into view for mobile keyboards
+  function handleFocus() {
+    // Small delay to let keyboard animate in
+    setTimeout(() => {
+      textareaEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+  }
 </script>
 
 <div class="input-area" class:disabled={isDisabled}>
@@ -86,6 +94,7 @@
       disabled={isDisabled}
       on:keydown={handleKeydown}
       on:input={autoResize}
+      on:focus={handleFocus}
       rows="1"
       class="input-field"
     ></textarea>

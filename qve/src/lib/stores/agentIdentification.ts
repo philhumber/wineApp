@@ -386,6 +386,10 @@ export function getAugmentationContext(): AugmentationContext | null {
   return get(store).augmentationContext;
 }
 
+export function getConfidence(): number | null {
+  return get(store).confidence;
+}
+
 // ===========================================
 // Debug
 // ===========================================

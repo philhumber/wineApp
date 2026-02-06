@@ -112,28 +112,14 @@ export function getMessageByKey(key: MessageKey, context?: MessageContext): stri
 }
 
 // ===========================================
-// Legacy Bridges (delegates to personality system)
+// Time-based Helpers
 // ===========================================
-
-/**
- * Get a message by dot-path (e.g. 'errors.generic').
- *
- * Bridge: paths like 'errors.generic' match MessageKey values
- * directly, so this delegates to getMessageByKey().
- *
- * @deprecated Use getMessageByKey(MessageKey.X) for new code.
- */
-export function getMessage(path: string): string {
-  return getMessageByKey(path as MessageKey);
-}
 
 /**
  * Get a greeting message based on time of day.
  *
- * Now personality-aware: returns Quentin's greeting when SOMMELIER
+ * Personality-aware: returns Quentin's greeting when SOMMELIER
  * is active, neutral greeting otherwise.
- *
- * @deprecated Use getMessageByKey(MessageKey.GREETING_*) for new code.
  */
 export function getTimeBasedGreeting(): string {
   const hour = new Date().getHours();
@@ -163,46 +149,39 @@ export function formatMessage(
 }
 
 // ===========================================
-// Message Templates with Variables
+// Helper Functions
 // ===========================================
 
+import type { WineIdentificationResult } from './types';
+
 /**
- * Parameterized message templates used by handlers.
- *
- * These contain branching logic (e.g. confidence thresholds)
- * that doesn't fit the simple MessageKey model. Handlers will
- * migrate to getMessageByKey() over time.
- *
- * @deprecated Migrate to getMessageByKey() with MessageContext.
+ * Build display name from wine result object.
+ * Centralizes name construction logic.
  */
-export const messageTemplates = {
-  identification: {
-    found: (wineName: string) => `I found ${wn(wineName)}. Is this correct?`,
-    foundWithConfidence: (wineName: string, confidence: number) =>
-      confidence < 0.7
-        ? `I think this might be ${wn(wineName)}, but I'm not entirely sure. Is this correct?`
-        : `I found ${wn(wineName)}. Is this correct?`,
-    incompleteWithProducer: (producer: string) =>
-      `I identified ${wn(producer)} as the producer, but I couldn't determine the specific wine name. Would you like to:`,
-    incompleteWithGrapes: (producer: string | undefined, grape: string) =>
-      producer
-        ? `I found ${wn(producer)} and detected ${wn(grape)} as the grape variety. Should I use this as the wine name?`
-        : `I detected ${wn(grape)} as the grape variety but couldn't identify the producer. Should I use the grape as the wine name?`,
-    missingVintagePrompt: (wineName: string) =>
-      `I couldn't find a vintage for ${wn(wineName)}. Is this a non-vintage wine?`,
-    missingProducerPrompt: (wineName: string) =>
-      `I identified ${wn(wineName)} but couldn't determine the producer. Who makes this wine?`,
-    lowConfidencePrompt: (wineName: string, confidence: number) =>
-      `I'm only ${Math.round(confidence * 100)}% confident about ${wn(wineName)}. Would you like me to try harder, or would you like to add details?`,
-  },
+export function buildWineName(result: WineIdentificationResult | null | undefined): string {
+  if (!result) return 'this wine';
+  return [result.producer, result.wineName].filter(Boolean).join(' ') || 'this wine';
+}
 
-  addFlow: {
-    duplicateFound: (wineName: string, bottleCount: number) =>
-      `I found ${wn(wineName)} already in your cellar with ${bottleCount} bottle${bottleCount !== 1 ? 's' : ''}.`,
-    addComplete: (wineName: string) => `Added ${wn(wineName)} to your cellar!`,
-  },
+/**
+ * Get entity matching message with context.
+ * Reduces handler boilerplate for entity flows.
+ */
+export function getEntityMessage(
+  key: MessageKey,
+  entityType: string,
+  additionalContext?: Partial<MessageContext>
+): string {
+  return getMessageByKey(key, {
+    entityType,
+    ...additionalContext,
+  });
+}
 
-  errors: {
-    withReference: (message: string, ref: string) => `${message}\n\nReference: ${ref}`,
-  },
-} as const;
+/**
+ * Pluralize entity type for display.
+ * @example pluralizeEntity('region', 3) → 'regions'
+ */
+export function pluralizeEntity(entityType: string, count: number): string {
+  return count === 1 ? entityType : `${entityType}s`;
+}

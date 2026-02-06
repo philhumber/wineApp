@@ -27,7 +27,8 @@
 		startSession,
 		setOrigin,
 		clearOrigin,
-		agentOrigin
+		agentOrigin,
+		hasAnimatingMessages
 	} from '$lib/stores/agentConversation';
 	import { isIdentifying, streamingFields } from '$lib/stores/agentIdentification';
 	import { isEnriching, enrichmentStreamingFields } from '$lib/stores/agentEnrichment';
@@ -70,9 +71,31 @@
 	let completionHandled = false;
 	let previousAddedWineId: number | null = null;
 
+	// Track panel element for viewport adjustments
+	let panelElement: HTMLElement | undefined;
+
 	// Initialize on mount
 	onMount(() => {
 		initializeConversation();
+
+		// Handle mobile keyboard via Visual Viewport API
+		if (typeof window !== 'undefined' && window.visualViewport) {
+			const handleViewportResize = () => {
+				if (!panelElement || window.innerWidth > 640) return;
+
+				const viewport = window.visualViewport!;
+				// Calculate the visible height (accounts for keyboard)
+				const visibleHeight = viewport.height;
+				// Set panel height to 85% of visible viewport
+				panelElement.style.height = `${visibleHeight * 0.85}px`;
+			};
+
+			window.visualViewport.addEventListener('resize', handleViewportResize);
+
+			return () => {
+				window.visualViewport?.removeEventListener('resize', handleViewportResize);
+			};
+		}
 	});
 
 	// ===========================================
@@ -228,7 +251,9 @@
 	}
 
 	// Check if input should be disabled
-	$: isInputDisabled = phase === 'identifying' || phase === 'enriching';
+	// Disable during identifying/enriching phases AND while agent messages are animating
+	// This prevents message queue buildup from rapid user input
+	$: isInputDisabled = phase === 'identifying' || phase === 'enriching' || $hasAnimatingMessages;
 </script>
 
 {#if isOpen}
@@ -245,6 +270,7 @@
 	<!-- Panel -->
 	<div
 		class="agent-panel"
+		bind:this={panelElement}
 		transition:fly={{ x: 400, duration: 300, easing: cubicOut }}
 		role="dialog"
 		aria-label="Wine Assistant"
@@ -341,10 +367,15 @@
 	@media (max-width: 640px) {
 		.agent-panel {
 			top: auto;
+			bottom: 0;
 			left: 0;
 			right: 0;
 			width: 100%;
+			/* Use dvh for keyboard-aware height, vh as fallback */
+			height: 85vh;
+			height: 85dvh;
 			max-height: 85vh;
+			max-height: 85dvh;
 			border-radius: var(--radius-xl) var(--radius-xl) 0 0;
 		}
 	}

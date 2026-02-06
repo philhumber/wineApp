@@ -53,9 +53,27 @@ Element.prototype.getAnimations = function () {
 	return [];
 };
 
+// Mock ResizeObserver (not available in jsdom)
+class ResizeObserverMock {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+}
+Object.defineProperty(window, 'ResizeObserver', {
+	value: ResizeObserverMock,
+	writable: true,
+});
+
+// Mock Element.scrollTo (not fully implemented in jsdom)
+Element.prototype.scrollTo = function (options?: ScrollToOptions | number) {};
+
+// Mock Element.scrollIntoView (not fully implemented in jsdom)
+Element.prototype.scrollIntoView = function (options?: boolean | ScrollIntoViewOptions) {};
+
 // Mock Element.animate for Svelte transitions
 Element.prototype.animate = function (keyframes: Keyframe[] | PropertyIndexedKeyframes | null, options?: number | KeyframeAnimationOptions) {
 	const duration = typeof options === 'number' ? options : options?.duration || 0;
+	let _effect: AnimationEffect | null = null;
 	return {
 		cancel: () => {},
 		finish: () => {},
@@ -79,7 +97,8 @@ Element.prototype.animate = function (keyframes: Keyframe[] | PropertyIndexedKey
 		get timeline() { return null; },
 		get startTime() { return 0; },
 		set startTime(v) {},
-		get effect() { return null; },
+		get effect() { return _effect; },
+		set effect(v) { _effect = v; },
 		get id() { return ''; },
 		get replaceState() { return 'active' as AnimationReplaceState; },
 		addEventListener: () => {},

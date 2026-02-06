@@ -9,6 +9,8 @@
  */
 
 import type { AgentAction } from '../types';
+import { getMessageByKey } from '../messages';
+import { MessageKey } from '../messageKeys';
 import * as conversation from '$lib/stores/agentConversation';
 import * as identification from '$lib/stores/agentIdentification';
 import * as enrichment from '$lib/stores/agentEnrichment';
@@ -40,6 +42,7 @@ type ConversationActionType =
 /**
  * Handle start_over action.
  * Resets all agent state and starts a new session.
+ * Keeps chat history with a divider, adds a fresh greeting.
  */
 export function handleStartOver(): void {
   console.log('[Conversation] start_over');
@@ -50,11 +53,8 @@ export function handleStartOver(): void {
   addWine.resetAddWine();
   clearLastAction();
 
-  // Reset conversation with divider
+  // Reset conversation with divider (preserves history, adds divider + greeting)
   conversation.resetConversation();
-
-  // Phase will be set by startSession
-  conversation.startSession();
 }
 
 /**
@@ -72,7 +72,7 @@ export function handleGoBack(): void {
       // Go back to awaiting input
       conversation.setPhase('awaiting_input');
       conversation.addMessage(
-        conversation.createTextMessage('Let me know what wine you\'d like to identify.')
+        conversation.createTextMessage(getMessageByKey(MessageKey.CONV_AWAITING_INPUT))
       );
       conversation.addMessage(
         conversation.createChipsMessage([
@@ -86,7 +86,7 @@ export function handleGoBack(): void {
       // Go back to action selection
       conversation.setPhase('confirming');
       conversation.addMessage(
-        conversation.createTextMessage('What would you like to do with this wine?')
+        conversation.createTextMessage(getMessageByKey(MessageKey.CONV_ACTION_PROMPT))
       );
       conversation.addMessage(
         conversation.createChipsMessage([
@@ -180,7 +180,7 @@ export function handleRetry(): AgentAction | null {
   if (!lastAction) {
     // No action to retry - show message
     conversation.addMessage(
-      conversation.createTextMessage('Nothing to retry. What would you like to identify?')
+      conversation.createTextMessage(getMessageByKey(MessageKey.CONV_NOTHING_TO_RETRY))
     );
     conversation.setPhase('awaiting_input');
     return null;

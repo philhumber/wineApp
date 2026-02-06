@@ -22,20 +22,23 @@
 	$: hasWindowData = drinkWindow?.start || drinkWindow?.end;
 </script>
 
-<section class="section">
-	<h4 class="section-title">Drink Window</h4>
-	{#if state === 'skeleton' || !hasDrinkWindow || !hasWindowData}
-		<div class="shimmer-container">
-			<span class="shimmer-bar" style="width: 60%;"></span>
-		</div>
-	{:else if drinkWindow}
-		<DrinkWindow
-			start={drinkWindow.start ?? null}
-			end={drinkWindow.end ?? null}
-			maturity={drinkWindow.maturity}
-		/>
-	{/if}
-</section>
+<!-- Hide entire section in static state when no data available -->
+{#if state !== 'static' || (hasDrinkWindow && hasWindowData)}
+	<section class="section">
+		<h4 class="section-title">Drink Window</h4>
+		{#if state === 'skeleton' || !hasDrinkWindow || !hasWindowData}
+			<div class="shimmer-container">
+				<span class="shimmer-bar" style="width: 60%;"></span>
+			</div>
+		{:else if drinkWindow}
+			<DrinkWindow
+				start={drinkWindow.start ?? null}
+				end={drinkWindow.end ?? null}
+				maturity={drinkWindow.maturity}
+			/>
+		{/if}
+	</section>
+{/if}
 
 <style>
 	.section {

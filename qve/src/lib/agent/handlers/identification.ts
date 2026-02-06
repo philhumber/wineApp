@@ -16,7 +16,8 @@
 
 import type { AgentAction, WineIdentificationResult, AgentErrorInfo } from '../types';
 import type { AgentParsedWine } from '$lib/api/types';
-import { getMessage, messageTemplates, wn } from '../messages';
+import { getMessageByKey, buildWineName } from '../messages';
+import { MessageKey } from '../messageKeys';
 import * as conversation from '$lib/stores/agentConversation';
 import * as identification from '$lib/stores/agentIdentification';
 import * as enrichment from '$lib/stores/agentEnrichment';
@@ -124,9 +125,9 @@ function handleIdentificationResultFlow(
 
   // Case 1: We have producer and/or wine name - show confirmation chips
   if (hasProducerOrWineName) {
-    const foundMessage = messageTemplates.identification.foundWithConfidence(wineName, confidence);
+    const messageKey = confidence < 0.7 ? MessageKey.ID_LOW_CONFIDENCE : MessageKey.ID_FOUND;
     conversation.addMessage(
-      conversation.createTextMessage(foundMessage)
+      conversation.createTextMessage(getMessageByKey(messageKey, { wineName }))
     );
 
     conversation.addMessage(
@@ -143,7 +144,7 @@ function handleIdentificationResultFlow(
 
     conversation.addMessage(
       conversation.createTextMessage(
-        `I detected ${wn(wineResult.grapes![0])} as the grape variety, but couldn't identify the wine or producer. Can you provide more details?`
+        getMessageByKey(MessageKey.ID_GRAPE_ONLY, { grape: wineResult.grapes![0] })
       )
     );
 
@@ -157,7 +158,7 @@ function handleIdentificationResultFlow(
 
   // Case 3: Nothing meaningful identified
   conversation.addMessage(
-    conversation.createTextMessage(getMessage('identification.notFound'))
+    conversation.createTextMessage(getMessageByKey(MessageKey.ID_NOT_FOUND))
   );
 
   conversation.addMessage(
@@ -182,11 +183,12 @@ function handleMissingFieldProvided(
     .filter(Boolean)
     .join(' ');
 
-  if (quality.isComplete) {
+  // Check if all required fields are present (regardless of confidence)
+  if (quality.hasAllFields) {
     if (!quality.isLowConfidence) {
       // High confidence - go directly to action chips
       conversation.addMessage(
-        conversation.createTextMessage(`Excellent. What would you like to do with ${wn(wineName)}?`)
+        conversation.createTextMessage(getMessageByKey(MessageKey.CONFIRM_ACTION_PROMPT, { wineName }))
       );
 
       conversation.addMessage(
@@ -195,26 +197,28 @@ function handleMissingFieldProvided(
 
       conversation.setPhase('confirming');
     } else {
-      // Low confidence - show wine card and offer re-identification
+      // Low confidence but all fields present - show wine card and offer to reidentify with context
+      // Messages sequence automatically via isPrecedingReady in MessageWrapper
       conversation.addMessage({
         category: 'wine_result',
         role: 'agent',
         data: {
           category: 'wine_result',
           result: updatedResult,
-          confidence,
+          confidence: quality.confidence, // Use normalized confidence (0-1)
         },
       });
 
       conversation.addMessage(
-        conversation.createTextMessage(getMessage('identification.suggestReidentify'))
+        conversation.createTextMessage(
+          getMessageByKey(MessageKey.ID_LOW_CONFIDENCE_COMPLETE, { wineName })
+        )
       );
 
       conversation.addMessage(
         conversation.createChipsMessage([
-          { id: 'reidentify', label: getMessage('chips.reidentify'), action: 'reidentify', variant: 'primary' },
-          { id: 'continue_as_is', label: getMessage('chips.continueAsIs'), action: 'continue_as_is' },
-          { id: 'not_correct', label: getMessage('chips.notCorrect'), action: 'not_correct' },
+          { id: 'reidentify', label: 'Try to Match', action: 'reidentify', variant: 'primary' },
+          { id: 'continue_as_is', label: 'Add Manually', action: 'continue_as_is' },
         ])
       );
 
@@ -225,24 +229,18 @@ function handleMissingFieldProvided(
     let promptMessage: string;
 
     if (quality.missingWineName && quality.hasGrapes && quality.primaryGrape) {
-      promptMessage = messageTemplates.identification.incompleteWithGrapes(
-        updatedResult.producer,
-        quality.primaryGrape
-      );
+      promptMessage = updatedResult.producer
+        ? getMessageByKey(MessageKey.ID_INCOMPLETE_GRAPES_WITH_PRODUCER, { producer: updatedResult.producer, grape: quality.primaryGrape })
+        : getMessageByKey(MessageKey.ID_INCOMPLETE_GRAPES_NO_PRODUCER, { grape: quality.primaryGrape });
     } else if (quality.missingWineName && quality.hasProducer) {
-      promptMessage = messageTemplates.identification.incompleteWithProducer(
-        updatedResult.producer!
-      );
+      promptMessage = getMessageByKey(MessageKey.ID_MISSING_WINE_NAME, { producer: updatedResult.producer });
     } else if (quality.missingProducer && !quality.missingWineName) {
-      promptMessage = messageTemplates.identification.missingProducerPrompt(
-        updatedResult.wineName!
-      );
+      promptMessage = getMessageByKey(MessageKey.ID_MISSING_PRODUCER, { wineName: updatedResult.wineName });
     } else if (quality.missingVintage && !quality.missingWineName && !quality.missingProducer) {
-      promptMessage = messageTemplates.identification.missingVintagePrompt(wineName);
-    } else if (quality.isLowConfidence && wineName) {
-      promptMessage = messageTemplates.identification.lowConfidencePrompt(wineName, confidence);
+      promptMessage = getMessageByKey(MessageKey.ID_MISSING_VINTAGE, { wineName });
     } else {
-      promptMessage = getMessage('identification.incomplete');
+      // Generic fallback for edge cases (shouldn't normally reach here)
+      promptMessage = getMessageByKey(MessageKey.ID_INCOMPLETE);
     }
 
     conversation.addMessage(
@@ -273,13 +271,13 @@ function handleIdentificationError(error: unknown): void {
   } else if (error instanceof Error) {
     errorInfo = {
       type: 'server_error',
-      userMessage: error.message || getMessage('errors.generic'),
+      userMessage: error.message || getMessageByKey(MessageKey.ERROR_GENERIC),
       retryable: true,
     };
   } else {
     errorInfo = {
       type: 'server_error',
-      userMessage: getMessage('errors.generic'),
+      userMessage: getMessageByKey(MessageKey.ERROR_GENERIC),
       retryable: true,
     };
   }
@@ -334,8 +332,9 @@ async function executeTextIdentification(
   conversation.setPhase('identifying');
   identification.startIdentification('text');
 
+  // Message sequencing handled by isPrecedingReady in MessageWrapper
   conversation.addMessage(
-    conversation.createTextMessage(getMessage('identification.thinking'))
+    conversation.createTextMessage(getMessageByKey(MessageKey.ID_THINKING))
   );
 
   try {
@@ -367,7 +366,7 @@ async function executeImageIdentification(
   identification.startIdentification('image');
 
   conversation.addMessage(
-    conversation.createTextMessage(getMessage('identification.analyzing'))
+    conversation.createTextMessage(getMessageByKey(MessageKey.ID_ANALYZING))
   );
 
   try {
@@ -424,7 +423,8 @@ async function handleTextSubmit(text: string): Promise<void> {
   if (existingResult && currentPhase === 'awaiting_input') {
     const fieldResult = detectFieldInput(text, existingResult);
     if (fieldResult.detected && fieldResult.updatedResult) {
-      const confidence = existingResult.confidence ?? 1;
+      // Use stored confidence (authoritative) rather than result object property
+      const confidence = identification.getConfidence() ?? existingResult.confidence ?? 1;
       identification.setResult(fieldResult.updatedResult, confidence);
 
       if (hasAugmentation) {
@@ -442,7 +442,9 @@ async function handleTextSubmit(text: string): Promise<void> {
 
   // 3. Direct Value Detection (without augmentation)
   if (existingResult && currentPhase === 'awaiting_input' && !hasAugmentation) {
-    const quality = analyzeResultQuality(existingResult, existingResult.confidence ?? 1);
+    // Use stored confidence (authoritative) rather than result object property
+    const storedConfidence = identification.getConfidence() ?? existingResult.confidence ?? 1;
+    const quality = analyzeResultQuality(existingResult, storedConfidence);
 
     // Determine awaiting field based on quality
     let awaitingField: 'producer' | 'wineName' | 'vintage' | null = null;
@@ -456,14 +458,14 @@ async function handleTextSubmit(text: string): Promise<void> {
 
     const directResult = detectDirectValue(text, existingResult, awaitingField);
     if (directResult.detected && directResult.updatedResult) {
-      const confidence = existingResult.confidence ?? 1;
-      identification.setResult(directResult.updatedResult, confidence);
+      // Use storedConfidence from above (authoritative) rather than result object property
+      identification.setResult(directResult.updatedResult, storedConfidence);
 
       conversation.addMessage(
         conversation.createTextMessage(text, { role: 'user' })
       );
 
-      handleMissingFieldProvided(directResult.updatedResult, confidence);
+      handleMissingFieldProvided(directResult.updatedResult, storedConfidence);
       return;
     }
   }
@@ -489,7 +491,7 @@ async function handleTextSubmit(text: string): Promise<void> {
     if (hasResult) {
       identification.setPendingNewSearch(text);
       conversation.addMessage(
-        conversation.createTextMessage(getMessage('confirm.newSearch'))
+        conversation.createTextMessage(getMessageByKey(MessageKey.CONFIRM_NEW_SEARCH))
       );
       conversation.addMessage(
         conversation.createChipsMessage([
@@ -510,7 +512,7 @@ async function handleTextSubmit(text: string): Promise<void> {
     );
     conversation.addMessage(
       conversation.createTextMessage(
-        `Just '${text}'? Adding more detail will improve the match.`
+        getMessageByKey(MessageKey.ID_BRIEF_INPUT_CONFIRM, { text })
       )
     );
     conversation.addMessage(
@@ -596,61 +598,86 @@ async function handleCorrect(messageId: string): Promise<void> {
   const result = identification.getResult();
   if (!result) {
     conversation.addMessage(
-      conversation.createTextMessage(getMessage('errors.noResult'))
+      conversation.createTextMessage(getMessageByKey(MessageKey.ERROR_NO_RESULT))
     );
     return;
   }
 
-  const confidence = result.confidence ?? 1;
+  // Use stored confidence (authoritative) rather than result object property
+  const confidence = identification.getConfidence() ?? result.confidence ?? 1;
   const quality = analyzeResultQuality(result, confidence);
   const wineName = [result.producer, result.wineName].filter(Boolean).join(' ');
 
-  if (!quality.isComplete) {
-    let promptMessage: string;
+  // Check if all required fields are present
+  if (quality.hasAllFields) {
+    if (!quality.isLowConfidence) {
+      // High confidence - show action chips
+      conversation.addMessage(
+        conversation.createTextMessage(getMessageByKey(MessageKey.CONFIRM_ACTION_PROMPT, { wineName }))
+      );
 
-    if (quality.missingWineName && quality.hasGrapes && quality.primaryGrape) {
-      promptMessage = messageTemplates.identification.incompleteWithGrapes(
-        result.producer,
-        quality.primaryGrape
+      conversation.addMessage(
+        conversation.createChipsMessage(generateActionChips(false))
       );
-    } else if (quality.missingWineName && quality.hasProducer) {
-      promptMessage = messageTemplates.identification.incompleteWithProducer(
-        result.producer!
-      );
-    } else if (quality.missingProducer && !quality.missingWineName) {
-      promptMessage = messageTemplates.identification.missingProducerPrompt(
-        result.wineName!
-      );
-    } else if (quality.missingVintage && !quality.missingWineName && !quality.missingProducer) {
-      promptMessage = messageTemplates.identification.missingVintagePrompt(wineName);
-    } else if (quality.isLowConfidence && wineName) {
-      promptMessage = messageTemplates.identification.lowConfidencePrompt(wineName, confidence);
+
+      conversation.setPhase('confirming');
     } else {
-      promptMessage = getMessage('identification.incomplete');
+      // Low confidence but all fields present - offer to reidentify or add manually
+      // Messages sequence automatically via isPrecedingReady in MessageWrapper
+      conversation.addMessage({
+        category: 'wine_result',
+        role: 'agent',
+        data: {
+          category: 'wine_result',
+          result,
+          confidence: quality.confidence,
+        },
+      });
+
+      conversation.addMessage(
+        conversation.createTextMessage(
+          getMessageByKey(MessageKey.ID_LOW_CONFIDENCE_COMPLETE, { wineName })
+        )
+      );
+
+      conversation.addMessage(
+        conversation.createChipsMessage([
+          { id: 'reidentify', label: 'Try to Match', action: 'reidentify', variant: 'primary' },
+          { id: 'continue_as_is', label: 'Add Manually', action: 'continue_as_is' },
+        ])
+      );
+
+      conversation.setPhase('confirming');
     }
-
-    conversation.addMessage(
-      conversation.createTextMessage(promptMessage)
-    );
-
-    conversation.addMessage(
-      conversation.createChipsMessage(generateIncompleteChips(quality))
-    );
-
-    conversation.setPhase('awaiting_input');
     return;
   }
 
-  // Complete result
+  // Missing fields - prompt for next one
+  let promptMessage: string;
+
+  if (quality.missingWineName && quality.hasGrapes && quality.primaryGrape) {
+    promptMessage = result.producer
+      ? getMessageByKey(MessageKey.ID_INCOMPLETE_GRAPES_WITH_PRODUCER, { producer: result.producer, grape: quality.primaryGrape })
+      : getMessageByKey(MessageKey.ID_INCOMPLETE_GRAPES_NO_PRODUCER, { grape: quality.primaryGrape });
+  } else if (quality.missingWineName && quality.hasProducer) {
+    promptMessage = getMessageByKey(MessageKey.ID_MISSING_WINE_NAME, { producer: result.producer });
+  } else if (quality.missingProducer && !quality.missingWineName) {
+    promptMessage = getMessageByKey(MessageKey.ID_MISSING_PRODUCER, { wineName: result.wineName });
+  } else if (quality.missingVintage && !quality.missingWineName && !quality.missingProducer) {
+    promptMessage = getMessageByKey(MessageKey.ID_MISSING_VINTAGE, { wineName });
+  } else {
+    promptMessage = getMessageByKey(MessageKey.ID_INCOMPLETE);
+  }
+
   conversation.addMessage(
-    conversation.createTextMessage(`Excellent. What would you like to do with ${wn(wineName)}?`)
+    conversation.createTextMessage(promptMessage)
   );
 
   conversation.addMessage(
-    conversation.createChipsMessage(generateActionChips(false))
+    conversation.createChipsMessage(generateIncompleteChips(quality))
   );
 
-  conversation.setPhase('confirming');
+  conversation.setPhase('awaiting_input');
 }
 
 async function handleNotCorrect(messageId: string): Promise<void> {
@@ -666,7 +693,7 @@ async function handleNotCorrect(messageId: string): Promise<void> {
   });
 
   conversation.addMessage(
-    conversation.createTextMessage(getMessage('confirm.incorrect'))
+    conversation.createTextMessage(getMessageByKey(MessageKey.CONFIRM_INCORRECT))
   );
 
   conversation.addMessage(
@@ -706,7 +733,7 @@ async function handleConfirmBriefSearch(messageId: string): Promise<void> {
     await executeTextIdentification(searchText);
   } else {
     conversation.addMessage(
-      conversation.createTextMessage("I'm not sure what you wanted to search. Please try again.")
+      conversation.createTextMessage(getMessageByKey(MessageKey.ID_SEARCH_UNCLEAR))
     );
     conversation.setPhase('awaiting_input');
   }
@@ -721,37 +748,40 @@ function handleAddMoreDetail(messageId: string): void {
 // Field Completion Handlers
 // ===========================================
 
-async function handleUseProducerName(messageId: string): Promise<void> {
+function handleUseProducerName(messageId: string): void {
   conversation.disableMessage(messageId);
 
   const result = identification.getResult();
   if (result && result.producer) {
     const updatedResult = { ...result, wineName: result.producer };
-    const confidence = result.confidence ?? 1;
+    // Use stored confidence (authoritative) rather than result object property
+    const confidence = identification.getConfidence() ?? result.confidence ?? 1;
     identification.setResult(updatedResult, confidence);
     handleMissingFieldProvided(updatedResult, confidence);
   }
 }
 
-async function handleUseGrapeAsName(messageId: string): Promise<void> {
+function handleUseGrapeAsName(messageId: string): void {
   conversation.disableMessage(messageId);
 
   const result = identification.getResult();
   if (result && result.grapes?.length) {
     const updatedResult = { ...result, wineName: result.grapes[0] };
-    const confidence = result.confidence ?? 1;
+    // Use stored confidence (authoritative) rather than result object property
+    const confidence = identification.getConfidence() ?? result.confidence ?? 1;
     identification.setResult(updatedResult, confidence);
     handleMissingFieldProvided(updatedResult, confidence);
   }
 }
 
-async function handleNvVintage(messageId: string): Promise<void> {
+function handleNvVintage(messageId: string): void {
   conversation.disableMessage(messageId);
 
   const result = identification.getResult();
   if (result) {
     const updatedResult = { ...result, vintage: 'NV' as const };
-    const confidence = result.confidence ?? 1;
+    // Use stored confidence (authoritative) rather than result object property
+    const confidence = identification.getConfidence() ?? result.confidence ?? 1;
     identification.setResult(updatedResult, confidence);
     handleMissingFieldProvided(updatedResult, confidence);
   }
@@ -761,17 +791,19 @@ function handleAddMissingDetails(messageId: string): void {
   conversation.disableMessage(messageId);
 
   const result = identification.getResult();
-  const quality = result ? analyzeResultQuality(result, result.confidence ?? 1) : null;
+  // Use stored confidence (authoritative) rather than result object property
+  const storedConfidence = identification.getConfidence() ?? result?.confidence ?? 1;
+  const quality = result ? analyzeResultQuality(result, storedConfidence) : null;
 
   let prompt: string;
   if (quality?.missingProducer && !quality.missingWineName) {
-    prompt = "Who makes this wine? Enter the producer or winery name.";
+    prompt = getMessageByKey(MessageKey.ID_PROMPT_PRODUCER);
   } else if (quality?.missingVintage && !quality.missingWineName && !quality.missingProducer) {
-    prompt = "What year is this wine? Enter the vintage (e.g., 2019) or type 'NV' for non-vintage.";
+    prompt = getMessageByKey(MessageKey.ID_PROMPT_VINTAGE);
   } else if (quality?.missingWineName) {
-    prompt = "What's the name of this wine? You can also include the vintage.";
+    prompt = getMessageByKey(MessageKey.ID_PROMPT_WINE_NAME);
   } else {
-    prompt = "What details would you like to add or correct?";
+    prompt = getMessageByKey(MessageKey.ID_PROMPT_DETAILS);
   }
 
   conversation.addMessage(
@@ -795,7 +827,7 @@ function handleProvideMore(messageId: string): void {
 
   conversation.addMessage(
     conversation.createTextMessage(
-      "Tell me what's different about this wine, and I'll try again. The producer, country, region, or grape variety would help."
+      getMessageByKey(MessageKey.ID_PROVIDE_MORE_CONTEXT)
     )
   );
 
@@ -808,13 +840,13 @@ function handleContinueAsIs(messageId: string): void {
   const result = identification.getResult();
   if (!result) {
     conversation.addMessage(
-      conversation.createTextMessage(getMessage('errors.noResult'))
+      conversation.createTextMessage(getMessageByKey(MessageKey.ERROR_NO_RESULT))
     );
     return;
   }
 
   conversation.addMessage(
-    conversation.createTextMessage(getMessage('confirm.correct'))
+    conversation.createTextMessage(getMessageByKey(MessageKey.CONFIRM_CORRECT))
   );
 
   conversation.addMessage(
@@ -835,7 +867,7 @@ async function handleTryOpus(messageId: string): Promise<void> {
   conversation.setPhase('identifying');
 
   conversation.addMessage(
-    conversation.createTextMessage(getMessage('identification.escalating'))
+    conversation.createTextMessage(getMessageByKey(MessageKey.ID_ESCALATING))
   );
 
   try {
@@ -899,14 +931,12 @@ async function handleTryOpus(messageId: string): Promise<void> {
 
     let foundMessage: string;
     if (wineName) {
-      foundMessage = messageTemplates.identification.foundWithConfidence(
-        wineName,
-        result.confidence ?? 1
-      );
+      const messageKey = (result.confidence ?? 1) < 0.7 ? MessageKey.ID_LOW_CONFIDENCE : MessageKey.ID_FOUND;
+      foundMessage = getMessageByKey(messageKey, { wineName });
     } else if (wineResult.grapes?.length) {
-      foundMessage = `I detected ${wn(wineResult.grapes[0])} as the grape variety, but couldn't identify the wine or producer.`;
+      foundMessage = getMessageByKey(MessageKey.ID_GRAPE_ONLY, { grape: wineResult.grapes[0] });
     } else {
-      foundMessage = getMessage('identification.notFound');
+      foundMessage = getMessageByKey(MessageKey.ID_NOT_FOUND);
     }
     conversation.addMessage(
       conversation.createTextMessage(foundMessage)
@@ -934,7 +964,7 @@ async function handleReidentify(messageId: string): Promise<void> {
   const result = identification.getResult();
   if (!result) {
     conversation.addMessage(
-      conversation.createTextMessage(getMessage('errors.noResult'))
+      conversation.createTextMessage(getMessageByKey(MessageKey.ERROR_NO_RESULT))
     );
     return;
   }
@@ -951,7 +981,7 @@ async function handleReidentify(messageId: string): Promise<void> {
 
   if (!searchQuery.trim()) {
     conversation.addMessage(
-      conversation.createTextMessage("I don't have enough information to search. Please provide more details.")
+      conversation.createTextMessage(getMessageByKey(MessageKey.ID_INSUFFICIENT_INFO))
     );
     conversation.setPhase('awaiting_input');
     return;
@@ -959,8 +989,9 @@ async function handleReidentify(messageId: string): Promise<void> {
 
   identification.clearIdentification();
 
+  // Message sequencing handled by isPrecedingReady in MessageWrapper
   conversation.addMessage(
-    conversation.createTextMessage("Let me try to find a better match...")
+    conversation.createTextMessage(getMessageByKey(MessageKey.ID_REIDENTIFYING))
   );
 
   await handleTextSubmit(searchQuery);
@@ -1043,15 +1074,15 @@ export async function handleIdentificationAction(action: AgentAction): Promise<v
       break;
 
     case 'use_producer_name':
-      await handleUseProducerName(action.messageId ?? '');
+      handleUseProducerName(action.messageId ?? '');
       break;
 
     case 'use_grape_as_name':
-      await handleUseGrapeAsName(action.messageId ?? '');
+      handleUseGrapeAsName(action.messageId ?? '');
       break;
 
     case 'nv_vintage':
-      await handleNvVintage(action.messageId ?? '');
+      handleNvVintage(action.messageId ?? '');
       break;
 
     case 'add_missing_details':

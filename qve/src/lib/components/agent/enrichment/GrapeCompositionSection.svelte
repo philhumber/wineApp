@@ -18,22 +18,25 @@
 	// Handle field name variations (grapes or grapeVarieties)
 	$: grapes = state === 'streaming' ? grapesField?.value : (getFieldValue('grapes') || getFieldValue('grapeVarieties'));
 	$: hasGrapes = state === 'streaming' ? !!grapesField : (hasField('grapes') || hasField('grapeVarieties'));
-	$: isArray = Array.isArray(grapes);
+	$: isArray = Array.isArray(grapes) && grapes.length > 0;
 </script>
 
-<section class="section">
-	<h4 class="section-title">Grape Composition</h4>
-	{#if state === 'skeleton' || !hasGrapes || !isArray}
-		<div class="shimmer-container">
-			<div class="shimmer-grapes">
-				<span class="shimmer-pill"></span>
-				<span class="shimmer-pill"></span>
+<!-- Hide entire section in static state when no data available -->
+{#if state !== 'static' || (hasGrapes && isArray)}
+	<section class="section">
+		<h4 class="section-title">Grape Composition</h4>
+		{#if state === 'skeleton' || !hasGrapes || !isArray}
+			<div class="shimmer-container">
+				<div class="shimmer-grapes">
+					<span class="shimmer-pill"></span>
+					<span class="shimmer-pill"></span>
+				</div>
 			</div>
-		</div>
-	{:else}
-		<GrapeComposition {grapes} />
-	{/if}
-</section>
+		{:else}
+			<GrapeComposition {grapes} />
+		{/if}
+	</section>
+{/if}
 
 <style>
 	.section {

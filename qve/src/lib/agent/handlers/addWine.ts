@@ -18,7 +18,8 @@ import type { AgentAction, EntityType, AgentErrorInfo, WineIdentificationResult,
 import type { AddWineFlowState } from '$lib/stores/agentAddWine';
 import type { AddWinePayload } from '$lib/api/types';
 import { AgentError } from '$lib/api/types';
-import { getMessage, messageTemplates, wn } from '../messages';
+import { getMessageByKey, wn } from '../messages';
+import { MessageKey } from '../messageKeys';
 import * as conversation from '$lib/stores/agentConversation';
 import { addMessageWithDelay } from '$lib/stores/agentConversation';
 import * as identification from '$lib/stores/agentIdentification';
@@ -52,13 +53,13 @@ function handleAddWineError(error: unknown, context: 'submit' | 'bottle'): Agent
   } else if (error instanceof Error) {
     errorInfo = {
       type: 'server_error',
-      userMessage: error.message || getMessage('errors.generic'),
+      userMessage: error.message || getMessageByKey(MessageKey.ERROR_GENERIC),
       retryable: true,
     };
   } else {
     errorInfo = {
       type: 'server_error',
-      userMessage: getMessage('errors.generic'),
+      userMessage: getMessageByKey(MessageKey.ERROR_GENERIC),
       retryable: true,
     };
   }
@@ -126,7 +127,7 @@ async function matchEntity(entityType: EntityType): Promise<void> {
   // If no search term, auto-create new entity
   if (!searchTerm) {
     await addMessageWithDelay(
-      conversation.createTextMessage(`I'll create a new ${entityType} entry.`)
+      conversation.createTextMessage(getMessageByKey(MessageKey.ENTITY_AUTO_CREATE, { entityType }))
     );
     addWine.createNewEntity(entityType, entityName);
     await advanceEntityMatching(entityType);
@@ -154,7 +155,7 @@ async function matchEntity(entityType: EntityType): Promise<void> {
       addWine.createNewEntity(entityType, searchTerm);
       await addMessageWithDelay(
         conversation.createTextMessage(
-          `No existing ${entityType}s match "${searchTerm}". I'll create a new entry.`
+          getMessageByKey(MessageKey.ENTITY_NO_MATCH, { entityType, searchTerm })
         )
       );
       await advanceEntityMatching(entityType);
@@ -163,7 +164,7 @@ async function matchEntity(entityType: EntityType): Promise<void> {
       const match = matches[0];
       addWine.selectMatch(entityType, { id: match.id, name: match.name });
       await addMessageWithDelay(
-        conversation.createTextMessage(`Found existing ${entityType}: ${wn(match.name)}`)
+        conversation.createTextMessage(getMessageByKey(MessageKey.ENTITY_FOUND, { entityType, displayName: match.name }))
       );
       await advanceEntityMatching(entityType);
     } else {
@@ -175,7 +176,7 @@ async function matchEntity(entityType: EntityType): Promise<void> {
 
       await addMessageWithDelay(
         conversation.createTextMessage(
-          `I found ${matches.length} ${entityType}${matches.length > 1 ? 's' : ''} that might match "${searchTerm}".`
+          getMessageByKey(MessageKey.ENTITY_MULTIPLE, { entityType, matchCount: matches.length, searchTerm })
         )
       );
 
@@ -203,7 +204,7 @@ async function matchEntity(entityType: EntityType): Promise<void> {
     // On error, auto-create new entity
     addWine.createNewEntity(entityType, searchTerm);
     await addMessageWithDelay(
-      conversation.createTextMessage(`I'll create a new ${entityType} entry.`)
+      conversation.createTextMessage(getMessageByKey(MessageKey.ENTITY_AUTO_CREATE, { entityType }))
     );
     await advanceEntityMatching(entityType);
   }
@@ -233,7 +234,7 @@ async function showBottleForm(): Promise<void> {
   conversation.setPhase('adding_wine', 'bottle_details');
 
   await addMessageWithDelay(
-    conversation.createTextMessage("Great! Now let's add the bottle details.")
+    conversation.createTextMessage(getMessageByKey(MessageKey.BOTTLE_DETAILS_PROMPT))
   );
 
   // Show bottle form (no delay - form follows text immediately)
@@ -339,7 +340,7 @@ async function submitWine(): Promise<void> {
 
   addWine.startSubmission();
   conversation.addMessage(
-    conversation.createTextMessage('Adding to your cellar...')
+    conversation.createTextMessage(getMessageByKey(MessageKey.ADD_SUBMITTING))
   );
 
   try {
@@ -354,7 +355,7 @@ async function submitWine(): Promise<void> {
     const wineName = flow.wineResult.wineName || 'Wine';
     conversation.addMessage(
       conversation.createTextMessage(
-        messageTemplates.addFlow.addComplete(wineName)
+        getMessageByKey(MessageKey.ADD_COMPLETE, { wineName })
       )
     );
 
@@ -366,7 +367,7 @@ async function submitWine(): Promise<void> {
     addWine.setSubmissionError(errorInfo);
 
     conversation.addMessage(
-      conversation.createTextMessage(errorInfo.userMessage || getMessage('addFlow.addFailed'))
+      conversation.createTextMessage(errorInfo.userMessage || getMessageByKey(MessageKey.ADD_FAILED))
     );
 
     conversation.addMessage(
@@ -384,7 +385,7 @@ async function submitAddBottleToExisting(existingWineId: number): Promise<void> 
 
   addWine.startSubmission();
   conversation.addMessage(
-    conversation.createTextMessage('Adding bottle to your cellar...')
+    conversation.createTextMessage(getMessageByKey(MessageKey.ADD_BOTTLE_SUBMITTING))
   );
 
   try {
@@ -406,7 +407,7 @@ async function submitAddBottleToExisting(existingWineId: number): Promise<void> 
 
     const wineName = flow.wineResult.wineName || flow.wineResult.producer || 'the wine';
     conversation.addMessage(
-      conversation.createTextMessage(`Added another bottle of ${wn(wineName)} to your cellar!`)
+      conversation.createTextMessage(getMessageByKey(MessageKey.ADD_BOTTLE_COMPLETE, { wineName }))
     );
 
     conversation.addMessage(
@@ -417,7 +418,7 @@ async function submitAddBottleToExisting(existingWineId: number): Promise<void> 
     addWine.setSubmissionError(errorInfo);
 
     conversation.addMessage(
-      conversation.createTextMessage(errorInfo.userMessage || 'Something went wrong adding the bottle.')
+      conversation.createTextMessage(errorInfo.userMessage || getMessageByKey(MessageKey.ADD_BOTTLE_FAILED))
     );
 
     conversation.addMessage(
@@ -440,7 +441,7 @@ async function handleAddToCellar(messageId: string): Promise<void> {
   const result = identification.getResult();
   if (!result) {
     conversation.addMessage(
-      conversation.createTextMessage(getMessage('errors.noResult'))
+      conversation.createTextMessage(getMessageByKey(MessageKey.ERROR_NO_RESULT))
     );
     return;
   }
@@ -450,7 +451,7 @@ async function handleAddToCellar(messageId: string): Promise<void> {
   conversation.setPhase('adding_wine', 'confirm');
 
   conversation.addMessage(
-    conversation.createTextMessage(getMessage('addFlow.start'))
+    conversation.createTextMessage(getMessageByKey(MessageKey.ADD_START))
   );
 
   // Check for duplicates first (existing wine with same producer + name + vintage)
@@ -514,7 +515,7 @@ async function handleCreateNewWine(messageId: string): Promise<void> {
   addWine.clearExistingWine();
 
   await addMessageWithDelay(
-    conversation.createTextMessage("I'll create this as a new wine entry.")
+    conversation.createTextMessage(getMessageByKey(MessageKey.ADD_CREATE_NEW_WINE))
   );
 
   // Continue with entity matching flow
@@ -534,7 +535,7 @@ async function handleSelectMatch(entityType: EntityType, matchId: number, messag
   const match = flow?.entityMatches[entityType]?.find((m) => m.id === matchId);
   if (match) {
     conversation.addMessage(
-      conversation.createTextMessage(`Selected: ${wn(match.name)}`)
+      conversation.createTextMessage(getMessageByKey(MessageKey.ENTITY_SELECTED, { displayName: match.name }))
     );
   }
 
@@ -568,7 +569,7 @@ async function handleAddNew(entityType: EntityType, messageId: string): Promise<
 
   addWine.createNewEntity(entityType, name);
   conversation.addMessage(
-    conversation.createTextMessage(`Creating new ${entityType}: ${wn(name)}`)
+    conversation.createTextMessage(getMessageByKey(MessageKey.ENTITY_CREATING, { entityType, displayName: name }))
   );
 
   await advanceEntityMatching(entityType);
@@ -588,14 +589,14 @@ async function handleClarify(entityType: EntityType, messageId: string): Promise
   const matches = flow.entityMatches[entityType] || [];
   if (matches.length === 0) {
     conversation.addMessage(
-      conversation.createTextMessage('No matches to clarify. Creating new entry.')
+      conversation.createTextMessage(getMessageByKey(MessageKey.ENTITY_NO_CLARIFY_MATCHES))
     );
     await handleAddNew(entityType, messageId);
     return;
   }
 
   conversation.addMessage(
-    conversation.createTextMessage('Let me help you decide...')
+    conversation.createTextMessage(getMessageByKey(MessageKey.ENTITY_CLARIFYING))
   );
 
   try {
@@ -637,7 +638,7 @@ async function handleClarify(entityType: EntityType, messageId: string): Promise
     console.error('Clarification failed:', error);
     conversation.addMessage(
       conversation.createTextMessage(
-        "I couldn't get more details. Please select from the options above or create a new entry."
+        getMessageByKey(MessageKey.ENTITY_CLARIFY_FAILED)
       )
     );
   }

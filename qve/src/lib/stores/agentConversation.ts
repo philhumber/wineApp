@@ -112,6 +112,13 @@ export const isInLoadingPhase = derived(
   ($store) => ['identifying', 'enriching'].includes($store.phase)
 );
 
+// Animation tracking - true while any agent message is still animating (isNew: true)
+// Used to disable input until message animations complete, preventing message queue buildup
+export const hasAnimatingMessages = derived(
+  store,
+  ($store) => $store.messages.some((m) => m.role === 'agent' && m.isNew === true)
+);
+
 // ===========================================
 // Message Creation Helpers
 // ===========================================

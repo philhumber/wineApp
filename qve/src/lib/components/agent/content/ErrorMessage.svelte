@@ -1,9 +1,18 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { AgentMessage } from '$lib/agent/types';
+  import { clearNewFlag } from '$lib/stores';
 
   export let message: AgentMessage;
 
   $: error = message.data.category === 'error' ? message.data.error : null;
+
+  // Signal readiness immediately on mount (no typewriter animation)
+  onMount(() => {
+    if (message.isNew) {
+      clearNewFlag(message.id);
+    }
+  });
 </script>
 
 {#if error}

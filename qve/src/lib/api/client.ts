@@ -103,10 +103,8 @@ class WineApiClient {
     response: Response,
     onEvent: StreamEventCallback
   ): Promise<void> {
-    console.log('🌊 SSE: Starting stream processing');
     const reader = response.body?.getReader();
     if (!reader) {
-      console.error('🌊 SSE: Response body is not readable');
       throw new Error('Response body is not readable');
     }
 
@@ -119,12 +117,10 @@ class WineApiClient {
         const { done, value } = await reader.read();
 
         if (done) {
-          console.log('🌊 SSE: Stream done');
           break;
         }
 
         const chunk = decoder.decode(value, { stream: true });
-        console.log('🌊 SSE: Received chunk:', chunk);
         buffer += chunk;
         const lines = buffer.split('\n');
         buffer = lines.pop() || ''; // Keep incomplete line in buffer
@@ -132,13 +128,11 @@ class WineApiClient {
         for (const line of lines) {
           if (line.startsWith('event:')) {
             currentEvent = line.slice(6).trim();
-            console.log('🌊 SSE: Event type:', currentEvent);
           } else if (line.startsWith('data:')) {
             const dataStr = line.slice(5).trim();
             if (dataStr) {
               try {
                 const data = JSON.parse(dataStr);
-                console.log('🌊 SSE: Parsed event:', currentEvent, data);
                 onEvent({ type: currentEvent, data } as StreamEvent);
               } catch {
                 console.warn('Failed to parse SSE data:', dataStr);

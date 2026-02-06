@@ -39,12 +39,54 @@ export enum MessageKey {
   ID_SUGGEST_REIDENTIFY = 'identification.suggestReidentify',
 
   // ===========================================
+  // IDENTIFICATION - Extended
+  // ===========================================
+  /** "I detected {grape} as the grape variety..." - grape only, no producer/wine */
+  ID_GRAPE_ONLY = 'identification.grapeOnly',
+  /** "Just '{text}'? Adding more detail will improve..." */
+  ID_BRIEF_INPUT_CONFIRM = 'identification.briefInputConfirm',
+  /** "I'm not sure what you wanted to search..." */
+  ID_SEARCH_UNCLEAR = 'identification.searchUnclear',
+  /** "I don't have enough information to search..." */
+  ID_INSUFFICIENT_INFO = 'identification.insufficientInfo',
+  /** "Let me try to find a better match..." */
+  ID_REIDENTIFYING = 'identification.reidentifying',
+  /** "I've gathered the details for {wineName}. Try matching or add manually?" */
+  ID_LOW_CONFIDENCE_COMPLETE = 'identification.lowConfidenceComplete',
+  /** Detailed producer prompt with instructions */
+  ID_PROMPT_PRODUCER = 'identification.promptProducer',
+  /** Detailed wine name prompt with instructions */
+  ID_PROMPT_WINE_NAME = 'identification.promptWineName',
+  /** Detailed vintage prompt with instructions */
+  ID_PROMPT_VINTAGE = 'identification.promptVintage',
+  /** Generic details prompt */
+  ID_PROMPT_DETAILS = 'identification.promptDetails',
+  /** "Tell me what's different about this wine..." */
+  ID_PROVIDE_MORE_CONTEXT = 'identification.provideMoreContext',
+  /** Grape with producer: "I found {producer} and detected {grape}..." */
+  ID_INCOMPLETE_GRAPES_WITH_PRODUCER = 'identification.incompleteGrapesWithProducer',
+  /** Grape without producer: "I detected {grape} but couldn't identify producer..." */
+  ID_INCOMPLETE_GRAPES_NO_PRODUCER = 'identification.incompleteGrapesNoProducer',
+
+  // ===========================================
   // CONFIRMATION
   // ===========================================
   CONFIRM_CORRECT = 'confirm.correct',
   CONFIRM_INCORRECT = 'confirm.incorrect',
   CONFIRM_NEW_SEARCH = 'confirm.newSearch',
   CONFIRM_KEEP_CURRENT = 'confirm.keepCurrent',
+  /** "Excellent. What would you like to do with {wineName}?" */
+  CONFIRM_ACTION_PROMPT = 'confirm.actionPrompt',
+
+  // ===========================================
+  // CONVERSATION FLOW
+  // ===========================================
+  /** "Let me know what wine you'd like to identify." */
+  CONV_AWAITING_INPUT = 'conversation.awaitingInput',
+  /** "What would you like to do with this wine?" */
+  CONV_ACTION_PROMPT = 'conversation.actionPrompt',
+  /** "Nothing to retry. What would you like to identify?" */
+  CONV_NOTHING_TO_RETRY = 'conversation.nothingToRetry',
 
   // ===========================================
   // ADD WINE FLOW
@@ -58,6 +100,50 @@ export enum MessageKey {
   ADD_ENRICHMENT_PROMPT = 'addFlow.enrichmentPrompt',
   ADD_COMPLETE = 'addFlow.addComplete',
   ADD_FAILED = 'addFlow.addFailed',
+  /** "Adding to your cellar..." */
+  ADD_SUBMITTING = 'addFlow.submitting',
+  /** "Adding bottle to your cellar..." */
+  ADD_BOTTLE_SUBMITTING = 'addFlow.bottleSubmitting',
+  /** "Added another bottle of {wineName} to your cellar!" */
+  ADD_BOTTLE_COMPLETE = 'addFlow.bottleComplete',
+  /** "Something went wrong adding the bottle." */
+  ADD_BOTTLE_FAILED = 'addFlow.bottleFailed',
+  /** "I'll create this as a new wine entry." */
+  ADD_CREATE_NEW_WINE = 'addFlow.createNewWine',
+
+  // ===========================================
+  // ENTITY MATCHING
+  // ===========================================
+  /** "I'll create a new {entityType} entry." */
+  ENTITY_AUTO_CREATE = 'entity.autoCreate',
+  /** "No existing {entityType}s match '{searchTerm}'. I'll create new." */
+  ENTITY_NO_MATCH = 'entity.noMatch',
+  /** "Found existing {entityType}: {name}" */
+  ENTITY_FOUND = 'entity.found',
+  /** "I found {count} {entityType}s that might match '{searchTerm}'." */
+  ENTITY_MULTIPLE = 'entity.multiple',
+  /** "Selected: {name}" */
+  ENTITY_SELECTED = 'entity.selected',
+  /** "Creating new {entityType}: {name}" */
+  ENTITY_CREATING = 'entity.creating',
+  /** "Let me help you decide..." */
+  ENTITY_CLARIFYING = 'entity.clarifying',
+  /** "I couldn't get more details. Please select or create new." */
+  ENTITY_CLARIFY_FAILED = 'entity.clarifyFailed',
+  /** "No matches to clarify. Creating new entry." */
+  ENTITY_NO_CLARIFY_MATCHES = 'entity.noClarifyMatches',
+
+  // ===========================================
+  // BOTTLE & FORM FLOW
+  // ===========================================
+  /** "Great! Now let's add the bottle details." */
+  BOTTLE_DETAILS_PROMPT = 'bottle.detailsPrompt',
+  /** "Almost done! Would you like to add enrichment data?" */
+  BOTTLE_ENRICHMENT_OFFER = 'bottle.enrichmentOffer',
+  /** "Continuing with your wine details..." */
+  BOTTLE_CONTINUING = 'bottle.continuing',
+  /** "Unable to retry. Please start over." */
+  BOTTLE_RETRY_FAILED = 'bottle.retryFailed',
 
   // ===========================================
   // ENRICHMENT
@@ -66,6 +152,18 @@ export enum MessageKey {
   ENRICH_COMPLETE = 'enrichment.complete',
   ENRICH_NO_DATA = 'enrichment.noData',
   ENRICH_CACHED = 'enrichment.cached',
+  /** "Here's what I found about {wineName}. What would you like to do next?" */
+  ENRICH_FOUND_DETAILS = 'enrichment.foundDetails',
+  /** "I found cached data for {wineName}. Is this the wine you're looking for?" */
+  ENRICH_CACHE_CONFIRM = 'enrichment.cacheConfirm',
+  /** "Using cached data..." */
+  ENRICH_USING_CACHE = 'enrichment.usingCache',
+  /** "Searching for fresh data..." */
+  ENRICH_REFRESHING = 'enrichment.refreshing',
+  /** "Recommendations coming soon!" */
+  ENRICH_RECOMMEND_SOON = 'enrichment.recommendSoon',
+  /** "Memories are a function coming later..." */
+  ENRICH_REMEMBER_SOON = 'enrichment.rememberSoon',
 
   // ===========================================
   // ERRORS

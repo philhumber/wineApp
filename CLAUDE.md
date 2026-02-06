@@ -267,6 +267,25 @@ Wine Assistant state survives mobile browser tab switches (e.g., switching to Ca
 
 **Orphan protection**: Loading states (`isLoading`, `isTyping`, `isEnriching`) reset to false on hydration
 
+**Confidence handling**:
+
+- **API format**: The PHP API returns confidence as a **percentage (0-100)**, e.g., `18` for 18% confidence
+- **Internal format**: `analyzeResultQuality()` normalizes to **decimal (0-1)** for threshold comparisons
+- **Thresholds**: `LOW_CONFIDENCE_THRESHOLD = 0.7` (70%), `ESCALATION_CONFIDENCE_THRESHOLD = 0.6` (60%)
+- **Storage**: Confidence is stored both on the result object (`result.confidence`) AND separately in state (`state.confidence`)
+
+When accessing confidence in handlers, **always use the stored value** via `identification.getConfidence()` as the authoritative source:
+
+```typescript
+// CORRECT - uses stored confidence as authoritative source
+const confidence = identification.getConfidence() ?? result.confidence ?? 1;
+
+// WRONG - result.confidence may be lost through serialization
+const confidence = result.confidence ?? 1;
+```
+
+This pattern is critical during field accumulation flows (where user fills in missing producer/vintage) to preserve the original low-confidence score for reidentification prompts.
+
 ### Agent Input Behavior (AgentPanel.svelte)
 
 The text input is **always visible** across all conversation phases, with phase-aware placeholders:

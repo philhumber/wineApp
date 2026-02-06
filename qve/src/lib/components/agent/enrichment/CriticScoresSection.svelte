@@ -20,20 +20,23 @@
 	$: isArray = Array.isArray(criticScores) && criticScores.length > 0;
 </script>
 
-<section class="section">
-	<h4 class="section-title">Critic Scores</h4>
-	{#if state === 'skeleton' || !hasCriticScores || !isArray}
-		<div class="shimmer-container">
-			<div class="shimmer-scores">
-				<span class="shimmer-score"></span>
-				<span class="shimmer-score"></span>
-				<span class="shimmer-score"></span>
+<!-- Hide entire section in static state when no data available -->
+{#if state !== 'static' || (hasCriticScores && isArray)}
+	<section class="section">
+		<h4 class="section-title">Critic Scores</h4>
+		{#if state === 'skeleton' || !hasCriticScores || !isArray}
+			<div class="shimmer-container">
+				<div class="shimmer-scores">
+					<span class="shimmer-score"></span>
+					<span class="shimmer-score"></span>
+					<span class="shimmer-score"></span>
+				</div>
 			</div>
-		</div>
-	{:else}
-		<CriticScores scores={criticScores} />
-	{/if}
-</section>
+		{:else}
+			<CriticScores scores={criticScores} />
+		{/if}
+	</section>
+{/if}
 
 <style>
 	.section {

@@ -10,7 +10,8 @@ import type { Middleware, ActionHandler } from './types';
 import type { AgentErrorInfo } from '../types';
 import type { AgentErrorType } from '$lib/api/types';
 import { AgentError } from '$lib/api/types';
-import { getMessage, messageTemplates } from '../messages';
+import { getMessageByKey } from '../messages';
+import { MessageKey } from '../messageKeys';
 import * as conversation from '$lib/stores/agentConversation';
 import * as identification from '$lib/stores/agentIdentification';
 
@@ -32,7 +33,7 @@ export function extractErrorInfo(error: unknown): AgentErrorInfo {
     if (error.message.includes('timeout') || error.message.includes('timed out')) {
       return {
         type: 'timeout',
-        userMessage: getMessage('errors.timeout'),
+        userMessage: getMessageByKey(MessageKey.ERROR_TIMEOUT),
         retryable: true,
       };
     }
@@ -40,7 +41,7 @@ export function extractErrorInfo(error: unknown): AgentErrorInfo {
     if (error.message.includes('rate limit') || error.message.includes('429')) {
       return {
         type: 'rate_limit',
-        userMessage: getMessage('errors.rateLimit'),
+        userMessage: getMessageByKey(MessageKey.ERROR_RATE_LIMIT),
         retryable: true,
       };
     }
@@ -48,21 +49,21 @@ export function extractErrorInfo(error: unknown): AgentErrorInfo {
     if (error.message.includes('network') || error.message.includes('fetch')) {
       return {
         type: 'server_error',
-        userMessage: getMessage('errors.network'),
+        userMessage: getMessageByKey(MessageKey.ERROR_NETWORK),
         retryable: true,
       };
     }
 
     return {
       type: 'server_error',
-      userMessage: error.message || getMessage('errors.generic'),
+      userMessage: error.message || getMessageByKey(MessageKey.ERROR_GENERIC),
       retryable: true,
     };
   }
 
   return {
     type: 'unknown',
-    userMessage: getMessage('errors.generic'),
+    userMessage: getMessageByKey(MessageKey.ERROR_GENERIC),
     retryable: true,
   };
 }
@@ -72,10 +73,7 @@ export function extractErrorInfo(error: unknown): AgentErrorInfo {
  */
 export function formatErrorMessage(errorInfo: AgentErrorInfo): string {
   if (errorInfo.supportRef) {
-    return messageTemplates.errors.withReference(
-      errorInfo.userMessage,
-      errorInfo.supportRef
-    );
+    return `${errorInfo.userMessage}\n\nReference: ${errorInfo.supportRef}`;
   }
   return errorInfo.userMessage;
 }

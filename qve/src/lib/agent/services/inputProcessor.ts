@@ -154,6 +154,19 @@ export interface DirectValueResult {
 }
 
 /**
+ * Extract vintage from text if it ends with a year (e.g., "Pinot Noir 2023" → { name: "Pinot Noir", vintage: "2023" })
+ */
+function extractEmbeddedVintage(text: string): { name: string; vintage: string | null } {
+  const vintageMatch = text.match(/[\s-]((?:19|20)\d{2})$/);
+  if (vintageMatch) {
+    const vintage = vintageMatch[1];
+    const name = text.slice(0, text.length - vintageMatch[0].length).trim();
+    return { name: name || text, vintage };
+  }
+  return { name: text, vintage: null };
+}
+
+/**
  * Detect if input is a direct value for a missing field.
  * Used when user is expected to provide a specific field value.
  *
@@ -212,11 +225,17 @@ export function detectDirectValue(
   }
 
   if (awaitingField === 'wineName') {
+    // Extract embedded vintage from wine name (e.g., "Pinot Noir 2023")
+    const { name, vintage } = extractEmbeddedVintage(trimmed);
+    const updatedResult = { ...existingResult, wineName: name };
+    if (vintage && !existingResult.vintage) {
+      updatedResult.vintage = vintage;
+    }
     return {
       detected: true,
       fieldType: 'wineName',
-      value: trimmed,
-      updatedResult: { ...existingResult, wineName: trimmed },
+      value: name,
+      updatedResult,
     };
   }
 
@@ -236,11 +255,17 @@ export function detectDirectValue(
   // Heuristic: if only missing wine name and user provides short text, assume it's wine name
   if (!existingResult.wineName && existingResult.producer) {
     if (trimmed.split(/\s+/).length <= 5) {
+      // Extract embedded vintage from wine name (e.g., "Pinot Noir 2023")
+      const { name, vintage } = extractEmbeddedVintage(trimmed);
+      const updatedResult = { ...existingResult, wineName: name };
+      if (vintage && !existingResult.vintage) {
+        updatedResult.vintage = vintage;
+      }
       return {
         detected: true,
         fieldType: 'wineName',
-        value: trimmed,
-        updatedResult: { ...existingResult, wineName: trimmed },
+        value: name,
+        updatedResult,
       };
     }
   }

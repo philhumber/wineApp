@@ -33,6 +33,7 @@ export const PHASE_TRANSITIONS: Record<AgentPhase, AgentPhase[]> = {
   greeting: ['awaiting_input', 'identifying', 'error'],
 
   awaiting_input: [
+    'awaiting_input', // Self-transition: prompting for next missing field (e.g., producer after wine name)
     'identifying', // User submits text/image
     'enriching', // Re-enrichment after "Learn More"
     'adding_wine', // Manual entry or retry add

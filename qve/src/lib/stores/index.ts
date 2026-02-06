@@ -237,6 +237,7 @@ export {
   isInAddWineFlow as isInAddWineFlow2,
   isInEnrichmentFlow,
   isInLoadingPhase,
+  hasAnimatingMessages,
   agentOrigin,
   addMessage,
   addMessages,

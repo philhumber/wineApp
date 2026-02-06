@@ -13,8 +13,12 @@
 	export let showLabel: boolean = true;
 	export let compact: boolean = false;
 
+	// Handle both decimal (0-1) and percentage (0-100) formats
+	// If score is <= 1, treat as decimal and convert to percentage
+	$: percentageScore = score <= 1 ? score * 100 : score;
+
 	// Clamp score to 0-100
-	$: normalizedScore = Math.max(0, Math.min(100, score));
+	$: normalizedScore = Math.max(0, Math.min(100, Math.round(percentageScore)));
 
 	// Determine confidence level
 	$: level = normalizedScore >= 85 ? 'high' : normalizedScore >= 60 ? 'good' : 'low';

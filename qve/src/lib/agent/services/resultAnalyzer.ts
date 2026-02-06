@@ -19,6 +19,8 @@ import type { WineIdentificationResult } from '../types';
 export interface ResultQuality {
   /** Result has all required fields with good confidence */
   isComplete: boolean;
+  /** Result has all required fields (producer, wine name, vintage) regardless of confidence */
+  hasAllFields: boolean;
   /** Confidence below threshold (70%) */
   isLowConfidence: boolean;
   /** Can escalate to premium model (confidence < 60%) */
@@ -87,6 +89,9 @@ export function analyzeResultQuality(
   result: WineIdentificationResult,
   confidence: number
 ): ResultQuality {
+  // Normalize confidence: API returns percentage (0-100), we use decimal (0-1)
+  const normalizedConfidence = confidence > 1 ? confidence / 100 : confidence;
+
   const hasProducer = !!result.producer;
   const hasWineName = !!result.wineName;
   const hasVintage = result.vintage !== undefined && result.vintage !== null;
@@ -96,9 +101,9 @@ export function analyzeResultQuality(
 
   const primaryGrape = hasGrapes ? result.grapes![0] : undefined;
 
-  // Confidence thresholds
-  const isLowConfidence = confidence < LOW_CONFIDENCE_THRESHOLD;
-  const canEscalate = confidence < ESCALATION_CONFIDENCE_THRESHOLD;
+  // Confidence thresholds (using normalized 0-1 scale)
+  const isLowConfidence = normalizedConfidence < LOW_CONFIDENCE_THRESHOLD;
+  const canEscalate = normalizedConfidence < ESCALATION_CONFIDENCE_THRESHOLD;
 
   // Missing field detection
   const missingProducer = !hasProducer;
@@ -111,8 +116,11 @@ export function analyzeResultQuality(
   if (hasWineName) completenessScore += 0.4;
   if (hasVintage) completenessScore += 0.2;
 
-  // Complete if we have producer + wine name + vintage with decent confidence
-  const isComplete = hasProducer && hasWineName && hasVintage && !isLowConfidence;
+  // Has all required fields (regardless of confidence)
+  const hasAllFields = hasProducer && hasWineName && hasVintage;
+
+  // Complete if we have all fields with good confidence
+  const isComplete = hasAllFields && !isLowConfidence;
 
   // Needs more info if missing critical fields or very low confidence
   const needsMoreInfo =
@@ -121,6 +129,7 @@ export function analyzeResultQuality(
 
   return {
     isComplete,
+    hasAllFields,
     isLowConfidence,
     canEscalate,
     needsMoreInfo,
@@ -134,7 +143,7 @@ export function analyzeResultQuality(
     hasRegion,
     hasCountry,
     primaryGrape,
-    confidence,
+    confidence: normalizedConfidence, // Return normalized (0-1) confidence
     completenessScore,
   };
 }

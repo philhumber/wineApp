@@ -15,7 +15,8 @@
 
 import type { AgentAction, EnrichmentData, AgentErrorInfo } from '../types';
 import type { AgentEnrichmentData } from '$lib/api/types';
-import { getMessage, wn } from '../messages';
+import { getMessageByKey, wn } from '../messages';
+import { MessageKey } from '../messageKeys';
 import * as conversation from '$lib/stores/agentConversation';
 import * as identification from '$lib/stores/agentIdentification';
 import * as enrichment from '$lib/stores/agentEnrichment';
@@ -155,7 +156,7 @@ function handleCacheConfirmationRequired(enrichmentResult: {
 
   conversation.addMessage(
     conversation.createTextMessage(
-      `I found cached data for ${wn(matchedName)}. Is this the wine you're looking for?`
+      getMessageByKey(MessageKey.ENRICH_CACHE_CONFIRM, { wineName: matchedName })
     )
   );
 
@@ -224,7 +225,7 @@ async function executeEnrichment(
     // Add completion message
     conversation.addMessage(
       conversation.createTextMessage(
-        `Here's what I found about ${displayName}. What would you like to do next?`
+        getMessageByKey(MessageKey.ENRICH_FOUND_DETAILS, { wineName: displayName })
       )
     );
 
@@ -253,7 +254,7 @@ async function handleLearnMore(messageId: string): Promise<void> {
   const result = identification.getResult();
   if (!result || !result.producer || !result.wineName) {
     conversation.addMessage(
-      conversation.createTextMessage(getMessage('errors.noResult'))
+      conversation.createTextMessage(getMessageByKey(MessageKey.ERROR_NO_RESULT))
     );
     return;
   }
@@ -279,7 +280,7 @@ async function handleLearnMore(messageId: string): Promise<void> {
   conversation.setPhase('enriching');
 
   conversation.addMessage(
-    conversation.createTextMessage(getMessage('enrichment.loading'))
+    conversation.createTextMessage(getMessageByKey(MessageKey.ENRICH_LOADING))
   );
 
   await executeEnrichment(
@@ -307,7 +308,7 @@ async function handleRemember(messageId: string): Promise<void> {
   // For now, just acknowledge - this could save to a "remembered wines" list in the future
   conversation.addMessage(
     conversation.createTextMessage(
-      `Memories are a function coming later. You'll have to remember ${wn(wineName)} yourself!`
+      getMessageByKey(MessageKey.ENRICH_REMEMBER_SOON, { wineName })
     )
   );
 
@@ -327,7 +328,7 @@ async function handleRecommend(messageId: string): Promise<void> {
   conversation.disableMessage(messageId);
   // TODO: Implement recommendation flow
   conversation.addMessage(
-    conversation.createTextMessage('Recommendations coming soon!')
+    conversation.createTextMessage(getMessageByKey(MessageKey.ENRICH_RECOMMEND_SOON))
   );
 }
 
@@ -343,7 +344,7 @@ async function handleConfirmCacheMatch(messageId: string): Promise<void> {
     const result = identification.getResult();
     if (!result || !result.producer || !result.wineName) {
       conversation.addMessage(
-        conversation.createTextMessage(getMessage('errors.noResult'))
+        conversation.createTextMessage(getMessageByKey(MessageKey.ERROR_NO_RESULT))
       );
       return;
     }
@@ -369,7 +370,7 @@ async function handleConfirmCacheMatch(messageId: string): Promise<void> {
   conversation.setPhase('enriching');
 
   conversation.addMessage(
-    conversation.createTextMessage('Using cached data...')
+    conversation.createTextMessage(getMessageByKey(MessageKey.ENRICH_USING_CACHE))
   );
 
   await executeEnrichment(
@@ -395,7 +396,7 @@ async function handleForceRefresh(messageId: string): Promise<void> {
     const result = identification.getResult();
     if (!result || !result.producer || !result.wineName) {
       conversation.addMessage(
-        conversation.createTextMessage(getMessage('errors.noResult'))
+        conversation.createTextMessage(getMessageByKey(MessageKey.ERROR_NO_RESULT))
       );
       return;
     }
@@ -421,7 +422,7 @@ async function handleForceRefresh(messageId: string): Promise<void> {
   conversation.setPhase('enriching');
 
   conversation.addMessage(
-    conversation.createTextMessage('Searching for fresh data...')
+    conversation.createTextMessage(getMessageByKey(MessageKey.ENRICH_REFRESHING))
   );
 
   await executeEnrichment(
