@@ -1,0 +1,463 @@
+<script lang="ts">
+	/**
+	 * ChatMessage
+	 * Displays a single message in the agent conversation
+	 * Agent: Editorial serif with accent divider
+	 * User: Subtle indented card
+	 * WIN-168: Typewriter effect for agent messages
+	 *
+	 * Supports both old message format (message.type, message.wineResult)
+	 * and new architecture format (message.category, message.data.result)
+	 */
+	import { createEventDispatcher } from 'svelte';
+	import type { AgentMessage, AgentChip } from '$lib/stores';
+	import type { AgentCandidate, AgentParsedWine } from '$lib/api/types';
+	import ActionChips from './ActionChips.svelte';
+	import WineCard from './cards/WineCard.svelte'; // Universal wine card (skeleton/streaming/static)
+	import EnrichmentCard from './cards/EnrichmentCard.svelte'; // Universal enrichment card (skeleton/streaming/static)
+	import DisambiguationList from './DisambiguationList.svelte';
+	import CandidateMiniCards from './CandidateMiniCards.svelte';
+	import MatchSelectionList from './forms/MatchSelectionList.svelte';
+	import BottleDetailsForm from './forms/BottleDetailsForm.svelte';
+	import ManualEntryForm from './forms/ManualEntryForm.svelte';
+	import { agentAddState, clearNewFlag } from '$lib/stores';
+	import TypewriterText from './TypewriterText.svelte';
+
+	const dispatch = createEventDispatcher<{
+		chipSelect: { action: string; data?: unknown };
+		selectCandidate: { candidate: AgentCandidate };
+		formReady: void;
+		chipsReady: void;
+	}>();
+
+	export let message: AgentMessage;
+	export let isLatest: boolean = false; // WIN-174: Only latest message has active chips
+
+	// ─────────────────────────────────────────────
+	// Message format compatibility layer
+	// Supports both old (message.type) and new (message.category) formats
+	// ─────────────────────────────────────────────
+	$: msgType = (message as any).type ?? (message as any).category ?? 'text';
+
+	// Extract wine result from either format
+	$: wineResult = (message as any).wineResult ??
+		((message as any).data?.category === 'wine_result' ? (message as any).data?.result : null);
+	$: wineConfidence = (message as any).confidence ??
+		((message as any).data?.category === 'wine_result' ? (message as any).data?.confidence : null) ?? 0;
+
+	// Extract enrichment data from either format
+	$: enrichmentData = (message as any).enrichmentData ??
+		((message as any).data?.category === 'enrichment' ? (message as any).data?.data : null);
+	$: enrichmentSource = (message as any).enrichmentSource ??
+		((message as any).data?.category === 'enrichment' ? (message as any).data?.source : null);
+
+	// Extract text content from either format
+	$: msgContent = (message as any).content ??
+		((message as any).data?.category === 'text' ? (message as any).data?.content : '') ?? '';
+
+	// Extract chips from either format
+	$: msgChips = (message as any).chips ??
+		((message as any).data?.category === 'chips' ? (message as any).data?.chips : null);
+
+	// Extract image URL from either format
+	$: msgImageUrl = (message as any).imageUrl ??
+		((message as any).data?.category === 'image' ? (message as any).data?.src : null);
+
+	// WIN-168: Chip delay until typewriter animation completes
+	// Message types without TypewriterText should show chips immediately
+	const noTypewriterTypes = ['wine_result', 'bottle_form'];
+	$: chipsReadyInit = !message.isNew || noTypewriterTypes.includes(msgType);
+	let chipsReady = !message.isNew || noTypewriterTypes.includes((message as any).type ?? (message as any).category ?? 'text');
+
+	function handleTypewriterComplete() {
+		chipsReady = true;
+		// WIN-168: Clear isNew flag so animation won't replay
+		clearNewFlag(message.id);
+		// WIN-168: Notify parent to scroll when chips become visible
+		if (message.chips && message.chips.length > 0) {
+			dispatch('chipsReady');
+		}
+	}
+
+	// For manual entry form - derive missing fields from identified wine
+	$: partialData = $agentAddState?.identified ?? null;
+	$: missingFields = partialData ? getMissingFields(partialData) : [];
+
+	function getMissingFields(parsed: AgentParsedWine): string[] {
+		const missing: string[] = [];
+		if (!parsed.producer) missing.push('producer');
+		if (!parsed.wineName) missing.push('wine name');
+		if (!parsed.region) missing.push('region');
+		if (!parsed.wineType) missing.push('wine type');
+		return missing;
+	}
+
+	function handleChipSelect(e: CustomEvent<{ action: string; data?: unknown }>) {
+		dispatch('chipSelect', e.detail);
+	}
+
+	function handleSelectCandidate(e: CustomEvent<{ candidate: AgentCandidate }>) {
+		dispatch('selectCandidate', e.detail);
+	}
+
+	function handleManualEntryComplete(e: CustomEvent<{ producer: string; wineName: string; region: string; wineType: string }>) {
+		dispatch('chipSelect', { action: 'manual_entry_complete', data: e.detail });
+	}
+
+	function handleBottleNext() {
+		dispatch('chipSelect', { action: 'bottle_next' });
+	}
+
+	function handleBottleSubmit() {
+		dispatch('chipSelect', { action: 'bottle_submit' });
+	}
+
+	function handleFormReady() {
+		dispatch('formReady');
+	}
+</script>
+
+<article
+	class="chat-message"
+	class:agent={message.role === 'agent'}
+	class:user={message.role === 'user'}
+	class:has-wine-result={msgType === 'wine_result'}
+	class:has-wine-enrichment={msgType === 'wine_enrichment' || msgType === 'enrichment'}
+	class:has-low-confidence={msgType === 'low_confidence'}
+	class:has-partial-match={msgType === 'partial_match'}
+	class:has-disambiguation={msgType === 'disambiguation'}
+>
+	{#if message.role === 'agent'}
+		<!-- Agent message: Editorial serif with accent divider -->
+		{#if msgType === 'wine_result' && wineResult}
+			<!-- Wine result card -->
+			<WineCard
+				state="static"
+				data={wineResult}
+				confidence={wineConfidence}
+			/>
+		{:else if (msgType === 'wine_enrichment' || msgType === 'enrichment') && enrichmentData}
+			<!-- Wine enrichment card -->
+			{#if message.isNew}
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{msgContent}</p>
+			{/if}
+			<EnrichmentCard state="static" data={enrichmentData} source={enrichmentSource} />
+		{:else if msgType === 'cache_match_confirm'}
+			<!-- WIN-162: Cache match confirmation prompt -->
+			{#if message.isNew}
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{msgContent}</p>
+			{/if}
+			{#if (message as any).searchedFor}
+				<p class="cache-match-subtext">
+					You searched for: {(message as any).searchedFor.producer || ''} {(message as any).searchedFor.wineName || ''} {(message as any).searchedFor.vintage || ''}
+				</p>
+			{/if}
+			<!-- ActionChips: "Yes, use cached data" | "No, search online" provided via message.chips -->
+		{:else if msgType === 'low_confidence'}
+			<!-- Low confidence conversational message -->
+			{#if message.isNew}
+				<TypewriterText text={msgContent} className="agent-text low-confidence-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text low-confidence-text">{msgContent}</p>
+			{/if}
+			<div class="accent-divider"></div>
+		{:else if msgType === 'partial_match'}
+			<!-- Partial match conversational message with optional mini-cards -->
+			{#if message.isNew}
+				<TypewriterText text={msgContent} className="agent-text partial-match-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text partial-match-text">{msgContent}</p>
+			{/if}
+			{#if (message as any).candidates && (message as any).candidates.length > 0}
+				<CandidateMiniCards
+					candidates={(message as any).candidates}
+					on:select={handleSelectCandidate}
+				/>
+			{/if}
+			<div class="accent-divider"></div>
+		{:else if msgType === 'disambiguation' && (message as any).candidates}
+			<!-- Disambiguation list -->
+			{#if message.isNew}
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{msgContent}</p>
+			{/if}
+			<DisambiguationList
+				candidates={(message as any).candidates}
+				on:select={handleSelectCandidate}
+			/>
+		{:else if msgType === 'error'}
+			<!-- Error message -->
+			{#if message.isNew}
+				<TypewriterText text={msgContent} className="agent-text error-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text error-text">{msgContent}</p>
+			{/if}
+		{:else if msgType === 'coming_soon'}
+			<!-- Coming soon message -->
+			{#if message.isNew}
+				<TypewriterText text={msgContent} className="agent-text coming-soon-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text coming-soon-text">{msgContent}</p>
+			{/if}
+			<div class="accent-divider"></div>
+		{:else if msgType === 'add_confirm'}
+			<!-- Add to cellar confirmation -->
+			{#if message.isNew}
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{msgContent}</p>
+			{/if}
+			<!-- ActionChips provided via message.chips -->
+		{:else if msgType === 'match_selection'}
+			<!-- Match selection list -->
+			{#if message.isNew}
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{msgContent}</p>
+			{/if}
+			{#if (message as any).matches && (message as any).matchType}
+				<MatchSelectionList
+					matches={(message as any).matches}
+					type={(message as any).matchType}
+					on:chipSelect={handleChipSelect}
+				/>
+			{/if}
+			<!-- ActionChips for "Add as new" | "Help me decide" provided via message.chips -->
+		{:else if msgType === 'match_confirmed'}
+			<!-- Match confirmed message -->
+			{#if message.isNew}
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{msgContent}</p>
+			{/if}
+			<!-- No chips - auto-advance after brief display -->
+		{:else if msgType === 'existing_wine_choice'}
+			<!-- WIN-145: Wine exists - add bottle or create new? -->
+			{#if message.isNew}
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{msgContent}</p>
+			{/if}
+			<!-- ActionChips: "Add Another Bottle" | "Create New Wine" provided via message.chips -->
+		{:else if msgType === 'manual_entry'}
+			<!-- Manual entry form for missing fields -->
+			{#if message.isNew}
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{msgContent}</p>
+			{/if}
+			{#if partialData}
+				<ManualEntryForm
+					{partialData}
+					{missingFields}
+					on:complete={handleManualEntryComplete}
+				/>
+			{/if}
+		{:else if msgType === 'bottle_form' || msgType === 'form'}
+			<!-- Bottle details form -->
+			<BottleDetailsForm
+				part={(message as any).bottleFormPart ?? (message as any).data?.formData?.part ?? 1}
+				on:next={handleBottleNext}
+				on:submit={handleBottleSubmit}
+				on:ready={handleFormReady}
+			/>
+		{:else if msgType === 'enrichment_choice'}
+			<!-- Enrichment choice message -->
+			{#if message.isNew}
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{msgContent}</p>
+			{/if}
+			<!-- ActionChips: "Enrich now" | "Add quickly" provided via message.chips -->
+		{:else if msgType === 'add_complete'}
+			<!-- Add complete success message -->
+			{#if message.isNew}
+				<TypewriterText text={msgContent} className="agent-text success-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text success-text">{msgContent}</p>
+			{/if}
+			<!-- No chips - panel closes and navigates automatically -->
+		{:else if msgType === 'divider'}
+			<!-- WIN-174: Conversation divider -->
+			<div class="conversation-divider">
+				<span class="divider-line"></span>
+				<span class="divider-text">{msgContent}</span>
+				<span class="divider-line"></span>
+			</div>
+		{:else if msgType === 'chips'}
+			<!-- Standalone chips message (new architecture) -->
+			<!-- Chips will be rendered below -->
+		{:else}
+			<!-- Standard text message -->
+			{#if message.isNew}
+				<TypewriterText text={msgContent} className="agent-text" on:complete={handleTypewriterComplete} />
+			{:else}
+				<p class="agent-text">{msgContent}</p>
+			{/if}
+			<div class="accent-divider"></div>
+		{/if}
+
+		{@const chips = msgChips || (message as any).chips}
+		{#if chips && chips.length > 0 && chipsReady}
+			<!-- WIN-174: Disable chips for non-latest messages -->
+			<ActionChips
+				chips={isLatest ? chips : chips.map((c: any) => ({ ...c, disabled: true }))}
+				on:select={handleChipSelect}
+			/>
+		{/if}
+	{:else}
+		<!-- User message: Subtle indented card -->
+		<div class="user-card">
+			{#if (msgType === 'image_preview' || msgType === 'image') && msgImageUrl}
+				<img src={msgImageUrl} alt="Wine label" class="user-image" />
+			{:else}
+				<p class="user-text">{msgContent}</p>
+			{/if}
+		</div>
+	{/if}
+</article>
+
+<style>
+	/* WIN-168: Removed fadeInUp from agent messages - replaced by typewriter effect */
+	.chat-message.user {
+		animation: fadeInUp 0.4s var(--ease-out);
+	}
+
+	@keyframes fadeInUp {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	/* Agent messages */
+	.chat-message.agent {
+		padding-right: var(--space-4);
+	}
+
+	.agent-text {
+		font-family: var(--font-serif);
+		font-size: 1rem;
+		font-style: italic;
+		color: var(--text-secondary);
+		line-height: 1.6;
+		margin: 0;
+	}
+
+	.agent-text.error-text {
+		color: var(--error);
+		font-style: normal;
+		white-space: pre-wrap;
+	}
+
+	.agent-text.coming-soon-text {
+		color: var(--text-tertiary);
+	}
+
+	.agent-text.success-text {
+		color: var(--success, #6b8e6b);
+		font-style: normal;
+	}
+
+	.agent-text.low-confidence-text {
+		color: var(--text-secondary);
+		line-height: 1.7;
+	}
+
+	.agent-text.partial-match-text {
+		color: var(--text-secondary);
+		line-height: 1.7;
+	}
+
+	/* WIN-162: Cache match confirmation subtext */
+	.cache-match-subtext {
+		font-family: var(--font-sans);
+		font-size: 0.85rem;
+		color: var(--text-tertiary);
+		margin: var(--space-2) 0 0 0;
+	}
+
+	.accent-divider {
+		width: 40px;
+		height: 1px;
+		background: var(--accent);
+		margin-top: var(--space-3);
+	}
+
+	/* WIN-174: Conversation divider (serif italic for sommelier voice) */
+	.conversation-divider {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		margin: var(--space-6) 0;
+		color: var(--text-tertiary);
+	}
+
+	.divider-line {
+		flex: 1;
+		height: 1px;
+		background: var(--divider-subtle);
+	}
+
+	.divider-text {
+		font-family: var(--font-serif);
+		font-size: 0.75rem;
+		font-style: italic;
+		white-space: nowrap;
+		letter-spacing: 0.02em;
+	}
+
+	/* User messages */
+	.chat-message.user {
+		display: flex;
+		justify-content: flex-end;
+	}
+
+	.user-card {
+		font-family: var(--font-sans);
+		font-size: 0.9375rem;
+		color: var(--text-primary);
+		background: var(--bg-subtle);
+		padding: var(--space-3) var(--space-4);
+		border-radius: var(--radius-lg);
+		margin-left: var(--space-4);
+		max-width: 85%;
+		box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.02);
+	}
+
+	.user-text {
+		margin: 0;
+		line-height: 1.5;
+	}
+
+	.user-image {
+		max-width: 200px;
+		max-height: 200px;
+		border-radius: var(--radius-md);
+		object-fit: cover;
+	}
+
+	/* Wine result, enrichment, partial-match, and disambiguation don't need extra padding */
+	.chat-message.has-wine-result,
+	.chat-message.has-wine-enrichment,
+	.chat-message.has-partial-match,
+	.chat-message.has-disambiguation {
+		padding-right: 0;
+	}
+
+	/* Reduced motion */
+	@media (prefers-reduced-motion: reduce) {
+		.chat-message.user {
+			animation: none;
+		}
+	}
+</style>

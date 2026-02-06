@@ -580,7 +580,8 @@ function createAddWineStore() {
 					pictureURL: null,
 					description: null,
 					tastingNotes: null,
-					pairing: null
+					pairing: null,
+					isNonVintage: false
 				});
 				break;
 		}

@@ -3,12 +3,12 @@
 	 * DrinkWindowSection
 	 * Displays optimal drinking window for the wine
 	 */
-	import type { StreamingFieldState } from '$lib/stores/agent';
+	import type { StreamingField } from '$lib/agent/types';
 	import DrinkWindow from './DrinkWindow.svelte';
 
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
-	export let fieldsMap: Map<string, StreamingFieldState> = new Map();
+	export let fieldsMap: Map<string, StreamingField> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
 
@@ -22,20 +22,23 @@
 	$: hasWindowData = drinkWindow?.start || drinkWindow?.end;
 </script>
 
-<section class="section">
-	<h4 class="section-title">Drink Window</h4>
-	{#if state === 'skeleton' || !hasDrinkWindow || !hasWindowData}
-		<div class="shimmer-container">
-			<span class="shimmer-bar" style="width: 60%;"></span>
-		</div>
-	{:else if drinkWindow}
-		<DrinkWindow
-			start={drinkWindow.start ?? null}
-			end={drinkWindow.end ?? null}
-			maturity={drinkWindow.maturity}
-		/>
-	{/if}
-</section>
+<!-- Hide entire section in static state when no data available -->
+{#if state !== 'static' || (hasDrinkWindow && hasWindowData)}
+	<section class="section">
+		<h4 class="section-title">Drink Window</h4>
+		{#if state === 'skeleton' || !hasDrinkWindow || !hasWindowData}
+			<div class="shimmer-container">
+				<span class="shimmer-bar" style="width: 60%;"></span>
+			</div>
+		{:else if drinkWindow}
+			<DrinkWindow
+				start={drinkWindow.start ?? null}
+				end={drinkWindow.end ?? null}
+				maturity={drinkWindow.maturity}
+			/>
+		{/if}
+	</section>
+{/if}
 
 <style>
 	.section {

@@ -3,12 +3,12 @@
 	 * StyleProfileSection
 	 * Displays wine style profile (body, tannin, acidity)
 	 */
-	import type { StreamingFieldState } from '$lib/stores/agent';
+	import type { StreamingField } from '$lib/agent/types';
 	import StyleProfileDisplay from './StyleProfileDisplay.svelte';
 
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
-	export let fieldsMap: Map<string, StreamingFieldState> = new Map();
+	export let fieldsMap: Map<string, StreamingField> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
 
@@ -27,21 +27,24 @@
 		: (hasField('body') || hasField('style') || hasField('tannin') || hasField('acidity'));
 </script>
 
-<section class="section">
-	<h4 class="section-title">Style Profile</h4>
-	{#if state === 'skeleton' || !hasStyleProfile}
-		<div class="shimmer-container">
-			<span class="shimmer-bar" style="width: 100%;"></span>
-			<span class="shimmer-bar" style="width: 80%;"></span>
-		</div>
-	{:else}
-		<StyleProfileDisplay
-			body={body as string | null}
-			tannin={tannin as string | null}
-			acidity={acidity as string | null}
-		/>
-	{/if}
-</section>
+<!-- Hide entire section in static state when no data available -->
+{#if state !== 'static' || hasStyleProfile}
+	<section class="section">
+		<h4 class="section-title">Style Profile</h4>
+		{#if state === 'skeleton' || !hasStyleProfile}
+			<div class="shimmer-container">
+				<span class="shimmer-bar" style="width: 100%;"></span>
+				<span class="shimmer-bar" style="width: 80%;"></span>
+			</div>
+		{:else}
+			<StyleProfileDisplay
+				body={body as string | null}
+				tannin={tannin as string | null}
+				acidity={acidity as string | null}
+			/>
+		{/if}
+	</section>
+{/if}
 
 <style>
 	.section {
