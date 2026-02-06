@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
   import type { AgentAction } from '$lib/agent/types';
 
   export let phase: string = 'greeting';
@@ -8,8 +8,11 @@
   const dispatch = createEventDispatcher<{ action: AgentAction }>();
 
   let inputValue = '';
-  let fileInput: HTMLInputElement;
-  let textareaEl: HTMLTextAreaElement;
+  let cameraInput: HTMLInputElement = undefined!;
+  let galleryInput: HTMLInputElement = undefined!;
+  let textareaEl: HTMLTextAreaElement = undefined!;
+  let showImageMenu = false;
+  let cameraBtnEl: HTMLButtonElement = undefined!;
 
   // Auto-resize textarea on input (no reactive statement to avoid loops)
   function autoResize() {
@@ -52,29 +55,163 @@
     }
   }
 
-  function handleImageSelect(e: Event) {
+  /**
+   * Compress image for upload. Uses createImageBitmap with resize options
+   * when available (Safari 15+) to avoid decoding the full-resolution photo
+   * in memory (~48MB for 12MP). Falls back to FileReader + canvas.
+   */
+  async function compressImage(file: File): Promise<{ data: string; mimeType: string }> {
+    const MAX_DIM = 1024;
+    const QUALITY = 0.80;
+
+    // Try createImageBitmap (decodes + resizes in native code, much less JS memory)
+    if (typeof createImageBitmap === 'function') {
+      try {
+        return await compressWithBitmap(file, MAX_DIM, QUALITY);
+      } catch {
+        // Fall through to FileReader approach
+      }
+    }
+
+    return compressWithFileReader(file, MAX_DIM, QUALITY);
+  }
+
+  async function compressWithBitmap(
+    file: File,
+    maxDim: number,
+    quality: number
+  ): Promise<{ data: string; mimeType: string }> {
+    // Get dimensions from a full bitmap, close immediately
+    const probe = await createImageBitmap(file);
+    let { width, height } = probe;
+    probe.close();
+
+    if (width > maxDim || height > maxDim) {
+      const ratio = Math.min(maxDim / width, maxDim / height);
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+    }
+
+    // Decode at target resolution — browser handles resize in native code
+    const bitmap = await createImageBitmap(file, {
+      resizeWidth: width,
+      resizeHeight: height,
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('No canvas context');
+
+    ctx.drawImage(bitmap, 0, 0);
+    bitmap.close();
+
+    const dataUrl = canvas.toDataURL('image/jpeg', quality);
+    canvas.width = 0;
+    canvas.height = 0;
+
+    return { data: dataUrl, mimeType: 'image/jpeg' };
+  }
+
+  function compressWithFileReader(
+    file: File,
+    maxDim: number,
+    quality: number
+  ): Promise<{ data: string; mimeType: string }> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          if (!ctx) { reject(new Error('No canvas context')); return; }
+
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            const ratio = Math.min(maxDim / width, maxDim / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+
+          // Release memory
+          canvas.width = 0;
+          canvas.height = 0;
+          img.src = '';
+
+          resolve({ data: dataUrl, mimeType: 'image/jpeg' });
+        };
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleImageSelect(e: Event) {
     const file = (e.target as HTMLInputElement).files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
+    // Reset file inputs immediately (before async work)
+    if (cameraInput) cameraInput.value = '';
+    if (galleryInput) galleryInput.value = '';
+
+    try {
+      const compressed = await compressImage(file);
       dispatch('action', {
         type: 'submit_image',
-        payload: {
-          data: reader.result as string,
-          mimeType: file.type,
-        },
+        payload: compressed,
       });
-    };
-    reader.readAsDataURL(file);
-
-    // Reset file input
-    if (fileInput) fileInput.value = '';
+    } catch (err) {
+      console.error('[InputArea] Image compression failed:', err);
+    }
   }
 
-  function openCamera() {
-    fileInput?.click();
+  function toggleImageMenu() {
+    showImageMenu = !showImageMenu;
   }
+
+  function takePhoto() {
+    showImageMenu = false;
+    cameraInput?.click();
+  }
+
+  function uploadImage() {
+    showImageMenu = false;
+    galleryInput?.click();
+  }
+
+  function handleClickOutside(e: MouseEvent) {
+    if (!showImageMenu) return;
+    const target = e.target as Node;
+    if (cameraBtnEl?.contains(target)) return;
+    const menu = document.querySelector('.image-menu');
+    if (menu?.contains(target)) return;
+    showImageMenu = false;
+  }
+
+  // Close menu on outside click
+  $: if (typeof document !== 'undefined') {
+    if (showImageMenu) {
+      document.addEventListener('click', handleClickOutside, true);
+    } else {
+      document.removeEventListener('click', handleClickOutside, true);
+    }
+  }
+
+  onDestroy(() => {
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('click', handleClickOutside, true);
+    }
+  });
 
   // Handle focus - scroll input into view for mobile keyboards
   function handleFocus() {
@@ -101,18 +238,42 @@
   </div>
 
   <div class="input-actions">
-    <button
-      type="button"
-      class="action-btn camera-btn"
-      on:click={openCamera}
-      disabled={isDisabled}
-      aria-label="Take photo or upload image"
-    >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-        <circle cx="12" cy="13" r="4"/>
-      </svg>
-    </button>
+    <div class="camera-wrapper">
+      <button
+        type="button"
+        class="action-btn camera-btn"
+        bind:this={cameraBtnEl}
+        on:click={toggleImageMenu}
+        disabled={isDisabled}
+        aria-label="Take photo or upload image"
+        aria-expanded={showImageMenu}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+      </button>
+
+      {#if showImageMenu}
+        <div class="image-menu" role="menu">
+          <button class="image-menu-item" role="menuitem" on:click={takePhoto}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            Take Photo
+          </button>
+          <button class="image-menu-item" role="menuitem" on:click={uploadImage}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+            Upload Image
+          </button>
+        </div>
+      {/if}
+    </div>
 
     <button
       type="button"
@@ -128,11 +289,20 @@
     </button>
   </div>
 
+  <!-- Camera capture (with capture attribute for native camera) -->
   <input
     type="file"
     accept="image/*"
     capture="environment"
-    bind:this={fileInput}
+    bind:this={cameraInput}
+    on:change={handleImageSelect}
+    hidden
+  />
+  <!-- Gallery/file upload (no capture attribute) -->
+  <input
+    type="file"
+    accept="image/*"
+    bind:this={galleryInput}
     on:change={handleImageSelect}
     hidden
   />
@@ -232,5 +402,68 @@
   .send-btn:hover:not(:disabled) {
     background: var(--accent-subtle);
     border-color: var(--accent-subtle);
+  }
+
+  /* Camera menu popover */
+  .camera-wrapper {
+    position: relative;
+  }
+
+  .image-menu {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 170px;
+    padding: var(--space-1);
+    background: var(--surface);
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    z-index: 10;
+    animation: menu-appear 0.15s var(--ease-out);
+  }
+
+  @keyframes menu-appear {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .image-menu-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: background 0.15s var(--ease-out);
+    white-space: nowrap;
+  }
+
+  .image-menu-item:hover {
+    background: var(--accent-muted);
+  }
+
+  .image-menu-item:active {
+    background: var(--accent-muted);
+    transform: scale(0.98);
+  }
+
+  .image-menu-item svg {
+    flex-shrink: 0;
+    color: var(--text-secondary);
   }
 </style>

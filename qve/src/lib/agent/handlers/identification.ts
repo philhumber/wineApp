@@ -576,6 +576,17 @@ async function handleTextSubmit(text: string): Promise<void> {
 async function handleImageSubmit(data: string, mimeType: string): Promise<void> {
   const base64Data = data.includes(',') ? data.split(',')[1] : data;
 
+  // Release old image data from previous messages to prevent memory accumulation.
+  // On mobile, multiple image data URLs in memory + sessionStorage can cause crashes.
+  const existingMessages = conversation.getMessages();
+  for (const msg of existingMessages) {
+    if (msg.category === 'image' && msg.data.category === 'image' && msg.data.src) {
+      conversation.updateMessage(msg.id, {
+        data: { ...msg.data, src: '' },
+      });
+    }
+  }
+
   identification.setLastImageData(base64Data, mimeType);
   setLastAction({ type: 'submit_image', payload: { data: base64Data, mimeType } });
 
