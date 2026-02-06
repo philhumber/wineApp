@@ -2,20 +2,24 @@
  * Message Registry Loader
  *
  * Loads personality-specific message registries.
- * Provides fallback to SOMMELIER if personality not found.
+ * Falls back to neutral messages if a key is missing for a personality.
  */
 
 import { Personality, type PersonalityMessages } from '../personalities';
 import { sommelierMessages } from './sommelier';
+import { neutralMessages } from './neutral';
 
 // Future personality imports:
 // import { casualMessages } from './casual';
 // import { conciseMessages } from './concise';
 // import { enthusiastMessages } from './enthusiast';
 
+// Re-export for direct fallback access in messages.ts
+export { neutralMessages };
+
 /**
  * Registry mapping personality to messages.
- * Empty objects for unimplemented personalities will fallback to SOMMELIER.
+ * Empty objects for unimplemented personalities will fallback to neutral.
  */
 const messageRegistries: Record<Personality, PersonalityMessages> = {
   [Personality.SOMMELIER]: sommelierMessages,
@@ -30,7 +34,7 @@ const messageRegistries: Record<Personality, PersonalityMessages> = {
  * @returns Messages for that personality (may be empty if not implemented)
  */
 export function getPersonalityMessages(personality: Personality): PersonalityMessages {
-  return messageRegistries[personality] || messageRegistries[Personality.SOMMELIER];
+  return messageRegistries[personality] || {};
 }
 
 /**
