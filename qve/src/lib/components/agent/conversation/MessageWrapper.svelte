@@ -2,7 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import { fly } from 'svelte/transition';
   import MessageContent from './MessageContent.svelte';
-  import type { AgentMessage, AgentAction } from '$lib/agent/types';
+  import type { AgentMessage, AgentAction, TextMessageData } from '$lib/agent/types';
   import { agentMessages } from '$lib/stores/agentConversation';
 
   export let message: AgentMessage;
@@ -14,6 +14,7 @@
   $: role = message.role ?? 'agent';
   $: isStreaming = message.isStreaming ?? false;
   $: category = message.data?.category ?? 'text';
+  $: isDivider = category === 'text' && (message.data as TextMessageData).variant === 'divider';
 
   // Find preceding message and check if it's ready (isNew === false)
   // Messages wait for preceding agent message to complete before appearing
@@ -33,7 +34,7 @@
    * Scroll message into view after fly-in animation completes.
    */
   function handleIntroEnd() {
-    if (wrapperElement && role === 'agent') {
+    if (wrapperElement && role === 'agent' && !isDivider) {
       wrapperElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
   }
