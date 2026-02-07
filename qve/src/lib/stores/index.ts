@@ -38,6 +38,8 @@ export {
   hasActiveFilters,
   activeFilterCount,
   activeFilterList,
+  hasSearchQuery,
+  searchQuery,
   setFilter,
   setFilters,
   clearFilter,

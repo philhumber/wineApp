@@ -9,7 +9,8 @@
   import FilterBar from './FilterBar.svelte';
   import HistoryFilterBar from './HistoryFilterBar.svelte';
   import CollectionRow from './CollectionRow.svelte';
-  import { toggleMenu, wines, winesLoading, viewMode, drunkWineCount, filteredDrunkWineCount, historyLoading, collectionName } from '$lib/stores';
+  import SearchInput from './SearchInput.svelte';
+  import { toggleMenu, wines, winesLoading, viewMode, drunkWineCount, filteredDrunkWineCount, historyLoading, collectionName, searchQuery, setFilter, clearFilter } from '$lib/stores';
   import { currentCurrency, formatCompactValue, availableCurrencies, convertFromEUR } from '$lib/stores/currency';
   import type { Wine } from '$lib/api/types';
 
@@ -63,6 +64,7 @@
   }>();
 
   let scrollY = 0;
+  let searchExpanded = false;
 
   function handleSearch() {
     dispatch('search');
@@ -102,14 +104,25 @@
           <ThemeToggle />
         {:else}
           <ViewToggle />
-          <button
-            class="header-icon"
-            title="Search"
-            aria-label="Search wines"
-            on:click={handleSearch}
-          >
-            <Icon name="search" size={18} />
-          </button>
+          {#if filterType === 'cellar'}
+            <SearchInput
+              value={$searchQuery}
+              bind:expanded={searchExpanded}
+              on:search={(e) => setFilter('searchQuery', e.detail)}
+              on:clear={() => { clearFilter('searchQuery'); searchExpanded = false; }}
+              on:expand={() => searchExpanded = true}
+              on:collapse={() => { searchExpanded = false; }}
+            />
+          {:else}
+            <button
+              class="header-icon"
+              title="Search"
+              aria-label="Search wines"
+              on:click={handleSearch}
+            >
+              <Icon name="search" size={18} />
+            </button>
+          {/if}
         {/if}
       </div>
     </div>

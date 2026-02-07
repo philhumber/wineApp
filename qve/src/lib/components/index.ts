@@ -39,6 +39,7 @@ export { default as CellarSortBar } from './layout/CellarSortBar.svelte';
 export { default as HistoryFilterBar } from './layout/HistoryFilterBar.svelte';
 export { default as HistorySortBar } from './layout/HistorySortBar.svelte';
 export { default as SideMenu } from './layout/SideMenu.svelte';
+export { default as SearchInput } from './layout/SearchInput.svelte';
 
 // Wine Components
 export { default as WineImage } from './wine/WineImage.svelte';

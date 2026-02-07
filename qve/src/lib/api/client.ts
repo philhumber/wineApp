@@ -192,6 +192,7 @@ class WineApiClient {
     if (filters.producerDropdown) mapped.producerDropdown = filters.producerDropdown;
     if (filters.yearDropdown) mapped.yearDropdown = filters.yearDropdown;
     if (filters.bottleCount) mapped.bottleCount = filters.bottleCount;
+    if (filters.searchQuery?.trim()) mapped.searchQuery = filters.searchQuery.trim();
     if (filters.wineID) mapped.wineID = String(filters.wineID);
 
     return mapped;

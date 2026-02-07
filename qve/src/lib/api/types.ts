@@ -133,6 +133,7 @@ export interface WineFilters {
   producerDropdown?: string;
   yearDropdown?: string;
   bottleCount?: '0' | '1';  // '1' = has bottles (Our Wines), '0' = all
+  searchQuery?: string;     // WIN-24: Free text search (min 3 chars)
   wineID?: string | number;
 }
 

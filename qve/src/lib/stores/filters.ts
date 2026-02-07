@@ -19,8 +19,10 @@ export const filters = writable<WineFilters>({});
 
 /** Check if any filters are active (excluding bottleCount which is view mode) */
 export const hasActiveFilters = derived(filters, ($filters) => {
-  const { bottleCount, ...otherFilters } = $filters;
-  return Object.values(otherFilters).some((v) => v !== undefined && v !== '');
+  const { bottleCount, searchQuery, ...otherFilters } = $filters;
+  const hasSearch = !!searchQuery && searchQuery.length >= 3;
+  const hasOthers = Object.values(otherFilters).some((v) => v !== undefined && v !== '');
+  return hasSearch || hasOthers;
 });
 
 /** Count of active filters */
@@ -48,9 +50,20 @@ export const activeFilterList = derived(filters, ($filters) => {
   if ($filters.yearDropdown) {
     list.push({ key: 'Year', value: $filters.yearDropdown });
   }
+  if ($filters.searchQuery && $filters.searchQuery.length >= 3) {
+    list.push({ key: 'Search', value: `"${$filters.searchQuery}"` });
+  }
 
   return list;
 });
+
+/** Check if search is active (3+ chars) - WIN-24 */
+export const hasSearchQuery = derived(filters, ($f) =>
+  !!$f.searchQuery && $f.searchQuery.length >= 3
+);
+
+/** Current search query (for display) - WIN-24 */
+export const searchQuery = derived(filters, ($f) => $f.searchQuery ?? '');
 
 // ─────────────────────────────────────────────────────────
 // ACTIONS

@@ -2,7 +2,7 @@
   import { onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { base } from '$app/paths';
-  import { theme, viewDensity, viewMode, wines, winesLoading, winesError, filters, clearAllFilters, toasts, targetWineID, modal, cellarSortKey, cellarSortDir, sortWines } from '$stores';
+  import { theme, viewDensity, viewMode, wines, winesLoading, winesError, filters, clearAllFilters, hasActiveFilters, hasSearchQuery, searchQuery, activeFilterCount, toasts, targetWineID, modal, cellarSortKey, cellarSortDir, sortWines } from '$stores';
   import { api } from '$api';
   import type { Wine, WineFilters } from '$lib/api/types';
 
@@ -177,8 +177,17 @@
       </div>
     {:else if $wines.length === 0}
       <div class="empty-state">
-        <p>No wines in your collection yet.</p>
-        <a href="{base}/add" class="btn-primary">Add Wine</a>
+        {#if $hasActiveFilters}
+          {#if $hasSearchQuery}
+            <p>No wines match "{$searchQuery}"{#if $activeFilterCount > 1} with current filters{/if}</p>
+          {:else}
+            <p>No wines match current filters</p>
+          {/if}
+          <button class="clear-btn" on:click={clearAllFilters}>Clear All</button>
+        {:else}
+          <p>No wines in your collection yet.</p>
+          <a href="{base}/add" class="btn-primary">Add Wine</a>
+        {/if}
       </div>
     {:else}
       <WineGrid
@@ -319,7 +328,8 @@
   }
 
   .error-state button,
-  .empty-state .btn-primary {
+  .empty-state .btn-primary,
+  .empty-state .clear-btn {
     margin-top: var(--space-4);
     padding: var(--space-2) var(--space-5);
     font-family: var(--font-sans);
@@ -333,7 +343,8 @@
   }
 
   .error-state button:hover,
-  .empty-state .btn-primary:hover {
+  .empty-state .btn-primary:hover,
+  .empty-state .clear-btn:hover {
     opacity: 0.9;
   }
 

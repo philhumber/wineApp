@@ -27,6 +27,7 @@
 		$bottleCount =  $data['bottleCount'] ?? '1';
 		$wineYear = $data['yearDropdown'] ?? '%';
 		$wineID = $data['wineID'] ?? '%';
+		$searchQuery = trim($data['searchQuery'] ?? '');
 
 		$sqlQuery = "SELECT
 						wine.wineID,
@@ -194,6 +195,27 @@
 				$params[':wineYear'] = $wineYear;
 			}
 		}
+
+		// Free text search across multiple fields (WIN-24)
+		if (!empty($searchQuery) && mb_strlen($searchQuery, 'UTF-8') >= 3) {
+			$escapedSearch = str_replace(['%', '_'], ['\\%', '\\_'], $searchQuery);
+			$searchTerm = '%' . $escapedSearch . '%';
+
+			$searchConditions = [];
+			$searchFields = [
+				'wine.wineName', 'producers.producerName', 'region.regionName',
+				'country.countryName', 'wine.appellation', 'wine.description',
+				'wine.tastingNotes', 'wine.pairing', 'CAST(wine.year AS CHAR)'
+			];
+
+			foreach ($searchFields as $i => $field) {
+				$searchConditions[] = "$field COLLATE utf8mb4_0900_ai_ci LIKE :search_$i";
+				$params[":search_$i"] = $searchTerm;
+			}
+
+			$where[] = '(' . implode(' OR ', $searchConditions) . ')';
+		}
+
 		if (!empty($where)) {
 			$sqlQuery .= " WHERE " . implode(' AND ', $where);
 		}
