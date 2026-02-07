@@ -40,10 +40,10 @@ git checkout -b feature/WINE-XX-description
 mysql -h 10.0.0.16 -u username -p winelist
 
 # Deploy to production (PowerShell)
-.\deploy.ps1 -DryRun    # Preview changes
-.\deploy.ps1            # Deploy with auto-backup
-.\deploy.ps1 -ListBackups
-.\deploy.ps1 -Rollback "2026-01-18_143022"
+.\scripts\deploy.ps1 -DryRun    # Preview changes
+.\scripts\deploy.ps1            # Deploy with auto-backup
+.\scripts\deploy.ps1 -ListBackups
+.\scripts\deploy.ps1 -Rollback "2026-01-18_143022"
 
 # JIRA CLI (REST API v3 + Agile)
 .\scripts\jira.ps1 list                      # List open issues (paginated)
@@ -429,9 +429,15 @@ Full error handling reference in `docs/AGENT_ARCHITECTURE.md` (Section 16: Error
 
 **Host**: 10.0.0.16
 **Database**: winelist
-**Schema**: `resources/sql/DBStructure.sql`
+**Schema**: `resources/sql/Full_DB_Structure.sql` (canonical, 28 tables + 3 views)
 
-Key tables: wine, bottles, ratings, producers, region, country, winetype, currencies, bottle_sizes
+**Core** (12): `wine`, `bottles`, `ratings`, `producers`, `region`, `country`, `winetype`, `grapes`, `grapemix`, `worlds`, `currencies`, `bottle_sizes`, `user_settings`, `audit_log`, `critic_scores`
+**Agent** (7): `agentUsers`, `agentSessions`, `agentUsageLog`, `agentUsageDaily`, `agentIdentificationResults`, `agentUserTasteProfile`, `agentWineEmbeddings`
+**Cache** (3): `cacheWineEnrichment`, `cacheProducers`, `cacheCanonicalAliases`
+**Reference** (6): `refAbbreviations`, `refAppellations`, `refGrapeCharacteristics`, `refWineStyles`, `refPairingRules`, `refIntensityProfiles`
+**Views** (3): `vw_model_confidence_stats`, `vw_tier_escalation_analysis`, `vw_model_comparison`
+
+See `docs/ARCHITECTURE.md` Section 4 for full ER diagrams and column details.
 
 ---
 

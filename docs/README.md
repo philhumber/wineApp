@@ -1,19 +1,94 @@
-# Documentation
+# Documentation Index
 
-## Quick Links
+> Central index for all Qve Wine App documentation. Each document covers a specific domain of the codebase with detailed references, diagrams, and code examples.
 
-| Document | Description |
-|----------|-------------|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture, data flow, design decisions |
-| [DEVELOPMENT.md](DEVELOPMENT.md) | Setup, workflow, common tasks |
-| [COMPONENTS.md](COMPONENTS.md) | Component reference (40+ components) |
-| [STORES.md](STORES.md) | Svelte stores reference (14 stores) |
-| [API.md](API.md) | Backend API endpoints and types |
+**Last Updated**: 2026-02-07
 
-## Project Documentation
+---
 
-- [README.md](../README.md) - Project overview and quick start
-- [CLAUDE.md](../CLAUDE.md) - AI session context
+## Documentation Map
+
+```mermaid
+graph TD
+    A[CLAUDE.md] -->|Session context| B[docs/]
+    B --> C[ARCHITECTURE.md]
+    B --> D[AGENT_ARCHITECTURE.md]
+    B --> E[AGENT_FLOW.md]
+    B --> F[COMPONENTS.md]
+    B --> G[STORES.md]
+    B --> H[API.md]
+    B --> I[DEVELOPMENT.md]
+    B --> J[SOMMELIER_PERSONALITIES.md]
+    B --> K[PRODUCTION_READINESS_AUDIT.md]
+    B --> L[PHASE_2_REARCHITECTURE.md]
+```
+
+---
+
+## Quick Reference
+
+| Document | Scope | When to Use |
+|----------|-------|-------------|
+| **[CLAUDE.md](../CLAUDE.md)** | AI session context, quick start, key patterns | Starting any work session; quick lookups |
+| **[ARCHITECTURE.md](ARCHITECTURE.md)** | System architecture, data flow, tech stack | Understanding overall system design and data flow |
+| **[AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md)** | Agent router, state machine, handlers, middleware, messages, chips | Working on the AI agent (identification, enrichment, add-to-cellar) |
+| **[PHASE_2_REARCHITECTURE.md](AGENT_ARCHITECTURE_PHASE_2.md)** | Historical: Phase 2 migration from monolithic to modular agent | Understanding why the agent architecture looks the way it does |
+| **[AGENT_FLOW.md](AGENT_FLOW.md)** | End-to-end agent user flows with diagrams | Understanding agent conversation paths and state transitions |
+| **[COMPONENTS.md](COMPONENTS.md)** | 90+ Svelte component APIs, props, usage | Building or modifying UI components |
+| **[STORES.md](STORES.md)** | 24 Svelte store APIs, state shapes, actions | Working with application state management |
+| **[API.md](API.md)** | TypeScript client methods, PHP endpoints, types, SSE streaming | Working with frontend-backend communication |
+| **[DEVELOPMENT.md](DEVELOPMENT.md)** | Setup, workflow, testing, deployment, debugging | Setting up the project or running dev tooling |
+| **[SOMMELIER_PERSONALITIES.md](SOMMELIER_PERSONALITIES.md)** | Agent personality configuration and message templates | Customizing agent tone and response style |
+| **[PRODUCTION_READINESS_AUDIT.md](PRODUCTION_READINESS_AUDIT.md)** | Security, reliability, performance, architecture findings | Prioritizing technical debt and improvements |
+
+
+---
+
+## Document Summaries
+
+### [ARCHITECTURE.md](ARCHITECTURE.md)
+System-level architecture covering the full stack: SvelteKit frontend, PHP backend, MySQL database, and external AI services (Gemini, Claude). Includes data flow diagrams, the cascading filter system, currency conversion pipeline, and deployment architecture.
+
+### [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md)
+Deep reference for the AI wine agent system. Covers the action router (with alias resolution), finite state machine (8 phases), handler implementations (identification, enrichment, add-to-cellar, conversation), middleware pipeline (error handling, retry tracking, validation), message factory system, chip configuration for each phase, command detection, and error handling patterns.
+
+### [PHASE_2_REARCHITECTURE.md](AGENT_ARCHITECTURE_PHASE_2.md)
+Historical document describing the migration from the monolithic `ChatMessage.svelte` (1800+ lines) and `agent.ts` (2044 lines) to the current modular architecture with separate handler files, message factories, and split stores.
+
+### [AGENT_FLOW.md](AGENT_FLOW.md)
+User-facing flow documentation showing the complete agent conversation lifecycle with state diagrams. Covers text identification, image identification, enrichment, add-to-cellar, duplicate handling, and error recovery flows.
+
+### [COMPONENTS.md](COMPONENTS.md)
+Complete API reference for all 90+ Svelte components organized by category: UI primitives, wine display, layout, forms, wizard, modals, edit pages, and agent. Each entry includes props, events, slots, and usage examples.
+
+### [STORES.md](STORES.md)
+Reference for all 24 Svelte stores (16 core + 8 agent/settings). Documents state shapes, exported actions, derived stores, and inter-store dependencies. Includes the cascading filter store interaction pattern.
+
+### [API.md](API.md)
+Complete API reference covering all TypeScript client methods (30+), PHP backend endpoints (25 core + 9 agent), type definitions, the SSE streaming protocol, error handling patterns (standard vs. agent structured errors), and field name mapping between frontend and backend.
+
+### [DEVELOPMENT.md](DEVELOPMENT.md)
+Developer guide covering environment setup, development workflow, Git branching strategy, testing approach, deployment via `deploy.ps1`, JIRA CLI usage, and common debugging techniques.
+
+### [SOMMELIER_PERSONALITIES.md](SOMMELIER_PERSONALITIES.md)
+Configuration reference for the agent's sommelier personality system. Documents how personality traits affect message tone, wine name formatting, and response templates.
+
+### [PRODUCTION_READINESS_AUDIT.md](PRODUCTION_READINESS_AUDIT.md)
+Comprehensive audit report from 2026-02-06 covering reliability (5 critical), security (2 critical), performance (3 critical), and architecture (4 critical) findings. Includes a phased implementation plan for remediation. See the "Current Status" section for which issues have been addressed since the audit.
+
+
+---
+
+## Project-Level Files
+
+| File | Purpose |
+|------|---------|
+| [CLAUDE.md](../CLAUDE.md) | AI assistant session context with quick start, architecture overview, key patterns |
+| [README.md](../README.md) | Project overview for GitHub |
+| [scripts/deploy.ps1](../deploy.ps1) | PowerShell deployment script with backup/rollback |
+| [scripts/jira.ps1](../scripts/jira.ps1) | JIRA CLI for issue and sprint management |
+
+---
 
 ## Archive
 
@@ -22,3 +97,5 @@ V1 app documentation is preserved in `archive/v1-docs/`:
 - Module guide (ES6 modules)
 - Testing guides
 - GitHub setup guides
+
+These are historical references for the pre-SvelteKit version of the app and are not relevant to current development.

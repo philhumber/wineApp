@@ -1,28 +1,66 @@
 # Production Readiness Audit Report
 
-**Date**: 2026-02-06
-**Branch**: develop (commit 91f14a9)
+> Comprehensive code audit across reliability, security, performance, and architecture. Originally generated 2026-02-06 by 4 automated review agents. Updated 2026-02-07 with current status verification against `develop` branch.
+
+**Original Date**: 2026-02-06
+**Last Verified**: 2026-02-07
+**Branch**: develop
 **Reviewers**: 4 automated agents (reliability, security, performance, architecture)
-**Status**: All 4 reviews complete
 
 ---
 
 ## Executive Summary
 
-| Domain | Critical | Warning | Nit | Status |
-|--------|----------|---------|-----|--------|
-| Reliability | 5 | 10 | 7 | Complete |
-| Security | 2 | 8 | 6 | Complete |
-| Performance | 3 | 7 | 8 | Complete |
-| Architecture | 4 | 7 | 7 | Complete |
-| **Total** | **14** | **32** | **28** | |
+The audit identified **14 critical**, **32 warning**, and **28 nit** findings across four domains. The top priorities are: unauthenticated endpoints (security), query performance (13 correlated subqueries per wine row), XSS via unsanitized `{@html}` rendering, missing `ratingID` in history queries, and no CI/CD pipeline.
 
-**Top 5 priorities:**
-1. No authentication on any PHP endpoint (Security C2)
-2. `getWines.php` has 13 correlated subqueries per row (Performance P1)
-3. XSS via `{@html}` rendering of unsanitized LLM content (Security C1)
-4. `getDrunkWines.php` missing `ratingID` in SELECT — breaks rating edits (Reliability C5)
-5. `getDrunkWines.php` no pagination — unbounded payload (Performance P2)
+As of 2026-02-07, **1 finding has been partially addressed** (A-I7: `nul` file deleted). All other findings remain open.
+
+```mermaid
+pie title Findings by Severity
+    "Critical (14)" : 14
+    "Warning (32)" : 32
+    "Nit (28)" : 28
+```
+
+```mermaid
+pie title Critical Findings by Domain
+    "Reliability (5)" : 5
+    "Security (2)" : 2
+    "Performance (3)" : 3
+    "Architecture (4)" : 4
+```
+
+| Domain | Critical | Warning | Nit | Fixed | Status |
+|--------|----------|---------|-----|-------|--------|
+| Reliability | 5 | 10 | 7 | 0 | Open |
+| Security | 2 | 8 | 6 | 0 | Open |
+| Performance | 3 | 7 | 8 | 0 | Open |
+| Architecture | 4 | 7 | 7 | 1 partial | Open |
+| **Total** | **14** | **32** | **28** | **1** | |
+
+---
+
+## Current Status Tracking
+
+Items verified against `develop` branch on 2026-02-07:
+
+| Finding | Status | Notes |
+|---------|--------|-------|
+| R-C1. addWine.php null coalescing | **Open** | Lines 20, 26-27, 32-33 still use bare `$data['key']` without `?? ''` |
+| R-C2. updateWine.php undefined `$sql` | **Open** | Line 100 still references `$sql` instead of `$sqlQuery` |
+| R-C3. Missing session_start() | **Open** | `addBottle.php:42` accesses `$_SESSION` without `session_start()` |
+| R-C4. drinkBottle.php no range validation | **Open** | Lines 26-27 accept any values; no 1-10 range check |
+| R-C5. getDrunkWines.php missing ratingID | **Open** | SELECT on lines 16-46 omits `ratings.ratingID` |
+| S-C1. XSS via `{@html}` | **Open** | `TextMessage.svelte:49`, `TypewriterText.svelte:137` still render unsanitized; no `escapeHtml` function exists |
+| S-C2. No authentication | **Open** | No auth middleware on any endpoint |
+| P-C1. 13 correlated subqueries | **Open** | `getWines.php` unchanged |
+| A-C1. No CI/CD | **Open** | No `.github/workflows/` directory |
+| A-C2. No error page | **Open** | No `+error.svelte` or `hooks.client.ts` |
+| A-C4. Legacy agent.ts | **Open** | Still 2044 lines; `agentMessages2`/`agentPhase2` aliases in `stores/index.ts` |
+| A-I3. agent-test route | **Open** | `qve/src/routes/agent-test/+page.svelte` still present |
+| A-I6. Orphan CollectionBar | **Open** | `components/layout/CollectionBar.svelte` still present |
+| A-I7. Orphan `nul` file | **Fixed** | No longer found in project root |
+| S-N1. .gitignore missing .env | **Open** | `.gitignore` has no `.env` exclusion rule |
 
 ---
 
@@ -37,7 +75,7 @@ Several `trim($data['key'])` calls lack `?? ''`. In PHP 8+, undefined array keys
 
 **R-C2. updateWine.php: Reference to undefined variable `$sql`**
 `resources/php/updateWine.php:100`
-`error_log('SQL: ' . $sql)` — variable is named `$sqlQuery`. PHP Notice emitted on every wine update, potentially contaminating JSON output.
+`error_log('SQL: ' . $sql)` -- variable is named `$sqlQuery`. PHP Notice emitted on every wine update, potentially contaminating JSON output.
 **Fix**: Change `$sql` to `$sqlQuery`.
 
 **R-C3. Missing session_start() in updateWine, updateBottle, addBottle**
@@ -52,7 +90,7 @@ No range validation (1-10) on `overallRating` and `valueRating`. Compare with `u
 
 **R-C5. getDrunkWines.php: Missing ratingID in SELECT**
 `resources/php/getDrunkWines.php:16-46`
-The query doesn't select `ratings.ratingID`, but the frontend uses it for `updateRating` calls. Rating edits from history view will fail silently.
+The query doesn't select `ratings.ratingID`, but the frontend `DrunkWine` type expects it for `updateRating` calls. Rating edits from history view will fail silently.
 **Fix**: Add `ratings.ratingID` to the SELECT clause.
 
 ### Warning
@@ -71,7 +109,7 @@ Despite including `audit_log.php`, never calls `logInsert()` for any of the 4 ta
 
 **R-W4. drinkBottle.php: Audit log uses wrong record ID**
 `resources/php/drinkBottle.php:144`
-`logUpdate($pdo, 'bottles', $wineID, ...)` — should be `$bottleID`. Audit entries reference wrong ID.
+`logUpdate($pdo, 'bottles', $wineID, ...)` -- should be `$bottleID`. Audit entries reference wrong ID.
 
 **R-W5. API client: All requests use POST (even reads)**
 `qve/src/lib/api/client.ts:64-71`
@@ -99,13 +137,13 @@ Rates loaded once at init, never refreshed. Stale rates affect price displays an
 
 ### Nit
 
-**R-N1.** `addBottle.php:20` — wineID stored as string, not cast to int
-**R-N2.** `upload.php:13` — Directory created with 0777 permissions, should be 0755
-**R-N3.** `drink/[id]/+page.svelte` — Placeholder "Coming Soon" page still in codebase
-**R-N4.** `getDrunkWines.php:75` — Error log references wrong file (`getBottles.php`)
-**R-N5.** `agentConversation.ts:126` — messageCounter resets on HMR
-**R-N6.** `upload.php:274` — No disk space check before imagejpeg() write
-**R-N7.** Frontend sends dates as DD/MM/YYYY, backend converts back to YYYY-MM-DD — unnecessary double conversion
+**R-N1.** `addBottle.php:20` -- wineID stored as string, not cast to int
+**R-N2.** `upload.php:13` -- Directory created with 0777 permissions, should be 0755
+**R-N3.** `drink/[id]/+page.svelte` -- Placeholder "Coming Soon" page still in codebase
+**R-N4.** `getDrunkWines.php:75` -- Error log references wrong file (`getBottles.php`)
+**R-N5.** `agentConversation.ts:126` -- messageCounter resets on HMR
+**R-N6.** `upload.php:274` -- No disk space check before imagejpeg() write
+**R-N7.** Frontend sends dates as DD/MM/YYYY, backend converts back to YYYY-MM-DD -- unnecessary double conversion
 
 ---
 
@@ -138,7 +176,7 @@ No CSRF tokens or Origin/Referer validation.
 All PHP endpoints rely on browser same-origin policy with no explicit CORS configuration.
 
 **S-W4. Error messages leak internal details**
-17+ endpoints return `$e->getMessage()` to client — can expose table names, SQL details, file paths.
+17+ endpoints return `$e->getMessage()` to client -- can expose table names, SQL details, file paths.
 **Fix**: Return generic errors to client, log details server-side (matching agent endpoint pattern).
 
 **S-W5. normalize.php uses raw credential variables**
@@ -159,13 +197,13 @@ Wine names, descriptions, notes have no server-side length limits. Megabytes of 
 
 **S-N1.** `.gitignore` doesn't exclude `.env` files at root level
 **S-N2.** Gemini API key passed in URL query parameter (visible in logs)
-**S-N3.** Agent `userId` is client-controlled, defaults to 1 — can bypass rate limits
+**S-N3.** Agent `userId` is client-controlled, defaults to 1 -- can bypass rate limits
 **S-N4.** `updateWine.php:100` references undefined `$sql` variable (also reliability issue)
-**S-N5.** Session handling inconsistent — only 2 of 7 state-changing endpoints call `session_start()`
+**S-N5.** Session handling inconsistent -- only 2 of 7 state-changing endpoints call `session_start()`
 **S-N6.** PDO `ATTR_EMULATE_PREPARES => false` correctly set (positive finding)
 
 ### Positive Findings
-- All SQL queries use parameterized statements — **no SQL injection found**
+- All SQL queries use parameterized statements -- **no SQL injection found**
 - Database credentials properly externalized to `../wineapp-config/config.local.php`
 - No hardcoded API keys or credentials in the codebase
 - File upload validates type, size, and image validity with `getimagesize()`
@@ -202,7 +240,7 @@ Every filter change fires a complete `fetchWines()` with no debounce. Rapid filt
 
 **P-W2. sortedDrunkWines recomputes on any of 5 dependency changes**
 `qve/src/lib/stores/history.ts:75-169`
-Currency conversion runs inside sort comparator — O(N log N * lookup) per store change.
+Currency conversion runs inside sort comparator -- O(N log N * lookup) per store change.
 
 **P-W3. Missing composite index on bottles(wineID, bottleDrunk)**
 `resources/sql/DBStructure.sql:223-226`
@@ -230,14 +268,14 @@ Cache only works for unfiltered state. Re-opening same dropdown with same filter
 
 ### Nit
 
-**P-N1.** WineCard fadeInUp animation runs on every re-render — 50+ simultaneous animations after filter
+**P-N1.** WineCard fadeInUp animation runs on every re-render -- 50+ simultaneous animations after filter
 **P-N2.** `countryCodeToEmoji` computed per card, not memoized
 **P-N3.** `winesByCountry`/`winesByType` derived stores may be unused
-**P-N4.** `upload.php:253-275` holds 3 GD images simultaneously — 50-100MB memory spike
-**P-N5.** All API reads use POST — prevents browser caching
+**P-N4.** `upload.php:253-275` holds 3 GD images simultaneously -- 50-100MB memory spike
+**P-N5.** All API reads use POST -- prevents browser caching
 **P-N6.** Agent session persistence serializes 1-4MB base64 images on every debounced write
 **P-N7.** MessageList flip animation runs on every message array change
-**P-N8.** Agent timeout mismatch — PHP 120s vs browser ~60s — wasted processing after client disconnect
+**P-N8.** Agent timeout mismatch -- PHP 120s vs browser ~60s -- wasted processing after client disconnect
 
 ---
 
@@ -272,7 +310,7 @@ All modals (`DrinkRateModal`, `AddBottleModal`, `ConfirmModal`, `SettingsModal`,
 **Fix**: Add focus trap utility. Apply `role="dialog"` and `aria-modal="true"` to all modals.
 
 **A-I3. `agent-test` Route Ships to Production**
-`qve/src/routes/agent-test/+page.svelte` (580 lines) — dev testing page included in production builds.
+`qve/src/routes/agent-test/+page.svelte` (580 lines) -- dev testing page included in production builds.
 **Fix**: Delete or gate behind dev-only check.
 
 **A-I4. Deploy Script Missing Branch Check**
@@ -284,22 +322,22 @@ No APM (Sentry, etc.), no global error handler for unhandled promise rejections.
 **Fix**: Add `hooks.client.ts` with error tracking. Add health check PHP endpoint.
 
 **A-I6. Orphan Component: `CollectionBar.svelte`**
-`qve/src/lib/components/layout/CollectionBar.svelte` — never imported, superseded by `CollectionRow.svelte`.
+`qve/src/lib/components/layout/CollectionBar.svelte` -- never imported, superseded by `CollectionRow.svelte`.
 **Fix**: Delete.
 
-**A-I7. Orphan File: `nul` in Project Root**
-Windows artifact (98 bytes) from command that redirected stderr to `nul`. Checked into git.
-**Fix**: Delete and add to `.gitignore`.
+**A-I7. Orphan File: `nul` in Project Root** -- **FIXED**
+~~Windows artifact (98 bytes) from command that redirected stderr to `nul`. Checked into git.~~
+Verified 2026-02-07: File no longer exists in project root.
 
 ### Nice to Have
 
-**A-N1.** Large components (500+ lines): `HistoryCard`, `DrinkRateModal`, `WineCard`, `AddBottleModal`, `FilterDropdown` — could benefit from sub-component extraction
-**A-N2.** TypeScript `any` usage minimal (~3 in production code) — replace with proper types
-**A-N3.** Barrel export inconsistencies — dead exports in `modals/index.ts`, forms barrel not re-exported
-**A-N4.** PWA service worker caches API POST responses for 5 min — stale data risk after mutations
-**A-N5.** No general request logging middleware — only agent endpoints have structured logging
-**A-N6.** `api/client.ts` is 1159 lines — could split by domain if maintenance becomes difficult
-**A-N7.** `stores/index.ts` is 401 lines — will shrink after A-C4 legacy store removal
+**A-N1.** Large components (500+ lines): `HistoryCard`, `DrinkRateModal`, `WineCard`, `AddBottleModal`, `FilterDropdown` -- could benefit from sub-component extraction
+**A-N2.** TypeScript `any` usage minimal (~3 in production code) -- replace with proper types
+**A-N3.** Barrel export inconsistencies -- dead exports in `modals/index.ts`, forms barrel not re-exported
+**A-N4.** PWA service worker caches API POST responses for 5 min -- stale data risk after mutations
+**A-N5.** No general request logging middleware -- only agent endpoints have structured logging
+**A-N6.** `api/client.ts` is 1159 lines -- could split by domain if maintenance becomes difficult
+**A-N7.** `stores/index.ts` is 401 lines -- will shrink after A-C4 legacy store removal
 
 ---
 
@@ -310,7 +348,7 @@ Windows artifact (98 bytes) from command that redirected stderr to `nul`. Checke
 
 | # | Task | Findings | Effort |
 |---|------|----------|--------|
-| 1 | Sanitize `{@html}` content — add `escapeHtml()` to `wn()` | S-C1 | Small |
+| 1 | Sanitize `{@html}` content -- add `escapeHtml()` to `wn()` | S-C1 | Small |
 | 2 | Add basic API key auth to all PHP endpoints | S-C2 | Medium |
 | 3 | Enable SSL verification on outbound API calls | S-W1 | Small |
 | 4 | Fix `client.ts` fetchJSON to handle non-JSON error responses | R-C1 implied | Small |
@@ -328,7 +366,7 @@ Windows artifact (98 bytes) from command that redirected stderr to `nul`. Checke
 
 | # | Task | Findings | Effort |
 |---|------|----------|--------|
-| 1 | Rewrite getWines.php — eliminate correlated subqueries | P-C1 | Large |
+| 1 | Rewrite getWines.php -- eliminate correlated subqueries | P-C1 | Large |
 | 2 | Add server-side pagination to getDrunkWines.php | P-C2 | Medium |
 | 3 | Add debouncing + AbortController to filter changes | P-C3 | Medium |
 | 4 | Add composite DB indexes (bottles, ratings) | P-W3, P-W4 | Small |
@@ -346,7 +384,7 @@ Windows artifact (98 bytes) from command that redirected stderr to `nul`. Checke
 | 5 | Add input length limits to PHP endpoints | S-W8 | Small |
 | 6 | Lazy-load AgentPanel | P-W5 | Small |
 | 7 | Remove `agent-test` route from production | A-I3 | Tiny |
-| 8 | Delete orphan files (`CollectionBar.svelte`, `nul`) | A-I6, A-I7 | Tiny |
+| 8 | Delete orphan files (`CollectionBar.svelte`) | A-I6 | Tiny |
 | 9 | Add deploy script branch check | A-I4 | Small |
 
 ### Phase 4: Production Polish
@@ -365,4 +403,4 @@ Windows artifact (98 bytes) from command that redirected stderr to `nul`. Checke
 
 ---
 
-*Generated by automated code review team (2026-02-06). 4 specialized agents reviewed reliability, security, performance, and architecture.*
+*Generated by automated code review team (2026-02-06). 4 specialized agents reviewed reliability, security, performance, and architecture. Status last verified 2026-02-07.*
