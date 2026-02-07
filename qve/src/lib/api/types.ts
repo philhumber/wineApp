@@ -210,6 +210,13 @@ export interface AddBottlePayload {
   bottlePrice?: number;
   bottleCurrency?: string;
   purchaseDate?: string;
+  quantity?: number; // WIN-222: Batch insert for atomicity
+}
+
+// WIN-222: Response type for addBottle (single or batch)
+export interface AddBottleResponse {
+  bottleID?: number;      // Single bottle insert
+  bottleIDs?: number[];   // Batch insert (quantity > 1)
 }
 
 export interface UpdateWinePayload {

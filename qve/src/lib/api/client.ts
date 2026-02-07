@@ -16,6 +16,7 @@ import type {
   ApiResponse,
   AddWinePayload,
   AddBottlePayload,
+  AddBottleResponse,
   UpdateWinePayload,
   UpdateBottlePayload,
   DrinkBottlePayload,
@@ -111,10 +112,12 @@ class WineApiClient {
   /**
    * Parse and process Server-Sent Events from a streaming response.
    * Handles event: and data: lines, calling onEvent for each complete event.
+   * Supports cancellation via AbortSignal (WIN-187).
    */
   private async processSSEStream(
     response: Response,
-    onEvent: StreamEventCallback
+    onEvent: StreamEventCallback,
+    signal?: AbortSignal
   ): Promise<void> {
     const reader = response.body?.getReader();
     if (!reader) {
@@ -127,10 +130,22 @@ class WineApiClient {
 
     try {
       while (true) {
+        // WIN-187: Check abort signal before reading
+        if (signal?.aborted) {
+          reader.cancel();
+          throw new DOMException('Aborted', 'AbortError');
+        }
+
         const { done, value } = await reader.read();
 
         if (done) {
           break;
+        }
+
+        // WIN-187: Check abort signal after read returns
+        if (signal?.aborted) {
+          reader.cancel();
+          throw new DOMException('Aborted', 'AbortError');
         }
 
         const chunk = decoder.decode(value, { stream: true });
@@ -447,10 +462,11 @@ class WineApiClient {
   }
 
   /**
-   * Add bottle to existing wine
+   * Add bottle(s) to existing wine
    * Maps TypeScript field names to PHP backend expected names
+   * WIN-222: Supports quantity for atomic batch insert
    */
-  async addBottle(data: AddBottlePayload): Promise<{ bottleID: number }> {
+  async addBottle(data: AddBottlePayload): Promise<AddBottleResponse> {
     // Map TypeScript fields to PHP expected field names
     const payload: Record<string, unknown> = {
       wineID: data.wineID,
@@ -459,10 +475,11 @@ class WineApiClient {
       bottleSource: data.bottleSource,
       bottlePrice: data.bottlePrice,
       bottleCurrency: data.bottleCurrency,
-      purchaseDate: data.purchaseDate
+      purchaseDate: data.purchaseDate,
+      quantity: data.quantity ?? 1           // WIN-222: Default to 1 for backwards compat
     };
 
-    const response = await this.fetchJSON<{ bottleID: number }>(
+    const response = await this.fetchJSON<AddBottleResponse>(
       'addBottle.php',
       payload
     );
@@ -760,18 +777,21 @@ class WineApiClient {
    * @param text Wine description text
    * @param onField Callback for each field as it streams in
    * @param onEvent Optional callback for all SSE events (field, result, escalating, error, done)
+   * @param signal Optional AbortSignal for cancellation (WIN-187)
    */
   async identifyTextStream(
     text: string,
     onField?: StreamFieldCallback,
-    onEvent?: StreamEventCallback
+    onEvent?: StreamEventCallback,
+    signal?: AbortSignal
   ): Promise<AgentIdentificationResultWithMeta> {
     const url = `${this.baseURL}agent/identifyTextStream.php`;
 
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...this.authHeaders },
-      body: JSON.stringify({ text })
+      body: JSON.stringify({ text }),
+      signal
     });
 
     if (!response.ok) {
@@ -823,7 +843,7 @@ class WineApiClient {
           // Stream complete
           break;
       }
-    });
+    }, signal);
 
     if (streamError) {
       throw streamError;
@@ -846,13 +866,15 @@ class WineApiClient {
    * @param supplementaryText Optional user context
    * @param onField Callback for each field as it streams in
    * @param onEvent Optional callback for all SSE events
+   * @param signal Optional AbortSignal for cancellation (WIN-187)
    */
   async identifyImageStream(
     imageBase64: string,
     mimeType: string,
     supplementaryText?: string,
     onField?: StreamFieldCallback,
-    onEvent?: StreamEventCallback
+    onEvent?: StreamEventCallback,
+    signal?: AbortSignal
   ): Promise<AgentIdentificationResultWithMeta> {
     const url = `${this.baseURL}agent/identifyImageStream.php`;
 
@@ -864,7 +886,8 @@ class WineApiClient {
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...this.authHeaders },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal
     });
 
     if (!response.ok) {
@@ -904,7 +927,7 @@ class WineApiClient {
           });
           break;
       }
-    });
+    }, signal);
 
     if (streamError) {
       throw streamError;
@@ -964,6 +987,7 @@ class WineApiClient {
    * @param forceRefresh Skip cache, do fresh web search
    * @param onField Callback for each field as it streams in
    * @param onEvent Optional callback for all SSE events
+   * @param signal Optional AbortSignal for cancellation (WIN-187)
    */
   async enrichWineStream(
     producer: string,
@@ -974,14 +998,16 @@ class WineApiClient {
     confirmMatch = false,
     forceRefresh = false,
     onField?: StreamFieldCallback,
-    onEvent?: StreamEventCallback
+    onEvent?: StreamEventCallback,
+    signal?: AbortSignal
   ): Promise<AgentEnrichmentResult> {
     const url = `${this.baseURL}agent/agentEnrichStream.php`;
 
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...this.authHeaders },
-      body: JSON.stringify({ producer, wineName, vintage, wineType, region, confirmMatch, forceRefresh })
+      body: JSON.stringify({ producer, wineName, vintage, wineType, region, confirmMatch, forceRefresh }),
+      signal
     });
 
     if (!response.ok) {
@@ -1040,7 +1066,7 @@ class WineApiClient {
           });
           break;
       }
-    });
+    }, signal);
 
     if (streamError) {
       throw streamError;

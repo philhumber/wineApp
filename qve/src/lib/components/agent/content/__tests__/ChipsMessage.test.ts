@@ -233,4 +233,55 @@ describe('ChipsMessage', () => {
 			// transition behavior in jsdom.
 		});
 	});
+
+	describe('double-click protection (WIN-228)', () => {
+		it('should only update message once on rapid double-click', async () => {
+			const chipsMsg = createChipsMessage({ id: 'chips-1' });
+			agentConversation.addMessage(chipsMsg);
+
+			// Spy on updateMessage to count how many times a chip selection is recorded
+			const updateMessageSpy = vi.spyOn(agentConversation, 'updateMessage');
+
+			render(ChipsMessage, { props: { message: chipsMsg } });
+
+			const button = screen.getByRole('button', { name: 'Option A' });
+
+			// Simulate rapid double-click (two clicks before any async handler could complete)
+			button.click();
+			button.click();
+
+			// Should only have called updateMessage once due to local processing guard
+			// (updateMessage is called to record selectedChipId before dispatching)
+			expect(updateMessageSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should block clicks on other chips while processing', async () => {
+			const chipsMsg = createChipsMessage({ id: 'chips-1' });
+			agentConversation.addMessage(chipsMsg);
+
+			const updateMessageSpy = vi.spyOn(agentConversation, 'updateMessage');
+
+			render(ChipsMessage, { props: { message: chipsMsg } });
+
+			const buttonA = screen.getByRole('button', { name: 'Option A' });
+			const buttonB = screen.getByRole('button', { name: 'Option B' });
+
+			// Click first button
+			buttonA.click();
+
+			// Try clicking second button before message.disabled propagates
+			buttonB.click();
+
+			// Should only have processed the first click
+			expect(updateMessageSpy).toHaveBeenCalledTimes(1);
+			expect(updateMessageSpy).toHaveBeenCalledWith(
+				'chips-1',
+				expect.objectContaining({
+					data: expect.objectContaining({
+						selectedChipId: 'chip-1', // First chip was selected
+					}),
+				})
+			);
+		});
+	});
 });

@@ -4,7 +4,10 @@
     require_once 'databaseConnection.php';
     require_once 'audit_log.php';
     require_once 'errorHandler.php';
-
+    // Start session if not already started
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
     // 2. Initialize response
     $response = ['success' => false, 'message' => '', 'data' => null];
 

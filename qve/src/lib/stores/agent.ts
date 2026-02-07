@@ -526,6 +526,96 @@ async function withRetry<T>(
 // STORE
 // ─────────────────────────────────────────────────────────
 
+/**
+ * WIN-187: Module-level AbortController for cancelling in-flight requests.
+ * Not stored in state because AbortController is not serializable.
+ */
+let currentAbortController: AbortController | null = null;
+let wasCancelledFlag = false;
+
+/**
+ * Scroll lock flag - blocks all scroll attempts when true.
+ * Set after typing message scroll during enrichment flow.
+ * Cleared when user takes any action (chip tap, start over, etc).
+ */
+let scrollLocked = false;
+
+/**
+ * WIN-187: Create a new AbortController for the current request.
+ * Aborts any previous controller before creating a new one.
+ */
+export function createAbortController(): AbortController {
+	// Reset cancelled flag for new request
+	wasCancelledFlag = false;
+	// Abort any in-flight request
+	if (currentAbortController) {
+		currentAbortController.abort();
+	}
+	currentAbortController = new AbortController();
+	return currentAbortController;
+}
+
+/**
+ * WIN-187: Get the current AbortSignal for passing to API calls.
+ */
+export function getAbortSignal(): AbortSignal | undefined {
+	return currentAbortController?.signal;
+}
+
+/**
+ * WIN-187: Abort the current in-flight request.
+ */
+export function abortCurrentRequest(): void {
+	if (currentAbortController) {
+		currentAbortController.abort();
+		wasCancelledFlag = true;
+		currentAbortController = null;
+	}
+}
+
+/**
+ * WIN-187: Check if the current request was cancelled.
+ * Uses a flag because AbortController is nulled after abort.
+ */
+export function wasCancelled(): boolean {
+	return wasCancelledFlag;
+}
+
+/**
+ * WIN-187: Reset abort state for testing.
+ * @internal
+ */
+export function _resetAbortState(): void {
+	if (currentAbortController) {
+		currentAbortController.abort();
+	}
+	currentAbortController = null;
+	wasCancelledFlag = false;
+}
+
+/**
+ * Lock scroll - blocks all scroll attempts.
+ * Called after typing message scroll during enrichment flow.
+ */
+export function lockScroll(): void {
+	scrollLocked = true;
+}
+
+/**
+ * Unlock scroll - allows scroll attempts again.
+ * Called when user takes any action (chip tap, start over, etc).
+ */
+export function unlockScroll(): void {
+	scrollLocked = false;
+}
+
+/**
+ * Check if scroll is locked.
+ */
+export function isScrollLocked(): boolean {
+	return scrollLocked;
+}
+
 const initialState: AgentState = {
 	isLoading: false,
 	lastResult: null,
@@ -1474,18 +1564,25 @@ function createAgentStore() {
 		},
 
 		/**
-		 * Cancel identification in progress (WIN-174)
-		 * UI-only: resets state and shows friendly message
+		 * Cancel identification in progress (WIN-174, WIN-187)
+		 * Aborts in-flight HTTP request and resets state with friendly message.
 		 */
 		cancelIdentification: () => {
+			// WIN-187: Abort any in-flight HTTP request
+			abortCurrentRequest();
+
+			// Remove typing indicator and reset state
 			update((state) => ({
 				...state,
 				isLoading: false,
 				isTyping: false,
+				isEnriching: false,
+				isStreaming: false,
+				streamingFields: new Map(),
 				phase: 'await_input' as AgentPhase
 			}));
 
-			// Add friendly cancellation message
+			// Add friendly cancellation message with action chips
 			const messageId = generateMessageId();
 			update((state) => ({
 				...state,
@@ -1499,8 +1596,8 @@ function createAgentStore() {
 						timestamp: Date.now(),
 						isNew: true,
 						chips: [
-							{ id: 'try_again', label: 'Try Again', icon: 'refresh', action: 'try_again' },
-							{ id: 'start_over', label: 'Start Over', icon: 'refresh', action: 'start_over' }
+							{ id: 'try_again', label: 'Try Again', action: 'try_again' },
+							{ id: 'start_over', label: 'Start Over', action: 'start_over' }
 						]
 					}
 				]

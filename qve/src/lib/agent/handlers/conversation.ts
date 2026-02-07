@@ -5,6 +5,7 @@
  * - start_over: Reset conversation and start fresh
  * - go_back: Return to previous phase
  * - cancel: Close the panel
+ * - cancel_request: Abort in-flight LLM request (WIN-187)
  * - retry/try_again: Re-execute the last action
  */
 
@@ -15,7 +16,7 @@ import * as conversation from '$lib/stores/agentConversation';
 import * as identification from '$lib/stores/agentIdentification';
 import * as enrichment from '$lib/stores/agentEnrichment';
 import * as addWine from '$lib/stores/agentAddWine';
-import { agent } from '$lib/stores/agent';
+import { agent, abortCurrentRequest } from '$lib/stores/agent';
 import {
   getLastAction,
   clearLastAction,
@@ -29,6 +30,7 @@ type ConversationActionType =
   | 'start_over'
   | 'go_back'
   | 'cancel'
+  | 'cancel_request'
   | 'retry'
   | 'try_again'
   | 'new_input'
@@ -124,6 +126,41 @@ export function handleCancel(): void {
 }
 
 /**
+ * Handle cancel_request action (WIN-187).
+ * Aborts in-flight LLM request and shows friendly message with chips.
+ */
+export function handleCancelRequest(): void {
+  console.log('[Conversation] cancel_request');
+
+  // WIN-187: Abort any in-flight HTTP request
+  abortCurrentRequest();
+
+  // Clear identification loading state
+  identification.clearIdentifying();
+
+  // Clear enrichment loading state
+  enrichment.clearEnriching();
+
+  // Remove typing message
+  conversation.removeTypingMessage();
+
+  // Reset to awaiting input phase
+  conversation.setPhase('awaiting_input');
+
+  // Add friendly cancellation message with action chips
+  conversation.addMessage(
+    conversation.createTextMessage("No problem, I've stopped. What would you like to do?")
+  );
+
+  conversation.addMessage(
+    conversation.createChipsMessage([
+      { id: 'try_again', label: 'Try Again', action: 'try_again' },
+      { id: 'start_over', label: 'Start Over', action: 'start_over' },
+    ])
+  );
+}
+
+/**
  * Handle new_input action.
  * Clears identification and awaits fresh input.
  */
@@ -207,6 +244,7 @@ export function isConversationAction(type: string): type is ConversationActionTy
     'start_over',
     'go_back',
     'cancel',
+    'cancel_request',
     'retry',
     'try_again',
     'new_input',
@@ -233,6 +271,10 @@ export async function handleConversationAction(
 
     case 'cancel':
       handleCancel();
+      return null;
+
+    case 'cancel_request':
+      handleCancelRequest();
       return null;
 
     case 'retry':

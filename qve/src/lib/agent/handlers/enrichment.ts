@@ -27,6 +27,7 @@ import {
   generateEnrichmentErrorChips,
   generateCacheMatchChips,
 } from '../services';
+import { createAbortController, wasCancelled, lockScroll } from '$lib/stores/agent';
 
 // ===========================================
 // Action Types
@@ -173,6 +174,7 @@ function handleCacheConfirmationRequired(enrichmentResult: {
 
 /**
  * Execute the enrichment API call with streaming.
+ * WIN-187: Uses AbortController for cancellation support.
  */
 async function executeEnrichment(
   producer: string,
@@ -183,6 +185,9 @@ async function executeEnrichment(
   confirmMatch: boolean,
   forceRefresh: boolean
 ): Promise<void> {
+  // WIN-187: Create abort controller for this request
+  const abortController = createAbortController();
+
   try {
     const enrichmentResult = await api.enrichWineStream(
       producer,
@@ -194,8 +199,15 @@ async function executeEnrichment(
       forceRefresh,
       (field, value) => {
         enrichment.updateEnrichmentStreamingField(field, String(value), true);
-      }
+      },
+      undefined, // onEvent
+      abortController.signal
     );
+
+    // WIN-187: Skip processing if cancelled during the await
+    if (wasCancelled()) {
+      return;
+    }
 
     conversation.removeTypingMessage();
 
@@ -239,6 +251,10 @@ async function executeEnrichment(
     conversation.setPhase('confirming');
 
   } catch (error) {
+    // WIN-187: Don't show error for intentional cancellation
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return;
+    }
     conversation.removeTypingMessage();
     handleEnrichmentError(error);
   }
@@ -283,6 +299,10 @@ async function handleLearnMore(messageId: string): Promise<void> {
   conversation.setPhase('enriching');
 
   conversation.addTypingMessage(getMessageByKey(MessageKey.ENRICH_LOADING));
+
+  // Lock scroll after typing message - prevents scroll chaos during streaming
+  // Will be unlocked when user takes any action (chip tap, start over, etc)
+  lockScroll();
 
   await executeEnrichment(
     result.producer,

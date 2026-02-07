@@ -32,14 +32,21 @@
       $notes = $inputData['notes'] ?? '';
 
       // Optional ratings (0-5 scale, nullable)
-      $complexityRating = isset($inputData['complexityRating']) && $inputData['complexityRating'] > 0
+      $complexityRating = isset($inputData['complexityRating']) && $inputData['complexityRating'] > 0 && $inputData['complexityRating'] < 6
           ? (int)$inputData['complexityRating'] : null;
-      $drinkabilityRating = isset($inputData['drinkabilityRating']) && $inputData['drinkabilityRating'] > 0
+      $drinkabilityRating = isset($inputData['drinkabilityRating']) && $inputData['drinkabilityRating'] > 0 && $inputData['complexityRating'] < 6
           ? (int)$inputData['drinkabilityRating'] : null;
-      $surpriseRating = isset($inputData['surpriseRating']) && $inputData['surpriseRating'] > 0
+      $surpriseRating = isset($inputData['surpriseRating']) && $inputData['surpriseRating'] > 0 && $inputData['complexityRating'] < 6
           ? (int)$inputData['surpriseRating'] : null;
-      $foodPairingRating = isset($inputData['foodPairingRating']) && $inputData['foodPairingRating'] > 0
+      $foodPairingRating = isset($inputData['foodPairingRating']) && $inputData['foodPairingRating'] > 0 && $inputData['complexityRating'] < 6
           ? (int)$inputData['foodPairingRating'] : null;
+
+      if (!isset($overallRating) || $overallRating < 1 || $overallRating > 10) {
+          throw new Exception('Invalid overall rating (must be 1-10)');
+      }
+      if (!isset($valueRating) || $valueRating < 1 || $valueRating > 10) {
+          throw new Exception('Invalid value rating (must be 1-10)');
+      }
 
       // Validate required fields
       if (empty($wineID)) {
@@ -143,7 +150,7 @@
               'bottleDrunk' => 1
           ];
 
-          logUpdate($pdo, 'bottles', $wineID, $oldData, $newData, $userID);
+          logUpdate($pdo, 'bottles', $bottleID, $oldData, $newData, $userID);
 
 
           $stmt = $pdo->prepare("UPDATE bottles SET bottleDrunk = 1 WHERE bottleID = :bottleID");

@@ -42,6 +42,7 @@ import {
   handleGoBack,
   handleRetry,
 } from './conversation';
+import { createAbortController, wasCancelled } from '$lib/stores/agent';
 
 // ===========================================
 // Action Types
@@ -307,6 +308,7 @@ function handleIdentificationError(error: unknown): void {
 
 /**
  * Execute text-based identification API call.
+ * WIN-187: Uses AbortController for cancellation support.
  */
 async function executeTextIdentification(
   text: string,
@@ -335,13 +337,23 @@ async function executeTextIdentification(
   // Typing indicator participates in message queue with scroll behavior
   conversation.addTypingMessage(getMessageByKey(MessageKey.ID_THINKING));
 
+  // WIN-187: Create abort controller for this request
+  const abortController = createAbortController();
+
   try {
     const result = await api.identifyTextStream(
       text,
       (field, value) => {
         identification.updateStreamingField(field, String(value), true);
-      }
+      },
+      undefined, // onEvent
+      abortController.signal
     );
+
+    // WIN-187: Skip processing if cancelled during the await
+    if (wasCancelled()) {
+      return;
+    }
 
     conversation.removeTypingMessage();
     const wineResult = convertParsedWineToResult(result.parsed, result.confidence);
@@ -349,6 +361,10 @@ async function executeTextIdentification(
     handleIdentificationResultFlow(wineResult, result.confidence ?? 1);
 
   } catch (error) {
+    // WIN-187: Don't show error for intentional cancellation
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return;
+    }
     conversation.removeTypingMessage();
     handleIdentificationError(error);
   }
@@ -356,6 +372,7 @@ async function executeTextIdentification(
 
 /**
  * Execute image-based identification API call.
+ * WIN-187: Uses AbortController for cancellation support.
  */
 async function executeImageIdentification(
   data: string,
@@ -367,6 +384,9 @@ async function executeImageIdentification(
 
   conversation.addTypingMessage(getMessageByKey(MessageKey.ID_ANALYZING));
 
+  // WIN-187: Create abort controller for this request
+  const abortController = createAbortController();
+
   try {
     const result = await api.identifyImageStream(
       data,
@@ -374,8 +394,15 @@ async function executeImageIdentification(
       supplementaryText,
       (field, value) => {
         identification.updateStreamingField(field, String(value), true);
-      }
+      },
+      undefined, // onEvent
+      abortController.signal
     );
+
+    // WIN-187: Skip processing if cancelled during the await
+    if (wasCancelled()) {
+      return;
+    }
 
     conversation.removeTypingMessage();
     const wineResult = convertParsedWineToResult(result.parsed, result.confidence);
@@ -383,6 +410,10 @@ async function executeImageIdentification(
     handleIdentificationResultFlow(wineResult, result.confidence ?? 1);
 
   } catch (error) {
+    // WIN-187: Don't show error for intentional cancellation
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return;
+    }
     conversation.removeTypingMessage();
     handleIdentificationError(error);
   }
@@ -526,6 +557,29 @@ async function handleTextSubmit(text: string): Promise<void> {
 
   // 6. Execute Identification
   const augContext = identification.getAugmentationContext();
+
+  // WIN-270: Handle brief input continuation (e.g., "rose" + "imperial" → "rose imperial")
+  if (augContext?.briefInputPrefix) {
+    const prefix = augContext.briefInputPrefix;
+
+    // Deduplication: if new input already starts with prefix, just use new input
+    // e.g., prefix="Rose", text="Rose Imperial" → search "Rose Imperial" (not "Rose Rose Imperial")
+    const normalizedPrefix = prefix.toLowerCase().trim();
+    const normalizedText = text.toLowerCase().trim();
+    const combinedText = normalizedText.startsWith(normalizedPrefix)
+      ? text
+      : `${prefix} ${text}`;
+
+    conversation.addMessage(
+      conversation.createTextMessage(text, { role: 'user' })
+    );
+
+    identification.clearAugmentationContext();
+    setLastAction({ type: 'submit_text', payload: combinedText });
+
+    await executeTextIdentification(combinedText, { skipUserMessage: true, skipLastActionUpdate: true });
+    return;
+  }
 
   if (augContext?.imageData && augContext?.imageMimeType) {
     conversation.addMessage(
@@ -752,6 +806,16 @@ async function handleConfirmBriefSearch(messageId: string): Promise<void> {
 
 function handleAddMoreDetail(messageId: string): void {
   conversation.disableMessage(messageId);
+
+  // WIN-270: Store the pending brief search as augmentation context for concatenation
+  const briefSearch = identification.getCurrentState().pendingBriefSearch;
+  if (briefSearch) {
+    identification.setAugmentationContext({
+      briefInputPrefix: briefSearch,
+    });
+    identification.setPendingBriefSearch(null);
+  }
+
   conversation.setPhase('awaiting_input');
 }
 

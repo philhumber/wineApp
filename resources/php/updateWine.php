@@ -5,7 +5,11 @@
     require_once 'audit_log.php';
     require_once 'validators.php';
     require_once 'errorHandler.php';
-
+    
+    // Start session if not already started
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
     // 2. Initialize response
     $response = ['success' => false, 'message' => '', 'data' => null];
 
@@ -17,7 +21,7 @@
         $data = json_decode(file_get_contents('php://input'), true);
 
         // 6. Validate and sanitize all fields
-        $wineID = (int)trim($data['wineID']);
+        $wineID = (int)trim($data['wineID']) ?? 0;
         if ($wineID <= 0) {
             throw new Exception('Invalid wine ID');
         }
@@ -99,7 +103,7 @@
             if (!$oldData) {
                 throw new Exception('Wine not found');
             }
-            error_log('SQL: ' . $sql);
+            error_log('SQL: ' . $sqlQuery);
             error_log('Params: ' . print_r($params, true));
 
             // 8. Perform database operation

@@ -134,6 +134,7 @@ function createAddBottleStore() {
 
 		/**
 		 * Submit the form - adds bottle(s) to the wine
+		 * WIN-222: Single atomic request with quantity (no loop)
 		 */
 		async submit(): Promise<{ success: boolean; wineID: number | null; count: number }> {
 			const state = get({ subscribe });
@@ -152,18 +153,18 @@ function createAddBottleStore() {
 			try {
 				const quantity = state.quantity || 1;
 
-				// Add each bottle (loop for quantity)
-				for (let i = 0; i < quantity; i++) {
-					await api.addBottle({
-						wineID: state.wineID,
-						bottleSize: state.bottleSize,
-						bottleLocation: state.storageLocation,
-						bottleSource: state.source.trim(),
-						bottlePrice: state.price ? parseFloat(state.price) : undefined,
-						bottleCurrency: state.currency || undefined,
-						purchaseDate: state.purchaseDate || undefined
-					});
-				}
+				// WIN-222: Single atomic API call with quantity
+				// Backend handles batch insert in a single transaction
+				await api.addBottle({
+					wineID: state.wineID,
+					bottleSize: state.bottleSize,
+					bottleLocation: state.storageLocation,
+					bottleSource: state.source.trim(),
+					bottlePrice: state.price ? parseFloat(state.price) : undefined,
+					bottleCurrency: state.currency || undefined,
+					purchaseDate: state.purchaseDate || undefined,
+					quantity
+				});
 
 				// Show success toast
 				if (quantity > 1) {

@@ -27,6 +27,9 @@
 	let currencies: Currency[] = [];
 	let loading = true;
 
+	// WIN-228: Local flag to prevent double-clicks
+	let isSubmitting = false;
+
 	// Local form state (not store-driven)
 	let formData: BottleFormData = {
 		size: initialData.size ?? '',
@@ -74,12 +77,16 @@
 	}
 
 	function handleNext() {
-		if (canProceed) {
-			dispatch('next', { ...formData });
-		}
+		// WIN-228: Prevent double-click
+		if (isSubmitting || !canProceed) return;
+		isSubmitting = true;
+		dispatch('next', { ...formData });
 	}
 
 	function handleSubmit() {
+		// WIN-228: Prevent double-click
+		if (isSubmitting) return;
+		isSubmitting = true;
 		dispatch('submit', { ...formData });
 	}
 
@@ -150,7 +157,7 @@
 				/>
 			</div>
 
-			<button class="btn btn-primary" disabled={!canProceed || disabled} on:click={handleNext}>
+			<button class="btn btn-primary" disabled={!canProceed || disabled || isSubmitting} on:click={handleNext}>
 				Next
 			</button>
 		</div>
@@ -204,7 +211,7 @@
 				/>
 			</div>
 
-			<button class="btn btn-primary" {disabled} on:click={handleSubmit}>
+			<button class="btn btn-primary" disabled={disabled || isSubmitting} on:click={handleSubmit}>
 				Add to Cellar
 			</button>
 		</div>
