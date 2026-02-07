@@ -90,8 +90,7 @@ wineapp/
 ├── resources/php/        # PHP backend (20 core + 9 agent endpoints)
 ├── resources/sql/        # Database schema
 ├── docs/                 # Detailed documentation (this directory)
-├── scripts/              # JIRA CLI, utilities
-└── deploy.ps1            # Production deployment with backup/rollback
+├── scripts/              # JIRA CLI, utilities, deployment with backup/rollback
 ```
 
 ## Getting Started
