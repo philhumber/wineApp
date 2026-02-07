@@ -36,7 +36,7 @@
 
 {#if isDivider}
   <!-- Conversation divider - elegant separator -->
-  <div class="divider-wrapper" data-message>
+  <div class="divider-wrapper" data-divider>
     <div class="divider-line"></div>
     <span class="divider-icon">✦</span>
     <div class="divider-line"></div>

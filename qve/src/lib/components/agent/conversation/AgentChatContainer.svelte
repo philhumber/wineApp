@@ -89,7 +89,8 @@
 		await tick();
 		requestAnimationFrame(() => {
 			// Find all message elements and scroll to the last one
-			const messageElements = scrollContainer.querySelectorAll('[data-message]');
+			// Uses [data-message-id] which is set on each message wrapper in MessageList
+			const messageElements = scrollContainer.querySelectorAll('[data-message-id]');
 			const lastMessage = messageElements[messageElements.length - 1];
 			if (lastMessage) {
 				lastMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
