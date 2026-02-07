@@ -197,7 +197,7 @@ class SSLConfig
     {
         return [
             // Project-local cert in wineapp-config (dev convenience)
-            __DIR__ . '/../../../../wineapp-config/cacert.pem',
+            __DIR__ . '/../../../../../wineapp-config/cacert.pem',
             // Common PHP installation locations
             'C:/php/extras/ssl/cacert.pem',
             'C:/Program Files/php/extras/ssl/cacert.pem',

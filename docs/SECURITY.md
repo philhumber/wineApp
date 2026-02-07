@@ -313,6 +313,68 @@ All frontend API calls will receive 401 Unauthorized until the frontend is rebui
 ### If Deploying Frontend First
 The frontend will send `X-API-Key` and `X-Requested-With` headers. The old backend will ignore them (no harm), but the security protections won't be active until the backend is updated.
 
+### Deployment Guidence for Linux
+ The SSLConfig.php searches for CA certificates in this priority order:
+
+  1. Config override (highest priority)
+
+  If you define SSL_CA_BUNDLE in config.local.php, it uses that path. You don't have this yet.
+
+  2. PHP ini settings
+
+  If your production server's php.ini has curl.cainfo or openssl.cafile configured, it uses those. Most Linux PHP installations have this set   up already.
+
+  3. Standard Linux paths (auto-detected)
+
+  It checks these locations on your production server (10.0.0.16):
+  - /etc/ssl/certs/ca-certificates.crt (Debian/Ubuntu)
+  - /etc/pki/tls/certs/ca-bundle.crt (RHEL/CentOS)
+  - /etc/ssl/ca-bundle.pem (OpenSUSE)
+  - /etc/ssl/cert.pem (Alpine)
+
+  4. Fallback: system defaults
+
+  If none of the above are found, cURL/PHP use their compiled-in defaults (which often work on modern Linux).
+
+  ---
+  What to check on your production server
+
+  SSH into 10.0.0.16 and run:
+
+  # Check if the standard CA bundle exists
+  ls -la /etc/ssl/certs/ca-certificates.crt 2>/dev/null || \
+  ls -la /etc/pki/tls/certs/ca-bundle.crt 2>/dev/null || \
+  echo "No standard CA bundle found"
+
+  # Check PHP's SSL config
+  php -r "echo 'curl.cainfo: ' . ini_get('curl.cainfo') . PHP_EOL; echo 'openssl.cafile: ' . ini_get('openssl.cafile') . PHP_EOL;"
+
+  # Quick test — can PHP make HTTPS calls?
+  php -r "echo file_get_contents('https://generativelanguage.googleapis.com') ? 'SSL works' : 'SSL failed';"
+
+  If CA certs are missing
+
+  On Debian/Ubuntu:
+  sudo apt install ca-certificates
+  sudo update-ca-certificates
+
+  On RHEL/CentOS:
+  sudo yum install ca-certificates
+  sudo update-ca-trust
+
+  Or as a fallback, download Mozilla's CA bundle manually:
+  curl -o /etc/ssl/certs/cacert.pem https://curl.se/ca/cacert.pem
+  Then add to config.local.php:
+  define('SSL_CA_BUNDLE', '/etc/ssl/certs/cacert.pem');
+
+  The deploy script will help
+
+  When you run deploy.ps1, it now runs a Test-SSLCertificate pre-flight check that validates the SSL configuration is in place before        
+  deploying. If certs are missing, it'll warn you.
+
+  Bottom line: If your production server is a standard Linux distro with ca-certificates installed (most are), it should just work. The quick   test above will confirm.
+
+
 ---
 
 ## Future Considerations (Multi-User)

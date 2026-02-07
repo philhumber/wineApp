@@ -5,7 +5,7 @@
  */
 require_once __DIR__ . '/securityHeaders.php';
 require_once __DIR__ . '/agent/Identification/InferenceEngine.php';
-require_once __DIR__ . '/../../wineapp-config/config.local.php';
+require_once __DIR__ . '/../../../wineapp-config/config.local.php';
 
 header('Content-Type: application/json');
 

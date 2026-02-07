@@ -37,7 +37,8 @@ function authenticate(): void
 {
     // Ensure config is loaded (may already be loaded by databaseConnection.php,
     // but auth runs before DB connection in the request lifecycle)
-    $configPath = __DIR__ . '/../../wineapp-config/config.local.php';
+    $configPath = __DIR__ . '/../../../wineapp-config/config.local.php';
+    
     if (!defined('API_AUTH_KEY')) {
         if (!file_exists($configPath)) {
             error_log('[Auth] Config file not found: ' . $configPath);
