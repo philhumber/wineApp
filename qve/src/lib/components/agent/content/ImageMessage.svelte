@@ -1,18 +1,22 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import type { AgentMessage } from '$lib/agent/types';
-  import { clearNewFlag } from '$lib/stores';
+  import { clearNewFlag, agentMessages } from '$lib/stores/agentConversation';
 
   export let message: AgentMessage;
 
   $: src = message.data.category === 'image' ? message.data.src : '';
 
-  // Signal readiness immediately on mount (no typewriter animation)
-  onMount(() => {
-    if (message.isNew) {
-      clearNewFlag(message.id);
-    }
-  });
+  // Track preceding message for sequencing (same pattern as TextMessage)
+  $: messageIndex = $agentMessages.findIndex((m) => m.id === message.id);
+  $: precedingMessage = messageIndex > 0 ? $agentMessages[messageIndex - 1] : null;
+  $: isPrecedingReady = !precedingMessage || precedingMessage.isNew === false;
+
+  // Clear flag when preceding is ready (no typewriter animation for images)
+  let hasClearedFlag = false;
+  $: if (message.isNew && isPrecedingReady && !hasClearedFlag) {
+    hasClearedFlag = true;
+    clearNewFlag(message.id);
+  }
 </script>
 
 {#if src}
