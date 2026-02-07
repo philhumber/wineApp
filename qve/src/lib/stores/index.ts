@@ -16,7 +16,10 @@ export {
   winesLoading,
   winesError,
   targetWineID,
-  expandedWineID,
+  expandedWineIDs,
+  toggleWineExpanded,
+  collapseWine,
+  collapseAllWines,
   totalBottles,
   wineCount,
   winesByCountry,
@@ -51,8 +54,8 @@ export { toasts, hasToasts, latestToast } from './toast';
 export type { Toast, ToastType, ToastAction } from './toast';
 
 // Modal
-export { modal, isModalOpen, isModalType, modalData } from './modal';
-export type { ModalState, ModalType, ConfirmModalData } from './modal';
+export { modal, isModalOpen, isModalType, modalData, confirmOverlay } from './modal';
+export type { ModalState, ModalType, ConfirmModalData, BeforeCloseResult, BeforeCloseHook } from './modal';
 
 // Add Wine Wizard
 export {
@@ -155,6 +158,243 @@ export {
   formatPrice,
   formatPriceFromEUR,
   formatPriceConverted,
-  getCurrencyByCode
+  getCurrencyByCode,
+  formatCompactValue
 } from './currency';
 export type { CurrencyCode } from './currency';
+
+// Settings (Collection Name, Cellar Value)
+export { collectionName, cellarValue } from './settings';
+
+// Agent (AI Wine Identification)
+export {
+  agent,
+  agentParsed,
+  agentAction,
+  agentCandidates,
+  agentConfidence,
+  agentLoading,
+  agentIdentifying,
+  agentEnriching,
+  agentError,
+  agentErrorMessage,
+  agentErrorRetryable,
+  agentErrorSupportRef,
+  agentPanelOpen,
+  agentInputType,
+  agentImageQuality,
+  agentHasResult,
+  // Conversation stores
+  agentPhase,
+  agentMessages,
+  agentIsTyping,
+  agentHasAugmentationContext,
+  agentAugmentationContext,
+  agentHasStarted,
+  agentPendingNewSearch,
+  // Add wine flow
+  agentAddState,
+  // Streaming (WIN-181)
+  agentIsStreaming,
+  agentStreamingFields,
+  agentStreamingChips,
+  agentEnrichmentStreamingChips,
+  agentPendingEnrichmentResult
+} from './agent';
+export type {
+  AgentState,
+  AgentPhase,
+  AgentMessageType,
+  AgentChip,
+  AgentMessage,
+  AgentAugmentationContext,
+  PendingNewSearch,
+  // Add wine flow types
+  AgentAddState,
+  AgentAddSelectionMode,
+  AgentAddRegionData,
+  AgentAddProducerData,
+  AgentAddWineData,
+  AgentAddBottleData,
+  // Streaming types (WIN-181)
+  StreamingFieldState
+} from './agent';
+
+// ─────────────────────────────────────────────
+// NEW ARCHITECTURE STORES (Phase 4)
+// ─────────────────────────────────────────────
+
+// Agent Conversation (new)
+export {
+  agentMessages as agentMessages2,
+  agentPhase as agentPhase2,
+  addWineStep,
+  isConversationInitialized,
+  hasMessages,
+  lastMessage,
+  lastAgentMessage,
+  lastUserMessage,
+  isInAddWineFlow as isInAddWineFlow2,
+  isInEnrichmentFlow,
+  isInLoadingPhase,
+  hasAnimatingMessages,
+  agentOrigin,
+  addMessage,
+  addMessages,
+  updateMessage,
+  disableMessage,
+  disableAllChips,
+  clearNewFlag,
+  clearAllNewFlags,
+  removeMessage,
+  setPhase,
+  setAddWineStep,
+  resetConversation,
+  startSession,
+  fullReset,
+  initializeConversation,
+  restoreFromCallbacks as restoreConversationFromCallbacks,
+  createMessage,
+  createTextMessage,
+  createChipsMessage,
+  setOrigin,
+  clearOrigin,
+  getOrigin,
+} from './agentConversation';
+export type { OriginState, OriginViewMode } from './agentConversation';
+
+// Agent Identification (new)
+export {
+  isIdentifying,
+  identificationResult,
+  identificationError,
+  identificationConfidence,
+  streamingFields,
+  augmentationContext,
+  hasAugmentationContext as hasAugmentationContext2,
+  pendingNewSearch as pendingNewSearch2,
+  lastImageData,
+  inputType,
+  isEscalating,
+  escalationTier,
+  hasResult,
+  isStreaming as isStreaming2,
+  isLowConfidence,
+  startIdentification,
+  setResult,
+  setError as setIdentificationError,
+  clearError as clearIdentificationError,
+  updateStreamingField,
+  completeStreamingField,
+  clearStreamingFields,
+  setAugmentationContext,
+  clearAugmentationContext,
+  setPendingNewSearch,
+  setLastImageData,
+  clearLastImageData,
+  startEscalation,
+  completeEscalation,
+  clearIdentification,
+  resetIdentification,
+  restoreFromPersistence as restoreIdentificationFromPersistence,
+  getCurrentState as getIdentificationState,
+  getResult,
+  getAugmentationContext,
+} from './agentIdentification';
+
+// Agent Enrichment (new)
+export {
+  isEnriching,
+  enrichmentData as enrichmentData2,
+  enrichmentError,
+  enrichmentSource,
+  enrichmentStreamingFields,
+  enrichmentForWine,
+  hasEnrichmentData,
+  isEnrichmentStreaming,
+  hasOverview,
+  hasGrapeComposition,
+  hasTastingNotes,
+  hasCriticScores,
+  hasDrinkWindow,
+  hasFoodPairings,
+  startEnrichment,
+  setEnrichmentData,
+  setEnrichmentError,
+  clearEnrichmentError,
+  updateEnrichmentStreamingField,
+  completeEnrichmentStreamingField,
+  clearEnrichmentStreamingFields,
+  setPendingEnrichmentResult,
+  commitPendingEnrichmentResult,
+  clearEnrichment,
+  resetEnrichment,
+  restoreFromPersistence as restoreEnrichmentFromPersistence,
+  getCurrentState as getEnrichmentState,
+  getData as getEnrichmentData,
+  getForWine,
+} from './agentEnrichment';
+
+// Agent Add Wine (new)
+export {
+  addWineFlow,
+  isInAddWineFlow,
+  isAddingWine,
+  addWineStep as addWineFlowStep,
+  currentEntityType,
+  entityMatches,
+  selectedEntities,
+  existingWineId,
+  existingBottleCount,
+  hasDuplicate,
+  bottleFormData,
+  bottleFormStep,
+  addWineError,
+  addedWineId,
+  startAddFlow,
+  setAddWineStep as setAddWineFlowStep,
+  setEntityMatches,
+  selectMatch,
+  selectMatchById,
+  createNewEntity,
+  setExistingWine,
+  clearExistingWine,
+  updateBottleFormData,
+  setBottleFormStep,
+  setEnrichNow,
+  startSubmission,
+  completeSubmission,
+  setSubmissionError,
+  cancelAddFlow,
+  resetAddWine,
+  restoreFromPersistence as restoreAddWineFromPersistence,
+  getCurrentFlow,
+  getWineResult,
+  getSelectedEntities,
+  getBottleFormData,
+} from './agentAddWine';
+
+// Agent Persistence (new)
+export {
+  persistState,
+  loadState,
+  clearState,
+  createEmptyState,
+  loadPanelState,
+  persistPanelState,
+  createRestoreCallbacks,
+  isPersisting,
+  lastPersistError,
+} from './agentPersistence';
+export type {
+  PersistedState,
+  AugmentationContext as PersistedAugmentationContext,
+  AddWineStateSlice,
+  ImageDataSlice,
+  PanelState,
+  RestoreCallbacks,
+} from './agentPersistence';
+
+// Agent Settings (new - Sprint 4)
+export { agentSettings, getPersonality } from './agentSettings';
+export type { AgentSettings } from './agentSettings';

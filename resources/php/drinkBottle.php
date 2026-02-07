@@ -115,17 +115,17 @@
           
           // Log the insert
           logInsert($pdo, 'ratings', $ratingID, [
-            ':wineID' => $wineID,
-            ':bottleID' => $bottleID,
-            ':overallRating' => $overallRating,
-            ':valueRating' => $valueRating,
-            ':drinkDate' => $drinkDate,
-            ':buyAgain' => $buyAgain,
-            ':notes' => $notes,
-            ':complexityRating' => $complexityRating,
-            ':drinkabilityRating' => $drinkabilityRating,
-            ':surpriseRating' => $surpriseRating,
-            ':foodPairingRating' => $foodPairingRating
+            'wineID' => $wineID,
+            'bottleID' => $bottleID,
+            'overallRating' => $overallRating,
+            'valueRating' => $valueRating,
+            'drinkDate' => $drinkDate,
+            'buyAgain' => $buyAgain,
+            'Notes' => $notes,
+            'complexityRating' => $complexityRating,
+            'drinkabilityRating' => $drinkabilityRating,
+            'surpriseRating' => $surpriseRating,
+            'foodPairingRating' => $foodPairingRating
           ], $userID);
 
 

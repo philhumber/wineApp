@@ -4,6 +4,25 @@
  */
 
 /**
+ * Extract scalar value from single-element array for comparison
+ *
+ * @param mixed $value Value to normalize
+ * @return mixed Extracted scalar, null for empty arrays, or original value
+ */
+function extractScalar($value) {
+    if (!is_array($value)) {
+        return $value;
+    }
+    if (empty($value)) {
+        return null;
+    }
+    if (count($value) === 1) {
+        return reset($value);
+    }
+    return $value;
+}
+
+/**
  * Log a change to the audit_log table
  * 
  * @param PDO $pdo Database connection
@@ -65,8 +84,11 @@ function logInsert($pdo, $table, $recordID, $data, $userID = null) {
  */
 function logUpdate($pdo, $table, $recordID, $oldData, $newData, $userID = null) {
     foreach ($newData as $column => $newValue) {
-        if (isset($oldData[$column]) && $oldData[$column] != $newValue) {
-            logChange($pdo, $table, $recordID, 'UPDATE', $column, $oldData[$column], $newValue, $userID);
+        $oldVal = extractScalar($oldData[$column] ?? null);
+        $newVal = extractScalar($newValue);
+
+        if ($oldVal != $newVal) {
+            logChange($pdo, $table, $recordID, 'UPDATE', $column, $oldData[$column] ?? null, $newValue, $userID);
         }
     }
 }

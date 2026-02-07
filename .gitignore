@@ -20,19 +20,6 @@ images/wines/
 # ===================
 deploy.ps1
 
-
-# ===================
-# User Content
-# ===================
-images/wines/
-design/AI-Agent/
-
-# ===================
-# DEPLOYMENT FILES
-# ===================
-deploy.ps1
-
-
 # ===================
 # OS FILES
 # ===================
@@ -46,6 +33,7 @@ Desktop.ini
 .vscode/
 .idea/
 .claude/
+.claude.local.md
 *.swp
 *.swo
 *~
@@ -68,6 +56,12 @@ jira_*.json
 jira_*.txt
 
 # ===================
+# ARCHIVE
+# ===================
+archive/
+
+# ===================
 # TRASH FOLDER
 # ===================
 .trash/
+nul

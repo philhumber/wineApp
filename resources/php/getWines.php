@@ -31,17 +31,21 @@
 						wine.wineName,
 						wine.description,
 						wine.pictureURL,
+						wine.enrichment_status,
 						country.countryName,
 						wine.year,
+						wine.isNonVintage,
 						wine.tastingNotes,
-						wine.pairing,	
+						wine.pairing,
 						region.regionName,
 						winetype.wineType,
 						producers.producerName,
 						country.code,
 						country.world_code,
 						wine.rating,								
-						(SELECT ROUND(AVG(overallRating), 2) FROM ratings WHERE ratings.wineID = wine.wineID) AS avgRating,
+						(SELECT ROUND((AVG(overallRating) + AVG(valueRating)) / 2, 2) FROM ratings WHERE ratings.wineID = wine.wineID) AS avgRating,
+						(SELECT ROUND(AVG(overallRating), 2) FROM ratings WHERE ratings.wineID = wine.wineID) AS avgOverallRating,
+						(SELECT ROUND(AVG(valueRating), 2) FROM ratings WHERE ratings.wineID = wine.wineID) AS avgValueRating,
 						(SELECT GROUP_CONCAT(Notes SEPARATOR '; ') FROM ratings WHERE ratings.wineID = wine.wineID) AS allNotes,
 						(SELECT ROUND(AVG(normalized_price), 2)
 						FROM (
@@ -59,6 +63,21 @@
 								AND b.price > 0
 						) AS ranked
 						WHERE rn IN (FLOOR((cnt + 1) / 2), CEILING((cnt + 1) / 2))) AS avgPricePerLiterEUR,
+						(SELECT ROUND(AVG(normalized_price), 2)
+						FROM (
+							SELECT
+								(b.price / COALESCE(NULLIF(c.rateToEUR, 0), 1)) AS normalized_price,
+								ROW_NUMBER() OVER (ORDER BY
+									(b.price / COALESCE(NULLIF(c.rateToEUR, 0), 1))
+								) AS rn,
+								COUNT(*) OVER () AS cnt
+							FROM bottles b
+							LEFT JOIN currencies c ON b.currency = c.currencyCode
+							WHERE b.wineID = wine.wineID
+								AND b.price IS NOT NULL
+								AND b.price > 0
+						) AS ranked
+						WHERE rn IN (FLOOR((cnt + 1) / 2), CEILING((cnt + 1) / 2))) AS avgBottlePriceEUR,
 						(SELECT ROUND(AVG(normalized_price), 2)
 						FROM (
 							SELECT
@@ -167,11 +186,11 @@
 		}
 		if (!empty($wineYear) && $wineYear !== '%') {
 			if ($wineYear == 'No Year') {
-				$where[] = "(wine.year IS NULL OR wine.year = '')";
+				$where[] = "wine.isNonVintage = 1";
 			} else {
 				$where[] = "wine.year = :wineYear";
 				$params[':wineYear'] = $wineYear;
-			}			
+			}
 		}
 		if (!empty($where)) {
 			$sqlQuery .= " WHERE " . implode(' AND ', $where);

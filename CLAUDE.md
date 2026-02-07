@@ -1,8 +1,20 @@
 # Qvé Wine App - Session Context
 
-**Last Updated**: 2026-01-24
+**Last Updated**: 2026-02-07 (CLAUDE.md audit - updated architecture, counts, slimmed agent sections)
 **Status**: Production - Deployed and stable
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
+
+---
+
+## Working Guidelines
+
+**Architecture awareness**: This project underwent a major rearchitecture (Phase 2). ALWAYS verify you are editing current architecture files, not legacy/archived components. The old monolithic `ChatMessage.svelte` has been replaced by modular components in `components/agent/`. When in doubt, check `docs/AGENT_ARCHITECTURE.md` or ask which file is canonical before editing.
+
+**Debugging discipline**: When fixing bugs, state your understanding of the root cause and which files you plan to edit BEFORE implementing. Do not assume the cause — ask if uncertain. This prevents wasted effort on wrong-approach fixes.
+
+**Completeness check**: After implementing a fix or feature, grep the entire codebase for all related occurrences of the changed pattern before declaring done. Check for: other files using the old pattern, duplicate functions that could override the change, and tests referencing old behavior.
+
+**UI edge cases**: When implementing UI/UX changes, enumerate ALL states and edge cases upfront before coding: single vs multiple items, empty states, user messages vs agent messages, mobile vs desktop.
 
 ---
 
@@ -28,18 +40,29 @@ git checkout -b feature/WINE-XX-description
 mysql -h 10.0.0.16 -u username -p winelist
 
 # Deploy to production (PowerShell)
-.\deploy.ps1 -DryRun    # Preview changes
-.\deploy.ps1            # Deploy with auto-backup
-.\deploy.ps1 -ListBackups
-.\deploy.ps1 -Rollback "2026-01-18_143022"
+.\scripts\deploy.ps1 -DryRun    # Preview changes
+.\scripts\deploy.ps1            # Deploy with auto-backup
+.\scripts\deploy.ps1 -ListBackups
+.\scripts\deploy.ps1 -Rollback "2026-01-18_143022"
 
-# JIRA CLI (REST API v3)
-.\scripts\jira.ps1 list                      # List open issues
+# JIRA CLI (REST API v3 + Agile)
+.\scripts\jira.ps1 list                      # List open issues (paginated)
+.\scripts\jira.ps1 list all                  # List all issues
 .\scripts\jira.ps1 get WIN-123               # Get issue details
 .\scripts\jira.ps1 create "Fix bug" Bug      # Create issue (Task, Bug, Story)
-.\scripts\jira.ps1 status WIN-123 "Done"     # Transition status
+.\scripts\jira.ps1 update WIN-123 "New title" # Update issue summary
+.\scripts\jira.ps1 status WIN-123 "Done"     # Transition status (disambiguates Done vs Cancelled)
+.\scripts\jira.ps1 cancel WIN-123            # Transition to Cancelled
 .\scripts\jira.ps1 comment WIN-123 "Note"    # Add comment
+.\scripts\jira.ps1 backlog                   # Open issues not in any sprint
 .\scripts\jira.ps1 sprint                    # Current sprint issues
+.\scripts\jira.ps1 sprint-list               # List all sprints with issue counts
+.\scripts\jira.ps1 sprint-issues 257         # Show issues in a sprint
+.\scripts\jira.ps1 sprint-create "Name"      # Create sprint (max 30 chars)
+.\scripts\jira.ps1 sprint-add 257 WIN-1,WIN-2 # Add issues to sprint
+.\scripts\jira.ps1 sprint-start 257          # Start sprint (2-week)
+.\scripts\jira.ps1 sprint-close 257          # Complete/close sprint
+.\scripts\jira.ps1 sprint-delete 257         # Delete future sprint
 ```
 
 Open: **http://localhost:5173/qve/**
@@ -64,30 +87,56 @@ npm run format       # Prettier
 ```
 qve/src/
 ├── lib/
-│   ├── api/           # TypeScript API client
-│   │   ├── client.ts  # All API methods
-│   │   └── types.ts   # Wine, Bottle, Rating types
-│   ├── components/    # 40+ Svelte components
+│   ├── api/           # TypeScript API client (client.ts, types.ts)
+│   ├── agent/         # Agent architecture (Phase 2) — router, state machine, handlers
+│   │   ├── handlers/  # Action handlers (identification, enrichment, addWine, etc.)
+│   │   ├── messages/  # Message factory functions
+│   │   ├── middleware/ # Error handling, retry tracking, validation
+│   │   ├── services/  # API service layer
+│   │   └── types.ts, router.ts, stateMachine.ts, personalities.ts
+│   ├── components/    # 90+ Svelte components
 │   │   ├── ui/        # Icon, ThemeToggle, CurrencySelector, Toast, RatingDisplay, PriceScale, BuyAgainIndicator
 │   │   ├── wine/      # WineCard, WineGrid, HistoryCard
-│   │   ├── layout/    # Header, FilterBar, SideMenu, FilterDropdown
+│   │   ├── layout/    # Header, CollectionRow, FilterBar, SideMenu, FilterDropdown
 │   │   ├── forms/     # FormInput, RatingDots, MiniRatingDots
 │   │   ├── wizard/    # WizardStepIndicator, SearchDropdown, AILoadingOverlay
-│   │   ├── modals/    # DrinkRateModal, ConfirmModal, DuplicateWarningModal
-│   │   └── edit/      # WineForm, BottleForm, BottleSelector
-│   ├── stores/        # 16 Svelte stores (state management)
-│   └── styles/        # tokens.css, base.css, animations.css
+│   │   ├── modals/    # DrinkRateModal, ConfirmModal, DuplicateWarningModal, SettingsModal, AddBottleModal
+│   │   ├── edit/      # WineForm, BottleForm, BottleSelector
+│   │   └── agent/     # AgentPanel, ChatMessage, ActionChips, CommandInput
+│   │       ├── cards/       # DataCard, EnrichmentCard, WineCard
+│   │       ├── content/     # ChipsMessage, EnrichmentMessage, ErrorMessage, FormMessage, ImageMessage, TextMessage
+│   │       ├── conversation/ # AgentChatContainer, InputArea, MessageList
+│   │       ├── enrichment/  # CriticScores, DrinkWindow, GrapeComposition, StyleProfile, etc.
+│   │       ├── forms/       # BottleDetailsForm, ManualEntryForm, MatchSelectionList
+│   │       └── wine/        # WineConfidenceSection, WineDetailsSection, WineNameSection
+│   ├── stores/        # 24 Svelte stores (16 core + 8 agent/settings)
+│   ├── utils/         # commandDetector.ts (command/chip detection, brief input handling)
+│   └── styles/        # tokens.css, base.css, animations.css, index.css
 └── routes/            # SvelteKit file-based routing
     ├── +page.svelte   # Home / Cellar view
     ├── add/           # Add Wine wizard
     ├── history/       # Drink history
     ├── edit/[id]/     # Edit Wine/Bottle
     └── drink/[id]/    # Drink/Rate flow
+docs/                  # Detailed reference docs (see below)
 ```
+
+**Detailed reference docs** in `docs/`:
+- `AGENT_ARCHITECTURE.md` — Router, middleware, handlers, state machine, message system, chip configs
+- `COMPONENTS.md` — Full component API reference with props and usage
+- `STORES.md` — All store APIs with state shapes and actions
+- `API.md` — Full API client method reference
+- `ARCHITECTURE.md` — System architecture diagrams and data flows
+- `SOMMELIER_PERSONALITIES.md` — Agent personality configuration
+- `DEVELOPMENT.md` — Extended development guide
 
 ---
 
 ## Key Stores
+
+For full store APIs, see `docs/STORES.md`.
+
+**Core stores (16):**
 
 | Store | File | Purpose |
 |-------|------|---------|
@@ -105,8 +154,21 @@ qve/src/
 | modal | `stores/modal.ts` | Modal container state |
 | menu | `stores/menu.ts` | Side menu open/close |
 | theme | `stores/theme.ts` | Light/dark theme |
-| currency | `stores/currency.ts` | Display currency preference, conversion utilities |
+| currency | `stores/currency.ts` | Display currency, conversion utilities, formatCompactValue |
 | scrollPosition | `stores/scrollPosition.ts` | Scroll restoration |
+| settings | `stores/settings.ts` | Collection name, cellar value display |
+
+**Agent stores (7) — Phase 2 rearchitecture split from monolithic agent.ts:**
+
+| Store | File | Purpose |
+|-------|------|---------|
+| agent | `stores/agent.ts` | Core agent state, phase management, panel open/close |
+| agentConversation | `stores/agentConversation.ts` | Chat messages, typing indicators |
+| agentIdentification | `stores/agentIdentification.ts` | Identification results, confidence |
+| agentEnrichment | `stores/agentEnrichment.ts` | Enrichment data (grapes, critics, drink window) |
+| agentAddWine | `stores/agentAddWine.ts` | Add-to-cellar flow state |
+| agentPersistence | `stores/agentPersistence.ts` | sessionStorage save/restore |
+| agentSettings | `stores/agentSettings.ts` | Agent personality settings |
 
 ---
 
@@ -156,6 +218,118 @@ const data = await api.enrichWithAI('producer', 'Château Margaux');
 <ConfirmModal message="Discard changes?" on:confirm={discard} on:cancel={stay} />
 ```
 
+### Header Architecture
+Unified header structure used across Cellar, All Wines, and History pages:
+```
+Header.svelte
+├── header-top: Menu + Logo + Density Toggle + Search
+├── CollectionRow: Title + View Toggle (Cellar/All) + Stats
+└── FilterBar/HistoryFilterBar: Scrollable pills | Sort controls
+```
+- **CollectionRow**: Displays page title, Cellar/All toggle, wine count + value
+- **FilterBar**: Horizontal scroll for filter pills with `touch-action: pan-x`, fixed sort controls on right separated by `|`
+- Stats use `formatCompactValue()` for compact display (e.g., `~£45k`)
+
+---
+
+## Mobile & iOS Safari
+
+### Responsive Grid (WineGrid.svelte)
+Mobile-first approach with fixed column counts:
+```css
+.wine-grid.view-compact {
+  grid-template-columns: repeat(2, 1fr);  /* Default: 2 columns */
+}
+@media (min-width: 560px)  { repeat(3, 1fr); }
+@media (min-width: 768px)  { repeat(4, 1fr); }
+@media (min-width: 992px)  { repeat(5, 1fr); }
+@media (min-width: 1200px) { repeat(6, 1fr); }
+```
+**Note**: Avoid `auto-fill, minmax()` on mobile - causes overflow when minimum exceeds available space.
+
+### Overflow Prevention (base.css)
+Required for iOS Safari horizontal scroll prevention:
+```css
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;  /* Prevents fixed elements from extending viewport */
+}
+```
+Also add to fixed-position containers like `.header`:
+```css
+.header {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+```
+
+### Touch Scroll vs Tap Detection (FilterPill.svelte)
+Prevent scroll gestures from triggering click handlers:
+```typescript
+let touchStartX = 0, touchStartY = 0;
+const SCROLL_THRESHOLD = 10; // pixels
+const TAP_TIMEOUT = 300; // ms
+
+function handleTouchStart(e: TouchEvent) {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  touchStartTime = Date.now();
+}
+
+function handleTouchEnd(e: TouchEvent) {
+  const deltaX = Math.abs(e.changedTouches[0].clientX - touchStartX);
+  const deltaY = Math.abs(e.changedTouches[0].clientY - touchStartY);
+  const elapsed = Date.now() - touchStartTime;
+  if (deltaX > SCROLL_THRESHOLD || deltaY > SCROLL_THRESHOLD || elapsed > TAP_TIMEOUT) return;
+  // Handle tap...
+}
+```
+
+### FilterDropdown Portal Pattern (FilterDropdown.svelte)
+The dropdown uses a portal to escape the header's stacking context on iOS:
+- Elements are moved to `document.body` on mount via `portalTarget`
+- Dark theme styles must use `:global(html[data-theme="dark"])` selectors with hardcoded colors
+- CSS variables don't inherit reliably when elements are portaled on iOS
+- Theme attribute is copied to portal container but explicit color overrides are required
+
+### iOS Safari Utility Classes (base.css)
+```css
+.scroll-momentum { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.no-overscroll { overscroll-behavior: none; }
+```
+
+### Agent Session Persistence
+
+State survives mobile browser tab switches (e.g., switching to Camera app). See `docs/AGENT_ARCHITECTURE.md` for full persistence details.
+
+- **sessionStorage**: Messages (max 30), results, images (as data URLs), phase, augmentation context
+- **localStorage**: Panel open/close state
+- **Orphan protection**: Loading states reset to false on hydration
+- **Quota fallback**: Drops image data first, then reduces to last 10 messages
+
+### Confidence Handling (Gotcha)
+
+- **API format**: PHP returns confidence as **percentage (0-100)**, e.g., `18` = 18%
+- **Internal format**: `analyzeResultQuality()` normalizes to **decimal (0-1)** for threshold comparisons
+- **Thresholds**: `LOW_CONFIDENCE_THRESHOLD = 0.7`, `ESCALATION_CONFIDENCE_THRESHOLD = 0.6`
+- **Always use** `identification.getConfidence()` as the authoritative source — `result.confidence` may be lost through serialization during field accumulation flows
+
+### Agent Input & Command Detection
+
+Full phase table and command detection in `docs/AGENT_ARCHITECTURE.md`. Key behaviors:
+
+- Text input is **always visible** with phase-aware placeholders
+- **New Search Confirmation**: Typing during `action_select`/`result_confirm` shows "Search New" / "Keep Current" chips to prevent accidental progress loss
+- **Chip response detection** in `result_confirm`: "yes"/"no" → triggers chip action; unrecognized short input → fallback message
+- **Brief input confirmation**: Single words prompt "Just 'X'? Adding more detail will improve the match."
+- **Command detection** (`lib/utils/commandDetector.ts`): "start over", "cancel", "go back", "try again" — with false-positive prevention for wine names
+- **`pendingNewSearch`** persisted to sessionStorage for mobile tab-switch survival
+
+### Add Bottle to Existing Wine
+
+After "Add to Cellar", `checkDuplicate` runs. If wine exists, user sees "Add Another Bottle" (→ `api.addBottle()`) or "Create New Wine" (→ full matching flow).
+
 ---
 
 ## Routes
@@ -170,56 +344,15 @@ const data = await api.enrichWithAI('producer', 'Château Margaux');
 
 ---
 
-## Current Sprint Backlog
+## Current Work
 
-### Sprint 6: iOS + Navigation + Ratings (Current)
-- WIN-131: iOS testing/bug fixes
-- WIN-128: Back button / swipe navigation
-- WIN-122: Fix UI flashing/highlighting
-- WIN-117: Edit ratings from history
-- WIN-114: Image view enhancements
+For up-to-date task status, see [JIRA Board](https://philhumber.atlassian.net/jira/software/projects/WIN).
 
-### Completed: Sprint 5 (Currency + Card Details)
-- WIN-134: Implement bottle_sizes and currencies tables ✓
-- WIN-133: Fix TypeScript error in WineStep.svelte ✓
-- WIN-132: Fix TypeScript error in RegionStep.svelte ✓
-- WIN-130: Allow currency display setting ✓
-- WIN-125: Add/Edit screen consistency ✓
-- WIN-111: Additional wine card details ✓
-- WIN-103: Remove hardcoded currencies/sizes ✓
-- WIN-99: Audit JSON display fix ✓
-
-### Completed: Sprint 4 (Security + Quick Wins)
-- WIN-119: Secure wineapp-config directory ✓
-- WIN-34: Finish filtering/sorting ✓
-- WIN-79: Finish duplicate checking ✓
-- WIN-124: Double field label bug ✓
-- WIN-129: Form not clearing bug ✓
-- WIN-115: Browser tab titles ✓
-- WIN-116: Qve to Qvé branding ✓
-
-### Sprint 7: Collection Features + Data Quality
-- WIN-121/126: Collection naming
-- WIN-127: Collection value data
-- WIN-113: Region parent level search
-- WIN-123: Field validation vs SQL
-
-### Sprint 8: Data Management + Infrastructure
-- WIN-97: Audit functions for all operations
-- WIN-80: Soft delete support
-- WIN-78: JS/PHP caching
-- WIN-108: AI extract region from producer
-- WIN-32: Producer/region info cards
-
-### Sprint 9: Wishlist + Grape Data
-- WIN-109: Wine wishlist
-- WIN-112: Grape data capture
-
-### Backlog: AI Features
-- WIN-42: Image recognition
-- WIN-37: AI chatbot (winebot)
-- WIN-64: Structured output and grounding
-- WIN-118: Vector database evaluation
+```bash
+.\scripts\jira.ps1 list                    # All open issues
+.\scripts\jira.ps1 sprint                  # Current sprint
+.\scripts\jira.ps1 get WIN-123             # Issue details
+```
 
 ---
 
@@ -235,6 +368,7 @@ Endpoints in `resources/php/`:
 | `drinkBottle.php` | Mark drunk + add rating |
 | `addBottle.php` | Add bottle to wine |
 | `updateBottle.php` | Update bottle details |
+| `getBottles.php` | Get bottles for a wine |
 | `getDrunkWines.php` | History with ratings |
 | `getCountries.php` | Countries with bottle counts (cascading) |
 | `getTypes.php` | Types with bottle counts (cascading) |
@@ -242,9 +376,52 @@ Endpoints in `resources/php/`:
 | `getProducers.php` | Producers with bottle counts (cascading) |
 | `getYears.php` | Vintages with bottle counts (cascading) |
 | `getCurrencies.php` | Currencies and bottle sizes for settings |
+| `getUserSettings.php` | Retrieve user settings |
+| `updateUserSettings.php` | Update user settings |
+| `updateRating.php` | Update rating for drunk wine |
+| `getCellarValue.php` | Calculate total cellar value |
 | `upload.php` | Image upload (800x800) |
 | `geminiAPI.php` | AI enrichment |
 | `checkDuplicate.php` | Duplicate/similar item detection (fuzzy matching) |
+| `databaseConnection.php` | Database connection utility |
+| `normalize.php` | String normalization utilities |
+| `validators.php` | Input validation utilities |
+
+### Agent Endpoints (`resources/php/agent/`)
+
+| File | Purpose |
+|------|---------|
+| `_bootstrap.php` | Shared functions: `agentResponse()`, `agentExceptionError()`, `agentStructuredError()` |
+| `identifyText.php` | Text-based wine identification |
+| `identifyImage.php` | Image-based wine identification |
+| `identifyWithOpus.php` | Premium Opus model escalation |
+| `agentEnrich.php` | Wine enrichment (grapes, critics, drink window) |
+| `clarifyMatch.php` | Match clarification/disambiguation |
+| `identifyTextStream.php` | Streaming text identification |
+| `identifyImageStream.php` | Streaming image identification |
+| `agentEnrichStream.php` | Streaming enrichment endpoint |
+| `config/` | Agent configuration (`agent.config.php`) |
+| `Identification/` | Service classes (ImageQualityAssessor, IntentDetector, InputClassifier, etc.) |
+| `Enrichment/` | Service classes (EnrichmentService, EnrichmentCache, ValidationService, etc.) |
+| `LLM/` | LLM client and adapters (ClaudeAdapter, GeminiAdapter, CircuitBreaker, etc.) |
+
+### Agent Command & Input Detection
+
+See `docs/AGENT_ARCHITECTURE.md` (Section 15: Command Detection) for full tables. Key file: `qve/src/lib/utils/commandDetector.ts`.
+
+---
+
+## Agent Error Handling
+
+Full error handling reference in `docs/AGENT_ARCHITECTURE.md` (Section 16: Error Handling).
+
+**Quick reference:**
+- Backend: `agentExceptionError($e, 'endpoint')` for exceptions, `agentStructuredError($type, $msg)` for service errors
+- Both return structured JSON with `{ success, message, error: { type, userMessage, retryable, supportRef } }`
+- **Support Ref**: `ERR-XXXXXXXX` format, exception-only, debug via `grep "ERR-XXX" /var/log/php_errors.log`
+- Frontend: `AgentError.fromResponse(json)`, derived stores (`agentError`, `agentErrorRetryable`, `agentErrorSupportRef`)
+- UI: "Try Again" chip (if retryable) + "Start Over" chip, sommelier-personality messages
+- Error types: `timeout`(408), `rate_limit`(429), `limit_exceeded`(429), `server_error`(500), `overloaded`(503), `database_error`(500), `quality_check_failed`(422), `identification_error`(400), `enrichment_error`(400)
 
 ---
 
@@ -252,9 +429,15 @@ Endpoints in `resources/php/`:
 
 **Host**: 10.0.0.16
 **Database**: winelist
-**Schema**: `resources/sql/DBStructure.sql`
+**Schema**: `resources/sql/Full_DB_Structure.sql` (canonical, 28 tables + 3 views)
 
-Key tables: wine, bottles, ratings, producers, region, country, winetype, currencies, bottle_sizes
+**Core** (12): `wine`, `bottles`, `ratings`, `producers`, `region`, `country`, `winetype`, `grapes`, `grapemix`, `worlds`, `currencies`, `bottle_sizes`, `user_settings`, `audit_log`, `critic_scores`
+**Agent** (7): `agentUsers`, `agentSessions`, `agentUsageLog`, `agentUsageDaily`, `agentIdentificationResults`, `agentUserTasteProfile`, `agentWineEmbeddings`
+**Cache** (3): `cacheWineEnrichment`, `cacheProducers`, `cacheCanonicalAliases`
+**Reference** (6): `refAbbreviations`, `refAppellations`, `refGrapeCharacteristics`, `refWineStyles`, `refPairingRules`, `refIntensityProfiles`
+**Views** (3): `vw_model_confidence_stats`, `vw_tier_escalation_analysis`, `vw_model_comparison`
+
+See `docs/ARCHITECTURE.md` Section 4 for full ER diagrams and column details.
 
 ---
 

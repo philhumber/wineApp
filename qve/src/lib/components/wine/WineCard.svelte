@@ -114,6 +114,9 @@
       <span class="wine-year">{wine.year || 'NV'}</span>
     </div>
 
+    <!-- Compact-only producer (shows only producer name) -->
+    <p class="wine-producer-compact">{wine.producerName}</p>
+
     <div class="wine-divider"></div>
 
     <p class="wine-producer">{wine.regionName} · {wine.producerName}</p>
@@ -129,7 +132,13 @@
         typeAvgPricePerLiterEUR={wine.typeAvgPricePerLiterEUR}
         compact={compact && !expanded}
       />
-      <RatingDisplay rating={wine.avgRating} compact={compact && !expanded} />
+      <RatingDisplay
+        rating={wine.avgRating}
+        compact={compact && !expanded}
+        showBreakdown={expanded && !!wine.avgOverallRating && !!wine.avgValueRating}
+        overallRating={wine.avgOverallRating}
+        valueRating={wine.avgValueRating}
+      />
       <BuyAgainIndicator
         percent={wine.buyAgainPercent}
         ratingCount={wine.ratingCount || 0}
@@ -269,10 +278,10 @@
     flex-wrap: wrap;
   }
 
-  /* Target highlight for scroll-to-wine - uses separate animation properties
-     to avoid overwriting fadeInUp and prevent re-trigger flash when class removed */
+  /* Target highlight for scroll-to-wine - only uses highlightPulse
+     to avoid overwriting fadeInUp which would restart and flash the card */
   .wine-card.target-highlight {
-    animation: fadeInUp 0.7s var(--ease-out) forwards, highlightPulse 2s var(--ease-out) forwards;
+    animation: highlightPulse 2s var(--ease-out) forwards;
   }
 
   @keyframes highlightPulse {
@@ -572,6 +581,22 @@
     display: none;
   }
 
+  /* Compact producer - visible only in compact collapsed state */
+  .wine-producer-compact {
+    display: none;
+  }
+
+  .wine-card.compact .wine-producer-compact {
+    display: block;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .wine-card.compact .wine-name {
     font-size: 0.875rem;
     display: -webkit-box;
@@ -606,6 +631,10 @@
   .wine-card.compact.expanded .wine-location,
   .wine-card.compact.expanded .wine-actions {
     display: flex;
+  }
+
+  .wine-card.compact.expanded .wine-producer-compact {
+    display: none;
   }
 
   .wine-card.compact.expanded .wine-divider {

@@ -1,0 +1,100 @@
+<script lang="ts">
+	/**
+	 * CriticScoresSection
+	 * Displays critic scores and ratings
+	 */
+	import type { StreamingField } from '$lib/agent/types';
+	import CriticScores from './CriticScores.svelte';
+
+	// Slot props from DataCard
+	export let state: 'skeleton' | 'streaming' | 'static';
+	export let fieldsMap: Map<string, StreamingField> = new Map();
+	export let getFieldValue: (field: string) => any;
+	export let hasField: (field: string) => boolean;
+
+	// For streaming mode, directly access fieldsMap to ensure proper Svelte reactivity
+	$: criticScoresField = state === 'streaming' ? fieldsMap.get('criticScores') : null;
+
+	$: criticScores = state === 'streaming' ? criticScoresField?.value : getFieldValue('criticScores');
+	$: hasCriticScores = state === 'streaming' ? !!criticScoresField : hasField('criticScores');
+	$: isArray = Array.isArray(criticScores) && criticScores.length > 0;
+</script>
+
+<!-- Hide entire section in static state when no data available -->
+{#if state !== 'static' || (hasCriticScores && isArray)}
+	<section class="section">
+		<h4 class="section-title">Critic Scores</h4>
+		{#if state === 'skeleton' || !hasCriticScores || !isArray}
+			<div class="shimmer-container">
+				<div class="shimmer-scores">
+					<span class="shimmer-score"></span>
+					<span class="shimmer-score"></span>
+					<span class="shimmer-score"></span>
+				</div>
+			</div>
+		{:else}
+			<CriticScores scores={criticScores} />
+		{/if}
+	</section>
+{/if}
+
+<style>
+	.section {
+		margin-bottom: var(--space-5);
+	}
+
+	.section:last-child {
+		margin-bottom: 0;
+	}
+
+	.section-title {
+		font-size: 0.8125rem;
+		font-weight: 600;
+		color: var(--text-secondary);
+		margin-bottom: var(--space-2);
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+	}
+
+	.shimmer-container {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.shimmer-scores {
+		display: flex;
+		gap: var(--space-3);
+	}
+
+	.shimmer-score {
+		display: block;
+		width: 60px;
+		height: 40px;
+		background: linear-gradient(
+			90deg,
+			var(--bg-subtle) 25%,
+			var(--bg-elevated) 50%,
+			var(--bg-subtle) 75%
+		);
+		background-size: 200% 100%;
+		animation: shimmer 1.5s infinite;
+		border-radius: var(--radius-md);
+	}
+
+	@keyframes shimmer {
+		0% {
+			background-position: 200% 0;
+		}
+		100% {
+			background-position: -200% 0;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.shimmer-score {
+			animation: none;
+			background: var(--bg-subtle);
+		}
+	}
+</style>

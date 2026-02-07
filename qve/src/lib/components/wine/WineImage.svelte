@@ -19,8 +19,9 @@
     hasError = true;
   }
 
-  function handleClick() {
+  function handleClick(event: MouseEvent) {
     if (clickable && src && !hasError) {
+      event.stopPropagation();
       dispatch('click');
     }
   }
@@ -28,7 +29,8 @@
   function handleKeydown(event: KeyboardEvent) {
     if (clickable && (event.key === 'Enter' || event.key === ' ')) {
       event.preventDefault();
-      handleClick();
+      event.stopPropagation();
+      dispatch('click');
     }
   }
 
@@ -126,8 +128,14 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: filter 0.3s var(--ease-out);
   }
 
+  /* Dark mode: reduce brightness */
+  :global([data-theme="dark"]) .wine-image {
+    filter: brightness(0.85);
+  }
+  
   /* Mobile adjustments for compact view */
   @media (max-width: 479px) {
     .wine-image-placeholder svg {

@@ -1,219 +1,123 @@
-# Qvé - Wine Collection App
+# Qve Wine App
 
-A personal wine cellar management app built with SvelteKit.
+A personal wine cellar management app with an AI sommelier assistant. Photograph a wine label or describe a wine, and the agent identifies it, enriches it with critic scores and tasting notes, and adds it to your cellar.
 
-## Features
+## What It Does
 
-- **Wine Collection**: Track your cellar with filtering by type, region, producer, vintage
-- **Add Wine Wizard**: 4-step flow with AI-powered data enrichment
-- **Drink & Rate**: 10-point rating with optional detailed scores (complexity, drinkability, surprise)
-- **History**: Track consumption history with price analysis
-- **Dual Themes**: Light and dark modes
-- **PWA Support**: Installable on mobile devices
+- **Cellar Management** — Browse, filter, and sort your wine collection with smart cascading filters and multiple view densities
+- **AI Wine Agent** — Conversational sommelier that identifies wines from text or photos, with streaming results and multi-tier LLM escalation
+- **Wine Enrichment** — Automatic lookup of grape composition, critic scores, drink windows, tasting notes, and food pairings
+- **Drink & Rate** — Track bottles consumed with 10-point ratings and tasting notes
+- **History** — Full drink history with sorting and filtering
 
 ## Tech Stack
 
+```mermaid
+graph LR
+    subgraph Frontend
+        SK[SvelteKit + TypeScript]
+        PWA[PWA / Service Worker]
+    end
+
+    subgraph Backend
+        PHP[PHP 8.3]
+        MySQL[(MySQL)]
+    end
+
+    subgraph AI
+        Gemini[Google Gemini]
+        Claude[Claude Opus]
+    end
+
+    SK -->|REST API| PHP
+    PHP --> MySQL
+    PHP --> Gemini
+    PHP --> Claude
+```
+
 | Layer | Technology |
-|-------|------------|
-| Frontend | SvelteKit 2, TypeScript, Vite 5 |
-| Backend | PHP 7+ with PDO |
-| Database | MySQL 8.0 |
-| AI | Google Gemini API |
-| State | Svelte stores (13 stores) |
-| Styling | CSS custom properties (design tokens) |
+|-------|-----------|
+| Frontend | SvelteKit, TypeScript, Vite, CSS custom properties |
+| Backend | PHP 8.3 (stateless REST endpoints) |
+| Database | MySQL (28 tables, 3 views) |
+| AI | Google Gemini (primary), Claude Opus (escalation) |
+| Hosting | Static SvelteKit build on production server |
 
-## Quick Start
+## Architecture at a Glance
 
-### Prerequisites
-
-- Node.js 18+
-- PHP 7.4+
-- MySQL 8.0+
-
-### Development Setup
-
-The app requires **two servers** running simultaneously:
-
-```bash
-# Terminal 1: Start PHP backend (from project root)
-php -S localhost:8000
-
-# Terminal 2: Start Vite dev server (from qve folder)
-cd qve
-npm install
-npm run dev
+```mermaid
+graph TB
+    User([User]) --> UI[SvelteKit Frontend<br/>86 components, 24 stores]
+    UI --> Agent[AI Sommelier Agent<br/>Router + Middleware + Handlers]
+    UI --> Cellar[Cellar Views<br/>Filters, Sorting, Grid]
+    Agent -->|REST + SSE| AgentPHP[Agent PHP Endpoints<br/>Identify, Enrich, Add]
+    Cellar -->|REST| CorePHP[Core PHP Endpoints<br/>CRUD, Filters, Settings]
+    AgentPHP --> LLM[LLM Services<br/>Gemini + Claude]
+    AgentPHP --> DB[(MySQL)]
+    CorePHP --> DB
 ```
 
-Then open: **http://localhost:5173/qve/**
+The frontend is a SvelteKit SPA with file-based routing and 24 reactive stores. The AI agent uses a **Router + Middleware + Handlers** pattern with a finite state machine (8 phases) controlling the conversation flow. The PHP backend is stateless — each endpoint handles one concern with no framework overhead.
 
-### How It Works
+## Key Features
 
-```
-Browser (localhost:5173)
-  → /qve/* (SvelteKit app)
-  → /resources/php/* (proxied to PHP backend at localhost:8000)
-```
+### AI Sommelier Agent
+The agent is the core differentiator. Users interact through a chat-style panel:
+
+1. **Identify** — Submit text or a photo. The agent calls Gemini (with Claude Opus escalation for low-confidence results) and streams identified fields back in real time.
+2. **Confirm** — Review the result. If incomplete, provide missing details field-by-field or re-identify.
+3. **Enrich** — "Learn More" fetches critic scores, grape composition, tasting notes, drink window, and food pairings.
+4. **Add** — Add to cellar with duplicate detection, entity matching (region/producer/wine), and bottle details.
+
+The agent persists state to sessionStorage so mobile users don't lose progress when switching to the camera app.
+
+### Cellar & Collection
+- Cascading filters (country, type, region, producer, vintage) that update available options based on active selections
+- 9 sort options with compact/comfortable view densities
+- Cellar vs All Wines toggle with bottle counts and estimated value
+- Mobile-first responsive grid (2-6 columns based on viewport)
 
 ## Project Structure
 
 ```
 wineapp/
-├── qve/                          # SvelteKit app
-│   ├── src/
-│   │   ├── lib/
-│   │   │   ├── api/              # TypeScript API client
-│   │   │   │   ├── client.ts     # API methods
-│   │   │   │   └── types.ts      # TypeScript types
-│   │   │   ├── components/       # Svelte components
-│   │   │   │   ├── ui/           # Icon, ThemeToggle, Toast, etc.
-│   │   │   │   ├── wine/         # WineCard, WineGrid, HistoryCard
-│   │   │   │   ├── layout/       # Header, FilterBar, SideMenu
-│   │   │   │   ├── forms/        # FormInput, RatingDots, etc.
-│   │   │   │   ├── wizard/       # Add Wine wizard components
-│   │   │   │   ├── modals/       # DrinkRateModal, AddBottleModal
-│   │   │   │   └── edit/         # WineForm, BottleForm
-│   │   │   ├── stores/           # Svelte stores (state management)
-│   │   │   │   ├── wines.ts      # Wine list state
-│   │   │   │   ├── filters.ts    # Filter state
-│   │   │   │   ├── addWine.ts    # Add Wine wizard state
-│   │   │   │   ├── drinkWine.ts  # Drink/Rate modal state
-│   │   │   │   └── ...           # 13 stores total
-│   │   │   └── styles/           # CSS design tokens
-│   │   └── routes/               # SvelteKit pages
-│   │       ├── +page.svelte      # Home / Cellar view
-│   │       ├── add/              # Add Wine wizard
-│   │       ├── history/          # Drink history
-│   │       ├── edit/[id]/        # Edit Wine/Bottle
-│   │       └── drink/[id]/       # Drink/Rate flow
-│   ├── package.json
-│   ├── vite.config.ts            # Vite config with PHP proxy
-│   └── svelte.config.js
-│
-├── resources/
-│   ├── php/                      # Backend API (21 endpoints)
-│   └── sql/                      # Database schema
-│
-├── images/                       # Wine images
-├── archive/                      # V1 app files (reference)
-├── docs/                         # Documentation
-└── design/                       # AI agent specs
+├── qve/src/              # SvelteKit frontend
+│   ├── lib/agent/        # Agent: router, state machine, 6 handlers, middleware
+│   ├── lib/components/   # 86 Svelte components across 8 categories
+│   ├── lib/stores/       # 24 stores (17 core + 7 agent)
+│   ├── lib/api/          # TypeScript API client
+│   └── routes/           # 6 routes (cellar, add, history, edit, drink, agent-test)
+├── resources/php/        # PHP backend (20 core + 9 agent endpoints)
+├── resources/sql/        # Database schema
+├── docs/                 # Detailed documentation (this directory)
+├── scripts/              # JIRA CLI, utilities, deployment with backup/rollback
 ```
 
-## Available Routes
-
-| Route | Description |
-|-------|-------------|
-| `/qve/` | Home - Wine cellar with filters |
-| `/qve/add` | Add Wine - 4-step wizard |
-| `/qve/history` | History - Consumed wines |
-| `/qve/edit/[id]` | Edit Wine/Bottle details |
-| `/qve/drink/[id]` | Drink & Rate flow |
-
-## Stores
-
-| Store | Purpose |
-|-------|---------|
-| `wines` | Wine list and loading state |
-| `filters` | Active filter values |
-| `filterOptions` | Available filter options (context-aware) |
-| `view` | View mode (Cellar vs All Wines) |
-| `theme` | Light/dark theme |
-| `addWine` | Add Wine wizard form state |
-| `drinkWine` | Drink/Rate modal state |
-| `editWine` | Edit page form state |
-| `addBottle` | Add Bottle modal state |
-| `history` | Drink history and sorting |
-| `toast` | Toast notifications |
-| `modal` | Modal container state |
-| `menu` | Side menu open/close |
-| `scrollPosition` | Scroll restoration for back/forward |
-
-## API Endpoints
-
-The PHP backend provides these endpoints at `/resources/php/`:
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `getWines.php` | GET | Fetch wines with filters |
-| `addWine.php` | POST | Add new wine (4-table transaction) |
-| `updateWine.php` | POST | Update wine details |
-| `drinkBottle.php` | POST | Mark bottle drunk with rating |
-| `addBottle.php` | POST | Add bottle to existing wine |
-| `updateBottle.php` | POST | Update bottle details |
-| `getDrunkWines.php` | GET | Fetch drink history |
-| `getTypes.php` | GET | Wine types with bottle counts |
-| `getRegions.php` | GET | Regions with bottle counts |
-| `getProducers.php` | GET | Producers with bottle counts |
-| `getYears.php` | GET | Vintages with bottle counts |
-| `upload.php` | POST | Image upload (800x800) |
-| `geminiAPI.php` | POST | AI data enrichment |
-
-## Configuration
-
-### Database
-
-Database connection is configured in `resources/php/databaseConnection.php`, which reads credentials from `../wineapp-config/config.local.php` (outside the repo).
-
-### Vite Proxy
-
-The Vite dev server proxies API requests to the PHP backend. See [qve/vite.config.ts](qve/vite.config.ts):
-
-```typescript
-server: {
-  proxy: {
-    '/resources/php': {
-      target: 'http://localhost:8000',
-      changeOrigin: true
-    }
-  }
-}
-```
-
-## Deployment
-
-```powershell
-# Preview deployment
-.\deploy.ps1 -DryRun
-
-# Deploy to production
-.\deploy.ps1
-
-# Rollback
-.\deploy.ps1 -Rollback "2026-01-22_143022"
-```
-
-## Development
-
-### Build for Production
+## Getting Started
 
 ```bash
-cd qve
-npm run build
+# Frontend
+cd qve && npm run dev         # http://localhost:5173/qve/
+
+# Backend
+php -S localhost:8000         # Serves PHP endpoints via Vite proxy
 ```
 
-### Type Checking
+See [DEVELOPMENT.md](DEVELOPMENT.md) for full setup, testing, and deployment instructions.
 
-```bash
-cd qve
-npm run check
-```
+## Documentation
 
-### Linting
+| Document | What's Inside |
+|----------|--------------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture, data flows, database schema, deployment |
+| [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md) | Agent internals: router, state machine, handlers, middleware, stores, messages |
+| [AGENT_FLOW.md](AGENT_FLOW.md) | Agent conversation flows, debugging guide, chip configs, phase/action matrix |
+| [COMPONENTS.md](COMPONENTS.md) | All 86 component APIs with props, events, and usage |
+| [STORES.md](STORES.md) | All 24 store APIs with state shapes and relationships |
+| [API.md](API.md) | TypeScript client methods, PHP endpoints, SSE streaming protocol |
+| [DEVELOPMENT.md](DEVELOPMENT.md) | Setup, workflow, testing, deployment, troubleshooting |
+| [SOMMELIER_PERSONALITIES.md](SOMMELIER_PERSONALITIES.md) | Agent personality system and message templates |
+| [PHASE_2_REARCHITECTURE.md](PHASE_2_REARCHITECTURE.md) | Historical: migration from monolithic to modular agent |
+| [PRODUCTION_READINESS_AUDIT.md](PRODUCTION_READINESS_AUDIT.md) | Security and reliability audit with status tracking |
 
-```bash
-cd qve
-npm run lint
-```
-
-## Resources
-
-- **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
-- **Database**: MySQL 8.0 on 10.0.0.16 (database: `winelist`)
-
-## Archive
-
-The `archive/` folder contains V1 app files for reference:
-- `v1-html/` - Old HTML pages and CSS
-- `v1-js/` - ES6 module system (17 files)
-- `v1-docs/` - Sprint documentation
-- `design-mockups/` - Qvé design mockups and specs
+For AI-assisted development sessions, [CLAUDE.md](../CLAUDE.md) provides quick-start context, key patterns, and common gotchas.

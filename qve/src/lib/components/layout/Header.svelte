@@ -1,14 +1,17 @@
 <script lang="ts">
   /**
    * Header Component
-   * Fixed-position header with logo, theme/view toggles, and filter bar
+   * Fixed-position header with logo, density toggle, collection row, and filter bar
    * Supports variants: 'cellar' (default), 'add', 'edit' for form pages
    */
   import { createEventDispatcher } from 'svelte';
   import { ViewToggle, Icon, ThemeToggle } from '$lib/components';
   import FilterBar from './FilterBar.svelte';
   import HistoryFilterBar from './HistoryFilterBar.svelte';
-  import { toggleMenu } from '$lib/stores';
+  import CollectionRow from './CollectionRow.svelte';
+  import { toggleMenu, wines, winesLoading, viewMode, drunkWineCount, filteredDrunkWineCount, historyLoading, collectionName } from '$lib/stores';
+  import { currentCurrency, formatCompactValue, availableCurrencies, convertFromEUR } from '$lib/stores/currency';
+  import type { Wine } from '$lib/api/types';
 
   export let variant: 'cellar' | 'add' | 'edit' = 'cellar';
   export let showFilters: boolean = true;
@@ -17,11 +20,42 @@
   // Computed: is this a form variant (add/edit)?
   $: isFormVariant = variant === 'add' || variant === 'edit';
 
-  // Page titles for form variants
+  // Page titles for form variants and collection row
   const variantTitles: Record<string, string> = {
     add: 'Add Wine',
     edit: 'Edit Wine'
   };
+
+  // Collection row title based on filter type
+  $: collectionTitle = filterType === 'history' ? 'Drink History' : $collectionName;
+
+  // Calculate total cellar value from wines (prices are stored in EUR in avgPricePerLiterEUR)
+  $: cellarStats = calculateCellarStats($wines, $currentCurrency);
+
+  function calculateCellarStats(wineList: Wine[], currency: typeof $currentCurrency) {
+    let totalValueEUR = 0;
+    let unpricedCount = 0;
+
+    for (const wine of wineList) {
+      if (wine.avgPricePerLiterEUR && wine.bottleCount > 0) {
+        // avgPricePerLiterEUR is per liter, multiply by total volume
+        // Assuming standard 750ml bottles for simplicity
+        const bottleValueEUR = parseFloat(String(wine.avgPricePerLiterEUR)) * 0.75 * wine.bottleCount;
+        totalValueEUR += bottleValueEUR;
+      } else if (wine.bottleCount > 0) {
+        unpricedCount++;
+      }
+    }
+
+    // Convert to display currency
+    const totalValueDisplay = convertFromEUR(totalValueEUR, currency);
+    const formattedValue = formatCompactValue(totalValueDisplay, currency);
+
+    return {
+      totalValue: formattedValue,
+      unpricedCount
+    };
+  }
 
   const dispatch = createEventDispatcher<{
     search: void;
@@ -47,6 +81,7 @@
 
 <header class="header" class:scrolled={scrollY > 10}>
   <div class="header-inner">
+    <!-- Top row: Menu, Logo, Density toggle, Search -->
     <div class="header-top">
       <div class="header-left">
         <button
@@ -79,6 +114,20 @@
       </div>
     </div>
 
+    <!-- Collection row: Title, View toggle (Cellar/All), Stats -->
+    {#if !isFormVariant}
+      <CollectionRow
+        title={collectionTitle}
+        showViewToggle={filterType === 'cellar'}
+        wineCount={$wines.length}
+        bottleCount={filterType === 'history' ? $filteredDrunkWineCount : undefined}
+        totalValue={filterType === 'cellar' ? cellarStats.totalValue : undefined}
+        unpricedCount={filterType === 'cellar' ? cellarStats.unpricedCount : 0}
+        isLoading={filterType === 'history' ? $historyLoading : $winesLoading}
+      />
+    {/if}
+
+    <!-- Filter bar with sort controls -->
     {#if !isFormVariant && showFilters}
       {#if filterType === 'cellar'}
         <FilterBar on:filterChange={handleFilterChange} />
@@ -90,7 +139,11 @@
 </header>
 
 <!-- Spacer to account for fixed header height -->
-<div class="header-spacer" class:with-filters={!isFormVariant && showFilters}></div>
+<div
+  class="header-spacer"
+  class:with-collection={!isFormVariant}
+  class:with-filters={!isFormVariant && showFilters}
+></div>
 
 <style>
   .header {
@@ -102,41 +155,36 @@
     background: var(--bg);
     transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out);
     border-bottom: 1px solid transparent;
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
   .header.scrolled {
     border-bottom-color: var(--divider);
   }
 
-  /* Dark mode: backdrop blur effect */
+  /* Dark mode: solid background (backdrop-filter removed to fix iOS Safari
+     stacking context bug that traps position:fixed dropdowns) */
   :global([data-theme="dark"]) .header {
-    background: rgba(12, 11, 10, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-
-  @supports not (backdrop-filter: blur(20px)) {
-    :global([data-theme="dark"]) .header {
-      background: rgba(12, 11, 10, 0.98);
-    }
+    background: rgba(12, 11, 10, 0.98);
   }
 
   .header-inner {
     max-width: 1200px;
+    width: 100%;
     margin: 0 auto;
-    padding: var(--space-5) var(--space-6);
+    padding: var(--space-4) var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    box-sizing: border-box;
+    overflow: hidden;
   }
 
   .header-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--space-5);
-  }
-
-  /* Remove margin if no filters */
-  .header:not(:has(.filter-bar)):not(:has(.history-filter-bar)) .header-top {
-    margin-bottom: 0;
   }
 
   .logo {
@@ -208,21 +256,30 @@
 
   /* Spacer to offset content below fixed header */
   .header-spacer {
-    height: calc(80px + var(--space-5));
+    height: 64px;
   }
 
-  .header-spacer.with-filters {
-    height: calc(140px + var(--space-5));
+  /* With collection row (title + view toggle + stats) */
+  .header-spacer.with-collection {
+    height: 108px;
+  }
+
+  /* With collection row + filter bar */
+  .header-spacer.with-collection.with-filters {
+    height: 152px;
   }
 
   /* Responsive adjustments */
+  @media (max-width: 479px) {
+    .header-inner {
+      padding: var(--space-3) var(--space-4);
+    }
+  }
+
   @media (max-width: 768px) {
     .header-inner {
-      padding: var(--space-4) var(--space-4);
-    }
-
-    .header-top {
-      margin-bottom: var(--space-4);
+      padding: var(--space-3) var(--space-4);
+      gap: var(--space-2);
     }
 
     .logo {
@@ -243,11 +300,17 @@
     }
 
     .header-spacer {
-      height: calc(70px + var(--space-4));
+      height: 56px;
     }
 
-    .header-spacer.with-filters {
-      height: calc(120px + var(--space-4));
+    /* With collection row (title + view toggle + stats) */
+    .header-spacer.with-collection {
+      height: 96px;
+    }
+
+    /* With collection row + filter bar */
+    .header-spacer.with-collection.with-filters {
+      height: 140px;
     }
   }
 

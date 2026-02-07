@@ -20,6 +20,7 @@ export { storageOptions };
 export interface EditWineFormData {
 	wineName: string;
 	wineYear: string;
+	isNonVintage: boolean;  // WIN-176: True for NV wines
 	wineType: string;
 	wineDescription: string;
 	wineTasting: string;
@@ -79,6 +80,7 @@ export interface EditWineState {
 const initialWineForm: EditWineFormData = {
 	wineName: '',
 	wineYear: '',
+	isNonVintage: false,  // WIN-176
 	wineType: '',
 	wineDescription: '',
 	wineTasting: '',
@@ -144,6 +146,7 @@ function createEditWineStore() {
 				const wineForm: EditWineFormData = {
 					wineName: wine.wineName || '',
 					wineYear: wine.year || '',
+					isNonVintage: wine.isNonVintage || false,  // WIN-176
 					wineType: wine.wineType || '',
 					wineDescription: wine.description || '',
 					wineTasting: wine.tastingNotes || '',
@@ -352,6 +355,7 @@ function createEditWineStore() {
 					wineName: state.wine.wineName.trim(),
 					wineType: state.wine.wineType,
 					wineYear: state.wine.wineYear || undefined,
+					isNonVintage: state.wine.isNonVintage,  // WIN-176
 					wineDescription: state.wine.wineDescription.trim(),
 					wineTasting: state.wine.wineTasting.trim(),
 					winePairing: state.wine.winePairing.trim(),
@@ -451,6 +455,7 @@ export const isWineDirty = derived(editWine, ($state) => {
 	return (
 		curr.wineName !== orig.wineName ||
 		curr.wineYear !== orig.wineYear ||
+		curr.isNonVintage !== orig.isNonVintage ||  // WIN-176
 		curr.wineType !== orig.wineType ||
 		curr.wineDescription !== orig.wineDescription ||
 		curr.wineTasting !== orig.wineTasting ||
