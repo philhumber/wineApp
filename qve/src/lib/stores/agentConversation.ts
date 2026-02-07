@@ -34,6 +34,7 @@ import { assertValidTransition } from '$lib/agent/stateMachine';
 
 const MAX_MESSAGES = 30;
 const MESSAGE_DELAY_MS = 500; // Delay between consecutive agent messages
+export const TYPING_MESSAGE_ID = 'msg_typing_indicator';
 
 // ===========================================
 // Delay Utility
@@ -167,6 +168,37 @@ export function createChipsMessage(
   options: Partial<Omit<AgentMessage, 'id' | 'timestamp' | 'category' | 'data'>> = {}
 ): AgentMessage {
   return createMessage('chips', { chips }, options);
+}
+
+/**
+ * Add a typing indicator message to the conversation.
+ * Uses a well-known ID so it can be reliably removed when results arrive.
+ * Removes any existing typing message first to prevent duplicates.
+ */
+export function addTypingMessage(text: string): AgentMessage {
+  // Remove any existing typing message first
+  removeTypingMessage();
+
+  const message: AgentMessage = {
+    id: TYPING_MESSAGE_ID,
+    category: 'typing',
+    role: 'agent',
+    timestamp: Date.now(),
+    data: { category: 'typing', text },
+    isNew: true,
+  };
+
+  return addMessage(message);
+}
+
+/**
+ * Remove the typing indicator message if present.
+ */
+export function removeTypingMessage(): void {
+  const messages = get(store).messages;
+  if (messages.some((m) => m.id === TYPING_MESSAGE_ID)) {
+    removeMessage(TYPING_MESSAGE_ID);
+  }
 }
 
 // ===========================================

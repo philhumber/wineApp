@@ -197,6 +197,8 @@ async function executeEnrichment(
       }
     );
 
+    conversation.removeTypingMessage();
+
     // Handle pending confirmation (cache match that needs user approval)
     if (enrichmentResult.pendingConfirmation && enrichmentResult.matchedTo) {
       handleCacheConfirmationRequired(enrichmentResult);
@@ -237,6 +239,7 @@ async function executeEnrichment(
     conversation.setPhase('confirming');
 
   } catch (error) {
+    conversation.removeTypingMessage();
     handleEnrichmentError(error);
   }
 }
@@ -279,9 +282,7 @@ async function handleLearnMore(messageId: string): Promise<void> {
 
   conversation.setPhase('enriching');
 
-  conversation.addMessage(
-    conversation.createTextMessage(getMessageByKey(MessageKey.ENRICH_LOADING))
-  );
+  conversation.addTypingMessage(getMessageByKey(MessageKey.ENRICH_LOADING));
 
   await executeEnrichment(
     result.producer,
@@ -369,9 +370,7 @@ async function handleConfirmCacheMatch(messageId: string): Promise<void> {
 
   conversation.setPhase('enriching');
 
-  conversation.addMessage(
-    conversation.createTextMessage(getMessageByKey(MessageKey.ENRICH_USING_CACHE))
-  );
+  conversation.addTypingMessage(getMessageByKey(MessageKey.ENRICH_USING_CACHE));
 
   await executeEnrichment(
     lastRequest.producer,
@@ -421,9 +420,7 @@ async function handleForceRefresh(messageId: string): Promise<void> {
 
   conversation.setPhase('enriching');
 
-  conversation.addMessage(
-    conversation.createTextMessage(getMessageByKey(MessageKey.ENRICH_REFRESHING))
-  );
+  conversation.addTypingMessage(getMessageByKey(MessageKey.ENRICH_REFRESHING));
 
   await executeEnrichment(
     lastRequest.producer,

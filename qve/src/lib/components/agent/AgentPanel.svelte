@@ -30,7 +30,7 @@
 		agentOrigin,
 		hasAnimatingMessages
 	} from '$lib/stores/agentConversation';
-	import { isIdentifying, streamingFields } from '$lib/stores/agentIdentification';
+	import { streamingFields } from '$lib/stores/agentIdentification';
 	import { isEnriching, enrichmentStreamingFields } from '$lib/stores/agentEnrichment';
 	import { addedWineId, resetAddWine } from '$lib/stores/agentAddWine';
 	import { api } from '$lib/api';
@@ -46,7 +46,6 @@
 	import InputArea from './conversation/InputArea.svelte';
 	import WineCard from './cards/WineCard.svelte';
 	import EnrichmentCard from './cards/EnrichmentCard.svelte';
-	import TypingIndicator from './TypingIndicator.svelte';
 	import { Icon } from '$lib/components';
 
 	// ===========================================
@@ -287,17 +286,8 @@
 		<div class="chat-area">
 			<AgentChatContainer messages={$agentMessages} on:action={handleAction}>
 			<svelte:fragment slot="messages" let:handleAction>
-				<!-- Message List -->
+				<!-- Message List (typing indicator is now a message in the list) -->
 				<MessageList messages={$agentMessages} on:action={handleAction} />
-
-				<!-- Typing Indicator -->
-				{#if $isIdentifying || $isEnriching}
-					<div class="indicator-wrapper">
-						<TypingIndicator
-							text={$isEnriching ? 'Researching wine details...' : 'Consulting the cellar...'}
-						/>
-					</div>
-				{/if}
 
 				<!-- Streaming Wine Card -->
 				{#if isWineStreaming}
@@ -420,10 +410,6 @@
 	.close-button:hover {
 		background: var(--bg-subtle);
 		color: var(--text-primary);
-	}
-
-	.indicator-wrapper {
-		padding: 0 var(--space-4);
 	}
 
 	.streaming-card {

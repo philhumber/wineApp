@@ -332,10 +332,8 @@ async function executeTextIdentification(
   conversation.setPhase('identifying');
   identification.startIdentification('text');
 
-  // Message sequencing handled by isPrecedingReady in MessageWrapper
-  conversation.addMessage(
-    conversation.createTextMessage(getMessageByKey(MessageKey.ID_THINKING))
-  );
+  // Typing indicator participates in message queue with scroll behavior
+  conversation.addTypingMessage(getMessageByKey(MessageKey.ID_THINKING));
 
   try {
     const result = await api.identifyTextStream(
@@ -345,11 +343,13 @@ async function executeTextIdentification(
       }
     );
 
+    conversation.removeTypingMessage();
     const wineResult = convertParsedWineToResult(result.parsed, result.confidence);
     identification.setResult(wineResult, result.confidence);
     handleIdentificationResultFlow(wineResult, result.confidence ?? 1);
 
   } catch (error) {
+    conversation.removeTypingMessage();
     handleIdentificationError(error);
   }
 }
@@ -365,9 +365,7 @@ async function executeImageIdentification(
   conversation.setPhase('identifying');
   identification.startIdentification('image');
 
-  conversation.addMessage(
-    conversation.createTextMessage(getMessageByKey(MessageKey.ID_ANALYZING))
-  );
+  conversation.addTypingMessage(getMessageByKey(MessageKey.ID_ANALYZING));
 
   try {
     const result = await api.identifyImageStream(
@@ -379,11 +377,13 @@ async function executeImageIdentification(
       }
     );
 
+    conversation.removeTypingMessage();
     const wineResult = convertParsedWineToResult(result.parsed, result.confidence);
     identification.setResult(wineResult, result.confidence);
     handleIdentificationResultFlow(wineResult, result.confidence ?? 1);
 
   } catch (error) {
+    conversation.removeTypingMessage();
     handleIdentificationError(error);
   }
 }
@@ -877,9 +877,7 @@ async function handleTryOpus(messageId: string): Promise<void> {
   identification.startEscalation(3);
   conversation.setPhase('identifying');
 
-  conversation.addMessage(
-    conversation.createTextMessage(getMessageByKey(MessageKey.ID_ESCALATING))
-  );
+  conversation.addTypingMessage(getMessageByKey(MessageKey.ID_ESCALATING));
 
   try {
     const currentResult = identification.getResult();
@@ -920,6 +918,7 @@ async function handleTryOpus(messageId: string): Promise<void> {
       throw new Error('No input available for Opus identification');
     }
 
+    conversation.removeTypingMessage();
     const wineResult = convertParsedWineToResult(result.parsed, result.confidence);
     identification.setResult(wineResult, result.confidence);
     identification.completeEscalation();
@@ -960,6 +959,7 @@ async function handleTryOpus(messageId: string): Promise<void> {
     conversation.setPhase('confirming');
 
   } catch (error) {
+    conversation.removeTypingMessage();
     identification.completeEscalation();
     handleIdentificationError(error);
   }
@@ -1000,10 +1000,8 @@ async function handleReidentify(messageId: string): Promise<void> {
 
   identification.clearIdentification();
 
-  // Message sequencing handled by isPrecedingReady in MessageWrapper
-  conversation.addMessage(
-    conversation.createTextMessage(getMessageByKey(MessageKey.ID_REIDENTIFYING))
-  );
+  // Typing indicator shown briefly before re-identification starts
+  conversation.addTypingMessage(getMessageByKey(MessageKey.ID_REIDENTIFYING));
 
   await handleTextSubmit(searchQuery);
 }

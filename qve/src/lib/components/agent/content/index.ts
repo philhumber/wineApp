@@ -10,6 +10,7 @@
  * - FormMessage: Embedded forms (bottle details, manual entry, match selection)
  * - ErrorMessage: Error display with retry options
  * - ImageMessage: User-uploaded wine images
+ * - TypingIndicatorMessage: Animated typing indicator (wine glass animation)
  */
 
 export { default as TextMessage } from './TextMessage.svelte';
@@ -19,3 +20,4 @@ export { default as EnrichmentMessage } from './EnrichmentMessage.svelte';
 export { default as FormMessage } from './FormMessage.svelte';
 export { default as ErrorMessage } from './ErrorMessage.svelte';
 export { default as ImageMessage } from './ImageMessage.svelte';
+export { default as TypingIndicatorMessage } from './TypingIndicatorMessage.svelte';

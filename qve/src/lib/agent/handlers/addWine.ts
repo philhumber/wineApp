@@ -339,14 +339,14 @@ async function submitWine(): Promise<void> {
   }
 
   addWine.startSubmission();
-  conversation.addMessage(
-    conversation.createTextMessage(getMessageByKey(MessageKey.ADD_SUBMITTING))
-  );
+  conversation.addTypingMessage(getMessageByKey(MessageKey.ADD_SUBMITTING));
 
   try {
     // Build and submit payload
     const payload = buildAddWinePayload(flow);
     const result = await api.addWine(payload);
+
+    conversation.removeTypingMessage();
 
     // Success
     addWine.completeSubmission(result.wineID);
@@ -363,6 +363,7 @@ async function submitWine(): Promise<void> {
       conversation.createChipsMessage(generateAddCompleteChips())
     );
   } catch (error) {
+    conversation.removeTypingMessage();
     const errorInfo = handleAddWineError(error, 'submit');
     addWine.setSubmissionError(errorInfo);
 
@@ -384,9 +385,7 @@ async function submitAddBottleToExisting(existingWineId: number): Promise<void> 
   if (!flow) return;
 
   addWine.startSubmission();
-  conversation.addMessage(
-    conversation.createTextMessage(getMessageByKey(MessageKey.ADD_BOTTLE_SUBMITTING))
-  );
+  conversation.addTypingMessage(getMessageByKey(MessageKey.ADD_BOTTLE_SUBMITTING));
 
   try {
     const bottlePayload = {
@@ -401,6 +400,8 @@ async function submitAddBottleToExisting(existingWineId: number): Promise<void> 
 
     await api.addBottle(bottlePayload);
 
+    conversation.removeTypingMessage();
+
     // Success
     addWine.completeSubmission(existingWineId);
     conversation.setPhase('complete');
@@ -414,6 +415,7 @@ async function submitAddBottleToExisting(existingWineId: number): Promise<void> 
       conversation.createChipsMessage(generateAddCompleteChips())
     );
   } catch (error) {
+    conversation.removeTypingMessage();
     const errorInfo = handleAddWineError(error, 'bottle');
     addWine.setSubmissionError(errorInfo);
 

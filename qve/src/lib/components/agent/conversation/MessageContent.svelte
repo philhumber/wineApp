@@ -10,6 +10,7 @@
   import FormMessage from '../content/FormMessage.svelte';
   import ErrorMessage from '../content/ErrorMessage.svelte';
   import ImageMessage from '../content/ImageMessage.svelte';
+  import TypingIndicatorMessage from '../content/TypingIndicatorMessage.svelte';
 
   export let message: AgentMessage;
 
@@ -24,6 +25,7 @@
     form: FormMessage,
     error: ErrorMessage,
     image: ImageMessage,
+    typing: TypingIndicatorMessage,
   };
 
   $: Component = componentMap[message.category] ?? TextMessage;

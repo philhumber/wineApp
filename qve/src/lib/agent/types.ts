@@ -8,7 +8,8 @@ export type MessageCategory =
   | 'enrichment'
   | 'form'
   | 'error'
-  | 'image';
+  | 'image'
+  | 'typing';
 
 // ===========================================
 // Simplified Phases (reduced from 20+)
@@ -66,7 +67,8 @@ export type MessageData =
   | EnrichmentMessageData
   | FormMessageData
   | ErrorMessageData
-  | ImageMessageData;
+  | ImageMessageData
+  | TypingMessageData;
 
 export interface TextMessageData {
   category: 'text';
@@ -136,6 +138,11 @@ export interface ImageMessageData {
   category: 'image';
   src: string;
   mimeType: string;
+}
+
+export interface TypingMessageData {
+  category: 'typing';
+  text: string;
 }
 
 // ===========================================

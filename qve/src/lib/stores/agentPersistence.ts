@@ -148,6 +148,9 @@ export function persistState(state: Partial<PersistedState>, immediate = false):
         lastActivityAt: Date.now(),
       };
 
+      // Filter out typing indicator messages (ephemeral, never persisted)
+      merged.messages = merged.messages.filter((msg) => msg.category !== 'typing');
+
       // Trim messages if needed
       if (merged.messages.length > MAX_MESSAGES) {
         merged.messages = merged.messages.slice(-MAX_MESSAGES);
