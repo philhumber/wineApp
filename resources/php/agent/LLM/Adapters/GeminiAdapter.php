@@ -5,6 +5,9 @@
  * Adapter for Google's Gemini API.
  * Implements the LLMProviderInterface for unified access.
  *
+ * WIN-253: Uses x-goog-api-key header for authentication instead of URL query parameter
+ * to prevent API key from appearing in server access logs.
+ *
  * @package Agent\LLM\Adapters
  */
 
@@ -13,6 +16,7 @@ namespace Agent\LLM\Adapters;
 use Agent\LLM\Interfaces\LLMProviderInterface;
 use Agent\LLM\LLMResponse;
 use Agent\LLM\LLMStreamingResponse;
+use Agent\LLM\SSLConfig;
 use Agent\LLM\Streaming\SSEParser;
 use Agent\LLM\Streaming\StreamingFieldDetector;
 
@@ -113,7 +117,8 @@ class GeminiAdapter implements LLMProviderInterface
         // Debug: Log context chain before LLM call
         $this->logContextChain('text', $model, $payload, $options);
 
-        $url = "{$this->baseUrl}/models/{$model}:generateContent?key={$this->apiKey}";
+        // WIN-253: API key sent via header, not URL query parameter
+        $url = "{$this->baseUrl}/models/{$model}:generateContent";
 
         $timeout = $options['timeout'] ?? $this->config['timeout'] ?? 30;
         $response = $this->makeRequest($url, $payload, $timeout);
@@ -200,7 +205,8 @@ class GeminiAdapter implements LLMProviderInterface
         // Debug: Log context chain before LLM call
         $this->logContextChain('vision', $model, $payload, $options);
 
-        $url = "{$this->baseUrl}/models/{$model}:generateContent?key={$this->apiKey}";
+        // WIN-253: API key sent via header, not URL query parameter
+        $url = "{$this->baseUrl}/models/{$model}:generateContent";
 
         $response = $this->makeRequest($url, $payload, $this->config['timeout'] ?? 60);
         $latencyMs = (int)((\microtime(true) - $startTime) * 1000);
@@ -255,8 +261,9 @@ class GeminiAdapter implements LLMProviderInterface
 
         $payload = $this->buildStreamingPayload($prompt, null, null, $options);
 
+        // WIN-253: API key sent via header, not URL query parameter
         // Streaming URL: streamGenerateContent?alt=sse
-        $url = "{$this->baseUrl}/models/{$model}:streamGenerateContent?alt=sse&key={$this->apiKey}";
+        $url = "{$this->baseUrl}/models/{$model}:streamGenerateContent?alt=sse";
 
         return $this->executeStreaming($url, $payload, $options, $onChunk, $startTime, $model);
     }
@@ -278,8 +285,9 @@ class GeminiAdapter implements LLMProviderInterface
 
         $payload = $this->buildStreamingPayload($prompt, $imageBase64, $mimeType, $options);
 
+        // WIN-253: API key sent via header, not URL query parameter
         // Streaming URL: streamGenerateContent?alt=sse
-        $url = "{$this->baseUrl}/models/{$model}:streamGenerateContent?alt=sse&key={$this->apiKey}";
+        $url = "{$this->baseUrl}/models/{$model}:streamGenerateContent?alt=sse";
 
         return $this->executeStreaming($url, $payload, $options, $onChunk, $startTime, $model);
     }
@@ -365,10 +373,14 @@ class GeminiAdapter implements LLMProviderInterface
 
         $ch = \curl_init($url);
 
+        // WIN-253: API key sent via x-goog-api-key header instead of URL query parameter
         $curlOptions = [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => \json_encode($payload),
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'x-goog-api-key: ' . $this->apiKey,
+            ],
             CURLOPT_TIMEOUT => $options['timeout'] ?? 30,
             CURLOPT_WRITEFUNCTION => function ($ch, $data) use (
                 $parser,
@@ -413,16 +425,8 @@ class GeminiAdapter implements LLMProviderInterface
             },
         ];
 
-        // SSL configuration
-        $certPath = $this->getCertPath();
-        if ($certPath) {
-            $curlOptions[CURLOPT_SSL_VERIFYPEER] = true;
-            $curlOptions[CURLOPT_SSL_VERIFYHOST] = 2;
-            $curlOptions[CURLOPT_CAINFO] = $certPath;
-        } else {
-            $curlOptions[CURLOPT_SSL_VERIFYPEER] = false;
-            $curlOptions[CURLOPT_SSL_VERIFYHOST] = 0;
-        }
+        // WIN-143: SSL configuration via shared SSLConfig (cross-platform cert resolution)
+        $curlOptions += SSLConfig::getCurlOptions();
 
         \curl_setopt_array($ch, $curlOptions);
 
@@ -560,26 +564,20 @@ class GeminiAdapter implements LLMProviderInterface
     private function makeRequest(string $url, array $payload, int $timeout = 30): array
     {
         $ch = \curl_init($url);
+        // WIN-253: API key sent via x-goog-api-key header instead of URL query parameter
         $options = [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => \json_encode($payload),
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'x-goog-api-key: ' . $this->apiKey,
+            ],
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => $timeout,
         ];
 
-        // SSL configuration for Windows compatibility
-        $certPath = $this->getCertPath();
-        if ($certPath) {
-            $options[CURLOPT_SSL_VERIFYPEER] = true;
-            $options[CURLOPT_SSL_VERIFYHOST] = 2;
-            $options[CURLOPT_CAINFO] = $certPath;
-        } else {
-            // Dev fallback: disable SSL verification if no cert found
-            // TODO: Remove in production - configure curl.cainfo in php.ini instead
-            $options[CURLOPT_SSL_VERIFYPEER] = false;
-            $options[CURLOPT_SSL_VERIFYHOST] = 0;
-        }
+        // WIN-143: SSL configuration via shared SSLConfig (cross-platform cert resolution)
+        $options += SSLConfig::getCurlOptions();
 
         \curl_setopt_array($ch, $options);
 
@@ -759,7 +757,7 @@ class GeminiAdapter implements LLMProviderInterface
      */
     private function getFallbackModel(string $model): ?string
     {
-        // Gemini 3 fallback chain: pro → flash. No fallback to Gemini 2.
+        // Gemini 3 fallback chain: pro -> flash. No fallback to Gemini 2.
         $fallbacks = [
             'gemini-3-pro-preview' => 'gemini-3-flash-preview',
         ];
@@ -837,31 +835,6 @@ class GeminiAdapter implements LLMProviderInterface
     public function setModel(string $model): void
     {
         $this->model = $model;
-    }
-
-    /**
-     * Get SSL certificate path for curl
-     *
-     * @return string|null Path to CA certificate bundle
-     */
-    private function getCertPath(): ?string
-    {
-        // Try common locations for cacert.pem
-        $paths = [
-            __DIR__ . '/../../../../../wineapp-config/cacert.pem',
-            'C:/php/extras/ssl/cacert.pem',
-            'C:/Program Files/php/extras/ssl/cacert.pem',
-            \ini_get('curl.cainfo'),
-            \ini_get('openssl.cafile'),
-        ];
-
-        foreach ($paths as $path) {
-            if ($path && \file_exists($path)) {
-                return $path;
-            }
-        }
-
-        return null;
     }
 
     /**

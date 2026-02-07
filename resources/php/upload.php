@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/securityHeaders.php';
+require_once __DIR__ . '/errorHandler.php';
 // ----------------------------
 // CONFIG
 // ----------------------------
@@ -10,7 +12,7 @@ $canvasSize    = 800;   // Output square canvas size (800x800px)
 
 // Ensure target directory exists
 if (!is_dir($target_dir)) {
-    mkdir($target_dir, 0777, true);
+    mkdir($target_dir, 0755, true);
 }
 
 // ----------------------------
@@ -49,6 +51,22 @@ function get_uploaded_file() {
 }
 
 function validate_image(array $file, array $allowedTypes, int $maxSize): bool {
+    // WIN-220: Check for PHP upload errors before any other validation
+    if (isset($file['error']) && $file['error'] !== UPLOAD_ERR_OK) {
+        $errorMessages = [
+            UPLOAD_ERR_INI_SIZE   => 'File exceeds server upload limit.',
+            UPLOAD_ERR_FORM_SIZE  => 'File exceeds form upload limit.',
+            UPLOAD_ERR_PARTIAL    => 'File was only partially uploaded.',
+            UPLOAD_ERR_NO_FILE    => 'No file was uploaded.',
+            UPLOAD_ERR_NO_TMP_DIR => 'Server misconfiguration (no temp directory).',
+            UPLOAD_ERR_CANT_WRITE => 'Server failed to write file to disk.',
+            UPLOAD_ERR_EXTENSION  => 'Upload blocked by server extension.',
+        ];
+        $msg = $errorMessages[$file['error']] ?? 'Unknown upload error.';
+        echo "Error: $msg\n";
+        return false;
+    }
+
     $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
     if ($file['size'] > $maxSize) {
@@ -64,6 +82,13 @@ function validate_image(array $file, array $allowedTypes, int $maxSize): bool {
     $check = getimagesize($file['tmp_name']);
     if ($check === false) {
         echo "Error: File is not a valid image.\n";
+        return false;
+    }
+
+    // WIN-220: Verify MIME type matches allowed image types (defense-in-depth)
+    $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!in_array($check['mime'], $allowedMimes, true)) {
+        echo "Error: File content type is not an allowed image format.\n";
         return false;
     }
 
@@ -293,7 +318,7 @@ if (!isset($uploadedFile) || !is_array($uploadedFile) || !isset($uploadedFile['n
     return;
 }
     $imageFileType = strtolower(pathinfo($uploadedFile['name'], PATHINFO_EXTENSION));
- 
+
 if (!validate_image($uploadedFile, $allowedTypes, $maxFileSize)) {
     $output = "Error: Upload failed.";
 }else{
@@ -305,8 +330,10 @@ if (!validate_image($uploadedFile, $allowedTypes, $maxFileSize)) {
         echo "Filename: images/wines/" . basename($output);
         return;
     }catch(Exception $e) {
-        $output = ['data' => 'Error: ' . $e->getMessage()];
-        $output = json_encode($output);	
+        // WIN-217: Don't leak internal error details (file paths, GD errors, etc.)
+        error_log("Error in upload.php: " . $e->getMessage() . " | File: " . $e->getFile() . ":" . $e->getLine());
+        $output = ['data' => 'Error: Image processing failed. Please try a different image.'];
+        $output = json_encode($output);
     }
 }
 ?>

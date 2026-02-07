@@ -403,7 +403,7 @@ Endpoints in `resources/php/`:
 | `config/` | Agent configuration (`agent.config.php`) |
 | `Identification/` | Service classes (ImageQualityAssessor, IntentDetector, InputClassifier, etc.) |
 | `Enrichment/` | Service classes (EnrichmentService, EnrichmentCache, ValidationService, etc.) |
-| `LLM/` | LLM client and adapters (ClaudeAdapter, GeminiAdapter, CircuitBreaker, etc.) |
+| `LLM/` | LLM client and adapters (ClaudeAdapter, GeminiAdapter, SSLConfig, CircuitBreaker, etc.) |
 
 ### Agent Command & Input Detection
 
@@ -421,7 +421,7 @@ Full error handling reference in `docs/AGENT_ARCHITECTURE.md` (Section 16: Error
 - **Support Ref**: `ERR-XXXXXXXX` format, exception-only, debug via `grep "ERR-XXX" /var/log/php_errors.log`
 - Frontend: `AgentError.fromResponse(json)`, derived stores (`agentError`, `agentErrorRetryable`, `agentErrorSupportRef`)
 - UI: "Try Again" chip (if retryable) + "Start Over" chip, sommelier-personality messages
-- Error types: `timeout`(408), `rate_limit`(429), `limit_exceeded`(429), `server_error`(500), `overloaded`(503), `database_error`(500), `quality_check_failed`(422), `identification_error`(400), `enrichment_error`(400)
+- Error types: `timeout`(408), `rate_limit`(429), `limit_exceeded`(429), `server_error`(500), `overloaded`(503), `database_error`(500), `ssl_error`(502), `quality_check_failed`(422), `identification_error`(400), `enrichment_error`(400)
 
 ---
 

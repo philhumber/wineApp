@@ -1,8 +1,10 @@
 <?php
   // 1. Include dependencies at the top
+  require_once 'securityHeaders.php';
   require_once 'databaseConnection.php';
   require_once 'audit_log.php';
-  
+  require_once 'errorHandler.php';
+
   // Start session if not already started
   if (session_status() === PHP_SESSION_NONE) {
       session_start();
@@ -15,7 +17,7 @@
   try {
       // 3. Get database connection
       $pdo = getDBConnection();
-      
+
       // 4. Get and validate input
       $inputData = json_decode(file_get_contents('php://input'), true);
 
@@ -112,7 +114,7 @@
 
           // Get the new bottle ID
           $ratingID = $pdo->lastInsertId();
-          
+
           // Log the insert
           logInsert($pdo, 'ratings', $ratingID, [
             'wineID' => $wineID,
@@ -132,7 +134,7 @@
           // 8. Get OLD data before update (for audit log)
           $stmt = $pdo->prepare("SELECT bottleDrunk FROM bottles WHERE bottleID = :bottleID");
           $stmt->execute([':bottleID' => $bottleID]);
-          $oldData = $stmt->fetch(PDO::FETCH_ASSOC);            
+          $oldData = $stmt->fetch(PDO::FETCH_ASSOC);
           if (!$oldData) {
               throw new Exception('Bottle not found');
           }
@@ -150,7 +152,7 @@
             // 8. Get OLD data before update (for audit log)
           $stmt = $pdo->prepare("SELECT bottlesDrunk FROM wine WHERE wineID = :wineID");
           $stmt->execute([':wineID' => $wineID]);
-          $oldData = $stmt->fetch(PDO::FETCH_ASSOC);            
+          $oldData = $stmt->fetch(PDO::FETCH_ASSOC);
           if (!$oldData) {
               throw new Exception('Wine not found');
           }
@@ -166,12 +168,12 @@
 
           // 11. Commit transaction
           $pdo->commit();
-          
+
           // 12. Set success response
           $response['success'] = true;
           $response['message'] = 'Wine drunk successfully!';
           $response['data'] = ['bottleID' => $bottleID];
-      
+
       } catch (Exception $e) {
           // 13. Rollback on error
           $pdo->rollBack();
@@ -179,10 +181,9 @@
       }
 
   } catch (Exception $e) {
-      // 14. Handle all errors
+      // 14. Handle all errors (WIN-217: sanitize error messages)
       $response['success'] = false;
-      $response['message'] = $e->getMessage();
-      error_log("Error in drinkBottle.php: " . $e->getMessage());
+      $response['message'] = safeErrorMessage($e, 'drinkBottle');
   }
 
   // 15. Return JSON response

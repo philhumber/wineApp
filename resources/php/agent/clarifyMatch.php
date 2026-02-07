@@ -34,7 +34,8 @@ if (empty($identified['producer']) && empty($identified['wineName'])) {
 }
 
 try {
-    $userId = $body['userId'] ?? 1;
+    // WIN-254: Server-authoritative userId — ignore client-supplied value
+    $userId = getAgentUserId();
     $client = getAgentLLMClient($userId);
 
     // Build options list with metadata

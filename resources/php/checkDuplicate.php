@@ -23,7 +23,9 @@
  * }
  */
 
+require_once 'securityHeaders.php';
 require_once 'databaseConnection.php';
+require_once 'errorHandler.php';
 
 $response = ['success' => false, 'message' => '', 'data' => null];
 
@@ -75,8 +77,8 @@ try {
 
 } catch (Exception $e) {
     $response['success'] = false;
-    $response['message'] = $e->getMessage();
-    error_log("Error in checkDuplicate.php: " . $e->getMessage());
+    // WIN-217: sanitize error messages
+    $response['message'] = safeErrorMessage($e, 'checkDuplicate');
 }
 
 header('Content-Type: application/json');
@@ -84,7 +86,7 @@ echo json_encode($response);
 
 /**
  * Normalize accented characters for comparison
- * Converts é→e, ü→u, ñ→n, etc.
+ * Converts e->e, u->u, n->n, etc.
  */
 function normalizeAccents($string) {
     // Use transliterator if available (more accurate)

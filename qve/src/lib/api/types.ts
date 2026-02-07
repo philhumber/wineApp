@@ -550,6 +550,7 @@ export type AgentErrorType =
   | 'server_error'
   | 'overloaded'
   | 'database_error'
+  | 'ssl_error'
   | 'quality_check_failed'
   | 'identification_error'
   | 'enrichment_error'

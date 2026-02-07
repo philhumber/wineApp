@@ -9,6 +9,9 @@
  * @package Agent
  */
 
+// Security headers (CORS, etc.) - shared across all endpoints
+require_once __DIR__ . '/../securityHeaders.php';
+
 // Extend PHP execution time for multi-tier LLM escalation
 // Default 30s is insufficient when making multiple API calls with thinking mode
 set_time_limit(120);
@@ -43,6 +46,25 @@ function getAgentConfig(): array
         $config = require __DIR__ . '/config/agent.config.php';
     }
     return $config;
+}
+
+/**
+ * Get the authenticated user ID (WIN-254)
+ *
+ * Server-authoritative user ID — never trust client-supplied values.
+ * Currently hardcoded to user 1 (single-user app).
+ *
+ * When multi-user auth launches, replace the hardcoded return with
+ * session/token-based lookup, e.g.:
+ *   return getUserIdFromSession();
+ *
+ * @return int Authenticated user ID
+ */
+function getAgentUserId(): int
+{
+    // TODO [multi-user]: Replace with session/token-based user ID lookup.
+    // e.g.: return $_SESSION['userId'] ?? throw new \RuntimeException('Not authenticated');
+    return 1;
 }
 
 /**
@@ -185,6 +207,10 @@ function agentExceptionError(\Exception $e, string $endpoint, int $defaultCode =
     } elseif (stripos($fullMessage, 'token') !== false && stripos($fullMessage, 'limit') !== false) {
         $errorType = 'limit_exceeded';
         $httpCode = 429;
+    } elseif (stripos($fullMessage, 'SSL') !== false || stripos($fullMessage, 'certificate') !== false || stripos($fullMessage, 'CA bundle') !== false) {
+        // WIN-143: SSL/TLS connection errors (missing certs, verification failures)
+        $errorType = 'ssl_error';
+        $httpCode = 502;
     } elseif ($e instanceof \PDOException) {
         $errorType = 'database_error';
     }
@@ -197,6 +223,7 @@ function agentExceptionError(\Exception $e, string $endpoint, int $defaultCode =
         'server_error' => 'Something unexpected happened. Please try again in a moment or start over.',
         'overloaded' => 'Our sommelier is overwhelmed with requests. Please try again shortly or start over.',
         'database_error' => 'We\'re having trouble accessing our cellar records. Please try again or start over.',
+        'ssl_error' => 'Our sommelier is having trouble making a secure connection. Please try again shortly or start over.',
     ];
 
     // Generate support reference
@@ -219,7 +246,7 @@ function agentExceptionError(\Exception $e, string $endpoint, int $defaultCode =
         'error' => [
             'type' => $errorType,
             'userMessage' => $userMessages[$errorType] ?? $userMessages['server_error'],
-            'retryable' => in_array($errorType, ['timeout', 'rate_limit', 'server_error', 'overloaded']),
+            'retryable' => in_array($errorType, ['timeout', 'rate_limit', 'server_error', 'overloaded', 'ssl_error']),
             'supportRef' => $supportRef,
         ]
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
@@ -243,6 +270,7 @@ function agentStructuredError(string $errorType, ?string $fallbackMessage = null
         'rate_limit' => 429,
         'timeout' => 408,
         'quality_check_failed' => 422,
+        'ssl_error' => 502,
         default => 400,
     };
 
@@ -254,6 +282,7 @@ function agentStructuredError(string $errorType, ?string $fallbackMessage = null
         'identification_error' => 'I couldn\'t quite identify that wine. Could you try again?',
         'enrichment_error' => 'I couldn\'t find additional details about this wine.',
         'clarification_error' => 'I couldn\'t help narrow down the choices. Please review the options yourself.',
+        'ssl_error' => 'Our sommelier is having trouble making a secure connection. Please try again shortly.',
     ];
 
     $userMessage = $userMessages[$errorType] ?? $fallbackMessage ?? 'Something went wrong. Please try again.';
@@ -266,7 +295,7 @@ function agentStructuredError(string $errorType, ?string $fallbackMessage = null
         'error' => [
             'type' => $errorType,
             'userMessage' => $userMessage,
-            'retryable' => in_array($errorType, ['timeout', 'rate_limit', 'server_error', 'overloaded']),
+            'retryable' => in_array($errorType, ['timeout', 'rate_limit', 'server_error', 'overloaded', 'ssl_error']),
             'supportRef' => null,
         ]
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
@@ -436,6 +465,9 @@ function sendSSEError(\Exception $e, string $endpoint = 'stream'): void
         $errorType = 'rate_limit';
     } elseif (stripos($fullMessage, 'token') !== false && stripos($fullMessage, 'limit') !== false) {
         $errorType = 'limit_exceeded';
+    } elseif (stripos($fullMessage, 'SSL') !== false || stripos($fullMessage, 'certificate') !== false || stripos($fullMessage, 'CA bundle') !== false) {
+        // WIN-143: SSL/TLS connection errors
+        $errorType = 'ssl_error';
     } elseif ($e instanceof \PDOException) {
         $errorType = 'database_error';
     }
@@ -448,6 +480,7 @@ function sendSSEError(\Exception $e, string $endpoint = 'stream'): void
         'server_error' => 'Something unexpected happened. Please try again.',
         'overloaded' => 'Our sommelier is overwhelmed with requests. Please try again shortly.',
         'database_error' => 'We\'re having trouble accessing our cellar records. Please try again.',
+        'ssl_error' => 'Our sommelier is having trouble making a secure connection. Please try again shortly.',
     ];
 
     // Generate support reference
@@ -465,7 +498,7 @@ function sendSSEError(\Exception $e, string $endpoint = 'stream'): void
     sendSSE('error', [
         'type' => $errorType,
         'message' => $userMessages[$errorType] ?? $userMessages['server_error'],
-        'retryable' => in_array($errorType, ['timeout', 'rate_limit', 'server_error', 'overloaded']),
+        'retryable' => in_array($errorType, ['timeout', 'rate_limit', 'server_error', 'overloaded', 'ssl_error']),
         'supportRef' => $supportRef,
     ]);
 

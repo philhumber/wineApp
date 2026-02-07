@@ -1,8 +1,10 @@
 <?php
 	// 1. Include dependencies at the top
+    require_once 'securityHeaders.php';
     require_once 'databaseConnection.php';
     require_once 'audit_log.php';
     require_once 'validators.php';
+    require_once 'errorHandler.php';
 
     // 2. Initialize response
     $response = ['success' => false, 'message' => '', 'data' => null];
@@ -10,7 +12,7 @@
     try {
         // 3. Get database connection
         $pdo = getDBConnection();
-        
+
         // 4. Get and validate input
         $data = json_decode(file_get_contents('php://input'), true);
 
@@ -84,22 +86,22 @@
         try {
             $stmt = $pdo->prepare("SELECT wineTypeID FROM winetype WHERE wineType = ?");
             $stmt->execute([$wineType]);
-            $wineTypeID = $stmt->fetch(PDO::FETCH_ASSOC);            
+            $wineTypeID = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$wineTypeID) {
-                throw new Exception("Wine type '{$wineType}' not found");
-            }            
+                throw new Exception("Wine type not found");
+            }
             $params[':wineTypeID'] = $wineTypeID['wineTypeID'];
-            
+
             // 8. Get OLD data before update (for audit log)
             $stmt = $pdo->prepare("SELECT * FROM wine WHERE wineID = ?");
             $stmt->execute([$wineID]);
-            $oldData = $stmt->fetch(PDO::FETCH_ASSOC);            
+            $oldData = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$oldData) {
                 throw new Exception('Wine not found');
             }
             error_log('SQL: ' . $sql);
             error_log('Params: ' . print_r($params, true));
-            
+
             // 8. Perform database operation
             $stmt = $pdo->prepare($sqlQuery);
             $stmt->execute($params);
@@ -120,15 +122,15 @@
             ];
 
             logUpdate($pdo, 'wine', $wineID, $oldData, $newData, $userID);
-            
+
             // 11. Commit transaction
             $pdo->commit();
-            
+
             // 12. Set success response
             $response['success'] = true;
             $response['message'] = 'Wine updated successfully!';
             $response['data'] = ['wineID' => $wineID];
-        
+
         } catch (Exception $e) {
             // 13. Rollback on error
             $pdo->rollBack();
@@ -136,10 +138,9 @@
         }
 
     } catch (Exception $e) {
-        // 14. Handle all errors
+        // 14. Handle all errors (WIN-217: sanitize error messages)
         $response['success'] = false;
-        $response['message'] = $e->getMessage();
-        error_log("Error in updateWine.php: " . $e->getMessage());
+        $response['message'] = safeErrorMessage($e, 'updateWine');
     }
 
     // 15. Return JSON response

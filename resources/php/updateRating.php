@@ -1,7 +1,9 @@
 <?php
   // 1. Include dependencies at the top
+  require_once 'securityHeaders.php';
   require_once 'databaseConnection.php';
   require_once 'audit_log.php';
+  require_once 'errorHandler.php';
 
   // Start session if not already started
   if (session_status() === PHP_SESSION_NONE) {
@@ -148,10 +150,9 @@
       }
 
   } catch (Exception $e) {
-      // 13. Handle all errors
+      // 13. Handle all errors (WIN-217: sanitize error messages)
       $response['success'] = false;
-      $response['message'] = $e->getMessage();
-      error_log("Error in updateRating.php: " . $e->getMessage());
+      $response['message'] = safeErrorMessage($e, 'updateRating');
   }
 
   // 14. Return JSON response

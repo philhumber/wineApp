@@ -217,8 +217,7 @@ describe('MessageWrapper', () => {
 		// Note: Full event forwarding tests are skipped because Svelte 5's createEventDispatcher
 		// creates component-level events that don't bubble through the DOM. Testing event
 		// forwarding requires either wrapper components or integration/E2E tests.
-		// The event forwarding functionality is tested via integration testing in the
-		// agent-test route and via E2E tests.
+		// The event forwarding functionality is tested via E2E tests.
 
 		it('should have interactive chips when not disabled', () => {
 			const message = createTestMessage({

@@ -40,6 +40,7 @@ import type {
   StreamFieldCallback
 } from './types';
 import { AgentError } from './types';
+import { PUBLIC_API_KEY } from '$env/static/public';
 
 class WineApiClient {
   private baseURL: string;
@@ -51,6 +52,18 @@ class WineApiClient {
   // ─────────────────────────────────────────────────────────
   // PRIVATE HELPERS
   // ─────────────────────────────────────────────────────────
+
+  /**
+   * Common headers included in every request.
+   * - X-API-Key: API key authentication (WIN-203)
+   * - X-Requested-With: CSRF protection custom header (WIN-215)
+   */
+  private get authHeaders(): Record<string, string> {
+    return {
+      'X-API-Key': PUBLIC_API_KEY,
+      'X-Requested-With': 'XMLHttpRequest'
+    };
+  }
 
   /**
    * Generic fetch with JSON body and response.
@@ -65,10 +78,10 @@ class WineApiClient {
     const options: RequestInit = data
       ? {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...this.authHeaders },
           body: JSON.stringify(data)
         }
-      : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' };
+      : { method: 'POST', headers: { 'Content-Type': 'application/json', ...this.authHeaders }, body: '{}' };
 
     try {
       const response = await fetch(url, options);
@@ -530,6 +543,7 @@ class WineApiClient {
 
     const response = await fetch(`${this.baseURL}upload.php`, {
       method: 'POST',
+      headers: { ...this.authHeaders },
       body: formData
     });
 
@@ -755,7 +769,7 @@ class WineApiClient {
 
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...this.authHeaders },
       body: JSON.stringify({ text })
     });
 
@@ -848,7 +862,7 @@ class WineApiClient {
 
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...this.authHeaders },
       body: JSON.stringify(body)
     });
 
@@ -965,7 +979,7 @@ class WineApiClient {
 
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...this.authHeaders },
       body: JSON.stringify({ producer, wineName, vintage, wineType, region, confirmMatch, forceRefresh })
     });
 

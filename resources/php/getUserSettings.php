@@ -6,6 +6,7 @@
  */
 
 // 1. Include dependencies
+require_once 'securityHeaders.php';
 require_once 'databaseConnection.php';
 
 // 2. Initialize response

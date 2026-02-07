@@ -13,7 +13,7 @@
  *
  * Response (SSE stream):
  *   event: field
- *   data: {"field": "producer", "value": "Château Margaux"}
+ *   data: {"field": "producer", "value": "Chateau Margaux"}
  *
  *   event: result
  *   data: {complete identification result}
@@ -73,7 +73,8 @@ error_log('IdentifyImageStream: SSE initialized, sending test event');
 sendSSE('debug', ['message' => 'SSE stream started', 'timestamp' => date('H:i:s')]);
 
 try {
-    $userId = $input['userId'] ?? 1;
+    // WIN-254: Server-authoritative userId — ignore client-supplied value
+    $userId = getAgentUserId();
     $service = getAgentIdentificationService($userId);
 
     // Build identification input

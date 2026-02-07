@@ -86,7 +86,7 @@ wineapp/
 │   ├── lib/components/   # 86 Svelte components across 8 categories
 │   ├── lib/stores/       # 24 stores (17 core + 7 agent)
 │   ├── lib/api/          # TypeScript API client
-│   └── routes/           # 6 routes (cellar, add, history, edit, drink, agent-test)
+│   └── routes/           # 5 routes (cellar, add, history, edit, drink)
 ├── resources/php/        # PHP backend (20 core + 9 agent endpoints)
 ├── resources/sql/        # Database schema
 ├── docs/                 # Detailed documentation (this directory)

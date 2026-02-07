@@ -1,7 +1,9 @@
 <?php
 	// 1. Include dependencies at the top
+    require_once 'securityHeaders.php';
     require_once 'databaseConnection.php';
     require_once 'audit_log.php';
+    require_once 'errorHandler.php';
 
     // 2. Initialize response
     $response = ['success' => false, 'message' => '', 'data' => null];
@@ -9,9 +11,9 @@
     try {
         // 3. Get database connection
         $pdo = getDBConnection();
-        
+
         // 4. Get and validate input
-        $data = json_decode(file_get_contents('php://input'), true);	
+        $data = json_decode(file_get_contents('php://input'), true);
 
 		//set up deafults here
 		$producerName = '%';
@@ -42,7 +44,7 @@
 						producers.producerName,
 						country.code,
 						country.world_code,
-						wine.rating,								
+						wine.rating,
 						(SELECT ROUND((AVG(overallRating) + AVG(valueRating)) / 2, 2) FROM ratings WHERE ratings.wineID = wine.wineID) AS avgRating,
 						(SELECT ROUND(AVG(overallRating), 2) FROM ratings WHERE ratings.wineID = wine.wineID) AS avgOverallRating,
 						(SELECT ROUND(AVG(valueRating), 2) FROM ratings WHERE ratings.wineID = wine.wineID) AS avgValueRating,
@@ -146,8 +148,8 @@
 						WHERE r.wineID = wine.wineID) AS ratingCount,
 						SUM(CASE WHEN bottles.bottleSize = 'Standard' THEN 1 ELSE 0 END) AS standardBottles,
 						SUM(CASE WHEN bottles.bottleSize IN ('Piccolo', 'Quarter', 'Demi') THEN 1 ELSE 0 END) AS smallBottles,
-						COUNT(bottles.bottleID) - 
-							SUM(CASE WHEN bottles.bottleSize = 'Standard' THEN 1 ELSE 0 END) - 
+						COUNT(bottles.bottleID) -
+							SUM(CASE WHEN bottles.bottleSize = 'Standard' THEN 1 ELSE 0 END) -
 							SUM(CASE WHEN bottles.bottleSize IN ('Piccolo', 'Quarter', 'Demi') THEN 1 ELSE 0 END) AS largeBottles,
 						COUNT(bottles.bottleID) AS bottleCount
 					FROM wine
@@ -195,7 +197,7 @@
 		if (!empty($where)) {
 			$sqlQuery .= " WHERE " . implode(' AND ', $where);
 		}
-		
+
 		$sqlQuery .= " GROUP BY wine.wineID";
 
 		// Only apply bottle count filter when NOT fetching a specific wine by ID
@@ -208,9 +210,9 @@
 		if (!empty($having)) {
 			$sqlQuery .= " HAVING " . implode(' AND ', $having);
 		}
-		$sqlQuery .= " ORDER BY producers.producerName ASC, wine.year ASC, wine.wineName ASC";	
+		$sqlQuery .= " ORDER BY producers.producerName ASC, wine.year ASC, wine.wineName ASC";
 
-		
+
 		try {
             // 8. Perform database operation
             $stmt = $pdo->prepare($sqlQuery);
@@ -221,16 +223,15 @@
             $response['success'] = true;
             $response['message'] = 'Wines with bottle count >= ' . $bottleCount . ' retrieved sucessfully!';
             $response['data'] = ['wineList' =>  $producerList];
-        
-		} catch (Exception $e) {                
+
+		} catch (Exception $e) {
 			throw $e;
 		}
 
 	} catch (Exception $e) {
-		// 14. Handle all errors
+		// 14. Handle all errors (WIN-217: sanitize error messages)
 		$response['success'] = false;
-		$response['message'] = $e->getMessage();
-		error_log("Error in getWines.php: " . $e->getMessage());
+		$response['message'] = safeErrorMessage($e, 'getWines');
 	}
 	// 15. Return JSON response
 	header('Content-Type: application/json');

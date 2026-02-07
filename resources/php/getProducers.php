@@ -1,7 +1,9 @@
 <?php
 	// 1. Include dependencies at the top
+    require_once 'securityHeaders.php';
     require_once 'databaseConnection.php';
     require_once 'audit_log.php';
+    require_once 'errorHandler.php';
 
     // 2. Initialize response
     $response = ['success' => false, 'message' => '', 'data' => null];
@@ -76,7 +78,7 @@
 		// Always add HAVING clause since we always have at least one condition
 		$sqlQuery .= " HAVING " . implode(' AND ', $having);
 
-		$sqlQuery .= " ORDER BY producerName ASC";	
+		$sqlQuery .= " ORDER BY producerName ASC";
 
 		try {
             // 8. Perform database operation
@@ -88,16 +90,15 @@
             $response['success'] = true;
             $response['message'] = 'Producers retrieved sucessfully!';
             $response['data'] = ['wineList' =>  $producerList];
-        
-		} catch (Exception $e) {                
+
+		} catch (Exception $e) {
 			throw $e;
 		}
 
 	} catch (Exception $e) {
-		// 14. Handle all errors
+		// 14. Handle all errors (WIN-217: sanitize error messages)
 		$response['success'] = false;
-		$response['message'] = $e->getMessage();
-		error_log("Error in getProducers.php: " . $e->getMessage());
+		$response['message'] = safeErrorMessage($e, 'getProducers');
 	}
 	// 15. Return JSON response
 	header('Content-Type: application/json');

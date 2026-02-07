@@ -1,7 +1,9 @@
 <?php
 	// 1. Include dependencies at the top
+    require_once 'securityHeaders.php';
     require_once 'databaseConnection.php';
     require_once 'audit_log.php';
+    require_once 'errorHandler.php';
 
     // 2. Initialize response
     $response = ['success' => false, 'message' => '', 'data' => null];
@@ -82,7 +84,7 @@
 		$sqlQuery .= " HAVING " . implode(' AND ', $having);
 
 		$sqlQuery .= " ORDER BY wineType ASC";
-		
+
 		try {
 				// 8. Perform database operation
 				$stmt = $pdo->prepare($sqlQuery);
@@ -93,16 +95,15 @@
 				$response['success'] = true;
 				$response['message'] = 'Types retrieved sucessfully!';
 				$response['data'] = ['wineList' =>  $typeList];
-			
-		} catch (Exception $e) {                
+
+		} catch (Exception $e) {
 			throw $e;
 		}
 
 	} catch (Exception $e) {
-		// 14. Handle all errors
+		// 14. Handle all errors (WIN-217: sanitize error messages)
 		$response['success'] = false;
-		$response['message'] = $e->getMessage();
-		error_log("Error in getTypes.php: " . $e->getMessage());
+		$response['message'] = safeErrorMessage($e, 'getTypes');
 	}
 	// 15. Return JSON response
 	header('Content-Type: application/json');

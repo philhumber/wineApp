@@ -1,7 +1,9 @@
 <?php
 	// 1. Include dependencies at the top
+    require_once 'securityHeaders.php';
     require_once 'databaseConnection.php';
     require_once 'audit_log.php';
+    require_once 'errorHandler.php';
 
     // 2. Initialize response
     $response = ['success' => false, 'message' => '', 'data' => null];
@@ -9,7 +11,7 @@
     try {
         // 3. Get database connection
         $pdo = getDBConnection();
-        
+
         // 4. Get and validate input
         $data = json_decode(file_get_contents('php://input'), true);
 
@@ -34,13 +36,13 @@
         } else {
             $bottleSource = trim($data['bottleSource']);
         }
-        
+
         $bottlePrice = trim($data['bottlePrice'] ?? '');
         $bottleCurrency = trim($data['bottleCurrency'] ?? '');
         $purchaseDate = !empty($data['purchaseDate']) ? trim($data['purchaseDate']) : null;
 
         $userID = $_SESSION['userID'] ?? null;
-    
+
         //6. Prepare Statement
         $sqlQuery = "INSERT INTO bottles (
                             wineID,
@@ -76,10 +78,10 @@
             // 8. Perform database operation
             $stmt = $pdo->prepare($sqlQuery);
             $stmt->execute($params);
-            
+
             // Get the new bottle ID
             $bottleID = $pdo->lastInsertId();
-            
+
             // Log the insert
             logInsert($pdo, 'bottles', $bottleID, [
                 'wineID' => $wineID,
@@ -91,15 +93,15 @@
                 'purchaseDate' => $purchaseDate,
                 'dateAdded' => date('Y-m-d')
             ], $userID);
-            
+
             // Commit transaction
             $pdo->commit();
-            
+
             // 12. Set success response
             $response['success'] = true;
             $response['message'] = 'Bottle added successfully!';
             $response['data'] = ['bottleID' => $bottleID];
-        
+
             } catch (Exception $e) {
                 // 13. Rollback on error
                 $pdo->rollBack();
@@ -107,10 +109,9 @@
             }
 
         } catch (Exception $e) {
-        // 14. Handle all errors
+        // 14. Handle all errors (WIN-217: sanitize error messages)
         $response['success'] = false;
-        $response['message'] = $e->getMessage();
-        error_log("Error in addBottle.php: " . $e->getMessage());
+        $response['message'] = safeErrorMessage($e, 'addBottle');
     }
 
     // 15. Return JSON response

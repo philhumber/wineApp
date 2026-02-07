@@ -14,6 +14,7 @@ namespace Agent\LLM\Adapters;
 use Agent\LLM\Interfaces\LLMProviderInterface;
 use Agent\LLM\LLMResponse;
 use Agent\LLM\LLMStreamingResponse;
+use Agent\LLM\SSLConfig;
 
 class ClaudeAdapter implements LLMProviderInterface
 {
@@ -284,17 +285,8 @@ class ClaudeAdapter implements LLMProviderInterface
             CURLOPT_TIMEOUT => $timeout,
         ];
 
-        // SSL configuration for Windows compatibility
-        $certPath = $this->getCertPath();
-        if ($certPath) {
-            $options[CURLOPT_SSL_VERIFYPEER] = true;
-            $options[CURLOPT_SSL_VERIFYHOST] = 2;
-            $options[CURLOPT_CAINFO] = $certPath;
-        } else {
-            // Dev fallback: disable SSL verification if no cert found
-            $options[CURLOPT_SSL_VERIFYPEER] = false;
-            $options[CURLOPT_SSL_VERIFYHOST] = 0;
-        }
+        // WIN-143: SSL configuration via shared SSLConfig (cross-platform cert resolution)
+        $options += SSLConfig::getCurlOptions();
 
         \curl_setopt_array($ch, $options);
 
@@ -474,31 +466,6 @@ class ClaudeAdapter implements LLMProviderInterface
     public function setModel(string $model): void
     {
         $this->model = $model;
-    }
-
-    /**
-     * Get SSL certificate path for curl
-     *
-     * @return string|null Path to CA certificate bundle
-     */
-    private function getCertPath(): ?string
-    {
-        // Try common locations for cacert.pem
-        $paths = [
-            __DIR__ . '/../../../../../wineapp-config/cacert.pem',
-            'C:/php/extras/ssl/cacert.pem',
-            'C:/Program Files/php/extras/ssl/cacert.pem',
-            \ini_get('curl.cainfo'),
-            \ini_get('openssl.cafile'),
-        ];
-
-        foreach ($paths as $path) {
-            if ($path && \file_exists($path)) {
-                return $path;
-            }
-        }
-
-        return null;
     }
 
     /**

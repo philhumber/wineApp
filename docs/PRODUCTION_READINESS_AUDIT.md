@@ -57,7 +57,7 @@ Items verified against `develop` branch on 2026-02-07:
 | A-C1. No CI/CD | **Open** | No `.github/workflows/` directory |
 | A-C2. No error page | **Open** | No `+error.svelte` or `hooks.client.ts` |
 | A-C4. Legacy agent.ts | **Open** | Still 2044 lines; `agentMessages2`/`agentPhase2` aliases in `stores/index.ts` |
-| A-I3. agent-test route | **Open** | `qve/src/routes/agent-test/+page.svelte` still present |
+| A-I3. agent-test route | **Fixed** | Route deleted -- no longer ships to production |
 | A-I6. Orphan CollectionBar | **Open** | `components/layout/CollectionBar.svelte` still present |
 | A-I7. Orphan `nul` file | **Fixed** | No longer found in project root |
 | S-N1. .gitignore missing .env | **Open** | `.gitignore` has no `.env` exclusion rule |
@@ -309,9 +309,8 @@ No `+error.svelte`, `hooks.server.ts`, or `hooks.client.ts`. Unhandled runtime e
 All modals (`DrinkRateModal`, `AddBottleModal`, `ConfirmModal`, `SettingsModal`, `ImageLightboxModal`) lack focus trapping. Users can Tab out. Missing `role="dialog"` and `aria-modal="true"` (only `AILoadingOverlay` has them).
 **Fix**: Add focus trap utility. Apply `role="dialog"` and `aria-modal="true"` to all modals.
 
-**A-I3. `agent-test` Route Ships to Production**
-`qve/src/routes/agent-test/+page.svelte` (580 lines) -- dev testing page included in production builds.
-**Fix**: Delete or gate behind dev-only check.
+**A-I3. `agent-test` Route Ships to Production** -- **FIXED**
+Route deleted. The 580-line dev testing page no longer ships to production builds.
 
 **A-I4. Deploy Script Missing Branch Check**
 `deploy.ps1` doesn't verify git branch or check for uncommitted changes before deploying.
@@ -383,7 +382,7 @@ Verified 2026-02-07: File no longer exists in project root.
 | 4 | Complete old-to-new agent store migration, remove `2` suffixes | A-C4 | Medium |
 | 5 | Add input length limits to PHP endpoints | S-W8 | Small |
 | 6 | Lazy-load AgentPanel | P-W5 | Small |
-| 7 | Remove `agent-test` route from production | A-I3 | Tiny |
+| 7 | ~~Remove `agent-test` route from production~~ | A-I3 | ~~Tiny~~ **Done** |
 | 8 | Delete orphan files (`CollectionBar.svelte`) | A-I6 | Tiny |
 | 9 | Add deploy script branch check | A-I4 | Small |
 

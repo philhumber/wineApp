@@ -3,6 +3,7 @@
  * Normalization endpoint for country/wineType validation
  * Used by agent add wine flow to validate user input
  */
+require_once __DIR__ . '/securityHeaders.php';
 require_once __DIR__ . '/agent/Identification/InferenceEngine.php';
 require_once __DIR__ . '/../../wineapp-config/config.local.php';
 
