@@ -179,9 +179,9 @@ npm run preview
 ## Git Workflow
 
 ```bash
-# Create feature branch
-git checkout main
-git pull origin main
+# Create feature branch (always branch from develop)
+git checkout develop
+git pull origin develop
 git checkout -b feature/WIN-XX-description
 
 # Make changes and commit
@@ -194,6 +194,47 @@ Refs: WIN-XX"
 git push -u origin feature/WIN-XX-description
 ```
 
+## JIRA CLI
+
+The project includes a PowerShell JIRA CLI at `scripts/jira.ps1` using REST API v3 + Agile API.
+Credentials are stored at `../wineapp-config/jira.config.json`.
+
+### Issue Commands
+
+```powershell
+.\scripts\jira.ps1 list                      # List open issues (paginated, fetches all)
+.\scripts\jira.ps1 list done                 # List completed issues
+.\scripts\jira.ps1 list all                  # List all issues regardless of status
+.\scripts\jira.ps1 get WIN-123               # Get issue details with description
+.\scripts\jira.ps1 create "Fix bug" Bug      # Create issue (types: Task, Bug, Story)
+.\scripts\jira.ps1 update WIN-123 "New title" # Update issue summary
+.\scripts\jira.ps1 status WIN-123 "Done"     # Transition status
+.\scripts\jira.ps1 status WIN-123 "In Progress"
+.\scripts\jira.ps1 cancel WIN-123            # Transition to Cancelled
+.\scripts\jira.ps1 comment WIN-123 "Note"    # Add comment to issue
+.\scripts\jira.ps1 backlog                   # Open issues not assigned to any sprint
+```
+
+### Sprint Commands
+
+```powershell
+.\scripts\jira.ps1 sprint                    # Show active sprint issues
+.\scripts\jira.ps1 sprint-list               # List all sprints (active + future) with issue counts
+.\scripts\jira.ps1 sprint-issues 257         # Show issues in a specific sprint with done/open counts
+.\scripts\jira.ps1 sprint-create "S15: Name" # Create sprint (max 30 characters)
+.\scripts\jira.ps1 sprint-add 257 WIN-1,WIN-2 # Add issues to sprint (comma-separated)
+.\scripts\jira.ps1 sprint-start 257          # Start sprint (2-week duration)
+.\scripts\jira.ps1 sprint-close 257          # Complete/close an active sprint
+.\scripts\jira.ps1 sprint-delete 257         # Delete a future sprint
+```
+
+### Notes
+
+- **Sprint names**: Max 30 characters (JIRA API limit)
+- **Done vs Cancelled**: The `status` command disambiguates — `status WIN-123 "Done"` transitions to Done, `cancel WIN-123` transitions to Cancelled
+- **Pagination**: `list` fetches all issues automatically (no 50-item cap)
+- **Sprint IDs**: Use `sprint-list` to find IDs, then reference them in other sprint commands
+
 ## Deployment
 
 ```powershell
@@ -202,6 +243,9 @@ git push -u origin feature/WIN-XX-description
 
 # Deploy to production
 .\deploy.ps1
+
+# List available backups
+.\deploy.ps1 -ListBackups
 
 # Rollback if needed
 .\deploy.ps1 -Rollback "2026-01-22_143022"

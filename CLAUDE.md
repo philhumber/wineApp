@@ -1,8 +1,20 @@
 # Qvé Wine App - Session Context
 
-**Last Updated**: 2026-02-01 (Sprint cleanup - JIRA is now source of truth)
+**Last Updated**: 2026-02-07 (CLAUDE.md audit - updated architecture, counts, slimmed agent sections)
 **Status**: Production - Deployed and stable
 **JIRA**: https://philhumber.atlassian.net/jira/software/projects/WIN
+
+---
+
+## Working Guidelines
+
+**Architecture awareness**: This project underwent a major rearchitecture (Phase 2). ALWAYS verify you are editing current architecture files, not legacy/archived components. The old monolithic `ChatMessage.svelte` has been replaced by modular components in `components/agent/`. When in doubt, check `docs/AGENT_ARCHITECTURE.md` or ask which file is canonical before editing.
+
+**Debugging discipline**: When fixing bugs, state your understanding of the root cause and which files you plan to edit BEFORE implementing. Do not assume the cause — ask if uncertain. This prevents wasted effort on wrong-approach fixes.
+
+**Completeness check**: After implementing a fix or feature, grep the entire codebase for all related occurrences of the changed pattern before declaring done. Check for: other files using the old pattern, duplicate functions that could override the change, and tests referencing old behavior.
+
+**UI edge cases**: When implementing UI/UX changes, enumerate ALL states and edge cases upfront before coding: single vs multiple items, empty states, user messages vs agent messages, mobile vs desktop.
 
 ---
 
@@ -33,13 +45,24 @@ mysql -h 10.0.0.16 -u username -p winelist
 .\deploy.ps1 -ListBackups
 .\deploy.ps1 -Rollback "2026-01-18_143022"
 
-# JIRA CLI (REST API v3)
-.\scripts\jira.ps1 list                      # List open issues
+# JIRA CLI (REST API v3 + Agile)
+.\scripts\jira.ps1 list                      # List open issues (paginated)
+.\scripts\jira.ps1 list all                  # List all issues
 .\scripts\jira.ps1 get WIN-123               # Get issue details
 .\scripts\jira.ps1 create "Fix bug" Bug      # Create issue (Task, Bug, Story)
-.\scripts\jira.ps1 status WIN-123 "Done"     # Transition status
+.\scripts\jira.ps1 update WIN-123 "New title" # Update issue summary
+.\scripts\jira.ps1 status WIN-123 "Done"     # Transition status (disambiguates Done vs Cancelled)
+.\scripts\jira.ps1 cancel WIN-123            # Transition to Cancelled
 .\scripts\jira.ps1 comment WIN-123 "Note"    # Add comment
+.\scripts\jira.ps1 backlog                   # Open issues not in any sprint
 .\scripts\jira.ps1 sprint                    # Current sprint issues
+.\scripts\jira.ps1 sprint-list               # List all sprints with issue counts
+.\scripts\jira.ps1 sprint-issues 257         # Show issues in a sprint
+.\scripts\jira.ps1 sprint-create "Name"      # Create sprint (max 30 chars)
+.\scripts\jira.ps1 sprint-add 257 WIN-1,WIN-2 # Add issues to sprint
+.\scripts\jira.ps1 sprint-start 257          # Start sprint (2-week)
+.\scripts\jira.ps1 sprint-close 257          # Complete/close sprint
+.\scripts\jira.ps1 sprint-delete 257         # Delete future sprint
 ```
 
 Open: **http://localhost:5173/qve/**
@@ -64,31 +87,56 @@ npm run format       # Prettier
 ```
 qve/src/
 ├── lib/
-│   ├── api/           # TypeScript API client
-│   │   ├── client.ts  # All API methods
-│   │   └── types.ts   # Wine, Bottle, Rating types
-│   ├── components/    # 40+ Svelte components
+│   ├── api/           # TypeScript API client (client.ts, types.ts)
+│   ├── agent/         # Agent architecture (Phase 2) — router, state machine, handlers
+│   │   ├── handlers/  # Action handlers (identification, enrichment, addWine, etc.)
+│   │   ├── messages/  # Message factory functions
+│   │   ├── middleware/ # Error handling, retry tracking, validation
+│   │   ├── services/  # API service layer
+│   │   └── types.ts, router.ts, stateMachine.ts, personalities.ts
+│   ├── components/    # 90+ Svelte components
 │   │   ├── ui/        # Icon, ThemeToggle, CurrencySelector, Toast, RatingDisplay, PriceScale, BuyAgainIndicator
 │   │   ├── wine/      # WineCard, WineGrid, HistoryCard
 │   │   ├── layout/    # Header, CollectionRow, FilterBar, SideMenu, FilterDropdown
 │   │   ├── forms/     # FormInput, RatingDots, MiniRatingDots
 │   │   ├── wizard/    # WizardStepIndicator, SearchDropdown, AILoadingOverlay
-│   │   ├── modals/    # DrinkRateModal, ConfirmModal, DuplicateWarningModal
+│   │   ├── modals/    # DrinkRateModal, ConfirmModal, DuplicateWarningModal, SettingsModal, AddBottleModal
 │   │   ├── edit/      # WineForm, BottleForm, BottleSelector
-│   │   └── agent/     # AgentPanel, ChatMessage, ActionChips, CommandInput, enrichment/
-│   ├── stores/        # 16 Svelte stores (state management)
-│   └── styles/        # tokens.css, base.css, animations.css
+│   │   └── agent/     # AgentPanel, ChatMessage, ActionChips, CommandInput
+│   │       ├── cards/       # DataCard, EnrichmentCard, WineCard
+│   │       ├── content/     # ChipsMessage, EnrichmentMessage, ErrorMessage, FormMessage, ImageMessage, TextMessage
+│   │       ├── conversation/ # AgentChatContainer, InputArea, MessageList
+│   │       ├── enrichment/  # CriticScores, DrinkWindow, GrapeComposition, StyleProfile, etc.
+│   │       ├── forms/       # BottleDetailsForm, ManualEntryForm, MatchSelectionList
+│   │       └── wine/        # WineConfidenceSection, WineDetailsSection, WineNameSection
+│   ├── stores/        # 24 Svelte stores (16 core + 8 agent/settings)
+│   ├── utils/         # commandDetector.ts (command/chip detection, brief input handling)
+│   └── styles/        # tokens.css, base.css, animations.css, index.css
 └── routes/            # SvelteKit file-based routing
     ├── +page.svelte   # Home / Cellar view
     ├── add/           # Add Wine wizard
     ├── history/       # Drink history
     ├── edit/[id]/     # Edit Wine/Bottle
     └── drink/[id]/    # Drink/Rate flow
+docs/                  # Detailed reference docs (see below)
 ```
+
+**Detailed reference docs** in `docs/`:
+- `AGENT_ARCHITECTURE.md` — Router, middleware, handlers, state machine, message system, chip configs
+- `COMPONENTS.md` — Full component API reference with props and usage
+- `STORES.md` — All store APIs with state shapes and actions
+- `API.md` — Full API client method reference
+- `ARCHITECTURE.md` — System architecture diagrams and data flows
+- `SOMMELIER_PERSONALITIES.md` — Agent personality configuration
+- `DEVELOPMENT.md` — Extended development guide
 
 ---
 
 ## Key Stores
+
+For full store APIs, see `docs/STORES.md`.
+
+**Core stores (16):**
 
 | Store | File | Purpose |
 |-------|------|---------|
@@ -108,7 +156,19 @@ qve/src/
 | theme | `stores/theme.ts` | Light/dark theme |
 | currency | `stores/currency.ts` | Display currency, conversion utilities, formatCompactValue |
 | scrollPosition | `stores/scrollPosition.ts` | Scroll restoration |
-| agent | `stores/agent.ts` | Wine Assistant state, identification, enrichment, session persistence (sessionStorage) |
+| settings | `stores/settings.ts` | Collection name, cellar value display |
+
+**Agent stores (7) — Phase 2 rearchitecture split from monolithic agent.ts:**
+
+| Store | File | Purpose |
+|-------|------|---------|
+| agent | `stores/agent.ts` | Core agent state, phase management, panel open/close |
+| agentConversation | `stores/agentConversation.ts` | Chat messages, typing indicators |
+| agentIdentification | `stores/agentIdentification.ts` | Identification results, confidence |
+| agentEnrichment | `stores/agentEnrichment.ts` | Enrichment data (grapes, critics, drink window) |
+| agentAddWine | `stores/agentAddWine.ts` | Add-to-cellar flow state |
+| agentPersistence | `stores/agentPersistence.ts` | sessionStorage save/restore |
+| agentSettings | `stores/agentSettings.ts` | Agent personality settings |
 
 ---
 
@@ -239,100 +299,36 @@ The dropdown uses a portal to escape the header's stacking context on iOS:
 .no-overscroll { overscroll-behavior: none; }
 ```
 
-### Agent Session Persistence (stores/agent.ts)
-Wine Assistant state survives mobile browser tab switches (e.g., switching to Camera app):
+### Agent Session Persistence
 
-| Data | Storage | Lifetime |
-|------|---------|----------|
-| Chat messages, results, images | sessionStorage | Tab close clears |
-| Panel open/close state | localStorage | Persists across sessions |
+State survives mobile browser tab switches (e.g., switching to Camera app). See `docs/AGENT_ARCHITECTURE.md` for full persistence details.
 
-**Persisted state**: messages (max 30), lastResult, augmentationContext, enrichmentData, pendingNewSearch, phase, image data (base64)
+- **sessionStorage**: Messages (max 30), results, images (as data URLs), phase, augmentation context
+- **localStorage**: Panel open/close state
+- **Orphan protection**: Loading states reset to false on hydration
+- **Quota fallback**: Drops image data first, then reduces to last 10 messages
 
-**Images**: Stored as data URLs (not ObjectURLs) for cross-reload survival
+### Confidence Handling (Gotcha)
 
-**Clear triggers**:
-| Trigger | Function | Effect |
-|---------|----------|--------|
-| Panel opens with no messages | `startSession()` | Clears storage, new greeting |
-| "Start Over" button | `resetConversation()` | Adds divider + greeting, keeps history |
-| Tab closed | Browser | sessionStorage auto-cleared |
-| Hard reset | `fullReset()` | Clears all storage, closes panel |
-
-**Persistence timing**:
-- Debounced (500ms): Message additions, phase changes
-- Immediate: Identification results, augmentation context, pendingNewSearch (critical for retry/mobile)
-
-**Quota handling**: Graceful fallback drops image data first, then reduces to last 10 messages
-
-**Orphan protection**: Loading states (`isLoading`, `isTyping`, `isEnriching`) reset to false on hydration
-
-**Confidence handling**:
-
-- **API format**: The PHP API returns confidence as a **percentage (0-100)**, e.g., `18` for 18% confidence
+- **API format**: PHP returns confidence as **percentage (0-100)**, e.g., `18` = 18%
 - **Internal format**: `analyzeResultQuality()` normalizes to **decimal (0-1)** for threshold comparisons
-- **Thresholds**: `LOW_CONFIDENCE_THRESHOLD = 0.7` (70%), `ESCALATION_CONFIDENCE_THRESHOLD = 0.6` (60%)
-- **Storage**: Confidence is stored both on the result object (`result.confidence`) AND separately in state (`state.confidence`)
+- **Thresholds**: `LOW_CONFIDENCE_THRESHOLD = 0.7`, `ESCALATION_CONFIDENCE_THRESHOLD = 0.6`
+- **Always use** `identification.getConfidence()` as the authoritative source — `result.confidence` may be lost through serialization during field accumulation flows
 
-When accessing confidence in handlers, **always use the stored value** via `identification.getConfidence()` as the authoritative source:
+### Agent Input & Command Detection
 
-```typescript
-// CORRECT - uses stored confidence as authoritative source
-const confidence = identification.getConfidence() ?? result.confidence ?? 1;
+Full phase table and command detection in `docs/AGENT_ARCHITECTURE.md`. Key behaviors:
 
-// WRONG - result.confidence may be lost through serialization
-const confidence = result.confidence ?? 1;
-```
+- Text input is **always visible** with phase-aware placeholders
+- **New Search Confirmation**: Typing during `action_select`/`result_confirm` shows "Search New" / "Keep Current" chips to prevent accidental progress loss
+- **Chip response detection** in `result_confirm`: "yes"/"no" → triggers chip action; unrecognized short input → fallback message
+- **Brief input confirmation**: Single words prompt "Just 'X'? Adding more detail will improve the match."
+- **Command detection** (`lib/utils/commandDetector.ts`): "start over", "cancel", "go back", "try again" — with false-positive prevention for wine names
+- **`pendingNewSearch`** persisted to sessionStorage for mobile tab-switch survival
 
-This pattern is critical during field accumulation flows (where user fills in missing producer/vintage) to preserve the original low-confidence score for reidentification prompts.
+### Add Bottle to Existing Wine
 
-### Agent Input Behavior (AgentPanel.svelte)
-
-The text input is **always visible** across all conversation phases, with phase-aware placeholders:
-
-| Phase | Placeholder | Behavior on Text Submit |
-|-------|-------------|------------------------|
-| `greeting` | "Type wine name or take a photo..." | Starts fresh identification |
-| `path_selection` | "Type wine name or take a photo..." | Starts fresh identification |
-| `await_input` | "Type wine name or take a photo..." | Starts fresh identification |
-| `identifying` | "Processing..." | Input disabled |
-| `result_confirm` | "Or type to search again..." | Shows confirmation if wine identified |
-| `action_select` | "Or identify another wine..." | Shows confirmation if wine identified |
-| `confirm_new_search` | "Choose an option above..." | Input disabled |
-| `handle_incorrect` | "Describe what I got wrong..." | Clears context, starts fresh |
-| `augment_input` (text) | "Tell me more about this wine..." | Merges with existing context |
-| `augment_input` (image) | "Add details visible in the image..." | Combines with original image |
-| `complete` | "Processing..." | Input disabled |
-
-**New Search Confirmation**: When user types during `action_select` phase (or `result_confirm` if not a chip response) with an identified wine, a confirmation prompt appears asking "Did you want to search for something new instead?" with chips:
-- **Search New**: Clears context and proceeds with new identification
-- **Keep Current**: Returns to previous phase with original chips
-
-**Processing order in `result_confirm` phase**:
-1. Chip response detection runs first ("yes", "yep", "no" → triggers Yes/No chip)
-2. Only non-chip-response text triggers the new search confirmation
-
-This prevents accidental loss of progress if user input is misunderstood. Conversational commands (like "start over") still execute immediately without confirmation.
-
-**Confirmation state persistence**: `pendingNewSearch` is stored in sessionStorage to survive mobile tab switches (e.g., switching to Camera app and back).
-
-**Input disabled**: During `identifying` (loading), `confirm_new_search` (awaiting chip selection), and `complete` (navigating to add-wine).
-
-### Add Bottle to Existing Wine (WIN-145)
-
-When user adds a wine that already exists in their cellar:
-
-1. **Early check**: After "Add to Cellar" is tapped, `checkDuplicate` runs with producer name, wine name, and vintage
-2. **If wine exists**: Shows `existing_wine_choice` message with:
-   - "I found [wine] by [producer] already in your cellar with X bottles"
-   - **Add Another Bottle** → Skips to bottle form, calls `api.addBottle()`
-   - **Create New Wine** → Starts full region/producer/wine matching flow
-3. **If no match**: Normal matching flow proceeds
-
-**Key files:**
-- `AgentPanel.svelte`: `handleAddToCellar()` early check, `add_bottle_existing` handler
-- `agent.ts`: `AgentAddState.existingWineId`, `existing_wine_choice` message type
-- `ChatMessage.svelte`: Renders `existing_wine_choice` message
+After "Add to Cellar", `checkDuplicate` runs. If wine exists, user sees "Add Another Bottle" (→ `api.addBottle()`) or "Create New Wine" (→ full matching flow).
 
 ---
 
@@ -372,6 +368,7 @@ Endpoints in `resources/php/`:
 | `drinkBottle.php` | Mark drunk + add rating |
 | `addBottle.php` | Add bottle to wine |
 | `updateBottle.php` | Update bottle details |
+| `getBottles.php` | Get bottles for a wine |
 | `getDrunkWines.php` | History with ratings |
 | `getCountries.php` | Countries with bottle counts (cascading) |
 | `getTypes.php` | Types with bottle counts (cascading) |
@@ -379,9 +376,16 @@ Endpoints in `resources/php/`:
 | `getProducers.php` | Producers with bottle counts (cascading) |
 | `getYears.php` | Vintages with bottle counts (cascading) |
 | `getCurrencies.php` | Currencies and bottle sizes for settings |
+| `getUserSettings.php` | Retrieve user settings |
+| `updateUserSettings.php` | Update user settings |
+| `updateRating.php` | Update rating for drunk wine |
+| `getCellarValue.php` | Calculate total cellar value |
 | `upload.php` | Image upload (800x800) |
 | `geminiAPI.php` | AI enrichment |
 | `checkDuplicate.php` | Duplicate/similar item detection (fuzzy matching) |
+| `databaseConnection.php` | Database connection utility |
+| `normalize.php` | String normalization utilities |
+| `validators.php` | Input validation utilities |
 
 ### Agent Endpoints (`resources/php/agent/`)
 
@@ -392,171 +396,32 @@ Endpoints in `resources/php/`:
 | `identifyImage.php` | Image-based wine identification |
 | `identifyWithOpus.php` | Premium Opus model escalation |
 | `agentEnrich.php` | Wine enrichment (grapes, critics, drink window) |
+| `clarifyMatch.php` | Match clarification/disambiguation |
+| `identifyTextStream.php` | Streaming text identification |
+| `identifyImageStream.php` | Streaming image identification |
+| `agentEnrichStream.php` | Streaming enrichment endpoint |
+| `config/` | Agent configuration (`agent.config.php`) |
+| `Identification/` | Service classes (ImageQualityAssessor, IntentDetector, InputClassifier, etc.) |
+| `Enrichment/` | Service classes (EnrichmentService, EnrichmentCache, ValidationService, etc.) |
+| `LLM/` | LLM client and adapters (ClaudeAdapter, GeminiAdapter, CircuitBreaker, etc.) |
 
-### Agent Command Detection (`qve/src/lib/utils/commandDetector.ts`)
+### Agent Command & Input Detection
 
-Client-side detection intercepts conversational commands before API calls:
-
-| Command | Triggers | Action |
-|---------|----------|--------|
-| `start_over` | "start", "start over", "restart", "reset", "new wine" | Reset conversation |
-| `cancel` | "stop", "cancel", "never mind", "quit", "exit" | Close panel |
-| `go_back` | "back", "go back", "undo", "previous" | Return to await_input |
-| `try_again` | "try again", "retry", "one more time" | Re-execute last action |
-
-**False positive prevention**: Wine indicators checked first ("Château Cancel" → wine query), long text (>6 words) treated as wine query, punctuation normalized.
-
-### Agent Chip Response Detection (`qve/src/lib/utils/commandDetector.ts`)
-
-Users can type natural language responses instead of tapping chips. Detection runs in `result_confirm` phase only.
-
-| Response Type | Example Triggers | Chip Actions Triggered |
-|---------------|------------------|------------------------|
-| Positive | "yes", "ok", "correct", "thats right", typos like "corectt" | `correct`, `confirm_direction`, `use_grape_as_name` |
-| Negative | "no", "wrong", "not right", "incorrect", typos like "worng" | `not_correct`, `wrong_direction` |
-
-**Behavior:**
-- Multi-word input allowed: "yes please", "no thanks" → matches
-- Short unrecognized input (1-3 words): Shows "I didn't quite catch that" fallback
-- Wine indicators in input: Proceeds to identification instead
-- Long input (4+ words): Proceeds to identification instead
-
-### Brief Input Confirmation (`qve/src/lib/utils/commandDetector.ts`)
-
-Single-word inputs trigger a confirmation prompt before making LLM API calls:
-
-| Input | Behavior |
-|-------|----------|
-| "Margaux" | Prompt: "Just 'Margaux'? Adding more detail will improve the match." |
-| "Champagne" | Prompt (even wine terms are ambiguous alone) |
-| "2018" | Prompt (vintage alone is ambiguous) |
-| "Margaux 2018" | No prompt (2+ words) |
-
-**Chips shown:**
-- **Search Anyway** → proceeds with the single word
-- **I'll Add More** → user can type more, text accumulates (e.g., "Margaux" + "2018" → "Margaux 2018")
-
-**When prompt is skipped:**
-- Multi-word input (2+ words)
-- In `augment_input` phase with existing context (user is providing details)
-- Commands detected first ("start", "cancel", etc.)
+See `docs/AGENT_ARCHITECTURE.md` (Section 15: Command Detection) for full tables. Key file: `qve/src/lib/utils/commandDetector.ts`.
 
 ---
 
 ## Agent Error Handling
 
-The agent uses structured error responses for user-friendly error messages with retry support.
+Full error handling reference in `docs/AGENT_ARCHITECTURE.md` (Section 16: Error Handling).
 
-### Error Types (`AgentErrorType`)
-| Type | HTTP | Retryable | Description |
-|------|------|-----------|-------------|
-| `timeout` | 408 | Yes | LLM took too long |
-| `rate_limit` | 429 | Yes | Too many requests |
-| `limit_exceeded` | 429 | No | Daily quota reached |
-| `server_error` | 500 | Yes | Unexpected error |
-| `overloaded` | 503 | Yes | Service overwhelmed |
-| `database_error` | 500 | Yes | DB connection issue |
-| `quality_check_failed` | 422 | No | Image too unclear |
-| `identification_error` | 400 | No | Could not identify wine |
-| `enrichment_error` | 400 | No | Could not enrich wine |
-
-### Backend Error Functions (`_bootstrap.php`)
-
-```php
-// For exceptions (500 errors, timeouts, etc.)
-agentExceptionError($e, 'endpointName');
-
-// For service-level errors (success=false from LLM)
-agentStructuredError($errorType, $fallbackMessage);
-```
-
-Both return structured JSON:
-```json
-{
-  "success": false,
-  "message": "Our sommelier is taking longer than expected...",
-  "error": {
-    "type": "timeout",
-    "userMessage": "Our sommelier is taking longer than expected...",
-    "retryable": true,
-    "supportRef": "ERR-A3F7B2C1"
-  }
-}
-```
-
-### Support Reference
-
-A unique error identifier that links user-facing errors to server-side debug logs.
-
-**Format**: `ERR-XXXXXXXX` (8 uppercase hex chars)
-- Generated from: `MD5(timestamp + errorType + endpoint)`
-- Example: `ERR-A3F7B2C1`
-
-**When it appears**:
-- Only for **exception errors** (500s, timeouts caught in catch blocks)
-- NOT for service-level errors (when LLM returns `success: false`)
-- Retryable errors (timeout, rate_limit) still get a reference since they hit the exception path
-
-**What gets logged** (PHP error log):
-```
-[Agent Error] Exception in identifyText | Context: {
-  "type": "timeout",
-  "message": "cURL error 28: Operation timed out",
-  "supportRef": "ERR-A3F7B2C1",
-  "trace": "#0 /var/www/.../AgentIdentificationService.php(123)..."
-}
-```
-
-**Debugging workflow**:
-1. User reports: "I got error ERR-A3F7B2C1"
-2. Search PHP logs: `grep "ERR-A3F7B2C1" /var/log/php_errors.log`
-3. Find full context: error type, message, stack trace, timestamp, endpoint
-
-**User display** (in AgentPanel):
-```
-Our sommelier is taking longer than expected. Please try again or start over.
-
-Reference: ERR-A3F7B2C1
-```
-
-### Frontend Error Handling
-
-**Types** (`types.ts`):
-```typescript
-interface AgentErrorInfo {
-  type: AgentErrorType;
-  userMessage: string;
-  retryable: boolean;
-  supportRef?: string | null;
-}
-
-class AgentError extends Error {
-  static fromResponse(json: AgentErrorResponse): AgentError;
-  static isAgentError(error: unknown): error is AgentError;
-}
-```
-
-**Stores** (`agent.ts`):
-```typescript
-// Derived stores for error state
-export const agentError;           // Full AgentErrorInfo | null
-export const agentErrorMessage;    // string | null
-export const agentErrorRetryable;  // boolean
-export const agentErrorSupportRef; // string | null
-```
-
-**UI** (`AgentPanel.svelte`):
-- Tracks `lastAction` for retry functionality
-- `showErrorWithRetry()` displays error with action chips
-- "Try Again" chip (if retryable) repeats last action
-- "Start Over" chip resets conversation
-- Support reference shown on new line when available
-
-### Error Message Style (Sommelier Personality)
-- "Our sommelier is taking longer than expected..."
-- "Our sommelier is quite busy at the moment..."
-- "We've reached our tasting limit for today..."
-- "That image is a bit unclear. Could you try a clearer photo?"
+**Quick reference:**
+- Backend: `agentExceptionError($e, 'endpoint')` for exceptions, `agentStructuredError($type, $msg)` for service errors
+- Both return structured JSON with `{ success, message, error: { type, userMessage, retryable, supportRef } }`
+- **Support Ref**: `ERR-XXXXXXXX` format, exception-only, debug via `grep "ERR-XXX" /var/log/php_errors.log`
+- Frontend: `AgentError.fromResponse(json)`, derived stores (`agentError`, `agentErrorRetryable`, `agentErrorSupportRef`)
+- UI: "Try Again" chip (if retryable) + "Start Over" chip, sommelier-personality messages
+- Error types: `timeout`(408), `rate_limit`(429), `limit_exceeded`(429), `server_error`(500), `overloaded`(503), `database_error`(500), `quality_check_failed`(422), `identification_error`(400), `enrichment_error`(400)
 
 ---
 
