@@ -25,7 +25,8 @@
  * Development: Vite dev server (localhost:5173) and mobile testing via --host.
  */
 $allowedOrigins = [
-    'http://10.0.0.16',          // Production server
+    'http://10.0.0.16',          // Production server (direct IP)
+    'http://qve-wine.com',       // Production server (domain)
     'http://localhost:5173',      // Vite dev server
     'http://127.0.0.1:5173',     // Vite dev server (alternate)
 ];
