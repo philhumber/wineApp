@@ -28,6 +28,8 @@ export interface AugmentationContext {
   imageData?: string;
   imageMimeType?: string;
   conversationHistory?: string[];
+  /** WIN-270: Prefix from brief input confirmation for concatenation */
+  briefInputPrefix?: string;
 }
 
 export interface ImageData {
@@ -159,6 +161,19 @@ export function clearError(): void {
   store.update((state) => ({
     ...state,
     error: null,
+  }));
+}
+
+/**
+ * Clear identifying state (WIN-187: for cancellation).
+ * Stops the loading indicator without clearing results.
+ */
+export function clearIdentifying(): void {
+  store.update((state) => ({
+    ...state,
+    isIdentifying: false,
+    isEscalating: false,
+    streamingFields: new Map(),
   }));
 }
 

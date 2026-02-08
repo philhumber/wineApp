@@ -1,9 +1,15 @@
 <?php
   // 1. Include dependencies at the top
+  require_once 'securityHeaders.php';
   require_once 'databaseConnection.php';
   require_once 'audit_log.php';
   require_once 'validators.php';
+  require_once 'errorHandler.php';
 
+  // Start session if not already started
+  if (session_status() === PHP_SESSION_NONE) {
+      session_start();
+  }
   // 2. Initialize response
   $response = ['success' => false, 'message' => '', 'data' => null];
   $output = "";
@@ -11,26 +17,26 @@
   try {
     // 3. Get database connection
     $pdo = getDBConnection();
-        
+
     // 4. Get and validate input
     $data = json_decode(file_get_contents('php://input'), true);
 
     //Region and producer information must be present to add a wine
     //At least one needs to be there - new or exisiting
-    $existingWineRegion = trim($data['findRegion']);
-    $newWineRegion = trim($data['regionName']);
+    $existingWineRegion = trim($data['findRegion']) ?? null;
+    $newWineRegion = trim($data['regionName']) ?? null;
     if (empty($newWineRegion) && empty($existingWineRegion)) {
       throw new Exception('New or existing Region is required');
     }
 
-    $newProducerName = trim($data['producerName']);
-    $existingWineProducer = trim($data['findProducer']);
+    $newProducerName = trim($data['producerName']) ?? null;
+    $existingWineProducer = trim($data['findProducer']) ?? null;
     if (empty($newProducerName) && empty($existingWineProducer)) {
         throw new Exception('New or existing Producer is required');
     }
 
-    $newWineName = trim($data['wineName']);
-    $existingWineName = trim($data['findWine']);
+    $newWineName = trim($data['wineName']) ?? null;
+    $existingWineName = trim($data['findWine']) ?? null;
     if (empty($newWineName) && empty($existingWineName)) {
         throw new Exception('New or existing Wine Name is required');
     }
@@ -47,20 +53,20 @@
     $producerFounded = trim($data['producerFounded'] ?? null);
     $producerOwnership = trim($data['producerOwnership'] ?? null);
     $producerDescription = trim($data['producerDescription'] ?? null);
-    
-   
-    $bottleType = trim($data['bottleType']);
+
+
+    $bottleType = trim($data['bottleType']) ?? null;
     if (empty($bottleType)) {
         throw new Exception('Bottle name is required');
     }
-    $storageLocation = trim($data['storageLocation']);
+    $storageLocation = trim($data['storageLocation']) ?? null;
     if (empty($storageLocation)) {
         throw new Exception('Storage location is required');
-    }   
-    $bottleSource = trim($data['bottleSource']);
+    }
+    $bottleSource = trim($data['bottleSource']) ?? null;
     if (empty($bottleSource)) {
         throw new Exception('Bottle source is required');
-    }    
+    }
     $bottlePrice = trim($data['bottlePrice'] ?? null);
     $bottleCurrency = trim($data['bottleCurrency'] ?? null);
     $bottlePurchaseDate = !empty($data['bottlePurchaseDate']) ? trim($data['bottlePurchaseDate']) : null;
@@ -78,11 +84,11 @@
       $isNonVintage = $yearData['isNonVintage'] ? 1 : 0;
     }
 
-    $wineDescription = trim($data['wineDescription']);
-    $wineTasting = trim($data['wineTasting']);
-    $winePairing = trim($data['winePairing']);
-    $winePicture = trim($data['winePicture']);
-    $wineType = trim($data['wineType']);
+    $wineDescription = trim($data['wineDescription']) ?? null;
+    $wineTasting = trim($data['wineTasting']) ?? null;
+    $winePairing = trim($data['winePairing']) ?? null;
+    $winePicture = trim($data['winePicture']) ?? null;
+    $wineType = trim($data['wineType']) ?? null;
     $appellation = !empty($data['appellation']) ? trim($data['appellation']) : null;  // WIN-148: Specific appellation
 
     $pdo->beginTransaction();
@@ -99,35 +105,35 @@
                           ");
 
       //Choose which value to search for - either new or existing
-      if (!empty($existingWineRegion) ) { 
+      if (!empty($existingWineRegion) ) {
         $stmt->execute([':region' => $existingWineRegion]);
       } else {
         $stmt->execute([':region' => $newWineRegion]);
       }
       //Grab the ID
-      $regionID  = $stmt->fetchColumn();  
+      $regionID  = $stmt->fetchColumn();
 
       //if the region is found (non false region ID) then use the ID and move to producer
       //if the region is not found, then try adding it
 
       if ($regionID === false && empty($newWineRegion)) {
         //we expect a new region  if we are adding a region, so throw an error if there is no new
-        throw new Exception("Region '{$existingWineRegion}' not found, and no new region name given");
+        throw new Exception("Region not found, and no new region name given");
       } elseif ($regionID === false && !empty($newWineRegion)){
         //add the region as we know it is new and new region data is there
 
-        //TODO: this query could be replaced by have the ID in the front end        
+        //TODO: this query could be replaced by have the ID in the front end
         $stmt = $pdo->prepare("SELECT countryID FROM country WHERE countryName = :regionCountry");
         $stmt->execute([':regionCountry' => $regionCountry]);
         $countryID = $stmt->fetchColumn();
 
         // Check if country exists
         if ($countryID === false) {
-            throw new Exception("Country '{$regionCountry}' not found");
+            throw new Exception("Country not found");
         }
-      
+
         // Insert the region
-        $stmt = $pdo->prepare("INSERT INTO region (regionName, countryID, description, climate, soil, map) 
+        $stmt = $pdo->prepare("INSERT INTO region (regionName, countryID, description, climate, soil, map)
             VALUES (:regionName, :countryID, :regionDescription, :regionClimate, :regionSoil, :regionMap)");
 
         $stmt->execute([
@@ -139,6 +145,14 @@
             ':regionMap' => $regionMap
         ]);
         $regionID = $pdo->lastInsertId();
+        logInsert($pdo, 'region', $regionID, [
+            'regionName' => $newWineRegion,
+            'countryID' => $countryID,
+            'description' => $regionDescription,
+            'climate' => $regionClimate,
+            'soil' => $regionSoil,
+            'map' => $regionMap
+        ]);
         $output .= "New Region added ($newWineRegion)";
       } else {
         //There was a region already there and we used it
@@ -159,7 +173,7 @@
                           ");
 
       //Choose which value to search for - either new or existing
-      if (!empty($existingWineProducer) ) { 
+      if (!empty($existingWineProducer) ) {
         $stmt->execute([':wineProducer' => $existingWineProducer]);
       } else {
         $stmt->execute([':wineProducer' => $newProducerName]);
@@ -172,10 +186,10 @@
 
       if ($producerID === false && empty($newProducerName)) {
         //we expect a new prodcuer if we are adding a producer, so throw an error if there is no new
-        throw new Exception("Producer '{$existingWineProducer}' not found, and no new producer name given");
+        throw new Exception("Producer not found, and no new producer name given");
       } elseif ($producerID === false && !empty($newProducerName)){
         //add the producer as we know it is new and new producer data is there
-        $stmt = $pdo->prepare("INSERT INTO producers (producerName, regionID, town, founded, ownership, description) 
+        $stmt = $pdo->prepare("INSERT INTO producers (producerName, regionID, town, founded, ownership, description)
                                 VALUES (:producerName, :regionID, :producerTown, :producerFounded, :producerOwnership, :producerDescription)");
 
         $stmt->execute([
@@ -188,6 +202,14 @@
         ]);
 
         $producerID = $pdo->lastInsertId();
+        logInsert($pdo, 'producers', $producerID, [
+            'producerName' => $newProducerName,
+            'regionID' => $regionID,
+            'town' => $producerTown,
+            'founded' => $producerFounded,
+            'ownership' => $producerOwnership,
+            'description' => $producerDescription
+        ]);
         $output .= " - New Producer added ($newProducerName)";
       } else {
         //There was a producer already there and we used it
@@ -209,7 +231,7 @@
                           ");
 
       //Choose which value to search for - either new or existing
-      if (!empty($existingWineName) ) { 
+      if (!empty($existingWineName) ) {
         $stmt->execute([
                         ':wineName' => $existingWineName,
                         ':producerID' => $producerID
@@ -228,18 +250,18 @@
 
       if ($wineID === false && empty($newWineName)) {
         //we expect a new wine  if we are adding a wine, so throw an error if there is no new
-        throw new Exception("Wine '{$existingWineName}' not found, and no new wine name given");
+        throw new Exception("Wine not found, and no new wine name given");
       } elseif ($wineID === false && !empty($newWineName)){
 
         //Get the wine type
-        //TODO: this query could be replaced by have the ID in the front end        
+        //TODO: this query could be replaced by have the ID in the front end
         $stmt = $pdo->prepare("SELECT wineTypeID FROM winetype WHERE wineType = :wineType");
         $stmt->execute([':wineType' => $wineType]);
         $wineTypeID = $stmt->fetchColumn();
 
         // Check if wine type exists
         if ($wineTypeID === false) {
-            throw new Exception("Wine type '{$wineType}' not found");
+            throw new Exception("Wine type not found");
         }
 
         //add the wine  as we know it is new and new wine data is there
@@ -261,6 +283,18 @@
         ]);
 
         $wineID = $pdo->lastInsertId();
+        logInsert($pdo, 'wine', $wineID, [
+            'wineName' => $newWineName,
+            'wineTypeID' => $wineTypeID,
+            'producerID' => $producerID,
+            'year' => $wineYear,
+            'isNonVintage' => $isNonVintage,
+            'appellation' => $appellation,
+            'description' => $wineDescription,
+            'tastingNotes' => $wineTasting,
+            'pairing' => $winePairing,
+            'pictureURL' => $winePicture
+        ]);
         $output .= " - New Wine added ($newWineName)";
 
       } else {
@@ -287,6 +321,15 @@
       //need much more detailed output...should be a json of the wine or json of the error.
       //Also need different try catches, maybe the region works, but the otherone doesn't
       $bottleID = $pdo->lastInsertId();
+      logInsert($pdo, 'bottles', $bottleID, [
+          'wineID' => $wineID,
+          'bottleSize' => $bottleType,
+          'location' => $storageLocation,
+          'source' => $bottleSource,
+          'price' => $bottlePrice,
+          'currency' => $bottleCurrency,
+          'purchaseDate' => $bottlePurchaseDate
+      ]);
       $output = $output . ' - bottle is added' ;
 
     //Try and commit everything
@@ -303,8 +346,9 @@
       $pdo->rollBack();
     }
       $response['success'] = false;
-      $response['message'] = "Error in adding wine: " . $output . "." . $e->getMessage();
-      error_log("Error in addWine.php: " . $output . ". Exception: " . $e->getMessage());
+      // WIN-217: sanitize error messages - don't leak $output or internal details
+      $response['message'] = safeErrorMessage($e, 'addWine');
+      error_log("addWine progress before error: " . $output);
   }
 
   //Return JSON response

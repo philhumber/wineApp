@@ -160,6 +160,7 @@ export type NavigationAction =
   | { type: 'start_over' }
   | { type: 'go_back' }
   | { type: 'cancel' }
+  | { type: 'cancel_request' }  // WIN-187: Abort in-flight LLM request
   | { type: 'retry' }
   | { type: 'try_again' };
 

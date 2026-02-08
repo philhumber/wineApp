@@ -1,15 +1,20 @@
 <?php
 	// 1. Include dependencies at the top
+    require_once 'securityHeaders.php';
     require_once 'databaseConnection.php';
     require_once 'audit_log.php';
-
+    require_once 'errorHandler.php';
+    // Start session if not already started
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
     // 2. Initialize response
     $response = ['success' => false, 'message' => '', 'data' => null];
 
     try {
         // 3. Get database connection
         $pdo = getDBConnection();
-        
+
         // 4. Get and validate input
         $data = json_decode(file_get_contents('php://input'), true);
 
@@ -94,15 +99,15 @@
             ];
 
             logUpdate($pdo, 'bottles', $bottleID, $oldData, $newData, $userID);
-            
+
             // 11. Commit transaction
             $pdo->commit();
-            
+
             // 12. Set success response
             $response['success'] = true;
             $response['message'] = 'Bottle updated successfully!';
             $response['data'] = ['bottleID' => $bottleID];
-        
+
         } catch (Exception $e) {
             // 13. Rollback on error
             $pdo->rollBack();
@@ -110,10 +115,9 @@
         }
 
     } catch (Exception $e) {
-        // 14. Handle all errors
+        // 14. Handle all errors (WIN-217: sanitize error messages)
         $response['success'] = false;
-        $response['message'] = $e->getMessage();
-        error_log("Error in updateBottle.php: " . $e->getMessage());
+        $response['message'] = safeErrorMessage($e, 'updateBottle');
     }
 
     // 15. Return JSON response

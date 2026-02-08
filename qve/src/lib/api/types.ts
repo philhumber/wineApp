@@ -133,6 +133,7 @@ export interface WineFilters {
   producerDropdown?: string;
   yearDropdown?: string;
   bottleCount?: '0' | '1';  // '1' = has bottles (Our Wines), '0' = all
+  searchQuery?: string;     // WIN-24: Free text search (min 3 chars)
   wineID?: string | number;
 }
 
@@ -209,6 +210,13 @@ export interface AddBottlePayload {
   bottlePrice?: number;
   bottleCurrency?: string;
   purchaseDate?: string;
+  quantity?: number; // WIN-222: Batch insert for atomicity
+}
+
+// WIN-222: Response type for addBottle (single or batch)
+export interface AddBottleResponse {
+  bottleID?: number;      // Single bottle insert
+  bottleIDs?: number[];   // Batch insert (quantity > 1)
 }
 
 export interface UpdateWinePayload {
@@ -582,6 +590,7 @@ export type AgentErrorType =
   | 'server_error'
   | 'overloaded'
   | 'database_error'
+  | 'ssl_error'
   | 'quality_check_failed'
   | 'identification_error'
   | 'enrichment_error'

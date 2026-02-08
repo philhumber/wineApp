@@ -127,8 +127,7 @@ qve/src/
     ├── add/+page.svelte        #   4-step Add Wine wizard
     ├── history/+page.svelte    #   Drink history view
     ├── edit/[id]/+page.svelte  #   Edit wine/bottle (two-tab)
-    ├── drink/[id]/+page.svelte #   Drink/Rate flow
-    └── agent-test/+page.svelte #   Agent testing page (dev only)
+    └── drink/[id]/+page.svelte #   Drink/Rate flow
 ```
 
 ### 2.4 Routes
@@ -140,7 +139,6 @@ qve/src/
 | `/qve/history` | Drink history with filtering and sorting |
 | `/qve/edit/[id]` | Two-tab edit page (Wine details / Bottle details) |
 | `/qve/drink/[id]` | Drink and rate a bottle |
-| `/qve/agent-test` | Agent component testing (development only) |
 
 ### 2.5 State Management
 
@@ -707,7 +705,7 @@ await api.enrichStream(producer, wineName, { onSection, onComplete });
 | **Svelte stores over props drilling** | Global state for cross-cutting concerns (filters, theme, agent); reduces component coupling |
 | **Single API client class** | One place for all backend calls; consistent error handling; easy to mock in tests |
 | **CSS custom properties for theming** | Light/dark theme toggle via `data-theme` attribute on `<html>`; design tokens in `tokens.css` |
-| **File-based routing** | SvelteKit convention; 6 routes is manageable without custom routing |
+| **File-based routing** | SvelteKit convention; 5 routes is manageable without custom routing |
 | **Agent as overlay panel** | Available on every page without navigation; persists state across page changes |
 | **sessionStorage for agent state** | Survives iOS Safari tab switches (e.g., switching to Camera app); cleared on tab close |
 | **PowerShell deploy script** | Windows development environment; robocopy for efficient file sync; backup/rollback built in |

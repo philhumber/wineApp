@@ -2,7 +2,7 @@
 
 > Central index for all Qve Wine App documentation. Each document covers a specific domain of the codebase with detailed references, diagrams, and code examples.
 
-**Last Updated**: 2026-02-07
+**Last Updated**: 2026-02-08
 
 ---
 
@@ -21,6 +21,7 @@ graph TD
     B --> J[SOMMELIER_PERSONALITIES.md]
     B --> K[PRODUCTION_READINESS_AUDIT.md]
     B --> L[PHASE_2_REARCHITECTURE.md]
+    B --> M[UI_UX.md]
 ```
 
 ---
@@ -40,7 +41,7 @@ graph TD
 | **[DEVELOPMENT.md](DEVELOPMENT.md)** | Setup, workflow, testing, deployment, debugging | Setting up the project or running dev tooling |
 | **[SOMMELIER_PERSONALITIES.md](SOMMELIER_PERSONALITIES.md)** | Agent personality configuration and message templates | Customizing agent tone and response style |
 | **[PRODUCTION_READINESS_AUDIT.md](PRODUCTION_READINESS_AUDIT.md)** | Security, reliability, performance, architecture findings | Prioritizing technical debt and improvements |
-
+| **[UI_UX.md](UI_UX.md)** | Design system, visual language, interaction patterns | Building UI components; understanding design decisions |
 
 ---
 
@@ -76,6 +77,8 @@ Configuration reference for the agent's sommelier personality system. Documents 
 ### [PRODUCTION_READINESS_AUDIT.md](PRODUCTION_READINESS_AUDIT.md)
 Comprehensive audit report from 2026-02-06 covering reliability (5 critical), security (2 critical), performance (3 critical), and architecture (4 critical) findings. Includes a phased implementation plan for remediation. See the "Current Status" section for which issues have been addressed since the audit.
 
+### [UI_UX.md](UI_UX.md)
+Complete UI/UX design guide documenting the "quiet luxury" design philosophy, color system (light/dark modes), typography, spacing, elevation, motion, iconography, responsive breakpoints, component patterns, rating interface, AI loading states, toast notifications, empty/error states, iOS Safari specifics, and accessibility guidelines. Consolidates design decisions from the original mockups into implementation guidance.
 
 ---
 

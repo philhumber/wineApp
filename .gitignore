@@ -4,6 +4,9 @@
 # Config is stored outside web root in ../wineapp-config/
 # This entry is for safety in case anyone puts config in repo
 config.local.php
+.env
+.env.*
+!.env.example
 
 # ===================
 # DEPRECATED FILES

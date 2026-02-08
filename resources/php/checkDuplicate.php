@@ -23,7 +23,10 @@
  * }
  */
 
+require_once 'securityHeaders.php';
 require_once 'databaseConnection.php';
+require_once 'errorHandler.php';
+require_once 'FuzzyMatcher.php';
 
 $response = ['success' => false, 'message' => '', 'data' => null];
 
@@ -75,8 +78,8 @@ try {
 
 } catch (Exception $e) {
     $response['success'] = false;
-    $response['message'] = $e->getMessage();
-    error_log("Error in checkDuplicate.php: " . $e->getMessage());
+    // WIN-217: sanitize error messages
+    $response['message'] = safeErrorMessage($e, 'checkDuplicate');
 }
 
 header('Content-Type: application/json');
@@ -84,63 +87,44 @@ echo json_encode($response);
 
 /**
  * Normalize accented characters for comparison
- * Converts é→e, ü→u, ñ→n, etc.
+ * Delegates to FuzzyMatcher for consistent normalization across codebase.
+ *
+ * @param string $string Input string
+ * @return string Normalized string with accents removed
  */
 function normalizeAccents($string) {
-    // Use transliterator if available (more accurate)
-    if (class_exists('Transliterator')) {
-        $transliterator = Transliterator::createFromRules(
-            ':: NFD; :: [:Nonspacing Mark:] Remove; :: NFC;'
-        );
-        if ($transliterator) {
-            return $transliterator->transliterate($string);
-        }
-    }
-
-    // Fallback: iconv transliteration
-    $normalized = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $string);
-    return $normalized !== false ? $normalized : $string;
+    return FuzzyMatcher::normalizeAccents($string);
 }
 
 /**
- * Check if two strings are similar using Levenshtein distance
- * Returns true if the distance is within acceptable threshold
+ * Check if two strings are similar using token-based fuzzy matching
+ *
+ * WIN-188: Uses FuzzyMatcher for improved matching:
+ * - Multilingual article removal (Le, La, Les, El, Il, Der, The, etc.)
+ * - Token-based Jaccard similarity (word order agnostic)
+ * - Per-token Levenshtein for typo tolerance
+ *
+ * @param string $input Input string
+ * @param string $candidate Candidate string
+ * @param float|null $threshold Custom Jaccard threshold (default: 0.55)
+ * @return bool True if fuzzy match
  */
 function isFuzzyMatch($input, $candidate, $threshold = null) {
-    $inputNorm = strtolower(normalizeAccents($input));
-    $candidateNorm = strtolower(normalizeAccents($candidate));
-
-    // Skip if strings are too different in length
-    $lenDiff = abs(strlen($inputNorm) - strlen($candidateNorm));
-    if ($lenDiff > 5) {
-        return false;
-    }
-
-    // Calculate Levenshtein distance
-    $distance = levenshtein($inputNorm, $candidateNorm);
-
-    // Dynamic threshold based on string length
-    // Shorter strings need stricter matching
-    if ($threshold === null) {
-        $avgLen = (strlen($inputNorm) + strlen($candidateNorm)) / 2;
-        if ($avgLen <= 5) {
-            $threshold = 1;  // 1 char difference for short names
-        } elseif ($avgLen <= 10) {
-            $threshold = 2;  // 2 char difference for medium names
-        } else {
-            $threshold = 3;  // 3 char difference for long names
-        }
-    }
-
-    return $distance <= $threshold;
+    return FuzzyMatcher::isFuzzyMatch($input, $candidate, $threshold);
 }
 
 /**
  * Check if input is a substring match (either direction)
+ *
+ * WIN-188: Now strips articles before comparison for consistency
+ * with fuzzy matching. Handles cases like:
+ * - "Les Clous" matches "Les Clous Naturé"
+ * - "Margaux" matches "Château Margaux"
  */
 function isSubstringMatch($input, $candidate) {
-    $inputNorm = strtolower(normalizeAccents($input));
-    $candidateNorm = strtolower(normalizeAccents($candidate));
+    // Strip articles and normalize for comparison
+    $inputNorm = strtolower(FuzzyMatcher::stripArticles(normalizeAccents($input)));
+    $candidateNorm = strtolower(FuzzyMatcher::stripArticles(normalizeAccents($candidate)));
 
     return strpos($candidateNorm, $inputNorm) !== false ||
            strpos($inputNorm, $candidateNorm) !== false;

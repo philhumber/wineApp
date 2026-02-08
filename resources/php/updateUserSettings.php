@@ -6,7 +6,9 @@
  */
 
 // 1. Include dependencies
+require_once 'securityHeaders.php';
 require_once 'databaseConnection.php';
+require_once 'errorHandler.php';
 
 // 2. Initialize response
 $response = ['success' => false, 'message' => '', 'data' => null];
@@ -60,10 +62,9 @@ try {
     $response['data'] = $updatedSettings;
 
 } catch (Exception $e) {
-    // 9. Handle errors
+    // 9. Handle errors (WIN-217: sanitize error messages)
     $response['success'] = false;
-    $response['message'] = $e->getMessage();
-    error_log("Error in updateUserSettings.php: " . $e->getMessage());
+    $response['message'] = safeErrorMessage($e, 'updateUserSettings');
 }
 
 // 10. Return JSON response

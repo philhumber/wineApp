@@ -569,6 +569,91 @@ describe('handleAgentAction', () => {
 				await handleAgentAction({ type: 'add_more_detail', messageId: msg.id });
 				expect(get(conversation.agentPhase)).toBe('awaiting_input');
 			});
+
+			// WIN-270: Brief input continuation tests
+			it('should set augmentation context with pending brief search', async () => {
+				conversation.setPhase('awaiting_input');
+				conversation.setPhase('confirming');
+				identification.setPendingBriefSearch('rose');
+
+				const msg = conversation.addMessage(
+					conversation.createChipsMessage([{ id: '1', label: "I'll Add More", action: 'add_more_detail' }])
+				);
+
+				await handleAgentAction({ type: 'add_more_detail', messageId: msg.id });
+
+				const context = identification.getAugmentationContext();
+				expect(context).not.toBeNull();
+				expect(context?.briefInputPrefix).toBe('rose');
+			});
+
+			it('should clear pendingBriefSearch after setting context', async () => {
+				conversation.setPhase('awaiting_input');
+				conversation.setPhase('confirming');
+				identification.setPendingBriefSearch('rose');
+
+				const msg = conversation.addMessage(
+					conversation.createChipsMessage([{ id: '1', label: "I'll Add More", action: 'add_more_detail' }])
+				);
+
+				await handleAgentAction({ type: 'add_more_detail', messageId: msg.id });
+
+				expect(get(identification.pendingBriefSearch)).toBeNull();
+			});
+
+			it('should combine brief input prefix with subsequent text submission', async () => {
+				// Setup: Mock API to capture the search query
+				const mockIdentify = vi.mocked(api.identifyTextStream);
+				mockIdentify.mockResolvedValue(sampleApiResponse);
+
+				conversation.setPhase('awaiting_input');
+				conversation.setPhase('confirming');
+				identification.setPendingBriefSearch('rose');
+
+				// Click "I'll Add More"
+				const msg = conversation.addMessage(
+					conversation.createChipsMessage([{ id: '1', label: "I'll Add More", action: 'add_more_detail' }])
+				);
+				await handleAgentAction({ type: 'add_more_detail', messageId: msg.id });
+
+				// Now submit additional text
+				await handleAgentAction({ type: 'submit_text', payload: 'imperial' });
+
+				// Should have called API with combined "rose imperial"
+				expect(mockIdentify).toHaveBeenCalledWith(
+					'rose imperial',
+					expect.any(Function),
+					undefined,
+					expect.anything()
+				);
+			});
+
+			it('should prevent duplication when new input includes original', async () => {
+				// Setup: Mock API to capture the search query
+				const mockIdentify = vi.mocked(api.identifyTextStream);
+				mockIdentify.mockResolvedValue(sampleApiResponse);
+
+				conversation.setPhase('awaiting_input');
+				conversation.setPhase('confirming');
+				identification.setPendingBriefSearch('Rose');
+
+				// Click "I'll Add More"
+				const msg = conversation.addMessage(
+					conversation.createChipsMessage([{ id: '1', label: "I'll Add More", action: 'add_more_detail' }])
+				);
+				await handleAgentAction({ type: 'add_more_detail', messageId: msg.id });
+
+				// User types "Rose Imperial" (already includes original)
+				await handleAgentAction({ type: 'submit_text', payload: 'Rose Imperial' });
+
+				// Should NOT duplicate: search for "Rose Imperial", not "Rose Rose Imperial"
+				expect(mockIdentify).toHaveBeenCalledWith(
+					'Rose Imperial',
+					expect.any(Function),
+					undefined,
+					expect.anything()
+				);
+			});
 		});
 	});
 

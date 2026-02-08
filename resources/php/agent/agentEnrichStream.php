@@ -61,7 +61,8 @@ $confirmMatch = filter_var($body['confirmMatch'] ?? false, FILTER_VALIDATE_BOOLE
 $forceRefresh = filter_var($body['forceRefresh'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
 try {
-    $service = getAgentEnrichmentService($body['userId'] ?? 1);
+    // WIN-254: Server-authoritative userId — ignore client-supplied value
+    $service = getAgentEnrichmentService(getAgentUserId());
 
     error_log('AgentEnrichStream: Starting enrichment for: ' . $body['producer'] . ' ' . $body['wineName']);
 

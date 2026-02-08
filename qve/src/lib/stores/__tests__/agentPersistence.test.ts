@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
 	persistState,
 	loadState,
@@ -342,6 +342,80 @@ describe('agentPersistence', () => {
 			const loaded = loadState();
 			expect(loaded?.imageData?.data).toBe('base64-encoded-image-data');
 			expect(loaded?.imageData?.mimeType).toBe('image/jpeg');
+		});
+	});
+
+	describe('persistState - race condition (WIN-230)', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should accumulate state changes during debounce window', async () => {
+			// Set up initial state
+			persistState({ phase: 'greeting', messages: [] }, true);
+
+			// Simulate two stores calling persistState in quick succession (debounced)
+			// Store A updates phase (use 'confirming' - not a loading phase that gets reset)
+			persistState({ phase: 'confirming' });
+			// Store B updates messages before debounce fires
+			persistState({
+				messages: [
+					{
+						id: 'msg-1',
+						category: 'text',
+						role: 'agent',
+						timestamp: Date.now(),
+						data: { category: 'text', content: 'Test message' },
+					},
+				],
+			});
+
+			// Wait for debounce to complete
+			vi.advanceTimersByTime(600);
+
+			const loaded = loadState();
+			// BOTH changes should be persisted
+			expect(loaded?.phase).toBe('confirming'); // From Store A
+			expect(loaded?.messages).toHaveLength(1); // From Store B
+		});
+
+		it('should not lose state from earlier calls when debounce timer is reset', async () => {
+			// Initial state with some data
+			persistState(
+				{
+					phase: 'greeting',
+					identificationResult: {
+						producer: 'Initial Producer',
+						wineName: 'Initial Wine',
+						vintage: 2020,
+						confidence: 0.8,
+					},
+				},
+				true
+			);
+
+			// Multiple rapid updates during debounce window
+			// Use 'adding_wine' - a non-loading phase that won't be reset
+			persistState({ phase: 'adding_wine' }); // Update 1
+			persistState({ pendingNewSearch: 'new query' }); // Update 2 - resets timer
+			persistState({
+				enrichmentData: { overview: 'Great wine' },
+			}); // Update 3 - resets timer again
+
+			// Wait for debounce
+			vi.advanceTimersByTime(600);
+
+			const loaded = loadState();
+			// All three updates should be present
+			expect(loaded?.phase).toBe('adding_wine');
+			expect(loaded?.pendingNewSearch).toBe('new query');
+			expect(loaded?.enrichmentData?.overview).toBe('Great wine');
+			// Original data should still be there
+			expect(loaded?.identificationResult?.producer).toBe('Initial Producer');
 		});
 	});
 });

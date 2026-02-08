@@ -52,8 +52,8 @@ if (empty($input['priorResult']) || !is_array($input['priorResult'])) {
 }
 
 try {
-    // Get user ID (default to 1 for now)
-    $userId = $input['userId'] ?? 1;
+    // WIN-254: Server-authoritative userId — ignore client-supplied value
+    $userId = getAgentUserId();
     $service = getAgentIdentificationService($userId);
 
     // Route to appropriate method based on input type

@@ -42,7 +42,7 @@
  *     "pendingConfirmation": true,
  *     "matchType": "abbreviation",
  *     "searchedFor": {"producer": "Ch. Margaux", "wineName": "Margaux", "vintage": "2015"},
- *     "matchedTo": {"producer": "Château Margaux", "wineName": "Margaux", "vintage": "2015"},
+ *     "matchedTo": {"producer": "Chateau Margaux", "wineName": "Margaux", "vintage": "2015"},
  *     "confidence": 0.95,
  *     "data": null,
  *     "source": "cache"
@@ -74,7 +74,8 @@ $confirmMatch = filter_var($body['confirmMatch'] ?? false, FILTER_VALIDATE_BOOLE
 $forceRefresh = filter_var($body['forceRefresh'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
 try {
-    $service = getAgentEnrichmentService($body['userId'] ?? 1);
+    // WIN-254: Server-authoritative userId — ignore client-supplied value
+    $service = getAgentEnrichmentService(getAgentUserId());
     $result = $service->enrich($identification, $confirmMatch, $forceRefresh);
 
     agentResponse(true, 'Enrichment completed', $result->toArray());

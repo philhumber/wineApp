@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/securityHeaders.php';
+require_once __DIR__ . '/errorHandler.php';
 // ----------------------------
 // CONFIG
 // ----------------------------
@@ -10,7 +12,7 @@ $canvasSize    = 800;   // Output square canvas size (800x800px)
 
 // Ensure target directory exists
 if (!is_dir($target_dir)) {
-    mkdir($target_dir, 0777, true);
+    mkdir($target_dir, 0755, true);
 }
 
 // ----------------------------
@@ -48,23 +50,44 @@ function get_uploaded_file() {
     return $_FILES['fileToUpload'];
 }
 
-function validate_image(array $file, array $allowedTypes, int $maxSize): bool {
+/**
+ * Validate uploaded image file
+ * @return string|true Returns true on success, or an error message string on failure
+ */
+function validate_image(array $file, array $allowedTypes, int $maxSize): string|true {
+    // WIN-220: Check for PHP upload errors before any other validation
+    if (isset($file['error']) && $file['error'] !== UPLOAD_ERR_OK) {
+        $errorMessages = [
+            UPLOAD_ERR_INI_SIZE   => 'File exceeds server upload limit.',
+            UPLOAD_ERR_FORM_SIZE  => 'File exceeds form upload limit.',
+            UPLOAD_ERR_PARTIAL    => 'File was only partially uploaded.',
+            UPLOAD_ERR_NO_FILE    => 'No file was uploaded.',
+            UPLOAD_ERR_NO_TMP_DIR => 'Server misconfiguration (no temp directory).',
+            UPLOAD_ERR_CANT_WRITE => 'Server failed to write file to disk.',
+            UPLOAD_ERR_EXTENSION  => 'Upload blocked by server extension.',
+        ];
+        return $errorMessages[$file['error']] ?? 'Unknown upload error.';
+    }
+
     $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
     if ($file['size'] > $maxSize) {
-        echo "Error: File is too large.\n";
-        return false;
+        return 'File is too large.';
     }
 
     if (!in_array($extension, $allowedTypes)) {
-        echo "Error: Only " . implode(', ', $allowedTypes) . " files are allowed.\n";
-        return false;
+        return 'Only ' . implode(', ', $allowedTypes) . ' files are allowed.';
     }
 
     $check = getimagesize($file['tmp_name']);
     if ($check === false) {
-        echo "Error: File is not a valid image.\n";
-        return false;
+        return 'File is not a valid image.';
+    }
+
+    // WIN-220: Verify MIME type matches allowed image types (defense-in-depth)
+    $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!in_array($check['mime'], $allowedMimes, true)) {
+        return 'File content type is not an allowed image format.';
     }
 
     return true;
@@ -288,25 +311,27 @@ function rotateAndResizeImage($sourcePath, $targetPath, $canvasSize = 800) {
 $uploadedFile  = get_uploaded_file();
 // Check if it's a valid upload
 if (!isset($uploadedFile) || !is_array($uploadedFile) || !isset($uploadedFile['name'])) {
-    $output = 'Error: Invalid file upload. Likely the image is too large or the wrong format.';
-    echo json_encode($output);
+    echo 'Error: Invalid file upload. Likely the image is too large or the wrong format.';
     return;
 }
-    $imageFileType = strtolower(pathinfo($uploadedFile['name'], PATHINFO_EXTENSION));
- 
-if (!validate_image($uploadedFile, $allowedTypes, $maxFileSize)) {
-    $output = "Error: Upload failed.";
-}else{
-    // Always generate .jpg filename since output is forced to JPEG
-    $guidFilename = get_unique_filename($target_dir, 'jpg');
-    $finalFile = $target_dir . DIRECTORY_SEPARATOR . $guidFilename;
-    try{
-        $output = rotateAndResizeImage($uploadedFile['tmp_name'], $finalFile, $canvasSize);
-        echo "Filename: images/wines/" . basename($output);
-        return;
-    }catch(Exception $e) {
-        $output = ['data' => 'Error: ' . $e->getMessage()];
-        $output = json_encode($output);	
-    }
+
+$imageFileType = strtolower(pathinfo($uploadedFile['name'], PATHINFO_EXTENSION));
+
+$validation = validate_image($uploadedFile, $allowedTypes, $maxFileSize);
+if ($validation !== true) {
+    echo "Error: $validation";
+    return;
+}
+
+// Always generate .jpg filename since output is forced to JPEG
+$guidFilename = get_unique_filename($target_dir, 'jpg');
+$finalFile = $target_dir . DIRECTORY_SEPARATOR . $guidFilename;
+try {
+    $result = rotateAndResizeImage($uploadedFile['tmp_name'], $finalFile, $canvasSize);
+    echo "Filename: images/wines/" . basename($result);
+} catch (Exception $e) {
+    // WIN-217: Don't leak internal error details (file paths, GD errors, etc.)
+    error_log("Error in upload.php: " . $e->getMessage() . " | File: " . $e->getFile() . ":" . $e->getLine());
+    echo 'Error: Image processing failed. Please try a different image.';
 }
 ?>

@@ -1,8 +1,10 @@
 <?php
   // 1. Include dependencies at the top
+  require_once 'securityHeaders.php';
   require_once 'databaseConnection.php';
   require_once 'audit_log.php';
-  
+  require_once 'errorHandler.php';
+
   // Start session if not already started
   if (session_status() === PHP_SESSION_NONE) {
       session_start();
@@ -15,7 +17,7 @@
   try {
       // 3. Get database connection
       $pdo = getDBConnection();
-      
+
       // 4. Get and validate input
       $inputData = json_decode(file_get_contents('php://input'), true);
 
@@ -30,14 +32,21 @@
       $notes = $inputData['notes'] ?? '';
 
       // Optional ratings (0-5 scale, nullable)
-      $complexityRating = isset($inputData['complexityRating']) && $inputData['complexityRating'] > 0
+      $complexityRating = isset($inputData['complexityRating']) && $inputData['complexityRating'] > 0 && $inputData['complexityRating'] < 6
           ? (int)$inputData['complexityRating'] : null;
-      $drinkabilityRating = isset($inputData['drinkabilityRating']) && $inputData['drinkabilityRating'] > 0
+      $drinkabilityRating = isset($inputData['drinkabilityRating']) && $inputData['drinkabilityRating'] > 0 && $inputData['complexityRating'] < 6
           ? (int)$inputData['drinkabilityRating'] : null;
-      $surpriseRating = isset($inputData['surpriseRating']) && $inputData['surpriseRating'] > 0
+      $surpriseRating = isset($inputData['surpriseRating']) && $inputData['surpriseRating'] > 0 && $inputData['complexityRating'] < 6
           ? (int)$inputData['surpriseRating'] : null;
-      $foodPairingRating = isset($inputData['foodPairingRating']) && $inputData['foodPairingRating'] > 0
+      $foodPairingRating = isset($inputData['foodPairingRating']) && $inputData['foodPairingRating'] > 0 && $inputData['complexityRating'] < 6
           ? (int)$inputData['foodPairingRating'] : null;
+
+      if (!isset($overallRating) || $overallRating < 1 || $overallRating > 10) {
+          throw new Exception('Invalid overall rating (must be 1-10)');
+      }
+      if (!isset($valueRating) || $valueRating < 1 || $valueRating > 10) {
+          throw new Exception('Invalid value rating (must be 1-10)');
+      }
 
       // Validate required fields
       if (empty($wineID)) {
@@ -112,7 +121,7 @@
 
           // Get the new bottle ID
           $ratingID = $pdo->lastInsertId();
-          
+
           // Log the insert
           logInsert($pdo, 'ratings', $ratingID, [
             'wineID' => $wineID,
@@ -141,7 +150,7 @@
               'bottleDrunk' => 1
           ];
 
-          logUpdate($pdo, 'bottles', $wineID, $oldData, $newData, $userID);
+          logUpdate($pdo, 'bottles', $bottleID, $oldData, $newData, $userID);
 
 
           $stmt = $pdo->prepare("UPDATE bottles SET bottleDrunk = 1 WHERE bottleID = :bottleID");
@@ -166,12 +175,12 @@
 
           // 11. Commit transaction
           $pdo->commit();
-          
+
           // 12. Set success response
           $response['success'] = true;
           $response['message'] = 'Wine drunk successfully!';
           $response['data'] = ['bottleID' => $bottleID];
-      
+
       } catch (Exception $e) {
           // 13. Rollback on error
           $pdo->rollBack();
@@ -179,10 +188,9 @@
       }
 
   } catch (Exception $e) {
-      // 14. Handle all errors
+      // 14. Handle all errors (WIN-217: sanitize error messages)
       $response['success'] = false;
-      $response['message'] = $e->getMessage();
-      error_log("Error in drinkBottle.php: " . $e->getMessage());
+      $response['message'] = safeErrorMessage($e, 'drinkBottle');
   }
 
   // 15. Return JSON response

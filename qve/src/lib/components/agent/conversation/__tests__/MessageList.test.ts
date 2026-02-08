@@ -191,11 +191,9 @@ describe('MessageList', () => {
 	// Note: Event forwarding tests are skipped because Svelte 5's createEventDispatcher
 	// creates component-level events that don't bubble through the DOM. Testing event
 	// forwarding requires either wrapper components or integration/E2E tests.
-	// The event forwarding functionality is tested via integration testing in the
-	// agent-test route and via E2E tests.;
+	// The event forwarding functionality is tested via E2E tests.
 
 	// Note: Dynamic update tests that trigger rerender are skipped because Svelte's
 	// flip/fly animations require Web Animations API features that are not fully
-	// supported in jsdom. Dynamic behavior is tested via integration testing in the
-	// agent-test route and via E2E tests.
+	// supported in jsdom. Dynamic behavior is tested via E2E tests.
 });

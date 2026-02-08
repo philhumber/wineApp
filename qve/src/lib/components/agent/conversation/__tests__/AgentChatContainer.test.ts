@@ -1,18 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, cleanup } from '@testing-library/svelte';
 import AgentChatContainer from '../AgentChatContainer.svelte';
-import { agentMessages, resetConversation } from '$lib/stores/agentConversation';
-import { get } from 'svelte/store';
-
-// Helper to create a test message
-function createTestMessage(id: string, content: string) {
-	return {
-		id,
-		type: 'assistant' as const,
-		content,
-		timestamp: Date.now(),
-	};
-}
+import { resetConversation } from '$lib/stores/agentConversation';
 
 describe('AgentChatContainer', () => {
 	beforeEach(() => {

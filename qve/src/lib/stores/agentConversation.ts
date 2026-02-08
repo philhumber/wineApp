@@ -45,6 +45,23 @@ function delay(ms: number): Promise<void> {
 }
 
 // ===========================================
+// Message Queue (Race Condition Fix - WIN-195)
+// ===========================================
+
+/**
+ * Promise queue for serializing addMessageWithDelay calls.
+ * Ensures FIFO ordering and that delay calculations use current state,
+ * not stale snapshots from when the call was initiated.
+ */
+let messageQueue: Promise<void> = Promise.resolve();
+
+/**
+ * Tracks whether there are pending operations in the message queue.
+ * Used to warn in dev mode if addMessage is called while queue is active.
+ */
+let queuePendingCount = 0;
+
+// ===========================================
 // Origin Tracking Types
 // ===========================================
 
@@ -118,6 +135,14 @@ export const isInLoadingPhase = derived(
 export const hasAnimatingMessages = derived(
   store,
   ($store) => $store.messages.some((m) => m.role === 'agent' && m.isNew === true)
+);
+
+// Active chips tracking - true when there are non-disabled chip messages
+// Used to disable text input when chips are displayed, forcing user to select a chip action
+// WIN-268: Chips should disable text input to force the user down a path
+export const hasActiveChips = derived(
+  store,
+  ($store) => $store.messages.some((m) => m.category === 'chips' && !m.disabled)
 );
 
 // ===========================================
@@ -209,10 +234,23 @@ export function removeTypingMessage(): void {
  * Add a message to the conversation.
  * Automatically trims old messages if exceeding MAX_MESSAGES.
  * Disables all previous chip messages to prevent stale interactions.
+ *
+ * @param message - The message to add
+ * @param options._fromQueue - Internal flag: true when called from addMessageWithDelay queue
  */
 export function addMessage(
-  message: Omit<AgentMessage, 'id' | 'timestamp'> | AgentMessage
+  message: Omit<AgentMessage, 'id' | 'timestamp'> | AgentMessage,
+  options: { _fromQueue?: boolean } = {}
 ): AgentMessage {
+  // DEV warning: detect potential race condition if addMessage is called
+  // while addMessageWithDelay has pending operations in the queue
+  if (import.meta.env.DEV && queuePendingCount > 0 && !options._fromQueue) {
+    console.warn(
+      '[AgentConversation] addMessage() called while addMessageWithDelay queue has pending operations. ' +
+      'This may cause message ordering issues. Ensure addMessageWithDelay is awaited before calling addMessage.'
+    );
+  }
+
   const fullMessage: AgentMessage = {
     id: 'id' in message && message.id ? message.id : generateMessageId(),
     timestamp: 'timestamp' in message && message.timestamp ? message.timestamp : Date.now(),
@@ -288,6 +326,10 @@ export function addMessages(
  * was also from the agent. Chips messages are added immediately (no delay)
  * since they should appear alongside their preceding text.
  *
+ * Uses a promise queue to ensure FIFO ordering when called concurrently.
+ * This fixes a race condition (WIN-195) where concurrent calls would read
+ * stale state and messages could appear out of order.
+ *
  * @param message - The message to add
  * @param options.skipDelay - Force skip delay even if conditions would trigger it
  * @returns The added message
@@ -296,28 +338,46 @@ export async function addMessageWithDelay(
   message: Omit<AgentMessage, 'id' | 'timestamp'> | AgentMessage,
   options: { skipDelay?: boolean } = {}
 ): Promise<AgentMessage> {
-  const state = get(store);
-  const lastMsg = state.messages[state.messages.length - 1];
+  // Capture the message and options, then queue the execution
+  let resolveMessage: (msg: AgentMessage) => void;
+  const messagePromise = new Promise<AgentMessage>((resolve) => {
+    resolveMessage = resolve;
+  });
 
-  // Determine if delay is needed:
-  // 1. skipDelay is not set
-  // 2. There's a previous message
-  // 3. Previous message was from agent (and not chips - chips don't count as "agent speaking")
-  // 4. New message is from agent
-  // 5. New message is NOT chips (chips follow text immediately)
-  const shouldDelay =
-    !options.skipDelay &&
-    lastMsg &&
-    lastMsg.role === 'agent' &&
-    lastMsg.category !== 'chips' &&
-    (message.role ?? 'agent') === 'agent' &&
-    message.category !== 'chips';
+  // Track pending queue operations
+  queuePendingCount++;
 
-  if (shouldDelay) {
-    await delay(MESSAGE_DELAY_MS);
-  }
+  // Chain onto the queue to ensure FIFO ordering
+  messageQueue = messageQueue.then(async () => {
+    // Check state HERE (inside queue), not before queueing
+    // This ensures we see the actual current state after prior messages
+    const state = get(store);
+    const lastMsg = state.messages[state.messages.length - 1];
 
-  return addMessage(message);
+    // Determine if delay is needed:
+    // 1. skipDelay is not set
+    // 2. There's a previous message
+    // 3. Previous message was from agent (and not chips - chips don't count as "agent speaking")
+    // 4. New message is from agent
+    // 5. New message is NOT chips (chips follow text immediately)
+    const shouldDelay =
+      !options.skipDelay &&
+      lastMsg &&
+      lastMsg.role === 'agent' &&
+      lastMsg.category !== 'chips' &&
+      (message.role ?? 'agent') === 'agent' &&
+      message.category !== 'chips';
+
+    if (shouldDelay) {
+      await delay(MESSAGE_DELAY_MS);
+    }
+
+    const addedMessage = addMessage(message, { _fromQueue: true });
+    queuePendingCount--;
+    resolveMessage!(addedMessage);
+  });
+
+  return messagePromise;
 }
 
 /**
@@ -508,12 +568,21 @@ export function resetConversation(
   // Add greeting
   newMessages.push(createTextMessage(greetingContent));
 
-  store.update((state) => ({
-    ...state,
-    messages: [...state.messages, ...newMessages],
-    phase: 'awaiting_input',
-    addWineStep: null,
-  }));
+  store.update((state) => {
+    // Disable all existing interactive messages (chips and errors) before adding new ones
+    const updatedMessages = state.messages.map((msg) =>
+      msg.category === 'chips' || msg.category === 'error'
+        ? { ...msg, disabled: true }
+        : msg
+    );
+
+    return {
+      ...state,
+      messages: [...updatedMessages, ...newMessages],
+      phase: 'awaiting_input',
+      addWineStep: null,
+    };
+  });
 
   persistConversationState();
 }

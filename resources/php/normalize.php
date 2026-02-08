@@ -3,8 +3,9 @@
  * Normalization endpoint for country/wineType validation
  * Used by agent add wine flow to validate user input
  */
+require_once __DIR__ . '/securityHeaders.php';
 require_once __DIR__ . '/agent/Identification/InferenceEngine.php';
-require_once __DIR__ . '/../../wineapp-config/config.local.php';
+require_once __DIR__ . '/databaseConnection.php';
 
 header('Content-Type: application/json');
 
@@ -30,7 +31,7 @@ if (!in_array($body['field'], $allowedFields)) {
 }
 
 try {
-    $pdo = new PDO("mysql:host=$dbHost;dbname=$dbName;charset=utf8mb4", $dbUser, $dbPass);
+    $pdo = getDBConnection();
     $engine = new InferenceEngine($pdo);
     $normalized = $engine->normalize($body['field'], $body['value']);
 

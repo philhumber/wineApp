@@ -28,7 +28,8 @@
 		setOrigin,
 		clearOrigin,
 		agentOrigin,
-		hasAnimatingMessages
+		hasAnimatingMessages,
+		hasActiveChips
 	} from '$lib/stores/agentConversation';
 	import { streamingFields } from '$lib/stores/agentIdentification';
 	import { isEnriching, enrichmentStreamingFields } from '$lib/stores/agentEnrichment';
@@ -251,8 +252,9 @@
 
 	// Check if input should be disabled
 	// Disable during identifying/enriching phases AND while agent messages are animating
+	// Also disable when active chips are displayed to force user to select a chip action (WIN-268)
 	// This prevents message queue buildup from rapid user input
-	$: isInputDisabled = phase === 'identifying' || phase === 'enriching' || $hasAnimatingMessages;
+	$: isInputDisabled = phase === 'identifying' || phase === 'enriching' || $hasAnimatingMessages || $hasActiveChips;
 </script>
 
 {#if isOpen}

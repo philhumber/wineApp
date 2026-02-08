@@ -17,6 +17,7 @@
 import { MessageKey } from './messageKeys';
 import {
   wn,
+  escapeHtml,
   type MessageContext,
   type MessageVariant,
   type MessageTemplate,
@@ -24,8 +25,8 @@ import {
 import { getPersonalityMessages, neutralMessages } from './messages/index';
 import { getPersonality } from '$lib/stores/agentSettings';
 
-// Re-export wn for existing imports
-export { wn };
+// Re-export wn and escapeHtml for existing imports
+export { wn, escapeHtml };
 
 // ===========================================
 // Core Message Access
@@ -135,6 +136,7 @@ export function getTimeBasedGreeting(): string {
 
 /**
  * Format a message with placeholder values.
+ * Values are HTML-escaped to prevent XSS when the result is used in {@html} contexts.
  * @param template - Message template with {placeholder} syntax
  * @param values - Object with placeholder values
  */
@@ -144,7 +146,7 @@ export function formatMessage(
 ): string {
   return template.replace(/{(\w+)}/g, (_, key) => {
     const value = values[key];
-    return value !== undefined ? String(value) : `{${key}}`;
+    return value !== undefined ? escapeHtml(String(value)) : `{${key}}`;
   });
 }
 

@@ -5,11 +5,11 @@
  * POST /resources/php/agent/identifyTextStream.php
  *
  * Request:
- *   {"text": "2019 Château Margaux"}
+ *   {"text": "2019 Chateau Margaux"}
  *
  * Response (SSE stream):
  *   event: field
- *   data: {"field": "producer", "value": "Château Margaux"}
+ *   data: {"field": "producer", "value": "Chateau Margaux"}
  *
  *   event: field
  *   data: {"field": "wineName", "value": "Grand Vin"}
@@ -55,7 +55,8 @@ if (!($config['streaming']['enabled'] ?? false)) {
 initSSE();
 
 try {
-    $userId = $input['userId'] ?? 1;
+    // WIN-254: Server-authoritative userId — ignore client-supplied value
+    $userId = getAgentUserId();
     $service = getAgentIdentificationService($userId);
 
     error_log('IdentifyTextStream: Starting streaming identification for: ' . substr($input['text'], 0, 50));

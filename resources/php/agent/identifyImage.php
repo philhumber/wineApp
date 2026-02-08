@@ -63,8 +63,8 @@ if (isset($input['supplementaryText'])) {
 }
 
 try {
-    // Get user ID (default to 1 for now)
-    $userId = $input['userId'] ?? 1;
+    // WIN-254: Server-authoritative userId — ignore client-supplied value
+    $userId = getAgentUserId();
 
     // Build identification input
     $identifyInput = [

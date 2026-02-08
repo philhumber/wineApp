@@ -157,6 +157,9 @@
 
 	// Handle save
 	async function handleSave() {
+		// WIN-228: Prevent double-click before isSubmitting propagates from store
+		if (isSubmitting) return;
+
 		let success = false;
 
 		if (activeTab === 'wine') {

@@ -121,11 +121,29 @@ export const personalityMeta: Record<Personality, PersonalityMeta> = {
 };
 
 // ===========================================
-// Helper: Wrap wine names in styled span
+// Helper: HTML escaping and wine name styling
 // ===========================================
 
 /**
+ * Escape HTML special characters to prevent XSS.
+ * Must be applied to any user-supplied or LLM-sourced content
+ * before interpolation into {@html} rendered templates.
+ *
+ * @param str - Untrusted string to escape
+ * @returns Safe string with <, >, &, ", ' escaped
+ */
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
+/**
  * Wrap a wine/producer name in a styled span for emphasis.
+ * Escapes HTML in the name to prevent XSS from LLM-sourced content.
  * @param name - Wine or producer name to wrap
  */
-export const wn = (name: string): string => `<span class="wine-name">${name}</span>`;
+export const wn = (name: string): string => `<span class="wine-name">${escapeHtml(name)}</span>`;

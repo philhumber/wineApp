@@ -38,6 +38,7 @@ import {
   handleCameraAction,
   getHandlerCategory,
 } from './handlers';
+import { unlockScroll } from '$lib/stores/agent';
 
 // ===========================================
 // Action Aliases
@@ -222,6 +223,8 @@ const wrappedRouter: ActionHandler = middlewareChain(routeAction);
  * await dispatchAction({ type: 'submit_text', payload: 'Chateau Margaux 2015' });
  */
 export async function dispatchAction(action: AgentAction): Promise<void> {
+  // Clear scroll lock on any user action (chip tap, start over, etc)
+  unlockScroll();
   await wrappedRouter(action);
 }
 

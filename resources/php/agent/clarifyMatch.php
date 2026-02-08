@@ -34,7 +34,8 @@ if (empty($identified['producer']) && empty($identified['wineName'])) {
 }
 
 try {
-    $userId = $body['userId'] ?? 1;
+    // WIN-254: Server-authoritative userId — ignore client-supplied value
+    $userId = getAgentUserId();
     $client = getAgentLLMClient($userId);
 
     // Build options list with metadata
@@ -65,7 +66,7 @@ I found these existing {$body['type']} entries in their collection:
 
 Task: In 1-2 sentences, explain which option best matches what they're adding, or if they should create a new entry. Be concise and complete your thought.";
 
-    $result = $client->complete('clarify_match', $prompt, ['max_tokens' => 500]);
+    $result = $client->complete('clarify_match', $prompt, ['max_tokens' => 1500]);
 
     // Check LLM response success
     if (!$result->success) {
