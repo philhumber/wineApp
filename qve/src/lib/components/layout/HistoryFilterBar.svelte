@@ -2,14 +2,14 @@
   /**
    * HistoryFilterBar Component
    * Filter controls for history page with sort controls on the right
-   * Uses client-side filtering via historyFilters store
+   * WIN-205: Uses server-provided cascading filter options
    */
   import {
     historyFilters,
     setHistoryFilter,
     clearHistoryFilters,
     hasHistoryFilters,
-    drunkWines,
+    historyFilterOptions,
     historySortKey,
     historySortDir,
     setHistorySort,
@@ -19,13 +19,12 @@
   import FilterDropdown from './FilterDropdown.svelte';
   import { Icon } from '$lib/components';
   import type { FilterOption } from '$lib/stores/filterOptions';
-  import type { DrunkWine } from '$lib/api/types';
 
   // Sort options for history view
   const sortOptions = [
     { key: 'drinkDate', label: 'Drink Date' },
     { key: 'buyAgain', label: 'Buy Again' },
-    { key: 'wineName', label: 'Wine Name' },    
+    { key: 'wineName', label: 'Wine Name' },
     { key: 'producer', label: 'Producer' },
     { key: 'region', label: 'Region' },
     { key: 'country', label: 'Country' },
@@ -51,43 +50,12 @@
     setHistorySort(target.value as typeof $historySortKey);
   }
 
-  // Build filter options from drunk wines data (client-side)
-  function buildOptions(wines: DrunkWine[], field: keyof DrunkWine): FilterOption[] {
-    const counts = new Map<string, number>();
-    for (const wine of wines) {
-      const value = wine[field] as string;
-      if (value) {
-        counts.set(value, (counts.get(value) || 0) + 1);
-      }
-    }
-    return Array.from(counts.entries())
-      .map(([value, count]) => ({ value, label: value, count }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }
-
-  // Helper to check if wine matches all OTHER filters (excluding the one we're building options for)
-  function matchesOtherFilters(w: DrunkWine, excludeKey: string): boolean {
-    if (excludeKey !== 'countryDropdown' && $historyFilters.countryDropdown && w.countryName !== $historyFilters.countryDropdown) return false;
-    if (excludeKey !== 'typesDropdown' && $historyFilters.typesDropdown && w.wineType !== $historyFilters.typesDropdown) return false;
-    if (excludeKey !== 'regionDropdown' && $historyFilters.regionDropdown && w.regionName !== $historyFilters.regionDropdown) return false;
-    if (excludeKey !== 'producerDropdown' && $historyFilters.producerDropdown && w.producerName !== $historyFilters.producerDropdown) return false;
-    if (excludeKey !== 'yearDropdown' && $historyFilters.yearDropdown && w.year !== $historyFilters.yearDropdown) return false;
-    return true;
-  }
-
-  // Build filtered wine lists for cascading (each filter considers OTHER active filters)
-  $: winesForCountry = $drunkWines.filter((w) => matchesOtherFilters(w, 'countryDropdown'));
-  $: winesForType = $drunkWines.filter((w) => matchesOtherFilters(w, 'typesDropdown'));
-  $: winesForRegion = $drunkWines.filter((w) => matchesOtherFilters(w, 'regionDropdown'));
-  $: winesForProducer = $drunkWines.filter((w) => matchesOtherFilters(w, 'producerDropdown'));
-  $: winesForYear = $drunkWines.filter((w) => matchesOtherFilters(w, 'yearDropdown'));
-
-  // Reactive filter options - now context-aware (cascading)
-  $: countryOptions = buildOptions(winesForCountry, 'countryName');
-  $: typeOptions = buildOptions(winesForType, 'wineType');
-  $: regionOptions = buildOptions(winesForRegion, 'regionName');
-  $: producerOptions = buildOptions(winesForProducer, 'producerName');
-  $: yearOptions = buildOptions(winesForYear, 'year');
+  // WIN-205: Derive filter options from server-provided data
+  $: countryOptions = $historyFilterOptions.countries.map((o): FilterOption => ({ value: o.value, label: o.value, count: o.count }));
+  $: typeOptions = $historyFilterOptions.types.map((o): FilterOption => ({ value: o.value, label: o.value, count: o.count }));
+  $: regionOptions = $historyFilterOptions.regions.map((o): FilterOption => ({ value: o.value, label: o.value, count: o.count }));
+  $: producerOptions = $historyFilterOptions.producers.map((o): FilterOption => ({ value: o.value, label: o.value, count: o.count }));
+  $: yearOptions = $historyFilterOptions.years.map((o): FilterOption => ({ value: o.value, label: o.value, count: o.count }));
 
   // Dropdown filter definitions (same order as cellar FilterBar)
   const dropdownFilters = [

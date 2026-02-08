@@ -2,12 +2,23 @@
   import { onMount, onDestroy } from 'svelte';
   import { beforeNavigate, afterNavigate } from '$app/navigation';
   import { get } from 'svelte/store';
-  import { theme, menuOpen, closeMenu, saveScrollPosition, getScrollPosition, modal, isModalOpen, viewMode, collectionName } from '$stores';
+  import { theme, menuOpen, closeMenu, saveScrollPosition, getScrollPosition, modal, isModalOpen, viewMode, collectionName, agentPanelOpen } from '$stores';
   import { displayCurrency } from '$lib/stores/currency';
   import { ToastContainer, SideMenu } from '$lib/components';
   import { ModalContainer } from '$lib/components/modals';
-  import { AgentBubble, AgentPanel } from '$lib/components/agent';
+  import { AgentBubble } from '$lib/components/agent';
   import '$lib/styles/index.css';
+
+  // WIN-236: Lazy-load AgentPanel on first bubble click
+  let AgentPanelComponent: typeof import('$lib/components/agent/AgentPanel.svelte').default | null = null;
+  let agentPanelLoadTriggered = false;
+
+  $: if ($agentPanelOpen && !agentPanelLoadTriggered) {
+    agentPanelLoadTriggered = true;
+    import('$lib/components/agent/AgentPanel.svelte').then(mod => {
+      AgentPanelComponent = mod.default;
+    });
+  }
 
   // Guard against concurrent popstate handling during async hook execution
   let isHandlingPopstate = false;
@@ -147,4 +158,6 @@
 
 <!-- AI Wine Assistant -->
 <AgentBubble />
-<AgentPanel />
+{#if AgentPanelComponent}
+  <svelte:component this={AgentPanelComponent} />
+{/if}

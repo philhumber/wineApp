@@ -276,4 +276,57 @@ class FuzzyMatcher
         $distance = levenshtein($tokenA, $tokenB);
         return $distance <= $threshold;
     }
+
+    /**
+     * Extract significant search tokens from a name for SQL pre-filtering.
+     *
+     * Pipeline: strip articles → lowercase → remove punctuation → split → filter short tokens.
+     * Accents are preserved (MySQL collation handles accent-insensitive LIKE matching).
+     * Articles are stripped first while apostrophes are intact for L'/D' pattern matching.
+     *
+     * @param string $name Input name
+     * @return array Array of lowercase tokens (3+ chars each), may contain accented characters
+     */
+    public static function extractSearchTokens(string $name): array
+    {
+        // Strip articles first (while apostrophes are intact for L'/D' patterns)
+        $stripped = self::stripArticles($name);
+        $lower = mb_strtolower($stripped, 'UTF-8');
+        // Remove punctuation, keep Unicode letters/numbers/spaces
+        $clean = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $lower);
+        $tokens = preg_split('/\s+/', $clean, -1, PREG_SPLIT_NO_EMPTY);
+        return array_values(array_filter($tokens, fn($t) => mb_strlen($t) >= 3));
+    }
+
+    /**
+     * Build SQL pre-filter conditions for candidate matching.
+     *
+     * Generates OR conditions combining:
+     * - Token-based LIKE '%token%' for each significant word in the input
+     * - SOUNDEX fallback for single-token/typo tolerance
+     *
+     * @param string $nameColumn SQL column name (e.g., 'regionName', 'p.producerName')
+     * @param array $tokens Tokens from extractSearchTokens()
+     * @param string $name Original name (for SOUNDEX)
+     * @param string $paramPrefix Parameter prefix to avoid collisions (default: 'tk')
+     * @return array [conditionSQL, params] for inclusion in WHERE clause
+     */
+    public static function buildCandidateFilter(string $nameColumn, array $tokens, string $name, string $paramPrefix = 'tk'): array
+    {
+        $conditions = [];
+        $params = [];
+
+        foreach ($tokens as $i => $token) {
+            $paramName = ":{$paramPrefix}{$i}";
+            $conditions[] = "$nameColumn COLLATE utf8mb4_unicode_ci LIKE $paramName";
+            $escapedToken = str_replace(['%', '_'], ['\\%', '\\_'], $token);
+            $params[$paramName] = "%{$escapedToken}%";
+        }
+
+        // SOUNDEX fallback for typo tolerance on single-token or misspelled inputs
+        $conditions[] = "SOUNDEX($nameColumn) = SOUNDEX(:{$paramPrefix}_sdx)";
+        $params[":{$paramPrefix}_sdx"] = self::normalizeAccents($name);
+
+        return ['(' . implode(' OR ', $conditions) . ')', $params];
+    }
 }

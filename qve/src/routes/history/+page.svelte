@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { base } from '$app/paths';
-  import { api } from '$api';
   import type { DrunkWine } from '$lib/api/types';
   import {
     drunkWines,
@@ -12,33 +11,41 @@
     filteredDrunkWineCount,
     clearHistoryFilters,
     modal,
-    deleteStore
+    deleteStore,
+    // WIN-205: Server-side pagination
+    historyPagination,
+    historyFilters,
+    historySortKey,
+    historySortDir,
+    fetchHistory
   } from '$stores';
 
   // Track if we had an editRating modal open (to refresh on close)
   let wasEditingRating = false;
 
+  // Track initialization to avoid double-fetch on mount
+  let initialized = false;
+
+  // Track previous filter/sort state to detect actual changes (WIN-206)
+  let previousHistoryState = '';
+
   // Import components
   import { Header, HistoryGrid } from '$lib/components';
 
-  // Fetch drunk wines from API
-  async function fetchDrunkWines() {
-    historyLoading.set(true);
-    historyError.set(null);
-    try {
-      const wines = await api.getDrunkWines();
-      drunkWines.set(wines);
-    } catch (e) {
-      historyError.set(e instanceof Error ? e.message : 'Failed to load history');
-      console.error('History API Error:', e);
-    } finally {
-      historyLoading.set(false);
+  onMount(() => {
+    previousHistoryState = JSON.stringify({ f: $historyFilters, sk: $historySortKey, sd: $historySortDir });
+    fetchHistory(1, true);
+    initialized = true;
+  });
+
+  // WIN-205/WIN-206: Reactive refetch on filter/sort change — debounced
+  $: if (initialized) {
+    const currentState = JSON.stringify({ f: $historyFilters, sk: $historySortKey, sd: $historySortDir });
+    if (currentState !== previousHistoryState) {
+      previousHistoryState = currentState;
+      fetchHistory(1);
     }
   }
-
-  onMount(() => {
-    fetchDrunkWines();
-  });
 
   // Handle Add Bottle action from history card
   function handleAddBottle(event: CustomEvent<{ wine: DrunkWine }>) {
@@ -87,9 +94,9 @@
     if ($modal.type === 'editRating') {
       wasEditingRating = true;
     } else if (wasEditingRating && $modal.type === null) {
-      // Modal just closed after editing, refresh history
+      // Modal just closed after editing, refresh history (stay on current page)
       wasEditingRating = false;
-      fetchDrunkWines();
+      fetchHistory();
     }
   }
 </script>
@@ -112,7 +119,7 @@
     {:else if $historyError}
       <div class="error-state">
         <p>Error: {$historyError}</p>
-        <button on:click={() => fetchDrunkWines()}>Retry</button>
+        <button on:click={() => fetchHistory(1)}>Retry</button>
       </div>
     {:else if $drunkWineCount === 0}
       <div class="empty-state">
@@ -131,6 +138,29 @@
       </div>
     {:else}
       <HistoryGrid wines={$sortedDrunkWines} on:addBottle={handleAddBottle} on:editRating={handleEditRating} on:deleteRating={handleDeleteRating} />
+
+      <!-- WIN-205: Pagination controls -->
+      {#if $historyPagination.totalPages > 1}
+        <nav class="pagination" aria-label="History pages">
+          <button
+            class="pagination-btn"
+            disabled={$historyPagination.page <= 1}
+            on:click={() => fetchHistory($historyPagination.page - 1)}
+          >
+            Previous
+          </button>
+          <span class="page-indicator">
+            {$historyPagination.page} of {$historyPagination.totalPages}
+          </span>
+          <button
+            class="pagination-btn"
+            disabled={$historyPagination.page >= $historyPagination.totalPages}
+            on:click={() => fetchHistory($historyPagination.page + 1)}
+          >
+            Next
+          </button>
+        </nav>
+      {/if}
     {/if}
   </section>
 </main>
@@ -235,5 +265,48 @@
 
   .error-state button:hover {
     opacity: 0.9;
+  }
+
+  /* ─────────────────────────────────────────────────────────
+   * PAGINATION (WIN-205)
+   * ───────────────────────────────────────────────────────── */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    margin-top: var(--space-6);
+    padding: var(--space-4) 0;
+  }
+
+  .pagination-btn {
+    padding: var(--space-2) var(--space-5);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    border-radius: 100px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--divider);
+    transition:
+      border-color 0.2s var(--ease-out),
+      color 0.2s var(--ease-out),
+      opacity 0.2s var(--ease-out);
+  }
+
+  .pagination-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--text-primary);
+  }
+
+  .pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  .page-indicator {
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    color: var(--text-tertiary);
   }
 </style>

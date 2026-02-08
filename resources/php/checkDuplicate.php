@@ -132,6 +132,11 @@ function isSubstringMatch($input, $candidate) {
 
 /**
  * Check for duplicate regions
+ *
+ * WIN-229: Uses SQL pre-filtering instead of loading all records.
+ * 1. Exact match via SQL collation (accent+case insensitive)
+ * 2. Fuzzy candidates via token-based LIKE + SOUNDEX, with LIMIT
+ * 3. PHP fuzzy matching on reduced candidate set only
  */
 function checkRegionDuplicates($pdo, $name, $normalizedName) {
     $result = [
@@ -141,35 +146,51 @@ function checkRegionDuplicates($pdo, $name, $normalizedName) {
         'existingWineId' => null
     ];
 
-    // Get all regions for fuzzy matching (exclude soft-deleted)
-    $stmt = $pdo->prepare("SELECT regionID, regionName FROM region WHERE deleted = 0 ORDER BY regionName");
-    $stmt->execute();
-    $allRegions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // 1. Exact match via SQL (accent+case insensitive via collation)
+    $stmt = $pdo->prepare("
+        SELECT regionID, regionName
+        FROM region
+        WHERE deleted = 0
+          AND regionName COLLATE utf8mb4_unicode_ci = :name
+        LIMIT 1
+    ");
+    $stmt->execute([':name' => $name]);
+    $exact = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    foreach ($allRegions as $row) {
-        $regionName = $row['regionName'];
-        $inputNorm = strtolower(normalizeAccents($name));
-        $candidateNorm = strtolower(normalizeAccents($regionName));
+    if ($exact) {
+        $result['exactMatch'] = [
+            'id' => (int)$exact['regionID'],
+            'name' => $exact['regionName']
+        ];
+    }
 
-        // Exact match (case-insensitive, accent-insensitive)
-        if ($inputNorm === $candidateNorm) {
-            $result['exactMatch'] = [
-                'id' => (int)$row['regionID'],
-                'name' => $regionName
-            ];
+    // 2. Pre-filtered fuzzy candidates
+    $tokens = FuzzyMatcher::extractSearchTokens($name);
+    [$filterSQL, $filterParams] = FuzzyMatcher::buildCandidateFilter('regionName', $tokens, $name);
+
+    $stmt = $pdo->prepare("
+        SELECT regionID, regionName
+        FROM region
+        WHERE deleted = 0 AND $filterSQL
+        ORDER BY regionName
+        LIMIT 50
+    ");
+    $stmt->execute($filterParams);
+    $candidates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // 3. PHP fuzzy match on candidates only
+    foreach ($candidates as $row) {
+        // Skip exact match (already reported above)
+        if ($result['exactMatch'] && (int)$row['regionID'] === $result['exactMatch']['id']) {
             continue;
         }
 
-        // Skip if already have 5 similar matches
-        if (count($result['similarMatches']) >= 5) {
-            continue;
-        }
+        if (count($result['similarMatches']) >= 5) break;
 
-        // Check substring or fuzzy match
-        if (isSubstringMatch($name, $regionName) || isFuzzyMatch($name, $regionName)) {
+        if (isSubstringMatch($name, $row['regionName']) || isFuzzyMatch($name, $row['regionName'])) {
             $result['similarMatches'][] = [
                 'id' => (int)$row['regionID'],
-                'name' => $regionName
+                'name' => $row['regionName']
             ];
         }
     }
@@ -179,6 +200,10 @@ function checkRegionDuplicates($pdo, $name, $normalizedName) {
 
 /**
  * Check for duplicate producers
+ *
+ * WIN-229: Uses SQL pre-filtering instead of loading all records.
+ * Exact matches with wrong region context are excluded from similarMatches
+ * (preserving original behavior).
  */
 function checkProducerDuplicates($pdo, $name, $normalizedName, $regionId = null, $regionName = null) {
     $result = [
@@ -188,53 +213,67 @@ function checkProducerDuplicates($pdo, $name, $normalizedName, $regionId = null,
         'existingWineId' => null
     ];
 
-    // Get all producers for fuzzy matching (exclude soft-deleted)
+    // 1. Exact match via SQL (all name matches, then filter by region in PHP)
     $stmt = $pdo->prepare("
         SELECT p.producerID, p.producerName, p.regionID, r.regionName
         FROM producers p
         LEFT JOIN region r ON p.regionID = r.regionID AND r.deleted = 0
         WHERE p.deleted = 0
-        ORDER BY p.producerName
+          AND p.producerName COLLATE utf8mb4_unicode_ci = :name
     ");
-    $stmt->execute();
-    $allProducers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt->execute([':name' => $name]);
+    $exactRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    foreach ($allProducers as $row) {
-        $producerName = $row['producerName'];
-        $inputNorm = strtolower(normalizeAccents($name));
-        $candidateNorm = strtolower(normalizeAccents($producerName));
+    // Collect all exact-name IDs (to exclude from fuzzy matches, even if region doesn't match)
+    $exactIds = array_map(fn($r) => (int)$r['producerID'], $exactRows);
 
-        // Exact match (case-insensitive, accent-insensitive)
-        if ($inputNorm === $candidateNorm) {
-            // Only set as exact if matching region context (or no context specified)
-            $matchesRegion = true;
-            if ($regionId && $row['regionID'] != $regionId) {
-                $matchesRegion = false;
-            }
-            if ($regionName && strtolower($row['regionName'] ?? '') !== strtolower($regionName)) {
-                $matchesRegion = false;
-            }
+    foreach ($exactRows as $row) {
+        $matchesRegion = true;
+        if ($regionId && $row['regionID'] != $regionId) {
+            $matchesRegion = false;
+        }
+        if ($regionName && strtolower($row['regionName'] ?? '') !== strtolower($regionName)) {
+            $matchesRegion = false;
+        }
 
-            if ($matchesRegion && !$result['exactMatch']) {
-                $result['exactMatch'] = [
-                    'id' => (int)$row['producerID'],
-                    'name' => $producerName,
-                    'meta' => $row['regionName']
-                ];
-            }
+        if ($matchesRegion && !$result['exactMatch']) {
+            $result['exactMatch'] = [
+                'id' => (int)$row['producerID'],
+                'name' => $row['producerName'],
+                'meta' => $row['regionName']
+            ];
+            break;
+        }
+    }
+
+    // 2. Pre-filtered fuzzy candidates
+    $tokens = FuzzyMatcher::extractSearchTokens($name);
+    [$filterSQL, $filterParams] = FuzzyMatcher::buildCandidateFilter('p.producerName', $tokens, $name);
+
+    $stmt = $pdo->prepare("
+        SELECT p.producerID, p.producerName, p.regionID, r.regionName
+        FROM producers p
+        LEFT JOIN region r ON p.regionID = r.regionID AND r.deleted = 0
+        WHERE p.deleted = 0 AND $filterSQL
+        ORDER BY p.producerName
+        LIMIT 50
+    ");
+    $stmt->execute($filterParams);
+    $candidates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // 3. PHP fuzzy match on candidates only
+    foreach ($candidates as $row) {
+        // Skip all exact-name matches (regardless of region context)
+        if (in_array((int)$row['producerID'], $exactIds)) {
             continue;
         }
 
-        // Skip if already have 5 similar matches
-        if (count($result['similarMatches']) >= 5) {
-            continue;
-        }
+        if (count($result['similarMatches']) >= 5) break;
 
-        // Check substring or fuzzy match
-        if (isSubstringMatch($name, $producerName) || isFuzzyMatch($name, $producerName)) {
+        if (isSubstringMatch($name, $row['producerName']) || isFuzzyMatch($name, $row['producerName'])) {
             $result['similarMatches'][] = [
                 'id' => (int)$row['producerID'],
-                'name' => $producerName,
+                'name' => $row['producerName'],
                 'meta' => $row['regionName']
             ];
         }
@@ -245,6 +284,9 @@ function checkProducerDuplicates($pdo, $name, $normalizedName, $regionId = null,
 
 /**
  * Check for duplicate wines
+ *
+ * WIN-229: Uses SQL pre-filtering instead of loading all records.
+ * Preserves WIN-176 year-aware duplicate detection and Add Bottle redirect logic.
  */
 function checkWineDuplicates($pdo, $name, $normalizedName, $producerId = null, $producerName = null, $year = null) {
     $result = [
@@ -254,83 +296,95 @@ function checkWineDuplicates($pdo, $name, $normalizedName, $producerId = null, $
         'existingWineId' => null
     ];
 
-    // Build producer filter for the query
-    $producerFilter = "";
-    $params = [];
+    // Build producer filter (shared by both exact and fuzzy queries)
+    $producerWhere = "";
+    $producerParams = [];
 
     if ($producerId) {
-        $producerFilter = " WHERE w.producerID = :producerId AND w.deleted = 0";
-        $params[':producerId'] = $producerId;
+        $producerWhere = " AND w.producerID = :producerId";
+        $producerParams[':producerId'] = $producerId;
     } elseif ($producerName) {
-        $producerFilter = " WHERE p.producerName COLLATE utf8mb4_unicode_ci = :producerName AND w.deleted = 0 AND p.deleted = 0";
-        $params[':producerName'] = $producerName;
-    } else {
-        $producerFilter = " WHERE w.deleted = 0";
+        $producerWhere = " AND p.producerName COLLATE utf8mb4_unicode_ci = :producerName AND p.deleted = 0";
+        $producerParams[':producerName'] = $producerName;
     }
 
-    // Get wines (filtered by producer if specified) for fuzzy matching (exclude soft-deleted)
+    // 1. Exact match via SQL (may return multiple rows for different vintages)
     $stmt = $pdo->prepare("
         SELECT w.wineID, w.wineName, w.year, w.isNonVintage, p.producerName, p.producerID,
                (SELECT COUNT(*) FROM bottles b WHERE b.wineID = w.wineID AND b.bottleDrunk = 0 AND b.deleted = 0) as bottleCount
         FROM wine w
         LEFT JOIN producers p ON w.producerID = p.producerID AND p.deleted = 0
-        $producerFilter
-        ORDER BY w.wineName
+        WHERE w.deleted = 0
+          AND w.wineName COLLATE utf8mb4_unicode_ci = :name
+          $producerWhere
     ");
-    $stmt->execute($params);
-    $allWines = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt->execute(array_merge([':name' => $name], $producerParams));
+    $exactRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    foreach ($allWines as $row) {
-        $wineName = $row['wineName'];
-        $inputNorm = strtolower(normalizeAccents($name));
-        $candidateNorm = strtolower(normalizeAccents($wineName));
+    // Collect all exact-name IDs (to exclude from fuzzy matches)
+    $exactIds = array_map(fn($r) => (int)$r['wineID'], $exactRows);
+
+    foreach ($exactRows as $row) {
         $bottleCount = (int)$row['bottleCount'];
 
-        // Exact match (case-insensitive, accent-insensitive)
-        if ($inputNorm === $candidateNorm) {
-            // This is an exact wine name match for this producer
-            // Set exactMatch for display purposes
-            if (!$result['exactMatch']) {
-                $result['exactMatch'] = [
-                    'id' => (int)$row['wineID'],
-                    'name' => $wineName,
-                    'meta' => $row['year'] ? $row['producerName'] . ' ' . $row['year'] : $row['producerName']
-                ];
-            }
+        if (!$result['exactMatch']) {
+            $result['exactMatch'] = [
+                'id' => (int)$row['wineID'],
+                'name' => $row['wineName'],
+                'meta' => $row['year'] ? $row['producerName'] . ' ' . $row['year'] : $row['producerName']
+            ];
+        }
 
-            // WIN-176: Year-aware duplicate detection
-            // Only set existingWineId if name + producer + year all match
-            $inputIsNV = ($year === null || strtoupper($year ?? '') === 'NV');
-            $rowIsNV = ($row['year'] === null || $row['isNonVintage']);
+        // WIN-176: Year-aware duplicate detection
+        $inputIsNV = ($year === null || strtoupper($year ?? '') === 'NV');
+        $rowIsNV = ($row['year'] === null || $row['isNonVintage']);
 
-            $yearMatches = false;
-            if ($inputIsNV && $rowIsNV) {
-                $yearMatches = true;  // Both NV
-            } else if (!$inputIsNV && !$rowIsNV) {
-                $yearMatches = ((int)$row['year'] === (int)$year);  // Both have years, compare
-            }
-            // If one is NV and other isn't, yearMatches stays false
+        $yearMatches = false;
+        if ($inputIsNV && $rowIsNV) {
+            $yearMatches = true;
+        } else if (!$inputIsNV && !$rowIsNV) {
+            $yearMatches = ((int)$row['year'] === (int)$year);
+        }
 
-            // Only redirect to "Add Bottle" if exact match including year
-            if ($yearMatches && $bottleCount > 0) {
-                $result['existingBottles'] = $bottleCount;
-                $result['existingWineId'] = (int)$row['wineID'];
-            }
+        if ($yearMatches && $bottleCount > 0) {
+            $result['existingBottles'] = $bottleCount;
+            $result['existingWineId'] = (int)$row['wineID'];
+        }
+    }
+
+    // 2. Pre-filtered fuzzy candidates
+    $tokens = FuzzyMatcher::extractSearchTokens($name);
+    [$filterSQL, $filterParams] = FuzzyMatcher::buildCandidateFilter('w.wineName', $tokens, $name);
+
+    $stmt = $pdo->prepare("
+        SELECT w.wineID, w.wineName, w.year, w.isNonVintage, p.producerName, p.producerID,
+               (SELECT COUNT(*) FROM bottles b WHERE b.wineID = w.wineID AND b.bottleDrunk = 0 AND b.deleted = 0) as bottleCount
+        FROM wine w
+        LEFT JOIN producers p ON w.producerID = p.producerID AND p.deleted = 0
+        WHERE w.deleted = 0
+          $producerWhere
+          AND $filterSQL
+        ORDER BY w.wineName
+        LIMIT 50
+    ");
+    $stmt->execute(array_merge($producerParams, $filterParams));
+    $candidates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // 3. PHP fuzzy match on candidates only
+    foreach ($candidates as $row) {
+        // Skip all exact-name matches (already handled above)
+        if (in_array((int)$row['wineID'], $exactIds)) {
             continue;
         }
 
-        // Skip if already have 5 similar matches
-        if (count($result['similarMatches']) >= 5) {
-            continue;
-        }
+        if (count($result['similarMatches']) >= 5) break;
 
-        // Check substring or fuzzy match
-        if (isSubstringMatch($name, $wineName) || isFuzzyMatch($name, $wineName)) {
+        if (isSubstringMatch($name, $row['wineName']) || isFuzzyMatch($name, $row['wineName'])) {
             $result['similarMatches'][] = [
                 'id' => (int)$row['wineID'],
-                'name' => $wineName,
+                'name' => $row['wineName'],
                 'meta' => $row['year'] ? $row['producerName'] . ' ' . $row['year'] : $row['producerName'],
-                'bottleCount' => $bottleCount
+                'bottleCount' => (int)$row['bottleCount']
             ];
         }
     }

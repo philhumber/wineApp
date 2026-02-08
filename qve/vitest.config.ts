@@ -21,6 +21,7 @@ export default defineConfig({
 			$styles: path.resolve(__dirname, './src/lib/styles'),
 			$components: path.resolve(__dirname, './src/lib/components'),
 			$utils: path.resolve(__dirname, './src/lib/utils'),
+			'$env/static/public': path.resolve(__dirname, './src/app-mocks/env-static-public.ts'),
 		},
 	},
 });

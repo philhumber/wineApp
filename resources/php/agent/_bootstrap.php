@@ -16,6 +16,10 @@ require_once __DIR__ . '/../securityHeaders.php';
 // Default 30s is insufficient when making multiple API calls with thinking mode
 set_time_limit(120);
 
+// WIN-261: Stop execution when browser disconnects to avoid wasting server/API resources
+// Without this, PHP continues running LLM calls even after the client aborts
+ignore_user_abort(false);
+
 // Autoloader for Agent namespace
 spl_autoload_register(function ($class) {
     $prefix = 'Agent\\';

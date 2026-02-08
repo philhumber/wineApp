@@ -42,7 +42,10 @@ import type {
   // WIN-80: Soft Delete types
   DeleteEntityType,
   DeleteImpactResponse,
-  DeleteItemResponse
+  DeleteItemResponse,
+  // WIN-205: History pagination types
+  GetDrunkWinesParams,
+  GetDrunkWinesResponse
 } from './types';
 import { AgentError } from './types';
 import { PUBLIC_API_KEY } from '$env/static/public';
@@ -76,7 +79,8 @@ class WineApiClient {
    */
   private async fetchJSON<T>(
     endpoint: string,
-    data?: Record<string, unknown>
+    data?: Record<string, unknown>,
+    signal?: AbortSignal
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
 
@@ -84,9 +88,10 @@ class WineApiClient {
       ? {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...this.authHeaders },
-          body: JSON.stringify(data)
+          body: JSON.stringify(data),
+          signal
         }
-      : { method: 'POST', headers: { 'Content-Type': 'application/json', ...this.authHeaders }, body: '{}' };
+      : { method: 'POST', headers: { 'Content-Type': 'application/json', ...this.authHeaders }, body: '{}', signal };
 
     try {
       const response = await fetch(url, options);
@@ -225,7 +230,7 @@ class WineApiClient {
    * Get wines with optional filters
    * Default: returns wines with bottles (Our Wines view)
    */
-  async getWines(filters: WineFilters = {}): Promise<Wine[]> {
+  async getWines(filters: WineFilters = {}, signal?: AbortSignal): Promise<Wine[]> {
     // Default to showing wines with bottles if not specified
     const defaultedFilters = {
       bottleCount: '1' as const,
@@ -234,7 +239,8 @@ class WineApiClient {
 
     const response = await this.fetchJSON<{ wineList: Wine[] }>(
       'getWines.php',
-      this.mapFilters(defaultedFilters)
+      this.mapFilters(defaultedFilters),
+      signal
     );
 
     return response.data?.wineList ?? [];
@@ -427,12 +433,20 @@ class WineApiClient {
 
   /**
    * Get drunk wines with ratings (history view)
+   * WIN-205: Now supports server-side pagination, sorting, and filtering
    */
-  async getDrunkWines(): Promise<DrunkWine[]> {
-    const response = await this.fetchJSON<{ wineList: DrunkWine[] }>(
-      'getDrunkWines.php'
+  async getDrunkWines(params: GetDrunkWinesParams = {}, signal?: AbortSignal): Promise<GetDrunkWinesResponse> {
+    const response = await this.fetchJSON<GetDrunkWinesResponse>(
+      'getDrunkWines.php',
+      params as Record<string, unknown>,
+      signal
     );
-    return response.data?.wineList ?? [];
+    return response.data ?? {
+      wineList: [],
+      pagination: { page: 1, limit: 50, total: 0, totalPages: 0 },
+      unfilteredTotal: 0,
+      filterOptions: { countries: [], types: [], regions: [], producers: [], years: [] }
+    };
   }
 
   /**
@@ -1189,13 +1203,87 @@ class WineApiClient {
       throw new Error(`Unsupported image format: ${extension}. Please use JPEG, PNG, or WebP.`);
     }
 
+    const MAX_SIZE = 800;
+
+    // Prefer off-main-thread: createImageBitmap + OffscreenCanvas in Worker
+    if (typeof createImageBitmap === 'function' && typeof OffscreenCanvas === 'function') {
+      try {
+        return await this.compressImageInWorker(file, MAX_SIZE);
+      } catch {
+        // Fall through to main-thread fallback
+      }
+    }
+
+    return this.compressImageOnMainThread(file, MAX_SIZE);
+  }
+
+  /**
+   * Off-main-thread image compression using createImageBitmap + OffscreenCanvas in a Web Worker.
+   * Avoids blocking the UI thread during image decode, resize, and JPEG encode.
+   */
+  private async compressImageInWorker(
+    file: File,
+    maxSize: number
+  ): Promise<{ imageData: string; mimeType: string }> {
+    // createImageBitmap decodes off the main thread
+    const bitmap = await createImageBitmap(file);
+    let { width, height } = bitmap;
+
+    if (width > maxSize || height > maxSize) {
+      const ratio = Math.min(maxSize / width, maxSize / height);
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+    }
+
+    // Inline worker: resize with OffscreenCanvas + encode to JPEG
+    const workerCode = `
+      self.onmessage = async (e) => {
+        const { bitmap, width, height } = e.data;
+        const canvas = new OffscreenCanvas(width, height);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(bitmap, 0, 0, width, height);
+        bitmap.close();
+        const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.85 });
+        const buffer = await blob.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        self.postMessage({ imageData: btoa(binary), mimeType: 'image/jpeg' });
+      };
+    `;
+
+    const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+    const workerUrl = URL.createObjectURL(workerBlob);
+    const worker = new Worker(workerUrl);
+
+    try {
+      return await new Promise<{ imageData: string; mimeType: string }>((resolve, reject) => {
+        worker.onmessage = (e) => resolve(e.data);
+        worker.onerror = (e) => reject(new Error(e.message || 'Image compression worker error'));
+        // Transfer ImageBitmap (zero-copy)
+        worker.postMessage({ bitmap, width, height }, [bitmap]);
+      });
+    } finally {
+      worker.terminate();
+      URL.revokeObjectURL(workerUrl);
+    }
+  }
+
+  /**
+   * Main-thread fallback for image compression (used when OffscreenCanvas/Worker unavailable).
+   */
+  private compressImageOnMainThread(
+    file: File,
+    maxSize: number
+  ): Promise<{ imageData: string; mimeType: string }> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       const img = new Image();
 
       reader.onload = (e) => {
         img.onload = () => {
-          // Create canvas for compression
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
 
@@ -1204,26 +1292,18 @@ class WineApiClient {
             return;
           }
 
-          // Max dimensions for upload
-          const MAX_WIDTH = 1200;
-          const MAX_HEIGHT = 1200;
-
           let { width, height } = img;
 
-          // Scale down if needed
-          if (width > MAX_WIDTH || height > MAX_HEIGHT) {
-            const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+          if (width > maxSize || height > maxSize) {
+            const ratio = Math.min(maxSize / width, maxSize / height);
             width = Math.round(width * ratio);
             height = Math.round(height * ratio);
           }
 
           canvas.width = width;
           canvas.height = height;
-
-          // Draw image
           ctx.drawImage(img, 0, 0, width, height);
 
-          // Convert to JPEG with quality
           const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
           const base64Data = dataUrl.split(',')[1];
 

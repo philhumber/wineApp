@@ -2,8 +2,7 @@
   import { onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { base } from '$app/paths';
-  import { theme, viewDensity, viewMode, wines, winesLoading, winesError, filters, clearAllFilters, hasActiveFilters, hasSearchQuery, searchQuery, activeFilterCount, toasts, targetWineID, modal, cellarSortKey, cellarSortDir, sortWines, deleteStore } from '$stores';
-  import { api } from '$api';
+  import { theme, viewDensity, viewMode, wines, winesLoading, winesError, filters, clearAllFilters, hasActiveFilters, hasSearchQuery, searchQuery, activeFilterCount, toasts, targetWineID, modal, cellarSortKey, cellarSortDir, sortWines, deleteStore, fetchWines } from '$stores';
   import type { Wine, WineFilters } from '$lib/api/types';
 
   // Import components
@@ -18,32 +17,17 @@
   // Sort wines using cellar sort settings
   $: sortedWines = sortWines($wines, $cellarSortKey, $cellarSortDir);
 
-  // Fetch wines with current filters
-  async function fetchWines(filterValues: WineFilters = {}) {
-    winesLoading.set(true);
-    winesError.set(null);
-    try {
-      // Include bottleCount filter based on viewMode
-      // 'ourWines' = only wines with bottles (bottleCount: '1')
-      // 'allWines' = all wines including those with 0 bottles (bottleCount: '0')
-      const currentViewMode = $viewMode;
-      const bottleCountFilter: '0' | '1' = currentViewMode === 'ourWines' ? '1' : '0';
-      const apiFilters = { ...filterValues, bottleCount: bottleCountFilter };
-      const wineList = await api.getWines(apiFilters);
-      wines.set(wineList);
-    } catch (e) {
-      winesError.set(e instanceof Error ? e.message : 'Failed to connect to API');
-      console.error('API Error:', e);
-    } finally {
-      winesLoading.set(false);
-    }
+  // Build filter params including bottleCount from viewMode
+  function filtersWithViewMode(filterValues: WineFilters = {}): WineFilters {
+    const bottleCountFilter: '0' | '1' = $viewMode === 'ourWines' ? '1' : '0';
+    return { ...filterValues, bottleCount: bottleCountFilter };
   }
 
   // Track previous viewMode to detect changes
   let previousViewMode = $viewMode;
 
   onMount(() => {
-    fetchWines($filters);
+    fetchWines(filtersWithViewMode($filters), true);
   });
 
   // Track previous filter state to detect changes
@@ -52,19 +36,17 @@
   // Refetch when viewMode changes (not on initial load) and clear filters
   $: if ($viewMode !== previousViewMode) {
     previousViewMode = $viewMode;
-    // Clear filters when switching between views
     clearAllFilters();
-    // Update previousFilters to prevent double-fetch from filter change reactive
     previousFilters = JSON.stringify({});
-    fetchWines({});
+    fetchWines(filtersWithViewMode({}), true);
   }
 
-  // Refetch when filters change (handles both individual changes and Clear All)
+  // Refetch when filters change — debounced (WIN-206)
   $: {
     const currentFilters = JSON.stringify($filters);
     if (currentFilters !== previousFilters) {
       previousFilters = currentFilters;
-      fetchWines($filters);
+      fetchWines(filtersWithViewMode($filters));
     }
   }
 
@@ -207,7 +189,7 @@
   </section>
 
   <!-- Phase Status (collapsed) -->
-  <details class="status-details">
+  <!-- <details class="status-details">
     <summary>Phase 2 Wave 3 Status</summary>
 
     <div class="status-grid">
@@ -283,7 +265,7 @@
       <a href="{base}/edit/1">/edit/[id]</a>
       <a href="{base}/drink/1">/drink/[id]</a>
     </nav>
-  </details>
+  </details> -->
 </main>
 
 <style>

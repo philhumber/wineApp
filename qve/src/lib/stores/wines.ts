@@ -3,8 +3,9 @@
  * Manages the wine collection state
  */
 
-import { writable, derived } from 'svelte/store';
-import type { Wine } from '$api/types';
+import { writable, derived, get } from 'svelte/store';
+import type { Wine, WineFilters } from '$api/types';
+import { api } from '$api';
 
 // ─────────────────────────────────────────────────────────
 // MAIN STORES
@@ -146,4 +147,89 @@ export function scrollToWine(id: number): void {
   targetWineID.set(id);
   // Clear after a delay to allow scroll animation
   setTimeout(() => targetWineID.set(null), 2500);
+}
+
+// ─────────────────────────────────────────────────────────
+// FETCH ACTION (WIN-206)
+// ─────────────────────────────────────────────────────────
+
+/** Race condition guard */
+let fetchCounter = 0;
+
+/** AbortController for in-flight request */
+let activeController: AbortController | null = null;
+
+/** Debounce timer */
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Debounce delay in ms */
+const DEBOUNCE_MS = 300;
+
+/**
+ * Fetch wines from server with given filters.
+ * Debounces rapid calls (300ms), aborts in-flight requests, and guards against stale responses.
+ * @param filterValues Filters to apply
+ * @param immediate Skip debounce (used for initial load)
+ */
+export function fetchWines(filterValues: WineFilters = {}, immediate = false): void {
+  // Clear any pending debounce
+  if (debounceTimer !== null) {
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
+  }
+
+  const doFetch = () => {
+    // Abort any in-flight request
+    if (activeController) {
+      activeController.abort();
+    }
+
+    const controller = new AbortController();
+    activeController = controller;
+    const thisRequest = ++fetchCounter;
+
+    winesLoading.set(true);
+    winesError.set(null);
+
+    api
+      .getWines(filterValues, controller.signal)
+      .then((wineList) => {
+        // Discard stale responses
+        if (thisRequest !== fetchCounter) return;
+        wines.set(wineList);
+      })
+      .catch((e) => {
+        // Ignore aborted requests
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+        if (thisRequest !== fetchCounter) return;
+        winesError.set(e instanceof Error ? e.message : 'Failed to connect to API');
+        console.error('API Error:', e);
+      })
+      .finally(() => {
+        if (thisRequest === fetchCounter) {
+          winesLoading.set(false);
+          if (activeController === controller) {
+            activeController = null;
+          }
+        }
+      });
+  };
+
+  if (immediate) {
+    doFetch();
+  } else {
+    debounceTimer = setTimeout(doFetch, DEBOUNCE_MS);
+  }
+}
+
+/** Exposed for testing: cancel pending debounce and abort in-flight request */
+export function cancelFetchWines(): void {
+  if (debounceTimer !== null) {
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
+  }
+  if (activeController) {
+    activeController.abort();
+    activeController = null;
+  }
 }

@@ -29,7 +29,10 @@ export {
   removeWineFromList,
   decrementBottleCount,
   incrementBottleCount,
-  scrollToWine
+  scrollToWine,
+  // WIN-206: Debounced fetch with abort
+  fetchWines,
+  cancelFetchWines
 } from './wines';
 
 // Filters
@@ -113,7 +116,14 @@ export {
   toggleHistorySortDir,
   setHistoryFilter,
   clearHistoryFilters,
-  getDrunkWineKey
+  getDrunkWineKey,
+  // WIN-205: Server-side pagination
+  historyPagination,
+  historyFilterOptions,
+  unfilteredDrunkWineCount,
+  fetchHistory,
+  // WIN-206: Cancel helper
+  cancelFetchHistory
 } from './history';
 export type { HistorySortKey, HistorySortDir, HistoryFilters } from './history';
 

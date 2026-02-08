@@ -156,6 +156,49 @@ export interface BottleListResponse {
 }
 
 // ─────────────────────────────────────────────────────────
+// HISTORY / PAGINATION TYPES (WIN-205)
+// ─────────────────────────────────────────────────────────
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface HistoryFilterOption {
+  value: string;
+  count: number;
+}
+
+export interface HistoryFilterOptions {
+  countries: HistoryFilterOption[];
+  types: HistoryFilterOption[];
+  regions: HistoryFilterOption[];
+  producers: HistoryFilterOption[];
+  years: HistoryFilterOption[];
+}
+
+export interface GetDrunkWinesParams {
+  page?: number;
+  limit?: number;
+  sortKey?: string;
+  sortDir?: string;
+  countryDropdown?: string;
+  typesDropdown?: string;
+  regionDropdown?: string;
+  producerDropdown?: string;
+  yearDropdown?: string;
+}
+
+export interface GetDrunkWinesResponse {
+  wineList: DrunkWine[];
+  pagination: PaginationMeta;
+  unfilteredTotal: number;
+  filterOptions: HistoryFilterOptions;
+}
+
+// ─────────────────────────────────────────────────────────
 // MUTATION PAYLOAD TYPES
 // ─────────────────────────────────────────────────────────
 
