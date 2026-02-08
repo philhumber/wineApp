@@ -577,6 +577,11 @@
     padding-right: var(--space-10, 4rem);
   }
 
+  .form-select option {
+    color: #2D2926;
+    background-color: #FFFFFF;
+  }
+
   .form-select:focus,
   .form-input:focus {
     border-color: var(--accent, #a69b8a);

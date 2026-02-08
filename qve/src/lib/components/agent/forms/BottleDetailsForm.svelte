@@ -11,6 +11,7 @@
 	import { api } from '$lib/api';
 	import type { BottleSize, Currency } from '$lib/api/types';
 	import type { BottleFormData } from '$lib/agent/types';
+	import FormInput from '$lib/components/forms/FormInput.svelte';
 
 	const dispatch = createEventDispatcher<{
 		next: BottleFormData;
@@ -32,8 +33,8 @@
 
 	// Local form state (not store-driven)
 	let formData: BottleFormData = {
-		size: initialData.size ?? '',
-		location: initialData.location ?? '',
+		bottleSize: initialData.bottleSize ?? '',
+		storageLocation: initialData.storageLocation ?? '',
 		source: initialData.source ?? '',
 		price: initialData.price,
 		currency: initialData.currency ?? '',
@@ -43,7 +44,7 @@
 	// Validation
 	$: canProceed =
 		part === 1
-			? formData.size && formData.location && formData.source
+			? formData.bottleSize && formData.storageLocation && formData.source
 			: true; // Part 2 is all optional
 
 	onMount(async () => {
@@ -59,9 +60,9 @@
 			}
 
 			// Set default size if none selected
-			if (!formData.size && bottleSizes.length > 0) {
+			if (!formData.bottleSize && bottleSizes.length > 0) {
 				const standardSize = bottleSizes.find((s) => s.sizeCode === 'standard') || bottleSizes[0];
-				formData = { ...formData, size: standardSize.sizeCode };
+				formData = { ...formData, bottleSize: standardSize.sizeCode };
 			}
 		} catch (error) {
 			console.error('Failed to fetch currencies:', error);
@@ -116,9 +117,9 @@
 				<select
 					id="bottle-size"
 					class="form-select"
-					value={formData.size}
+					value={formData.bottleSize}
 					{disabled}
-					on:change={(e) => updateField('size', e.currentTarget.value)}
+					on:change={(e) => updateField('bottleSize', e.currentTarget.value)}
 				>
 					<option value="" disabled>Select size...</option>
 					{#each sizeOptions as option}
@@ -127,35 +128,27 @@
 				</select>
 			</div>
 
-			<div class="form-group">
-				<label class="form-label" for="storage-location">
-					Storage Location <span class="required">*</span>
-				</label>
-				<input
-					id="storage-location"
-					type="text"
-					class="form-input"
-					placeholder="e.g., Wine cellar, Rack A3"
-					value={formData.location}
-					{disabled}
-					on:input={(e) => updateField('location', e.currentTarget.value)}
-				/>
-			</div>
+			<FormInput
+				id="storage-location"
+				label="Storage Location"
+				bind:value={formData.storageLocation}
+				placeholder="e.g., Wine cellar, Rack A3"
+				required
+				disabled={disabled}
+				maxlength={50}
+				on:input={(e) => updateField('storageLocation', e.detail)}
+			/>
 
-			<div class="form-group">
-				<label class="form-label" for="source">
-					Source <span class="required">*</span>
-				</label>
-				<input
-					id="source"
-					type="text"
-					class="form-input"
-					placeholder="e.g., Berry Bros, Gift, Auction"
-					value={formData.source}
-					{disabled}
-					on:input={(e) => updateField('source', e.currentTarget.value)}
-				/>
-			</div>
+			<FormInput
+				id="source"
+				label="Source"
+				bind:value={formData.source}
+				placeholder="e.g., Berry Bros, Gift, Auction"
+				required
+				disabled={disabled}
+				maxlength={50}
+				on:input={(e) => updateField('source', e.detail)}
+			/>
 
 			<button class="btn btn-primary" disabled={!canProceed || disabled || isSubmitting} on:click={handleNext}>
 				Next
@@ -239,6 +232,7 @@
 		gap: var(--space-4);
 	}
 
+	/* Keep .form-group for non-FormInput fields (select, price row) */
 	.form-group {
 		display: flex;
 		flex-direction: column;
@@ -303,6 +297,11 @@
 		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238A847D' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
 		background-repeat: no-repeat;
 		background-position: right var(--space-4) center;
+	}
+
+	.form-select option {
+		color: #2D2926;
+		background-color: #FFFFFF;
 	}
 
 	/* Date input styling */

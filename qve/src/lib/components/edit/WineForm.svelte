@@ -20,12 +20,17 @@
 
 	const dispatch = createEventDispatcher<{
 		input: { field: keyof EditWineFormData; value: string | boolean };
+		blur: { field: keyof EditWineFormData; value: string };
 		imageSelect: File;
 		imageClear: void;
 	}>();
 
 	function handleInput(field: keyof EditWineFormData, value: string | boolean) {
 		dispatch('input', { field, value });
+	}
+
+	function handleBlur(field: keyof EditWineFormData, value: string) {
+		dispatch('blur', { field, value });
 	}
 
 	function handleImageSelect(event: CustomEvent<File>) {
@@ -44,9 +49,11 @@
 		name="wineName"
 		value={state.wineName}
 		required
+		maxlength={50}
 		{disabled}
 		error={errors['wine.wineName'] || ''}
 		on:input={(e) => handleInput('wineName', e.detail)}
+		on:blur={() => handleBlur('wineName', state.wineName)}
 	/>
 
 	<!-- Year + Type Row -->

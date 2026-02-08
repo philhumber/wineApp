@@ -287,8 +287,8 @@ export interface AgentErrorInfo {
 }
 
 export interface BottleFormData {
-  size?: string;
-  location?: string;
+  bottleSize?: string;
+  storageLocation?: string;
   source?: string;
   price?: number;
   currency?: string;

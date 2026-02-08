@@ -36,8 +36,8 @@ describe('BottleDetailsForm', () => {
 				props: {
 					part: 2,
 					initialData: {
-						size: 'standard',
-						location: 'Cellar',
+						bottleSize: 'standard',
+						storageLocation: 'Cellar',
 						source: 'Wine Shop',
 					},
 				},
@@ -65,8 +65,8 @@ describe('BottleDetailsForm', () => {
 				props: {
 					part: 1,
 					initialData: {
-						size: 'standard',
-						location: 'Cellar',
+						bottleSize: 'standard',
+						storageLocation: 'Cellar',
 						source: 'Wine Shop',
 					},
 				},

@@ -3,6 +3,7 @@
   require_once 'securityHeaders.php';
   require_once 'databaseConnection.php';
   require_once 'audit_log.php';
+  require_once 'validators.php';
   require_once 'errorHandler.php';
 
   // Start session if not already started
@@ -24,21 +25,19 @@
       $ratingID = $inputData['ratingID'] ?? null;
       $wineID = $inputData['wineID'] ?? null;
       $bottleID = $inputData['bottleID'] ?? null;
-      $overallRating = $inputData['overallRating'] ?? null;
-      $valueRating = $inputData['valueRating'] ?? null;
       $drinkDate = $inputData['drinkDate'] ?? '';
       $buyAgain = $inputData['buyAgain'] ?? 0;
       $notes = $inputData['notes'] ?? '';
 
-      // Optional ratings (0-5 scale, nullable)
-      $complexityRating = isset($inputData['complexityRating']) && $inputData['complexityRating'] > 0
-          ? (int)$inputData['complexityRating'] : null;
-      $drinkabilityRating = isset($inputData['drinkabilityRating']) && $inputData['drinkabilityRating'] > 0
-          ? (int)$inputData['drinkabilityRating'] : null;
-      $surpriseRating = isset($inputData['surpriseRating']) && $inputData['surpriseRating'] > 0
-          ? (int)$inputData['surpriseRating'] : null;
-      $foodPairingRating = isset($inputData['foodPairingRating']) && $inputData['foodPairingRating'] > 0
-          ? (int)$inputData['foodPairingRating'] : null;
+      // Required ratings (1-10)
+      $overallRating = validateRating($inputData['overallRating'] ?? null, 'Overall rating', true, 1, 10);
+      $valueRating = validateRating($inputData['valueRating'] ?? null, 'Value rating', true, 1, 10);
+
+      // Optional sub-ratings (1-5, NULL = not rated)
+      $complexityRating = validateRating($inputData['complexityRating'] ?? null, 'Complexity rating', false, 1, 5);
+      $drinkabilityRating = validateRating($inputData['drinkabilityRating'] ?? null, 'Drinkability rating', false, 1, 5);
+      $surpriseRating = validateRating($inputData['surpriseRating'] ?? null, 'Surprise rating', false, 1, 5);
+      $foodPairingRating = validateRating($inputData['foodPairingRating'] ?? null, 'Food pairing rating', false, 1, 5);
 
       // Validate required fields
       if (empty($ratingID)) {
@@ -49,12 +48,6 @@
       }
       if (empty($bottleID)) {
           throw new Exception('Invalid bottle ID');
-      }
-      if (!isset($overallRating) || $overallRating < 1 || $overallRating > 10) {
-          throw new Exception('Invalid overall rating (must be 1-10)');
-      }
-      if (!isset($valueRating) || $valueRating < 1 || $valueRating > 10) {
-          throw new Exception('Invalid value rating (must be 1-10)');
       }
 
       // Process date

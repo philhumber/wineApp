@@ -14,10 +14,15 @@
 
 	const dispatch = createEventDispatcher<{
 		input: { field: keyof EditBottleFormData; value: string };
+		blur: { field: keyof EditBottleFormData; value: string };
 	}>();
 
 	function handleInput(field: keyof EditBottleFormData, value: string) {
 		dispatch('input', { field, value });
+	}
+
+	function handleBlur(field: keyof EditBottleFormData, value: string) {
+		dispatch('blur', { field, value });
 	}
 </script>
 
@@ -42,7 +47,10 @@
 			required
 			{disabled}
 			error={errors['bottle.location'] || ''}
-			on:change={(e) => handleInput('location', e.detail)}
+			on:change={(e) => {
+				handleInput('location', e.detail);
+				handleBlur('location', e.detail);
+			}}
 		/>
 	</FormRow>
 
@@ -53,9 +61,11 @@
 		value={state.source}
 		placeholder="Where was this purchased?"
 		required
+		maxlength={50}
 		{disabled}
 		error={errors['bottle.source'] || ''}
 		on:input={(e) => handleInput('source', e.detail)}
+		on:blur={() => handleBlur('source', state.source)}
 	/>
 
 	<!-- Price + Currency Row -->
@@ -67,7 +77,9 @@
 			value={state.price}
 			placeholder="0.00"
 			{disabled}
+			error={errors['bottle.price'] || ''}
 			on:input={(e) => handleInput('price', e.detail)}
+			on:blur={() => handleBlur('price', state.price)}
 		/>
 		<FormSelect
 			label="Currency"
@@ -75,7 +87,11 @@
 			value={state.currency}
 			options={$currencySelectOptions}
 			{disabled}
-			on:change={(e) => handleInput('currency', e.detail)}
+			error={errors['bottle.currency'] || ''}
+			on:change={(e) => {
+				handleInput('currency', e.detail);
+				handleBlur('currency', e.detail);
+			}}
 		/>
 	</FormRow>
 

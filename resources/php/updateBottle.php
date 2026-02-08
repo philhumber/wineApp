@@ -3,6 +3,7 @@
     require_once 'securityHeaders.php';
     require_once 'databaseConnection.php';
     require_once 'audit_log.php';
+    require_once 'validators.php';
     require_once 'errorHandler.php';
     // Start session if not already started
     if (session_status() === PHP_SESSION_NONE) {
@@ -30,23 +31,13 @@
         }
 
         // Get and validate other fields
-        $bottleSize = trim($data['bottleSize'] ?? '');
-        if (empty($bottleSize)) {
-            throw new Exception('Bottle size is required');
-        }
-
-        $location = trim($data['location'] ?? '');
-        if (empty($location)) {
-            throw new Exception('Location is required');
-        }
-
-        $source = trim($data['bottleSource'] ?? '');
-        if (empty($source)) {
-            throw new Exception('Source is required');
-        }
-        $bottlePrice = trim($data['bottlePrice'] ?? null);
-        $bottleCurrency = trim($data['bottleCurrency'] ?? null);
-        $purchaseDate = !empty($data['purchaseDate']) ? trim($data['purchaseDate']) : null;
+        $bottleSize = validateStringField($data['bottleSize'] ?? '', 'Bottle size', true, 50);
+        $location = validateStringField($data['location'] ?? '', 'Storage location', true, 50);
+        $source = validateStringField($data['bottleSource'] ?? '', 'Source', true, 50);
+        $priceCurrency = validatePriceCurrency($data['bottlePrice'] ?? null, $data['bottleCurrency'] ?? null);
+        $bottlePrice = $priceCurrency['price'];
+        $bottleCurrency = $priceCurrency['currency'];
+        $purchaseDate = validatePurchaseDate($data['purchaseDate'] ?? null);
 
         $userID = $_SESSION['userID'] ?? null;
 

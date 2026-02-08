@@ -6,6 +6,7 @@
 import { writable, derived, get } from 'svelte/store';
 import { api } from '$lib/api/client';
 import { toasts } from './toast';
+import { validateRange } from '$lib/utils/validation';
 import type { Wine, Bottle, DrunkWine, DrinkBottlePayload, UpdateRatingPayload } from '$lib/api/types';
 
 // ─────────────────────────────────────────────────────────
@@ -321,6 +322,23 @@ function createDrinkWineStore() {
         errors.valueRating = 'Please rate the value (1-10)';
       }
 
+      if (state.complexityRating > 0) {
+        const err = validateRange(state.complexityRating, 1, 5, 'Complexity rating');
+        if (err) errors.complexityRating = err;
+      }
+      if (state.drinkabilityRating > 0) {
+        const err = validateRange(state.drinkabilityRating, 1, 5, 'Drinkability rating');
+        if (err) errors.drinkabilityRating = err;
+      }
+      if (state.surpriseRating > 0) {
+        const err = validateRange(state.surpriseRating, 1, 5, 'Surprise rating');
+        if (err) errors.surpriseRating = err;
+      }
+      if (state.foodPairingRating > 0) {
+        const err = validateRange(state.foodPairingRating, 1, 5, 'Food pairing rating');
+        if (err) errors.foodPairingRating = err;
+      }
+
       update((s) => ({ ...s, errors }));
 
       return Object.keys(errors).length === 0;
@@ -344,6 +362,23 @@ function createDrinkWineStore() {
 
       if (state.valueRating < 1 || state.valueRating > 10) {
         errors.valueRating = 'Please rate the value (1-10)';
+      }
+
+      if (state.complexityRating > 0) {
+        const err = validateRange(state.complexityRating, 1, 5, 'Complexity rating');
+        if (err) errors.complexityRating = err;
+      }
+      if (state.drinkabilityRating > 0) {
+        const err = validateRange(state.drinkabilityRating, 1, 5, 'Drinkability rating');
+        if (err) errors.drinkabilityRating = err;
+      }
+      if (state.surpriseRating > 0) {
+        const err = validateRange(state.surpriseRating, 1, 5, 'Surprise rating');
+        if (err) errors.surpriseRating = err;
+      }
+      if (state.foodPairingRating > 0) {
+        const err = validateRange(state.foodPairingRating, 1, 5, 'Food pairing rating');
+        if (err) errors.foodPairingRating = err;
       }
 
       // If validation fails, show error and return

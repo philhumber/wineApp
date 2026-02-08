@@ -212,6 +212,12 @@
 		editWine.setWineField(field as keyof typeof state.wine, value as never);
 	}
 
+	// Wine form blur
+	function handleWineBlur(event: CustomEvent<{ field: string; value: string }>) {
+		const { field, value } = event.detail;
+		editWine.validateWineFieldBlur(field as keyof typeof state.wine, value);
+	}
+
 	// Wine image handlers
 	function handleImageSelect(event: CustomEvent<File>) {
 		const file = event.detail;
@@ -228,6 +234,12 @@
 	function handleBottleInput(event: CustomEvent<{ field: string; value: string }>) {
 		const { field, value } = event.detail;
 		editWine.setBottleField(field as keyof typeof state.bottle, value);
+	}
+
+	// Bottle form blur
+	function handleBottleBlur(event: CustomEvent<{ field: string; value: string }>) {
+		const { field, value } = event.detail;
+		editWine.validateBottleFieldBlur(field as keyof typeof state.bottle, value);
 	}
 
 	// Compute if current tab can submit
@@ -321,6 +333,7 @@
 						errors={state.errors}
 						disabled={isSubmitting}
 						on:input={handleWineInput}
+						on:blur={handleWineBlur}
 						on:imageSelect={handleImageSelect}
 						on:imageClear={handleImageClear}
 					/>
@@ -351,6 +364,7 @@
 								errors={state.errors}
 								disabled={isSubmitting}
 								on:input={handleBottleInput}
+								on:blur={handleBottleBlur}
 							/>
 						{/if}
 					{/if}

@@ -8,6 +8,7 @@
 	import type { AgentParsedWine } from '$lib/api/types';
 	import { api } from '$lib/api';
 	import type { WineType } from '$lib/api/types';
+	import FormInput from '$lib/components/forms/FormInput.svelte';
 
 	const dispatch = createEventDispatcher<{
 		complete: {
@@ -108,48 +109,39 @@
 	{:else}
 		<div class="form-fields">
 			{#if needsProducer}
-				<div class="form-group">
-					<label class="form-label" for="manual-producer">
-						Producer <span class="required">*</span>
-					</label>
-					<input
-						id="manual-producer"
-						type="text"
-						class="form-input"
-						placeholder="e.g., Château Margaux"
-						bind:value={producer}
-					/>
-				</div>
+				<FormInput
+					id="manual-producer"
+					label="Producer"
+					bind:value={producer}
+					placeholder="e.g., Château Margaux"
+					required
+					maxlength={255}
+					on:input={(e) => (producer = e.detail)}
+				/>
 			{/if}
 
 			{#if needsWineName}
-				<div class="form-group">
-					<label class="form-label" for="manual-wine-name">
-						Wine Name <span class="required">*</span>
-					</label>
-					<input
-						id="manual-wine-name"
-						type="text"
-						class="form-input"
-						placeholder="e.g., Grand Vin"
-						bind:value={wineName}
-					/>
-				</div>
+				<FormInput
+					id="manual-wine-name"
+					label="Wine Name"
+					bind:value={wineName}
+					placeholder="e.g., Grand Vin"
+					required
+					maxlength={50}
+					on:input={(e) => (wineName = e.detail)}
+				/>
 			{/if}
 
 			{#if needsRegion}
-				<div class="form-group">
-					<label class="form-label" for="manual-region">
-						Region <span class="required">*</span>
-					</label>
-					<input
-						id="manual-region"
-						type="text"
-						class="form-input"
-						placeholder="e.g., Margaux, Bordeaux"
-						bind:value={region}
-					/>
-				</div>
+				<FormInput
+					id="manual-region"
+					label="Region"
+					bind:value={region}
+					placeholder="e.g., Margaux, Bordeaux"
+					required
+					maxlength={50}
+					on:input={(e) => (region = e.detail)}
+				/>
 			{/if}
 
 			{#if needsWineType}
@@ -273,6 +265,11 @@
 		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238A847D' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
 		background-repeat: no-repeat;
 		background-position: right var(--space-4) center;
+	}
+
+	.form-select option {
+		color: #2D2926;
+		background-color: #FFFFFF;
 	}
 
 	.btn {

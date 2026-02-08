@@ -25,10 +25,7 @@
         if ($wineID <= 0) {
             throw new Exception('Invalid wine ID');
         }
-        $wineName = trim($data['wineName'] ?? '');
-        if (empty($wineName)) {
-            throw new Exception('Wine name is required');
-        }
+        $wineName = validateStringField($data['wineName'] ?? '', 'Wine name', true, 50);
         $wineType = trim($data['wineType'] ?? '');
         if (empty($wineType)) {
             throw new Exception('Wine type is required');

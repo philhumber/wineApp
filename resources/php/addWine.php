@@ -35,7 +35,7 @@
         throw new Exception('New or existing Producer is required');
     }
 
-    $newWineName = trim($data['wineName']) ?? null;
+    $newWineName = validateStringField($data['wineName'] ?? null, 'Wine name', false, 50);
     $existingWineName = trim($data['findWine']) ?? null;
     if (empty($newWineName) && empty($existingWineName)) {
         throw new Exception('New or existing Wine Name is required');
@@ -55,21 +55,13 @@
     $producerDescription = trim($data['producerDescription'] ?? null);
 
 
-    $bottleType = trim($data['bottleType']) ?? null;
-    if (empty($bottleType)) {
-        throw new Exception('Bottle name is required');
-    }
-    $storageLocation = trim($data['storageLocation']) ?? null;
-    if (empty($storageLocation)) {
-        throw new Exception('Storage location is required');
-    }
-    $bottleSource = trim($data['bottleSource']) ?? null;
-    if (empty($bottleSource)) {
-        throw new Exception('Bottle source is required');
-    }
-    $bottlePrice = trim($data['bottlePrice'] ?? null);
-    $bottleCurrency = trim($data['bottleCurrency'] ?? null);
-    $bottlePurchaseDate = !empty($data['bottlePurchaseDate']) ? trim($data['bottlePurchaseDate']) : null;
+    $bottleType = validateStringField($data['bottleType'] ?? '', 'Bottle size', true, 50);
+    $storageLocation = validateStringField($data['storageLocation'] ?? '', 'Storage location', true, 50);
+    $bottleSource = validateStringField($data['bottleSource'] ?? '', 'Source', true, 50);
+    $priceCurrency = validatePriceCurrency($data['bottlePrice'] ?? null, $data['bottleCurrency'] ?? null);
+    $bottlePrice = $priceCurrency['price'];
+    $bottleCurrency = $priceCurrency['currency'];
+    $bottlePurchaseDate = validatePurchaseDate($data['bottlePurchaseDate'] ?? null);
 
     // WIN-176: Handle year and Non-Vintage flag
     $yearInput = trim($data['wineYear'] ?? '');

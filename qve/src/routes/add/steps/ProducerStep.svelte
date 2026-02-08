@@ -172,8 +172,10 @@
 			value={state.producer.producerName}
 			placeholder="e.g., Penfolds"
 			required
+			maxlength={255}
 			error={producerErrors.producerName}
 			on:input={(e) => addWineStore.updateProducer('producerName', e.detail)}
+			on:blur={() => addWineStore.validateFieldBlur('producer', 'producerName', state.producer.producerName)}
 		/>
 
 		<!-- AI Generate Button -->

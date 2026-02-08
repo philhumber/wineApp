@@ -3,6 +3,7 @@
     require_once 'securityHeaders.php';
     require_once 'databaseConnection.php';
     require_once 'audit_log.php';
+    require_once 'validators.php';
     require_once 'errorHandler.php';
 
     // Start session if not already started
@@ -26,25 +27,13 @@
         } else {
             $wineID = (int)trim($data['wineID']) ?? 0;;
         }
-        if (empty($data['bottleType'])) {
-            throw new Exception('Bottle Type is required');
-        } else {
-            $bottleType = trim($data['bottleType']);
-        }
-        if (empty($data['storageLocation'])) {
-            throw new Exception('Bottle Location is required');
-        } else {
-            $storageLocation = trim($data['storageLocation']);
-        }
-        if (empty($data['bottleSource'])) {
-            throw new Exception('Bottle Source is required');
-        } else {
-            $bottleSource = trim($data['bottleSource']);
-        }
-
-        $bottlePrice = trim($data['bottlePrice'] ?? '');
-        $bottleCurrency = trim($data['bottleCurrency'] ?? '');
-        $purchaseDate = !empty($data['purchaseDate']) ? trim($data['purchaseDate']) : null;
+        $bottleType = validateStringField($data['bottleType'] ?? '', 'Bottle size', true, 50);
+        $storageLocation = validateStringField($data['storageLocation'] ?? '', 'Storage location', true, 50);
+        $bottleSource = validateStringField($data['bottleSource'] ?? '', 'Source', true, 50);
+        $priceCurrency = validatePriceCurrency($data['bottlePrice'] ?? null, $data['bottleCurrency'] ?? null);
+        $bottlePrice = $priceCurrency['price'];
+        $bottleCurrency = $priceCurrency['currency'];
+        $purchaseDate = validatePurchaseDate($data['purchaseDate'] ?? null);
 
         // WIN-222: Quantity for atomic batch insert (default 1, max 24)
         $quantity = isset($data['quantity']) ? (int)$data['quantity'] : 1;

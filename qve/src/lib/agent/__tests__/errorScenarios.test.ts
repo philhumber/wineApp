@@ -260,7 +260,7 @@ describe('Error Scenarios', () => {
 			// Submit bottle form
 			await handleAgentAction({
 				type: 'submit_bottle',
-				payload: { size: '750ml', location: 'Cellar' },
+				payload: { bottleSize: '750ml', storageLocation: 'Cellar' },
 			});
 
 			// Note: The actual wine submission may happen later in the flow

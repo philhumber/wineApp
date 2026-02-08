@@ -232,8 +232,10 @@
 			value={state.wine.wineName}
 			placeholder="e.g., Grange"
 			required
+			maxlength={50}
 			error={wineErrors.wineName}
 			on:input={(e) => addWineStore.updateWine('wineName', e.detail)}
+			on:blur={() => addWineStore.validateFieldBlur('wine', 'wineName', state.wine.wineName)}
 		/>
 
 		<FormRow>

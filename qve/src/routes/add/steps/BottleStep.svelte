@@ -42,8 +42,10 @@
 		value={state.bottle.source}
 		placeholder="e.g., Waitrose, Majestic, Gift..."
 		required
+		maxlength={50}
 		error={bottleErrors.source}
 		on:input={(e) => addWineStore.updateBottle('source', e.detail)}
+		on:blur={() => addWineStore.validateFieldBlur('bottle', 'source', state.bottle.source)}
 	/>
 
 	<FormRow>
@@ -53,14 +55,20 @@
 			type="number"
 			value={state.bottle.price}
 			placeholder="e.g., 45.00"
+			error={bottleErrors.price}
 			on:input={(e) => addWineStore.updateBottle('price', e.detail)}
+			on:blur={() => addWineStore.validateFieldBlur('bottle', 'price', state.bottle.price)}
 		/>
 		<FormSelect
 			label="Currency"
 			name="currency"
 			value={state.bottle.currency}
 			options={$currencySelectOptions}
-			on:change={(e) => addWineStore.updateBottle('currency', e.detail)}
+			error={bottleErrors.currency}
+			on:change={(e) => {
+				addWineStore.updateBottle('currency', e.detail);
+				addWineStore.validateFieldBlur('bottle', 'currency', e.detail);
+			}}
 		/>
 	</FormRow>
 

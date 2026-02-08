@@ -316,8 +316,8 @@ function buildAddWinePayload(flow: AddWineFlowState): AddWinePayload {
     winePicture: 'images/wines/placeBottle.png',
 
     // Bottle
-    bottleType: bottleFormData.size || '750ml',
-    storageLocation: bottleFormData.location || '',
+    bottleType: bottleFormData.bottleSize || '750ml',
+    storageLocation: bottleFormData.storageLocation || '',
     bottleSource: bottleFormData.source || '',
     bottlePrice: bottleFormData.price !== undefined ? String(bottleFormData.price) : '',
     bottleCurrency: bottleFormData.currency || '',
@@ -390,8 +390,8 @@ async function submitAddBottleToExisting(existingWineId: number): Promise<void> 
   try {
     const bottlePayload = {
       wineID: existingWineId,
-      bottleSize: flow.bottleFormData.size || '750ml',
-      bottleLocation: flow.bottleFormData.location,
+      bottleSize: flow.bottleFormData.bottleSize || '750ml',
+      bottleLocation: flow.bottleFormData.storageLocation,
       bottleSource: flow.bottleFormData.source,
       bottlePrice: flow.bottleFormData.price,
       bottleCurrency: flow.bottleFormData.currency,

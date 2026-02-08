@@ -1056,10 +1056,10 @@ describe('handleAgentAction', () => {
 
 				await handleAgentAction({
 					type: 'submit_bottle',
-					payload: { size: '750ml', location: 'Cellar A' },
+					payload: { bottleSize: '750ml', storageLocation: 'Cellar A' },
 				});
 
-				expect(get(addWine.bottleFormData)).toEqual({ size: '750ml', location: 'Cellar A' });
+				expect(get(addWine.bottleFormData)).toEqual({ bottleSize: '750ml', storageLocation: 'Cellar A' });
 			});
 		});
 
