@@ -31,9 +31,10 @@
 						region.regionName,
 						count(bottles.bottleID) AS bottleCount
 					FROM producers
-					LEFT JOIN region on region.regionID = producers.regionID
-					LEFT JOIN wine on wine.producerID = producers.producerID
-					LEFT JOIN bottles ON bottles.wineID = wine.wineID AND bottles.bottleDrunk = 0";
+					LEFT JOIN region on region.regionID = producers.regionID AND region.deleted = 0
+					LEFT JOIN wine on wine.producerID = producers.producerID AND wine.deleted = 0
+					LEFT JOIN bottles ON bottles.wineID = wine.wineID AND bottles.bottleDrunk = 0 AND bottles.deleted = 0
+				WHERE producers.deleted = 0";
 
 		// Add JOINs for context-aware filtering
 		if ($countryName) {
@@ -62,7 +63,7 @@
 		}
 
 		if (!empty($where)) {
-			$sqlQuery .= " WHERE " . implode(' AND ', $where);
+			$sqlQuery .= " AND " . implode(' AND ', $where);
 		}
 
 		$sqlQuery .= " GROUP BY producers.producerID, producerName, region.regionName";

@@ -6,13 +6,15 @@
   <ModalContainer />
 -->
 <script lang="ts">
-  import { modal, confirmOverlay } from '$lib/stores';
+  import { modal, confirmOverlay, deleteStore, wines } from '$lib/stores';
+  import { get } from 'svelte/store';
   import DrinkRateModal from './DrinkRateModal.svelte';
   import AddBottleModal from './AddBottleModal.svelte';
   import ConfirmModal from './ConfirmModal.svelte';
+  import DeleteConfirmModal from './DeleteConfirmModal.svelte';
   import SettingsModal from './SettingsModal.svelte';
   import ImageLightboxModal from './ImageLightboxModal.svelte';
-  import type { Wine, DrunkWine } from '$lib/api/types';
+  import type { Wine, DrunkWine, DeleteEntityType } from '$lib/api/types';
   import type { ConfirmModalData } from '$lib/stores';
 
   function handleClose() {
@@ -33,6 +35,25 @@
     if (data?.onCancel) {
       data.onCancel();
     }
+    modal.close();
+  }
+
+  // Handlers for delete confirm modal
+  function handleDeleteConfirm(event: CustomEvent<{ type: DeleteEntityType; id: number; name: string }>) {
+    const { type, id, name } = event.detail;
+
+    // Get the wine snapshot for undo restoration
+    const wineList = get(wines);
+    const wine = wineList.find(w => w.wineID === id);
+
+    // Start the pending delete with timer
+    deleteStore.startDelete(type, id, name, { wine });
+
+    // Close the modal
+    modal.close();
+  }
+
+  function handleDeleteCancel() {
     modal.close();
   }
 
@@ -92,6 +113,14 @@
     src={modalData.src as string}
     alt={(modalData.alt as string) || 'Wine image'}
     on:close={handleClose}
+  />
+{:else if modalType === 'deleteConfirm' && modalData?.entityType}
+  <DeleteConfirmModal
+    entityType={modalData.entityType as DeleteEntityType}
+    entityId={modalData.entityId as number}
+    entityName={modalData.entityName as string}
+    on:confirm={handleDeleteConfirm}
+    on:cancel={handleDeleteCancel}
   />
 {/if}
 

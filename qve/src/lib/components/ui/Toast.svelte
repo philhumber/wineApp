@@ -37,8 +37,14 @@
     }
   }
 
-  // Pause progress bar on hover
-  let paused = false;
+  // WIN-80: Pause/resume timer on hover (syncs with CSS animation-play-state)
+  function handleMouseEnter() {
+    toasts.pause(toast.id);
+  }
+
+  function handleMouseLeave() {
+    toasts.resume(toast.id);
+  }
 </script>
 
 <div
@@ -47,8 +53,8 @@
   aria-live="polite"
   in:fly={{ x: 100, duration: 300, opacity: 0 }}
   out:fly={{ x: 100, duration: 200, opacity: 0 }}
-  on:mouseenter={() => (paused = true)}
-  on:mouseleave={() => (paused = false)}
+  on:mouseenter={handleMouseEnter}
+  on:mouseleave={handleMouseLeave}
 >
   <div class="toast-icon">
     <Icon name={icons[toast.type]} size={16} />
@@ -74,7 +80,7 @@
   {#if toast.duration > 0}
     <div
       class="toast-progress"
-      class:paused
+      class:paused={toast.isPaused}
       style="animation-duration: {toast.duration}ms"
     ></div>
   {/if}

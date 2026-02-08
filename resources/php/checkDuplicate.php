@@ -141,8 +141,8 @@ function checkRegionDuplicates($pdo, $name, $normalizedName) {
         'existingWineId' => null
     ];
 
-    // Get all regions for fuzzy matching
-    $stmt = $pdo->prepare("SELECT regionID, regionName FROM region ORDER BY regionName");
+    // Get all regions for fuzzy matching (exclude soft-deleted)
+    $stmt = $pdo->prepare("SELECT regionID, regionName FROM region WHERE deleted = 0 ORDER BY regionName");
     $stmt->execute();
     $allRegions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -188,11 +188,12 @@ function checkProducerDuplicates($pdo, $name, $normalizedName, $regionId = null,
         'existingWineId' => null
     ];
 
-    // Get all producers for fuzzy matching
+    // Get all producers for fuzzy matching (exclude soft-deleted)
     $stmt = $pdo->prepare("
         SELECT p.producerID, p.producerName, p.regionID, r.regionName
         FROM producers p
-        LEFT JOIN region r ON p.regionID = r.regionID
+        LEFT JOIN region r ON p.regionID = r.regionID AND r.deleted = 0
+        WHERE p.deleted = 0
         ORDER BY p.producerName
     ");
     $stmt->execute();
@@ -258,19 +259,21 @@ function checkWineDuplicates($pdo, $name, $normalizedName, $producerId = null, $
     $params = [];
 
     if ($producerId) {
-        $producerFilter = " WHERE w.producerID = :producerId";
+        $producerFilter = " WHERE w.producerID = :producerId AND w.deleted = 0";
         $params[':producerId'] = $producerId;
     } elseif ($producerName) {
-        $producerFilter = " WHERE p.producerName COLLATE utf8mb4_unicode_ci = :producerName";
+        $producerFilter = " WHERE p.producerName COLLATE utf8mb4_unicode_ci = :producerName AND w.deleted = 0 AND p.deleted = 0";
         $params[':producerName'] = $producerName;
+    } else {
+        $producerFilter = " WHERE w.deleted = 0";
     }
 
-    // Get wines (filtered by producer if specified) for fuzzy matching
+    // Get wines (filtered by producer if specified) for fuzzy matching (exclude soft-deleted)
     $stmt = $pdo->prepare("
         SELECT w.wineID, w.wineName, w.year, w.isNonVintage, p.producerName, p.producerID,
-               (SELECT COUNT(*) FROM bottles b WHERE b.wineID = w.wineID AND b.bottleDrunk = 0) as bottleCount
+               (SELECT COUNT(*) FROM bottles b WHERE b.wineID = w.wineID AND b.bottleDrunk = 0 AND b.deleted = 0) as bottleCount
         FROM wine w
-        LEFT JOIN producers p ON w.producerID = p.producerID
+        LEFT JOIN producers p ON w.producerID = p.producerID AND p.deleted = 0
         $producerFilter
         ORDER BY w.wineName
     ");

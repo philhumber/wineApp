@@ -38,7 +38,11 @@ import type {
   AgentErrorResponse,
   StreamEvent,
   StreamEventCallback,
-  StreamFieldCallback
+  StreamFieldCallback,
+  // WIN-80: Soft Delete types
+  DeleteEntityType,
+  DeleteImpactResponse,
+  DeleteItemResponse
 } from './types';
 import { AgentError } from './types';
 import { PUBLIC_API_KEY } from '$env/static/public';
@@ -545,6 +549,50 @@ class WineApiClient {
     if (!response.success) {
       throw new Error(response.message || 'Failed to update rating');
     }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // SOFT DELETE (WIN-80)
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Get impact preview for deleting an entity
+   * Shows what will be affected by cascade deletion
+   */
+  async getDeleteImpact(
+    type: DeleteEntityType,
+    id: number
+  ): Promise<DeleteImpactResponse> {
+    const response = await this.fetchJSON<DeleteImpactResponse>(
+      'getDeleteImpact.php',
+      { type, id }
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to get delete impact');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Soft delete an entity (sets deleted=1, deletedAt=NOW())
+   * Cascades down: region→producers→wines→bottles
+   */
+  async deleteItem(
+    type: DeleteEntityType,
+    id: number
+  ): Promise<DeleteItemResponse> {
+    const response = await this.fetchJSON<DeleteItemResponse>(
+      'deleteItem.php',
+      { type, id }
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to delete item');
+    }
+
+    return response.data;
   }
 
   // ─────────────────────────────────────────────────────────

@@ -95,12 +95,13 @@
 
       //there should always be a check, what happens if this ocde is repeated for some reason
       //after the insert succeeded
-
-
-      //try and find the region input - either new or existing
+      
+          
+      //try and find the region input - either new or existing (exclude soft-deleted)
       $stmt = $pdo->prepare("
                               SELECT regionID FROM region
                               WHERE LOWER(regionName) COLLATE utf8mb4_unicode_ci = LOWER(:region) COLLATE utf8mb4_unicode_ci
+                              AND deleted = 0
                           ");
 
       //Choose which value to search for - either new or existing
@@ -163,11 +164,12 @@
       // Move onto Producer \\
       //                    \\
       ////////////\\\\\\\\\\\\
-
-      //try and find the producer input - either new or existing
+      
+      //try and find the producer input - either new or existing (exclude soft-deleted)
       $stmt = $pdo->prepare("
                               SELECT producerID FROM producers
                               WHERE LOWER(producerName) COLLATE utf8mb4_unicode_ci = LOWER(:wineProducer) COLLATE utf8mb4_unicode_ci
+                              AND deleted = 0
                           ");
 
       //Choose which value to search for - either new or existing
@@ -220,11 +222,12 @@
       //                \\
       //////////\\\\\\\\\\
 
-        //try and find the producer input - either new or existing
+        //try and find the wine input - either new or existing (exclude soft-deleted)
       $stmt = $pdo->prepare("
                               SELECT wineID FROM wine
                               WHERE LOWER(wineName) COLLATE utf8mb4_unicode_ci = LOWER(:wineName) COLLATE utf8mb4_unicode_ci
                               AND producerID = :producerID
+                              AND deleted = 0
                           ");
 
       //Choose which value to search for - either new or existing

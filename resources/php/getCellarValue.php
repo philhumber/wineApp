@@ -32,7 +32,7 @@ try {
                 SUM(CASE WHEN b.price IS NULL OR b.price = 0 THEN 1 ELSE 0 END) AS bottlesWithoutPrice
             FROM bottles b
             LEFT JOIN currencies c ON b.currency = c.currencyCode
-            WHERE b.bottleDrunk = 0";
+            WHERE b.bottleDrunk = 0 AND b.deleted = 0";
 
     $stmt = $pdo->query($sql);
     $result = $stmt->fetch(PDO::FETCH_ASSOC);

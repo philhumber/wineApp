@@ -13,6 +13,7 @@
   const dispatch = createEventDispatcher<{
     addBottle: { wine: DrunkWine };
     editRating: { wine: DrunkWine };
+    deleteRating: { wine: DrunkWine };
   }>();
 
   function handleExpand(event: CustomEvent<{ key: string }>) {
@@ -32,6 +33,11 @@
   // Forward editRating event from HistoryCard
   function handleEditRating(event: CustomEvent<{ wine: DrunkWine }>) {
     dispatch('editRating', event.detail);
+  }
+
+  // Forward deleteRating event from HistoryCard
+  function handleDeleteRating(event: CustomEvent<{ wine: DrunkWine }>) {
+    dispatch('deleteRating', event.detail);
   }
 
   // Calculate stagger delay (max 350ms for smoother UX)
@@ -55,6 +61,7 @@
       on:collapse={handleCollapse}
       on:addBottle={handleAddBottle}
       on:editRating={handleEditRating}
+      on:deleteRating={handleDeleteRating}
       --animation-delay={getStaggerDelay(index)}
     />
   {/each}

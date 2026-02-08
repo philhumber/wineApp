@@ -72,13 +72,13 @@
         $pdo->beginTransaction();
 
         try {
-            // 8. Get OLD data before update (for audit log)
-            $stmt = $pdo->prepare("SELECT * FROM bottles WHERE bottleID = ?");
+            // 8. Get OLD data before update (for audit log) - exclude soft-deleted
+            $stmt = $pdo->prepare("SELECT * FROM bottles WHERE bottleID = ? AND deleted = 0");
             $stmt->execute([$bottleID]);
             $oldData = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$oldData) {
-                throw new Exception('Bottle not found');
+                throw new Exception('Bottle not found or has been deleted');
             }
 
             // 8. Perform database operation

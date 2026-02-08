@@ -11,7 +11,8 @@
     drunkWineCount,
     filteredDrunkWineCount,
     clearHistoryFilters,
-    modal
+    modal,
+    deleteStore
   } from '$stores';
 
   // Track if we had an editRating modal open (to refresh on close)
@@ -56,6 +57,29 @@
   function handleEditRating(event: CustomEvent<{ wine: DrunkWine }>) {
     const { wine } = event.detail;
     modal.openEditRating(wine);
+  }
+
+  // Handle Delete Rating action from history card
+  function handleDeleteRating(event: CustomEvent<{ wine: DrunkWine }>) {
+    const { wine } = event.detail;
+    // Use simple confirmation modal for history deletion
+    modal.confirm({
+      title: 'Delete this rating?',
+      message: `Remove this rating and history for "${wine.wineName}"?`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+      onConfirm: () => {
+        modal.close();
+        // Start pending delete with undo timer
+        deleteStore.startDelete('bottle', wine.bottleID, wine.wineName, { drunkWine: wine });
+        // Remove from local state immediately
+        drunkWines.update(wines => wines.filter(w => w.bottleID !== wine.bottleID));
+      },
+      onCancel: () => {
+        modal.close();
+      }
+    });
   }
 
   // Watch modal state - refresh history when editRating modal closes
@@ -106,7 +130,7 @@
         </button>
       </div>
     {:else}
-      <HistoryGrid wines={$sortedDrunkWines} on:addBottle={handleAddBottle} on:editRating={handleEditRating} />
+      <HistoryGrid wines={$sortedDrunkWines} on:addBottle={handleAddBottle} on:editRating={handleEditRating} on:deleteRating={handleDeleteRating} />
     {/if}
   </section>
 </main>

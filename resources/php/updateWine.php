@@ -95,13 +95,13 @@
                 throw new Exception("Wine type not found");
             }
             $params[':wineTypeID'] = $wineTypeID['wineTypeID'];
-
-            // 8. Get OLD data before update (for audit log)
-            $stmt = $pdo->prepare("SELECT * FROM wine WHERE wineID = ?");
+            
+            // 8. Get OLD data before update (for audit log) - exclude soft-deleted
+            $stmt = $pdo->prepare("SELECT * FROM wine WHERE wineID = ? AND deleted = 0");
             $stmt->execute([$wineID]);
             $oldData = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$oldData) {
-                throw new Exception('Wine not found');
+                throw new Exception('Wine not found or has been deleted');
             }
             error_log('SQL: ' . $sqlQuery);
             error_log('Params: ' . print_r($params, true));

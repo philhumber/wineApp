@@ -29,14 +29,15 @@
 									COALESCE(wine.year, 'No Year') AS wineYear,
 									COUNT(bottles.bottleID) AS bottleCount
 								FROM wine
-								LEFT JOIN bottles ON bottles.wineID = wine.wineID AND bottles.bottleDrunk = 0";
+								LEFT JOIN bottles ON bottles.wineID = wine.wineID AND bottles.bottleDrunk = 0 AND bottles.deleted = 0
+							WHERE wine.deleted = 0";
 
 		// Add JOINs for context-aware filtering
 		if ($countryName || $regionName || $producerName) {
-			$sqlQuery .= " LEFT JOIN producers ON wine.producerID = producers.producerID";
+			$sqlQuery .= " LEFT JOIN producers ON wine.producerID = producers.producerID AND producers.deleted = 0";
 		}
 		if ($countryName || $regionName) {
-			$sqlQuery .= " LEFT JOIN region ON producers.regionID = region.regionID";
+			$sqlQuery .= " LEFT JOIN region ON producers.regionID = region.regionID AND region.deleted = 0";
 		}
 		if ($countryName) {
 			$sqlQuery .= " LEFT JOIN country ON region.countryID = country.countryID";
@@ -64,7 +65,7 @@
 		}
 
 		if (!empty($where)) {
-			$sqlQuery .= " WHERE " . implode(' AND ', $where);
+			$sqlQuery .= " AND " . implode(' AND ', $where);
 		}
 
 		$sqlQuery .= " GROUP BY wine.year";

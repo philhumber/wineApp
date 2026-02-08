@@ -9,7 +9,7 @@ export default defineConfig({
 		conditions: ['browser', 'import', 'module', 'default'],
 	},
 	test: {
-		include: ['src/**/*.{test,spec}.{js,ts}'],
+		include: ['src/**/*.{test,spec}.{js,ts}', 'tests/**/*.{test,spec}.{js,ts}'],
 		globals: true,
 		environment: 'jsdom',
 		setupFiles: ['./src/test-setup.ts'],

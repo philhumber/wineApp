@@ -62,6 +62,7 @@
 							LEFT JOIN currencies c ON b.currency = c.currencyCode
 							LEFT JOIN bottle_sizes bs ON b.bottleSize = bs.sizeCode
 							WHERE b.wineID = wine.wineID
+								AND b.deleted = 0
 								AND b.price IS NOT NULL
 								AND b.price > 0
 						) AS ranked
@@ -77,6 +78,7 @@
 							FROM bottles b
 							LEFT JOIN currencies c ON b.currency = c.currencyCode
 							WHERE b.wineID = wine.wineID
+								AND b.deleted = 0
 								AND b.price IS NOT NULL
 								AND b.price > 0
 						) AS ranked
@@ -94,6 +96,8 @@
 							LEFT JOIN currencies c ON b.currency = c.currencyCode
 							LEFT JOIN bottle_sizes bs ON b.bottleSize = bs.sizeCode
 							WHERE w2.wineTypeID = wine.wineTypeID
+								AND w2.deleted = 0
+								AND b.deleted = 0
 								AND b.price IS NOT NULL
 								AND b.price > 0
 						) AS ranked
@@ -101,30 +105,35 @@
 						(SELECT ROUND(AVG(b.price), 2)
 						FROM bottles b
 						WHERE b.wineID = wine.wineID
+							AND b.deleted = 0
 							AND b.bottleSize = 'Standard'
 							AND b.price IS NOT NULL
 							AND b.price > 0) AS standardPrice,
 						(SELECT ROUND(AVG(b.price), 2)
 						FROM bottles b
 						WHERE b.wineID = wine.wineID
+							AND b.deleted = 0
 							AND b.bottleSize = 'Magnum'
 							AND b.price IS NOT NULL
 							AND b.price > 0) AS magnumPrice,
 						(SELECT ROUND(AVG(b.price), 2)
 						FROM bottles b
 						WHERE b.wineID = wine.wineID
+							AND b.deleted = 0
 							AND b.bottleSize = 'Demi'
 							AND b.price IS NOT NULL
 							AND b.price > 0) AS demiPrice,
 						(SELECT ROUND(AVG(b.price), 2)
 						FROM bottles b
 						WHERE b.wineID = wine.wineID
+							AND b.deleted = 0
 							AND b.bottleSize IN ('Piccolo', 'Quarter')
 							AND b.price IS NOT NULL
 							AND b.price > 0) AS smallPrice,
 						(SELECT b.currency
 						FROM bottles b
 						WHERE b.wineID = wine.wineID
+							AND b.deleted = 0
 							AND b.price IS NOT NULL
 						LIMIT 1) AS currency,
 						(SELECT GROUP_CONCAT(
@@ -134,6 +143,7 @@
 							SELECT b.source AS source_name, COUNT(*) AS source_count
 							FROM bottles b
 							WHERE b.wineID = wine.wineID
+								AND b.deleted = 0
 								AND b.bottleDrunk = 0
 								AND b.source IS NOT NULL
 								AND b.source != ''
@@ -158,7 +168,7 @@
 					JOIN region ON producers.regionID = region.regionID
 					JOIN country ON region.countryID = country.countryID
 					JOIN winetype ON wine.wineTypeID = winetype.wineTypeID
-					LEFT JOIN bottles ON bottles.wineID = wine.wineID AND bottles.bottleDrunk = 0";
+					LEFT JOIN bottles ON bottles.wineID = wine.wineID AND bottles.bottleDrunk = 0 AND bottles.deleted = 0";
 
 		$join = [];
 		$where = [];
@@ -166,6 +176,11 @@
 		$groupBy = [];
 		$orderBy = [];
 		$having = [];
+
+		// WIN-80: Always filter out soft-deleted records
+		$where[] = "wine.deleted = 0";
+		$where[] = "producers.deleted = 0";
+		$where[] = "region.deleted = 0";
 
 		if (!empty($producerName) && $producerName !== '%') {
 			$where[] = "producers.producerName = :producerName";
