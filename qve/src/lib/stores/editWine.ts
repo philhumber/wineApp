@@ -256,6 +256,49 @@ function createEditWineStore() {
 		},
 
 		/**
+		 * Remove a bottle from the local state (after soft delete)
+		 * Stays on page so user can delete additional bottles
+		 */
+		removeBottle(bottleID: number): void {
+			update((s) => {
+				// Remove from bottles list
+				const newBottles = s.bottles.filter((b) => b.bottleID !== bottleID);
+
+				// Determine new selected bottle and tab
+				let newSelectedBottleID = s.selectedBottleID;
+				let newBottleForm = s.bottle;
+				let newOriginalBottle = s.originalBottle;
+				let newActiveTab = s.activeTab;
+
+				if (s.selectedBottleID === bottleID) {
+					// The deleted bottle was selected
+					if (newBottles.length > 0) {
+						// Select the first remaining bottle
+						const firstBottle = newBottles[0];
+						newSelectedBottleID = firstBottle.bottleID;
+						newBottleForm = mapBottleToForm(firstBottle);
+						newOriginalBottle = { ...newBottleForm };
+					} else {
+						// No bottles left - switch to wine tab
+						newSelectedBottleID = null;
+						newBottleForm = { ...initialBottleForm };
+						newOriginalBottle = null;
+						newActiveTab = 'wine';
+					}
+				}
+
+				return {
+					...s,
+					bottles: newBottles,
+					selectedBottleID: newSelectedBottleID,
+					bottle: newBottleForm,
+					originalBottle: newOriginalBottle,
+					activeTab: newActiveTab
+				};
+			});
+		},
+
+		/**
 		 * Set a bottle form field
 		 */
 		setBottleField<K extends keyof EditBottleFormData>(field: K, value: EditBottleFormData[K]): void {

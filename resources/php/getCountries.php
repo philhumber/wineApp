@@ -35,10 +35,10 @@
 						COUNT(bottles.bottleID) AS bottleCount,
 						LOWER(country.code) AS code
 					FROM country
-					LEFT JOIN region ON region.countryID = country.countryID
-					LEFT JOIN producers ON producers.regionID = region.regionID
-					LEFT JOIN wine ON wine.producerID = producers.producerID
-					LEFT JOIN bottles ON wine.wineID = bottles.wineID AND bottles.bottleDrunk = 0";
+					LEFT JOIN region ON region.countryID = country.countryID AND region.deleted = 0
+					LEFT JOIN producers ON producers.regionID = region.regionID AND producers.deleted = 0
+					LEFT JOIN wine ON wine.producerID = producers.producerID AND wine.deleted = 0
+					LEFT JOIN bottles ON wine.wineID = bottles.wineID AND bottles.bottleDrunk = 0 AND bottles.deleted = 0";
 
 		// Add winetype JOIN if filtering by type
 		if ($typeName) {

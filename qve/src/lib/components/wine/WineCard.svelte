@@ -20,6 +20,7 @@
     drink: { wine: Wine };
     add: { wine: Wine };
     edit: { wine: Wine };
+    delete: { wine: Wine };
   }>();
 
   function handleCardClick() {
@@ -37,7 +38,7 @@
     }
   }
 
-  function handleAction(action: 'drink' | 'add' | 'edit', event: MouseEvent) {
+  function handleAction(action: 'drink' | 'add' | 'edit' | 'delete', event: MouseEvent) {
     event.stopPropagation();
     dispatch(action, { wine });
   }
@@ -169,6 +170,13 @@
       on:click={(e) => handleAction('edit', e)}
     >
       <Icon name="edit" size={14} />
+    </button>
+    <button
+      class="action-btn action-btn-delete"
+      title="Delete"
+      on:click={(e) => handleAction('delete', e)}
+    >
+      <Icon name="trash" size={14} />
     </button>
   </div>
 
@@ -442,6 +450,13 @@
   .action-btn:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
+  }
+
+  /* Delete button - danger tint on hover only */
+  .action-btn-delete:hover {
+    background: rgba(184, 122, 122, 0.08);
+    color: var(--error);
+    border-color: var(--error);
   }
 
   /* ─────────────────────────────────────────────────────────

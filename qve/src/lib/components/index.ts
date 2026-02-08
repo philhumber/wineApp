@@ -57,6 +57,7 @@ export {
   ModalContainer,
   DrinkRateModal,
   ConfirmModal,
+  DeleteConfirmModal,
   DuplicateWarningModal
 } from './modals';
 

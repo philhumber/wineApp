@@ -265,6 +265,38 @@ export interface UpdateRatingPayload {
 }
 
 // ─────────────────────────────────────────────────────────
+// SOFT DELETE TYPES (WIN-80)
+// ─────────────────────────────────────────────────────────
+
+export type DeleteEntityType = 'wine' | 'bottle' | 'producer' | 'region';
+
+export interface DeleteImpact {
+  producers?: { count: number; names?: string[] };
+  wines?: { count: number; names?: string[] };
+  bottles?: { count: number; names?: string[] };
+  ratings?: { count: number };
+}
+
+export interface DeleteImpactResponse {
+  entity: {
+    type: DeleteEntityType;
+    id: number;
+    name: string;
+  };
+  impact: DeleteImpact;
+}
+
+export interface DeleteItemResponse {
+  deletedId: number;
+  deletedType: DeleteEntityType;
+  cascade?: {
+    wines?: number;
+    bottles?: number;
+    ratings?: number;
+  };
+}
+
+// ─────────────────────────────────────────────────────────
 // AI RESPONSE TYPES
 // ─────────────────────────────────────────────────────────
 

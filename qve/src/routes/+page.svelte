@@ -2,7 +2,7 @@
   import { onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { base } from '$app/paths';
-  import { theme, viewDensity, viewMode, wines, winesLoading, winesError, filters, clearAllFilters, toasts, targetWineID, modal, cellarSortKey, cellarSortDir, sortWines } from '$stores';
+  import { theme, viewDensity, viewMode, wines, winesLoading, winesError, filters, clearAllFilters, toasts, targetWineID, modal, cellarSortKey, cellarSortDir, sortWines, deleteStore } from '$stores';
   import { api } from '$api';
   import type { Wine, WineFilters } from '$lib/api/types';
 
@@ -150,6 +150,12 @@
     const { wine } = event.detail;
     goto(`${base}/edit/${wine.wineID}`);
   }
+
+  async function handleDelete(event: CustomEvent<{ wine: Wine }>) {
+    const { wine } = event.detail;
+    // Open delete confirmation modal with cascade impact
+    modal.openDeleteConfirm('wine', wine.wineID, wine.wineName);
+  }
 </script>
 
 <svelte:head>
@@ -186,6 +192,7 @@
         on:drink={handleDrink}
         on:add={handleAdd}
         on:edit={handleEdit}
+        on:delete={handleDelete}
       />
     {/if}
   </section>

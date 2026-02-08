@@ -74,12 +74,18 @@
 
       try {
           // 6. Get OLD data before update (for audit log)
-          $stmt = $pdo->prepare("SELECT * FROM ratings WHERE ratingID = :ratingID");
+          // Also verify the bottle hasn't been soft-deleted
+          $stmt = $pdo->prepare("
+              SELECT r.*
+              FROM ratings r
+              JOIN bottles b ON r.bottleID = b.bottleID
+              WHERE r.ratingID = :ratingID AND b.deleted = 0
+          ");
           $stmt->execute([':ratingID' => $ratingID]);
           $oldData = $stmt->fetch(PDO::FETCH_ASSOC);
 
           if (!$oldData) {
-              throw new Exception('Rating not found');
+              throw new Exception('Rating not found or bottle has been deleted');
           }
 
           // 7. Prepare UPDATE statement

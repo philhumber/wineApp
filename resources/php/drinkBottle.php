@@ -129,12 +129,12 @@
           ], $userID);
 
 
-          // 8. Get OLD data before update (for audit log)
-          $stmt = $pdo->prepare("SELECT bottleDrunk FROM bottles WHERE bottleID = :bottleID");
+          // 8. Get OLD data before update (for audit log) - exclude soft-deleted
+          $stmt = $pdo->prepare("SELECT bottleDrunk FROM bottles WHERE bottleID = :bottleID AND deleted = 0");
           $stmt->execute([':bottleID' => $bottleID]);
-          $oldData = $stmt->fetch(PDO::FETCH_ASSOC);            
+          $oldData = $stmt->fetch(PDO::FETCH_ASSOC);
           if (!$oldData) {
-              throw new Exception('Bottle not found');
+              throw new Exception('Bottle not found or has been deleted');
           }
 
           $newData = [
@@ -147,12 +147,12 @@
           $stmt = $pdo->prepare("UPDATE bottles SET bottleDrunk = 1 WHERE bottleID = :bottleID");
           $stmt->execute([':bottleID' => $bottleID]);
 
-            // 8. Get OLD data before update (for audit log)
-          $stmt = $pdo->prepare("SELECT bottlesDrunk FROM wine WHERE wineID = :wineID");
+            // 8. Get OLD data before update (for audit log) - exclude soft-deleted
+          $stmt = $pdo->prepare("SELECT bottlesDrunk FROM wine WHERE wineID = :wineID AND deleted = 0");
           $stmt->execute([':wineID' => $wineID]);
-          $oldData = $stmt->fetch(PDO::FETCH_ASSOC);            
+          $oldData = $stmt->fetch(PDO::FETCH_ASSOC);
           if (!$oldData) {
-              throw new Exception('Wine not found');
+              throw new Exception('Wine not found or has been deleted');
           }
 
           $newData = [

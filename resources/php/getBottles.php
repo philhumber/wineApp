@@ -30,7 +30,7 @@
 						bottles.dateAdded,
 						bottles.purchaseDate
 					FROM bottles
-					WHERE bottles.wineID = :wineID AND bottles.bottleDrunk = 0";
+					WHERE bottles.wineID = :wineID AND bottles.bottleDrunk = 0 AND bottles.deleted = 0";
 
 		$params[':wineID'] = $wineID;
 

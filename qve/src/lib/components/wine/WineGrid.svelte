@@ -14,6 +14,7 @@
     drink: { wine: Wine };
     add: { wine: Wine };
     edit: { wine: Wine };
+    delete: { wine: Wine };
   }>();
 
   function handleToggleExpand(event: CustomEvent<{ wineID: number }>) {
@@ -31,6 +32,10 @@
 
   function handleEdit(event: CustomEvent<{ wine: Wine }>) {
     dispatch('edit', event.detail);
+  }
+
+  function handleDelete(event: CustomEvent<{ wine: Wine }>) {
+    dispatch('delete', event.detail);
   }
 
   // Calculate stagger delay (max 350ms for smoother UX)
@@ -55,6 +60,7 @@
       on:drink={handleDrink}
       on:add={handleAdd}
       on:edit={handleEdit}
+      on:delete={handleDelete}
       --animation-delay={getStaggerDelay(index)}
     />
   {/each}

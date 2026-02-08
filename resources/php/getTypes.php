@@ -28,15 +28,15 @@
 						wineType,
 						COUNT(bottles.bottleID) AS bottleCount
 				FROM winetype
-				LEFT JOIN wine ON wine.wineTypeID = winetype.wineTypeID
-				LEFT JOIN bottles ON bottles.wineID = wine.wineID AND bottles.bottleDrunk = 0";
+				LEFT JOIN wine ON wine.wineTypeID = winetype.wineTypeID AND wine.deleted = 0
+				LEFT JOIN bottles ON bottles.wineID = wine.wineID AND bottles.bottleDrunk = 0 AND bottles.deleted = 0";
 
 		// Add JOINs for context-aware filtering
 		if ($countryName || $regionName || $producerName) {
-			$sqlQuery .= " LEFT JOIN producers ON wine.producerID = producers.producerID";
+			$sqlQuery .= " LEFT JOIN producers ON wine.producerID = producers.producerID AND producers.deleted = 0";
 		}
 		if ($countryName || $regionName) {
-			$sqlQuery .= " LEFT JOIN region ON producers.regionID = region.regionID";
+			$sqlQuery .= " LEFT JOIN region ON producers.regionID = region.regionID AND region.deleted = 0";
 		}
 		if ($countryName) {
 			$sqlQuery .= " LEFT JOIN country ON region.countryID = country.countryID";

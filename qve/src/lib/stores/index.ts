@@ -398,3 +398,22 @@ export type {
 // Agent Settings (new - Sprint 4)
 export { agentSettings, getPersonality } from './agentSettings';
 export type { AgentSettings } from './agentSettings';
+
+// ─────────────────────────────────────────────
+// SOFT DELETE (WIN-80)
+// ─────────────────────────────────────────────
+
+export {
+  deleteStore,
+  hasPendingDeletes,
+  pendingDeleteCount,
+  deleteLoading,
+  deleteError,
+  UNDO_DURATION_MS
+} from './delete';
+export type {
+  DeleteEntityType,
+  DeleteImpact,
+  DeleteImpactResponse,
+  PendingDelete
+} from './delete';

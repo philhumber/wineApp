@@ -45,12 +45,13 @@
 			ratings.surpriseRating,
 			ratings.foodPairingRating
 		FROM wine
-		JOIN producers ON wine.producerID = producers.producerID
-		JOIN region ON producers.regionID = region.regionID
+		JOIN producers ON wine.producerID = producers.producerID AND producers.deleted = 0
+		JOIN region ON producers.regionID = region.regionID AND region.deleted = 0
 		JOIN country ON region.countryID = country.countryID
 		JOIN winetype ON wine.wineTypeID = winetype.wineTypeID
-		JOIN bottles ON bottles.wineID = wine.wineID AND bottles.bottleDrunk >= 1
+		JOIN bottles ON bottles.wineID = wine.wineID AND bottles.bottleDrunk >= 1 AND bottles.deleted = 0
 		LEFT JOIN ratings ON ratings.bottleID = bottles.bottleID
+		WHERE wine.deleted = 0
 		ORDER BY ratings.drinkDate DESC;";
 		
 		try {

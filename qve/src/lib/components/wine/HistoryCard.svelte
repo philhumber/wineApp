@@ -25,6 +25,7 @@
     collapse: { key: string };
     addBottle: { wine: DrunkWine };
     editRating: { wine: DrunkWine };
+    deleteRating: { wine: DrunkWine };
   }>();
 
   // Unique key for this drunk wine entry (wineID + bottleID)
@@ -53,6 +54,11 @@
   function handleEditRating(event: MouseEvent) {
     event.stopPropagation();
     dispatch('editRating', { wine });
+  }
+
+  function handleDeleteRating(event: MouseEvent) {
+    event.stopPropagation();
+    dispatch('deleteRating', { wine });
   }
 
   function handleImageClick(event: CustomEvent) {
@@ -185,6 +191,10 @@
     <button class="action-btn" title="Add another bottle" on:click={handleAddBottle}>
       <Icon name="plus" size={14} />
       <span class="btn-text">Add Bottle</span>
+    </button>
+    <button class="action-btn action-btn-delete" title="Delete rating" on:click={handleDeleteRating}>
+      <Icon name="trash" size={14} />
+      <span class="btn-text">Delete</span>
     </button>
   </div>
 
@@ -487,6 +497,13 @@
   .action-btn:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
+  }
+
+  /* Delete button - danger tint on hover only */
+  .action-btn-delete:hover {
+    background: rgba(184, 122, 122, 0.08);
+    color: var(--error);
+    border-color: var(--error);
   }
 
   /* ─────────────────────────────────────────────────────────
