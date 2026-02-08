@@ -26,6 +26,7 @@ import { MessageKey } from '../messageKeys';
 import * as conversation from '$lib/stores/agentConversation';
 import { addMessageWithDelay } from '$lib/stores/agentConversation';
 import * as addWine from '$lib/stores/agentAddWine';
+import * as enrichment from '$lib/stores/agentEnrichment';
 import { generateEnrichmentChoiceChips } from '../services/chipGenerator';
 
 // ===========================================
@@ -46,12 +47,23 @@ type FormActionType =
 
 /**
  * Handle submit_bottle action.
- * Stores bottle form data and shows enrichment choice.
+ * Stores bottle form data and either submits directly (if enrichment
+ * data already exists) or shows enrichment choice chips.
  */
 async function handleBottleSubmit(data: BottleFormData): Promise<void> {
   addWine.updateBottleFormData(data);
 
-  // Show enrichment choice
+  // WIN-144: If enrichment data already exists, skip the choice and submit directly
+  const enrichmentData = enrichment.getData();
+  if (enrichmentData) {
+    addWine.setEnrichNow(true);
+    // Dynamic import to avoid circular dependency (see KNOWN LIMITATIONS)
+    const { handleAddWineAction } = await import('./addWine');
+    await handleAddWineAction({ type: 'add_quickly', messageId: '' });
+    return;
+  }
+
+  // No enrichment data — show enrichment choice
   conversation.setPhase('adding_wine', 'enrichment');
 
   await addMessageWithDelay(

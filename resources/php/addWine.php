@@ -83,6 +83,20 @@
     $wineType = trim($data['wineType']) ?? null;
     $appellation = !empty($data['appellation']) ? trim($data['appellation']) : null;  // WIN-148: Specific appellation
 
+    // WIN-144: Enrichment data
+    $drinkWindowStart = !empty($data['drinkWindowStart']) ? (int)$data['drinkWindowStart'] : null;
+    $drinkWindowEnd = !empty($data['drinkWindowEnd']) ? (int)$data['drinkWindowEnd'] : null;
+    $grapes = isset($data['grapes']) && is_array($data['grapes']) ? array_slice($data['grapes'], 0, 20) : [];
+    $criticScores = isset($data['criticScores']) && is_array($data['criticScores']) ? array_slice($data['criticScores'], 0, 10) : [];
+
+    // Validate drink window years (MySQL YEAR type: 1901-2155)
+    if ($drinkWindowStart !== null && ($drinkWindowStart < 1901 || $drinkWindowStart > 2155)) {
+        $drinkWindowStart = null;
+    }
+    if ($drinkWindowEnd !== null && ($drinkWindowEnd < 1901 || $drinkWindowEnd > 2155)) {
+        $drinkWindowEnd = null;
+    }
+
     $pdo->beginTransaction();
 
       //there should always be a check, what happens if this ocde is repeated for some reason
@@ -240,6 +254,7 @@
       //if the wine is found (non false wine ID) then use the ID and move to the bottle
       //if the wine is not found, then try adding it
 
+      $isNewWine = false;  // WIN-144: Track whether we created a new wine
       if ($wineID === false && empty($newWineName)) {
         //we expect a new wine  if we are adding a wine, so throw an error if there is no new
         throw new Exception("Wine not found, and no new wine name given");
@@ -258,8 +273,14 @@
 
         //add the wine  as we know it is new and new wine data is there
 
-        $stmt = $pdo->prepare("INSERT INTO `wine` (wineName, wineTypeID, producerID, year, isNonVintage, appellation, description, tastingNotes, pairing, pictureURL, enrichment_status)
-                                VALUES (:wineName, :wineTypeID, :producerID, :wineYear, :isNonVintage, :appellation, :wineDescription, :wineTasting, :winePairing, :winePicture, 'pending')");
+        // WIN-144: Determine enrichment status from data presence (not from frontend)
+        $hasEnrichmentData = !empty($wineDescription) || !empty($wineTasting) || !empty($winePairing)
+            || !empty($grapes) || !empty($criticScores)
+            || $drinkWindowStart !== null || $drinkWindowEnd !== null;
+        $enrichmentStatus = $hasEnrichmentData ? 'complete' : 'pending';
+
+        $stmt = $pdo->prepare("INSERT INTO `wine` (wineName, wineTypeID, producerID, year, isNonVintage, appellation, description, tastingNotes, pairing, pictureURL, enrichment_status, drinkWindowStart, drinkWindowEnd)
+                                VALUES (:wineName, :wineTypeID, :producerID, :wineYear, :isNonVintage, :appellation, :wineDescription, :wineTasting, :winePairing, :winePicture, :enrichmentStatus, :drinkWindowStart, :drinkWindowEnd)");
 
         $stmt->execute([
             ':wineName' => $newWineName,
@@ -271,7 +292,10 @@
             ':wineDescription' => $wineDescription,
             ':wineTasting' => $wineTasting,
             ':winePairing' => $winePairing,
-            ':winePicture' => $winePicture
+            ':winePicture' => $winePicture,
+            ':enrichmentStatus' => $enrichmentStatus,
+            ':drinkWindowStart' => $drinkWindowStart,
+            ':drinkWindowEnd' => $drinkWindowEnd,
         ]);
 
         $wineID = $pdo->lastInsertId();
@@ -285,13 +309,79 @@
             'description' => $wineDescription,
             'tastingNotes' => $wineTasting,
             'pairing' => $winePairing,
-            'pictureURL' => $winePicture
+            'pictureURL' => $winePicture,
+            'enrichment_status' => $enrichmentStatus,
+            'drinkWindowStart' => $drinkWindowStart,
+            'drinkWindowEnd' => $drinkWindowEnd,
         ]);
+        $isNewWine = true;
         $output .= " - New Wine added ($newWineName)";
 
       } else {
         //There was a wine already there and we used it
         $output .= " - Wine selected (ID - {$wineID}) " . ($newWineName ?: $existingWineName);
+      }
+
+      // WIN-144: Insert grape composition (only for new wines with enrichment data)
+      if ($wineID && !empty($grapes) && $isNewWine) {
+          foreach ($grapes as $grapeEntry) {
+              $grapeName = isset($grapeEntry['grape']) ? trim($grapeEntry['grape']) : '';
+              if (empty($grapeName) || strlen($grapeName) > 50) continue;
+
+              $percentage = isset($grapeEntry['percentage']) ? (int)$grapeEntry['percentage'] : null;
+              if ($percentage !== null && ($percentage < 0 || $percentage > 100)) $percentage = null;
+
+              // Find or create grape (UNIQUE constraint from migration)
+              $stmt = $pdo->prepare("INSERT INTO grapes (grapeName, description, picture) VALUES (:name, '', '')
+                                     ON DUPLICATE KEY UPDATE grapeID = LAST_INSERT_ID(grapeID)");
+              $stmt->execute([':name' => $grapeName]);
+              $grapeID = $pdo->lastInsertId();
+
+              // Insert into grapemix
+              $stmt = $pdo->prepare("INSERT INTO grapemix (wineID, grapeID, mixPercent) VALUES (:wineID, :grapeID, :percent)");
+              $stmt->execute([
+                  ':wineID' => $wineID,
+                  ':grapeID' => $grapeID,
+                  ':percent' => $percentage,
+              ]);
+
+              logInsert($pdo, 'grapemix', $pdo->lastInsertId(), [
+                  'wineID' => $wineID,
+                  'grapeID' => $grapeID,
+                  'mixPercent' => $percentage,
+              ]);
+          }
+      }
+
+      // WIN-144: Insert critic scores (only for new wines with enrichment data)
+      if ($wineID && !empty($criticScores) && $isNewWine) {
+          foreach ($criticScores as $scoreEntry) {
+              $critic = isset($scoreEntry['critic']) ? trim($scoreEntry['critic']) : '';
+              if (empty($critic) || strlen($critic) > 50) continue;
+
+              $score = validateRating($scoreEntry['score'] ?? null, 'Critic score', false, 50, 100);
+              if ($score === null) continue;
+
+              $scoreYear = isset($scoreEntry['scoreYear']) ? (int)$scoreEntry['scoreYear'] : null;
+              if ($scoreYear !== null && ($scoreYear < 1901 || $scoreYear > 2155)) $scoreYear = null;
+
+              $stmt = $pdo->prepare("INSERT INTO critic_scores (wineID, critic, score, scoreYear, source)
+                                     VALUES (:wineID, :critic, :score, :scoreYear, 'agent_enrichment')");
+              $stmt->execute([
+                  ':wineID' => $wineID,
+                  ':critic' => $critic,
+                  ':score' => $score,
+                  ':scoreYear' => $scoreYear,
+              ]);
+
+              logInsert($pdo, 'critic_scores', $pdo->lastInsertId(), [
+                  'wineID' => $wineID,
+                  'critic' => $critic,
+                  'score' => $score,
+                  'scoreYear' => $scoreYear,
+                  'source' => 'agent_enrichment',
+              ]);
+          }
       }
 
       /////////////\\\\\\\\\\\\\

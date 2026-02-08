@@ -236,6 +236,12 @@ export interface AddWinePayload {
   winePairing?: string;
   winePicture?: string;
 
+  // WIN-144: Enrichment data from agent
+  drinkWindowStart?: number;   // Year integer (e.g., 2025)
+  drinkWindowEnd?: number;     // Year integer (e.g., 2035)
+  grapes?: Array<{ grape: string; percentage: number | null }>;
+  criticScores?: Array<{ critic: string; score: number; scoreYear?: number }>;
+
   // Bottle details
   bottleType: string;
   storageLocation: string;
