@@ -22,8 +22,6 @@ export {
   collapseAllWines,
   totalBottles,
   wineCount,
-  winesByCountry,
-  winesByType,
   getWineById,
   updateWineInList,
   removeWineFromList,

@@ -9,3 +9,5 @@ export { default as ConfirmModal } from './ConfirmModal.svelte';
 export { default as DeleteConfirmModal } from './DeleteConfirmModal.svelte';
 export { default as DuplicateWarningModal } from './DuplicateWarningModal.svelte';
 export { default as ImageLightboxModal } from './ImageLightboxModal.svelte';
+export { default as SettingsModal } from './SettingsModal.svelte';
+export { default as AddBottleModal } from './AddBottleModal.svelte';

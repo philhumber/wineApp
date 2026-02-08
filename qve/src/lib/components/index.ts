@@ -4,7 +4,7 @@
  */
 
 // Form Components
-export { FormInput, FormSelect, FormTextarea, FormRow } from './forms';
+export { FormInput, FormSelect, FormTextarea, FormRow, RatingDots, MiniRatingDots, ToggleSwitch } from './forms';
 
 // Wizard Components
 export {
@@ -59,6 +59,8 @@ export {
   DrinkRateModal,
   ConfirmModal,
   DeleteConfirmModal,
-  DuplicateWarningModal
+  DuplicateWarningModal,
+  SettingsModal,
+  AddBottleModal
 } from './modals';
 

@@ -14,7 +14,7 @@
  * Sprint 2 extraction from handleAgentAction.ts monolith.
  */
 
-import type { AgentAction, WineIdentificationResult, AgentErrorInfo } from '../types';
+import type { AgentAction, WineIdentificationResult, AgentErrorInfo, TextMessageData } from '../types';
 import type { AgentParsedWine } from '$lib/api/types';
 import { getMessageByKey, buildWineName } from '../messages';
 import { MessageKey } from '../messageKeys';
@@ -318,7 +318,7 @@ async function executeTextIdentification(
   if (!options.skipUserMessage) {
     const messages = conversation.getMessages();
     const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
-    if (!lastUserMessage || lastUserMessage.data.category !== 'text' || (lastUserMessage.data as any).content !== text) {
+    if (!lastUserMessage || lastUserMessage.data.category !== 'text' || (lastUserMessage.data as TextMessageData).content !== text) {
       conversation.addMessage(
         conversation.createTextMessage(text, { role: 'user' })
       );

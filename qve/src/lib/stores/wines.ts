@@ -65,31 +65,6 @@ export const totalBottles = derived(wines, ($wines) =>
 /** Total wine count */
 export const wineCount = derived(wines, ($wines) => $wines.length);
 
-/** Wines grouped by country */
-export const winesByCountry = derived(wines, ($wines) => {
-  const grouped = new Map<string, Wine[]>();
-  for (const wine of $wines) {
-    const country = wine.countryName;
-    if (!grouped.has(country)) {
-      grouped.set(country, []);
-    }
-    grouped.get(country)!.push(wine);
-  }
-  return grouped;
-});
-
-/** Wines grouped by type */
-export const winesByType = derived(wines, ($wines) => {
-  const grouped = new Map<string, Wine[]>();
-  for (const wine of $wines) {
-    const type = wine.wineType;
-    if (!grouped.has(type)) {
-      grouped.set(type, []);
-    }
-    grouped.get(type)!.push(wine);
-  }
-  return grouped;
-});
 
 // ─────────────────────────────────────────────────────────
 // HELPER FUNCTIONS
