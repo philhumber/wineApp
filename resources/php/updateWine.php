@@ -41,22 +41,11 @@
             $isNonVintage = $yearResult['isNonVintage'];
         }
 
-        $description = trim($data['wineDescription'] ?? '');
-        if (empty($description)) {
-            throw new Exception('Wine description is required');
-        }
-        $tastingNotes = trim($data['wineTasting'] ?? '');
-        if (empty($tastingNotes)) {
-            throw new Exception('Tasting Notes is required');
-        }
-        $pairing = trim($data['winePairing'] ?? '');
-        if (empty($pairing)) {
-            throw new Exception('Pairing notes is required');
-        }
-        $pictureURL = trim($data['winePicture'] ?? '');
-        if (empty($pictureURL)) {
-            throw new Exception('Picture URL is required');
-        }
+        // WIN-221: Validate text fields with mb_strlen() limits
+        $description = validateStringField($data['wineDescription'] ?? null, 'Wine description', true, 5000);
+        $tastingNotes = validateStringField($data['wineTasting'] ?? null, 'Tasting notes', true, 5000);
+        $pairing = validateStringField($data['winePairing'] ?? null, 'Pairing notes', true, 5000);
+        $pictureURL = validateStringField($data['winePicture'] ?? null, 'Picture URL', true, 500);
 
 
         $userID = $_SESSION['userID'] ?? null;

@@ -27,7 +27,7 @@
       $bottleID = $inputData['bottleID'] ?? null;
       $drinkDate = $inputData['drinkDate'] ?? '';
       $buyAgain = $inputData['buyAgain'] ?? 0;
-      $notes = $inputData['notes'] ?? '';
+      $notes = validateStringField($inputData['notes'] ?? null, 'Notes', false, 2000);
 
       // Required ratings (1-10)
       $overallRating = validateRating($inputData['overallRating'] ?? null, 'Overall rating', true, 1, 10);

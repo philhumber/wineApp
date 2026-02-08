@@ -21,38 +21,39 @@
     // 4. Get and validate input
     $data = json_decode(file_get_contents('php://input'), true);
 
+    // WIN-221: All text inputs validated with mb_strlen() limits matching DB columns
     //Region and producer information must be present to add a wine
     //At least one needs to be there - new or exisiting
-    $existingWineRegion = trim($data['findRegion']) ?? null;
-    $newWineRegion = trim($data['regionName']) ?? null;
+    $existingWineRegion = validateStringField($data['findRegion'] ?? null, 'Region', false, 50);
+    $newWineRegion = validateStringField($data['regionName'] ?? null, 'Region name', false, 50);
     if (empty($newWineRegion) && empty($existingWineRegion)) {
       throw new Exception('New or existing Region is required');
     }
 
-    $newProducerName = trim($data['producerName']) ?? null;
-    $existingWineProducer = trim($data['findProducer']) ?? null;
+    $newProducerName = validateStringField($data['producerName'] ?? null, 'Producer name', false, 255);
+    $existingWineProducer = validateStringField($data['findProducer'] ?? null, 'Producer', false, 255);
     if (empty($newProducerName) && empty($existingWineProducer)) {
         throw new Exception('New or existing Producer is required');
     }
 
     $newWineName = validateStringField($data['wineName'] ?? null, 'Wine name', false, 50);
-    $existingWineName = trim($data['findWine']) ?? null;
+    $existingWineName = validateStringField($data['findWine'] ?? null, 'Wine name', false, 50);
     if (empty($newWineName) && empty($existingWineName)) {
         throw new Exception('New or existing Wine Name is required');
     }
 
     //Region information
-    $regionCountry = trim($data['regionCountry'] ?? null);
-    $regionDescription = trim($data['regionDescription'] ?? null);
-    $regionClimate = trim($data['regionClimate'] ?? null);
-    $regionSoil = trim($data['regionSoil'] ?? null);
-    $regionMap = trim($data['regionMap'] ?? null);
+    $regionCountry = validateStringField($data['regionCountry'] ?? null, 'Country', false, 100);
+    $regionDescription = validateStringField($data['regionDescription'] ?? null, 'Region description', false, 5000);
+    $regionClimate = validateStringField($data['regionClimate'] ?? null, 'Region climate', false, 2000);
+    $regionSoil = validateStringField($data['regionSoil'] ?? null, 'Region soil', false, 2000);
+    $regionMap = validateStringField($data['regionMap'] ?? null, 'Region map', false, 500);
 
     //Producer information
-    $producerTown = trim($data['producerTown'] ?? null);
-    $producerFounded = trim($data['producerFounded'] ?? null);
-    $producerOwnership = trim($data['producerOwnership'] ?? null);
-    $producerDescription = trim($data['producerDescription'] ?? null);
+    $producerTown = validateStringField($data['producerTown'] ?? null, 'Producer town', false, 255);
+    $producerFounded = validateStringField($data['producerFounded'] ?? null, 'Producer founded', false, 200);
+    $producerOwnership = validateStringField($data['producerOwnership'] ?? null, 'Producer ownership', false, 500);
+    $producerDescription = validateStringField($data['producerDescription'] ?? null, 'Producer description', false, 5000);
 
 
     $bottleType = validateStringField($data['bottleType'] ?? '', 'Bottle size', true, 50);
@@ -76,12 +77,12 @@
       $isNonVintage = $yearData['isNonVintage'] ? 1 : 0;
     }
 
-    $wineDescription = trim($data['wineDescription']) ?? null;
-    $wineTasting = trim($data['wineTasting']) ?? null;
-    $winePairing = trim($data['winePairing']) ?? null;
-    $winePicture = trim($data['winePicture']) ?? null;
-    $wineType = trim($data['wineType']) ?? null;
-    $appellation = !empty($data['appellation']) ? trim($data['appellation']) : null;  // WIN-148: Specific appellation
+    $wineDescription = validateStringField($data['wineDescription'] ?? null, 'Wine description', false, 5000);
+    $wineTasting = validateStringField($data['wineTasting'] ?? null, 'Tasting notes', false, 5000);
+    $winePairing = validateStringField($data['winePairing'] ?? null, 'Food pairing', false, 5000);
+    $winePicture = validateStringField($data['winePicture'] ?? null, 'Picture URL', false, 500);
+    $wineType = trim($data['wineType'] ?? '');
+    $appellation = validateStringField($data['appellation'] ?? null, 'Appellation', false, 150);
 
     // WIN-144: Enrichment data
     $drinkWindowStart = !empty($data['drinkWindowStart']) ? (int)$data['drinkWindowStart'] : null;
@@ -326,7 +327,7 @@
       if ($wineID && !empty($grapes) && $isNewWine) {
           foreach ($grapes as $grapeEntry) {
               $grapeName = isset($grapeEntry['grape']) ? trim($grapeEntry['grape']) : '';
-              if (empty($grapeName) || strlen($grapeName) > 50) continue;
+              if (empty($grapeName) || mb_strlen($grapeName) > 50) continue;
 
               $percentage = isset($grapeEntry['percentage']) ? (int)$grapeEntry['percentage'] : null;
               if ($percentage !== null && ($percentage < 0 || $percentage > 100)) $percentage = null;
@@ -357,7 +358,7 @@
       if ($wineID && !empty($criticScores) && $isNewWine) {
           foreach ($criticScores as $scoreEntry) {
               $critic = isset($scoreEntry['critic']) ? trim($scoreEntry['critic']) : '';
-              if (empty($critic) || strlen($critic) > 50) continue;
+              if (empty($critic) || mb_strlen($critic) > 50) continue;
 
               $score = validateRating($scoreEntry['score'] ?? null, 'Critic score', false, 50, 100);
               if ($score === null) continue;

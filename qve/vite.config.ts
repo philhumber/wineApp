@@ -67,7 +67,8 @@ export default defineConfig({
             }
           },
           {
-            urlPattern: /\/resources\/php\/.*/i,
+            // WIN-265: Only cache read-only GET endpoints, not mutation endpoints
+            urlPattern: /\/resources\/php\/get\w+\.php/i,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
