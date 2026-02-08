@@ -30,13 +30,21 @@ Soft delete for wines, bottles, producers, regions, and drink history entries. I
 Users currently cannot remove accidentally-added wines, bottles, producers, or regions without drinking them. This blocks basic collection management.
 
 ### Scope
-| Entity | Direct Delete | Cascade Delete | Independent of Parent |
+
+**Cascade direction: DOWN only.** Deleting a parent cascades to children. Deleting children never affects the parent — parents remain even when all children are deleted.
+
+**Hierarchy**: Country → Region → Producer → Wine → Bottle
+
+| Entity | Direct Delete | Cascade Down | Affected by Parent Delete |
 |--------|:---:|:---:|:---:|
-| Region | — | When all its producers deleted | N/A |
-| Producer | — | When all its wines deleted | N/A |
-| Wine | Yes (from card/edit page) | Cascades to bottles | — |
-| Bottle | Yes (from edit page) | When parent wine deleted | Yes |
-| History entry | Yes (from history page) | When parent bottle/wine deleted | Yes |
+| Country | No (reference data) | — | — |
+| Region | Yes (via API / future UI) | → producers → wines → bottles | No |
+| Producer | Yes (via API / future UI) | → wines → bottles | Yes (when region deleted) |
+| Wine | Yes (from card/edit page) | → bottles | Yes (when producer deleted) |
+| Bottle | Yes (from edit page) | — | Yes (when wine deleted) |
+| History entry | Yes (from history page) | — | Yes (when parent bottle/wine deleted) |
+
+**Important**: Deleting all wines from a producer does NOT delete the producer. Deleting all bottles from a wine does NOT delete the wine. Orphaned parents persist and remain visible in the UI.
 
 ### Key Constraints
 - Single-user app (userId = 1 for now)
@@ -73,13 +81,19 @@ Users currently cannot remove accidentally-added wines, bottles, producers, or r
 
 **Rationale**: Ratings are 1:1 with drunk bottles. The `getDrunkWines.php` query JOINs through bottles already. Adding `AND bottles.deleted = 0` naturally excludes deleted history entries.
 
-### AD-4: Producer/Region — Cascade-Only for V1
+### AD-4: Cascade Goes Down Only — Never Up
 
-**Decision**: Producers and regions cannot be directly deleted by the user in V1. They are only soft-deleted as part of a cascade (e.g., deleting the last wine by a producer cascades to that producer).
+**Decision**: Deleting children never affects the parent. Deleting all wines from a producer does NOT auto-delete the producer. Deleting all bottles from a wine does NOT auto-delete the wine. Orphaned parents persist.
 
-**Rationale**: No standalone producer/region management UI exists. Building one is out of scope. The `deleteItem.php` endpoint supports direct producer/region deletion for future agent integration.
+**Rationale**: The hierarchy (Country → Region → Producer → Wine → Bottle) cascades downward on delete. Upward cascade creates confusing side-effects — users don't expect deleting a wine to sometimes also delete its producer. Parents are cheap to keep and easy to delete explicitly if wanted.
 
-### AD-5: Countries Are Not Deletable
+### AD-5: Producer/Region — API-Only for V1
+
+**Decision**: Producers and regions are directly deletable via the `deleteItem.php` endpoint, but no dedicated deletion UI exists in V1 (no standalone management screen). They are deleted either as part of a parent cascade (region delete cascades to producers) or via the API (for future agent integration).
+
+**Rationale**: No standalone producer/region management UI exists. Building one is out of scope for V1. The API is ready for when the agent or a management screen is added.
+
+### AD-6: Countries Are Not Deletable
 
 **Decision**: The `country` table does not get soft-delete columns.
 
@@ -253,7 +267,7 @@ COMMIT;
 }
 ```
 
-**Cascade logic** (transaction-wrapped):
+**Cascade logic** (transaction-wrapped, **downward only**):
 
 ```
 DELETE region:
@@ -266,22 +280,19 @@ DELETE producer:
   1. Soft-delete all bottles of all wines by producer
   2. Soft-delete all wines by producer
   3. Soft-delete the producer
-  4. IF producer's region has no remaining active producers → soft-delete region
+  (Region is NOT affected — even if this was the last producer)
 
 DELETE wine:
   1. Soft-delete all bottles of wine
   2. Soft-delete the wine
-  3. IF wine's producer has no remaining active wines → soft-delete producer
-  4. IF producer's region has no remaining active producers → soft-delete region
+  (Producer is NOT affected — even if this was the last wine)
 
 DELETE bottle:
   1. Soft-delete the bottle
-  2. IF wine has no remaining active bottles → soft-delete wine
-  3. IF wine's producer has no remaining active wines → soft-delete producer
-  4. IF producer's region has no remaining active producers → soft-delete region
+  (Wine is NOT affected — even if this was the last bottle)
 ```
 
-**Critical**: Cascade eligibility MUST be evaluated at execution time (inside the transaction), not based on the preview shown in the confirmation modal. This handles the edge case where another delete's undo window changes the state between preview and execution.
+**No upward cascade.** Parents always remain. This simplifies the transaction logic — no need to check sibling counts or evaluate orphan eligibility.
 
 **SQL pattern**:
 ```sql
@@ -289,17 +300,14 @@ DELETE bottle:
 SET @now = NOW();
 SET @userId = :userId;
 
--- Example: delete wine and cascade
+-- Example: delete wine (cascade down to bottles only)
 UPDATE bottles SET deleted = 1, deletedAt = @now, deletedBy = @userId
   WHERE wineID = :wineId AND deleted = 0;
 
 UPDATE wine SET deleted = 1, deletedAt = @now, deletedBy = @userId
   WHERE wineID = :wineId AND deleted = 0;
 
--- Check if producer should cascade
-SELECT COUNT(*) as activeWines FROM wine
-  WHERE producerID = :producerId AND deleted = 0;
--- If activeWines = 0, cascade to producer
+-- That's it. Producer is NOT touched. No upward cascade check needed.
 ```
 
 ### 4.2 New Endpoint: `getDeleteImpact.php`
@@ -308,7 +316,7 @@ SELECT COUNT(*) as activeWines FROM wine
 **Method**: GET
 **Input**: `?type=wine&id=123`
 
-**Response**:
+**Response** (example for wine):
 ```json
 {
   "success": true,
@@ -319,36 +327,61 @@ SELECT COUNT(*) as activeWines FROM wine
   },
   "impact": {
     "bottles": { "count": 3, "names": ["750ml - 2020", "750ml - 2021", "Magnum - 2020"] },
-    "ratings": { "count": 2 },
-    "cascadeToProducer": false,
-    "cascadeToRegion": false,
-    "producerName": "Château Margaux",
-    "regionName": "Bordeaux"
+    "ratings": { "count": 2 }
   }
 }
 ```
 
-The `cascadeToProducer` flag indicates whether the producer would be orphaned (has no other active wines). Same for `cascadeToRegion`. This lets the UI show: "This is the last wine by Château Margaux — the producer will also be removed."
+**Response** (example for region — shows full downward cascade):
+```json
+{
+  "success": true,
+  "entity": {
+    "type": "region",
+    "id": 5,
+    "name": "Bordeaux"
+  },
+  "impact": {
+    "producers": { "count": 5, "names": ["Château Margaux", "Château Latour", ...] },
+    "wines": { "count": 23 },
+    "bottles": { "count": 47 },
+    "ratings": { "count": 12 }
+  }
+}
+```
+
+Since cascade is downward only, the impact query simply counts all children at each level below the target entity. No orphan/sibling checks needed.
 
 **Impact queries**:
 
 ```sql
--- Wine impact: count bottles and ratings
+-- Wine impact: count bottles and ratings below it
 SELECT COUNT(*) as bottleCount
   FROM bottles WHERE wineID = :id AND deleted = 0;
 
 SELECT COUNT(*) as ratingCount
   FROM bottles WHERE wineID = :id AND deleted = 0 AND bottleDrunk >= 1;
 
--- Would producer be orphaned?
-SELECT COUNT(*) as otherWines
-  FROM wine WHERE producerID = :producerId AND wineID != :id AND deleted = 0;
+-- Producer impact: count wines and bottles below it
+SELECT COUNT(*) as wineCount
+  FROM wine WHERE producerID = :id AND deleted = 0;
 
--- Would region be orphaned?
-SELECT COUNT(*) as otherProducers
-  FROM producers p JOIN wine w ON w.producerID = p.producerID
-  WHERE p.regionID = :regionId AND p.producerID != :producerId
-  AND w.deleted = 0 AND p.deleted = 0;
+SELECT COUNT(*) as bottleCount
+  FROM bottles b JOIN wine w ON b.wineID = w.wineID
+  WHERE w.producerID = :id AND w.deleted = 0 AND b.deleted = 0;
+
+-- Region impact: count producers, wines, and bottles below it
+SELECT COUNT(*) as producerCount
+  FROM producers WHERE regionID = :id AND deleted = 0;
+
+SELECT COUNT(*) as wineCount
+  FROM wine w JOIN producers p ON w.producerID = p.producerID
+  WHERE p.regionID = :id AND p.deleted = 0 AND w.deleted = 0;
+
+SELECT COUNT(*) as bottleCount
+  FROM bottles b JOIN wine w ON b.wineID = w.wineID
+  JOIN producers p ON w.producerID = p.producerID
+  WHERE p.regionID = :id AND p.deleted = 0 AND w.deleted = 0 AND b.deleted = 0;
 ```
 
 ### 4.3 Modified Endpoints — Complete Query Audit
@@ -482,7 +515,7 @@ Behavior:
 - Delete button disabled during loading
 - Dispatches `confirm` or `cancel` events
 
-Layout:
+Layout (wine example):
 ```
 ┌──────────────────────────────────┐
 │  ⚠ Delete "Château Margaux"?    │
@@ -491,11 +524,25 @@ Layout:
 │  │ This will also delete:     │  │
 │  │  • 3 bottles               │  │
 │  │  • 2 drink history entries │  │
-│  │                            │  │
-│  │ This is the last wine by   │  │
-│  │ Château Margaux — the      │  │
-│  │ producer will also be      │  │
-│  │ removed.                   │  │
+│  └────────────────────────────┘  │
+│                                  │
+│  Can be undone for 10 seconds.   │
+│                                  │
+│        [Cancel]  [Delete]        │
+└──────────────────────────────────┘
+```
+
+Layout (region example — full cascade):
+```
+┌──────────────────────────────────┐
+│  ⚠ Delete region "Bordeaux"?    │
+│                                  │
+│  ┌────────────────────────────┐  │
+│  │ This will also delete:     │  │
+│  │  • 5 producers             │  │
+│  │  • 23 wines                │  │
+│  │  • 47 bottles              │  │
+│  │  • 12 drink history entries│  │
 │  └────────────────────────────┘  │
 │                                  │
 │  Can be undone for 10 seconds.   │
@@ -564,7 +611,7 @@ Add "Delete Wine" danger button in `.form-nav` bar next to Cancel/Save.
 #### Bottle — from Edit Page
 Add "Delete Bottle" button in bottle form section when a bottle is selected.
 - Also add small "×" close icon on each bottle pill in `BottleSelector`
-- For the last bottle: warn that deleting it will also delete the wine
+- Simple confirmation — no cascade (deleting a bottle never affects the parent wine)
 
 #### History Entry — from HistoryCard
 Add delete button to `.card-actions` alongside "Edit Rating" and "Add Bottle".
@@ -603,12 +650,10 @@ New types in `qve/src/lib/api/types.ts`:
 export interface DeleteImpact {
   entity: { type: string; id: number; name: string };
   impact: {
+    producers?: { count: number; names: string[] };  // Only for region delete
+    wines?: { count: number };                        // For region/producer delete
     bottles: { count: number; names: string[] };
     ratings: { count: number };
-    cascadeToProducer: boolean;
-    cascadeToRegion: boolean;
-    producerName?: string;
-    regionName?: string;
   };
 }
 
@@ -690,16 +735,17 @@ export interface DeleteResult {
 
 ```
 1. User clicks "Delete Bottle" or "×" on bottle pill
-2. If last bottle → DeleteConfirmModal: "This will also delete the wine"
-   If not last → ConfirmModal: "Delete this bottle?"
+2. ConfirmModal: "Delete this bottle?"
+   (No cascade — bottle delete never affects the parent wine)
 3. On confirm:
    a. Snapshot bottle from editWine store
    b. editWine.removeBottleFromList(bottleId)
    c. toast.undo('"750ml" deleted', undoFn)
    d. setTimeout(10000, commitFn)
 4. On commit: api.deleteItem('bottle', bottleId)
-5. If last bottle (wine cascaded): navigate to home
 ```
+
+Note: Even if this is the last bottle, the wine remains. The wine will show with 0 bottles in the cellar view (existing empty-bottle wines are already handled by the UI).
 
 ### 6.3 History Entry Delete
 
@@ -732,9 +778,9 @@ export interface DeleteResult {
 **Scenario**: User deletes Wine A, Wine B, Wine C in rapid succession. Three undo toasts stack.
 **Mitigation**: Toast container already supports stacking (max 5). Each delete has an independent timer and snapshot in the `PendingDelete` map.
 
-### 7.4 Delete + Undo + Overlapping Cascade
-**Scenario**: User deletes Wine A (by producer X), then deletes Wine B (also by producer X), then undoes Wine A.
-**Mitigation**: Wine A is restored to the frontend store. When Wine B's timer expires, the backend re-evaluates cascade eligibility inside the transaction — since Wine A was never deleted server-side, producer X still has an active wine, so no cascade to producer.
+### 7.4 Delete + Undo with Multiple Pending Deletes
+**Scenario**: User deletes Wine A, then deletes Wine B, then undoes Wine A.
+**Mitigation**: Since there is no upward cascade, each delete is independent. Wine A is restored to the frontend store. Wine B's timer continues independently. No interaction between the two operations — the simplicity of downward-only cascade eliminates cross-delete dependencies.
 
 ### 7.5 Edit Page Redirect After Delete + Undo
 **Scenario**: User deletes wine from edit page → navigates to home → clicks undo on toast.
@@ -906,6 +952,6 @@ The plan was stress-tested by a dedicated technical reviewer. All critical and m
 | 13 | Major | Toast timer pause bug | Resolved: Fix in §5.4 |
 | 14 | Minor | cacheWineEnrichment references | No action needed |
 | 15 | Minor | getDrunkWines JOIN semantics | Resolved: Use bottles.deleted (AD-3) |
-| 16 | Minor | Concurrent delete + undo cascade | Resolved: Re-evaluate at execution time (§4.1, §7.4) |
+| 16 | Minor | Concurrent delete + undo cascade | Resolved: Eliminated by downward-only cascade — no cross-delete dependencies (§7.4) |
 | 17 | Minor | DeleteConfirmModal vs ConfirmModal | Resolved: New component (§5.1) |
 | 18 | Minor | sessionStorage tab-switch survival | Resolved: §5.9, §7.7 |
