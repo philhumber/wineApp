@@ -57,17 +57,17 @@ Users currently cannot remove accidentally-added wines, bottles, producers, or r
 
 ## 2. Architecture Decisions
 
-### AD-1: Delayed API Delete (not immediate + restore)
+### AD-1: Immediate API Delete + Restore Endpoint
 
-**Decision**: The API delete call fires only AFTER the 10-second undo window expires. During the window, the item is removed from frontend stores (optimistic UI) but the server is untouched.
+**Decision**: The delete API call fires **immediately** on confirm. The item is removed from frontend stores optimistically at the same time. The undo toast (10s) calls a **restore** API endpoint to reverse the delete if clicked.
 
 **Rationale**:
-- Eliminates the entire restore endpoint and cascade restoration logic
-- No batch timestamp tracking needed
-- Risk of "browser crash during 10s window" is negligible vs. risk of "delete succeeded but restore API failed"
-- Single-user app — no multi-device consistency concern
+- Server is always authoritative — no "lost delete" if the browser tab is killed, the user switches apps, or sessionStorage expires
+- Downward-only cascade makes restore simple: `SET deleted = 0` on the target entity and all children sharing the same `deletedAt` timestamp
+- No need for sessionStorage persistence of pending deletes or visibility-change timer recovery
+- The tradeoff (restore API could fail) is mitigated by keeping snapshots for local store rollback
 
-**Implication**: No `restoreItem.php` endpoint needed. The `deleteItem.php` endpoint handles the full cascade atomically in a single transaction.
+**Implication**: Requires a `restoreItem.php` endpoint alongside `deleteItem.php`. All cascade items share a `deletedAt` timestamp (using `NOW(6)` microsecond precision to prevent collisions), which serves as the batch identifier for atomic restore.
 
 ### AD-2: Column Naming — `deleted` (not `isDeleted`)
 
@@ -118,16 +118,19 @@ This applies to all 6 rating subqueries in `getWines.php` and the `buyAgainPerce
 
 ## 3. Database Changes
 
-### 3.1 Existing Columns (No Migration Needed)
+### 3.1 Existing Columns (Migration: upgrade to TIMESTAMP(6))
 
-The `wine` and `bottles` tables already have the required columns and indexes:
+The `wine` and `bottles` tables already have `deleted`, `deletedAt`, `deletedBy` columns and indexes — but `deletedAt` is `timestamp` (second precision). Upgrade to `TIMESTAMP(6)` for microsecond precision (required for `NOW(6)` batch identification):
 
 ```sql
--- wine table (already exists)
-`deleted` tinyint DEFAULT '0'
-`deletedAt` timestamp NULL DEFAULT NULL
-`deletedBy` int DEFAULT NULL
--- INDEX: idx_deleted (deleted)
+-- wine table (exists, needs precision upgrade)
+ALTER TABLE wine MODIFY COLUMN `deletedAt` TIMESTAMP(6) NULL DEFAULT NULL;
+
+-- bottles table (exists, needs precision upgrade)
+ALTER TABLE bottles MODIFY COLUMN `deletedAt` TIMESTAMP(6) NULL DEFAULT NULL;
+
+-- Existing columns (for reference):
+-- wine: `deleted` tinyint DEFAULT '0', `deletedBy` int DEFAULT NULL, idx_deleted (deleted)
 
 -- bottles table (already exists)
 `deleted` tinyint DEFAULT '0'
@@ -146,14 +149,14 @@ The `wine` and `bottles` tables already have the required columns and indexes:
 -- producers table
 ALTER TABLE producers
   ADD COLUMN `deleted` TINYINT(1) NOT NULL DEFAULT 0 AFTER `producerName`,
-  ADD COLUMN `deletedAt` TIMESTAMP NULL DEFAULT NULL AFTER `deleted`,
+  ADD COLUMN `deletedAt` TIMESTAMP(6) NULL DEFAULT NULL AFTER `deleted`,
   ADD COLUMN `deletedBy` INT DEFAULT NULL AFTER `deletedAt`,
   ADD INDEX `idx_deleted` (`deleted`);
 
 -- region table
 ALTER TABLE region
   ADD COLUMN `deleted` TINYINT(1) NOT NULL DEFAULT 0 AFTER `worldID`,
-  ADD COLUMN `deletedAt` TIMESTAMP NULL DEFAULT NULL AFTER `deleted`,
+  ADD COLUMN `deletedAt` TIMESTAMP(6) NULL DEFAULT NULL AFTER `deleted`,
   ADD COLUMN `deletedBy` INT DEFAULT NULL AFTER `deletedAt`,
   ADD INDEX `idx_deleted` (`deleted`);
 ```
@@ -208,17 +211,21 @@ Save as `resources/sql/migrations/WIN-80_soft_delete.sql`:
 
 START TRANSACTION;
 
+-- 0. Upgrade existing deletedAt columns to microsecond precision
+ALTER TABLE wine MODIFY COLUMN `deletedAt` TIMESTAMP(6) NULL DEFAULT NULL;
+ALTER TABLE bottles MODIFY COLUMN `deletedAt` TIMESTAMP(6) NULL DEFAULT NULL;
+
 -- 1. Add columns to producers
 ALTER TABLE producers
   ADD COLUMN `deleted` TINYINT(1) NOT NULL DEFAULT 0 AFTER `producerName`,
-  ADD COLUMN `deletedAt` TIMESTAMP NULL DEFAULT NULL AFTER `deleted`,
+  ADD COLUMN `deletedAt` TIMESTAMP(6) NULL DEFAULT NULL AFTER `deleted`,
   ADD COLUMN `deletedBy` INT DEFAULT NULL AFTER `deletedAt`,
   ADD INDEX `idx_deleted` (`deleted`);
 
 -- 2. Add columns to region
 ALTER TABLE region
   ADD COLUMN `deleted` TINYINT(1) NOT NULL DEFAULT 0 AFTER `worldID`,
-  ADD COLUMN `deletedAt` TIMESTAMP NULL DEFAULT NULL AFTER `deleted`,
+  ADD COLUMN `deletedAt` TIMESTAMP(6) NULL DEFAULT NULL AFTER `deleted`,
   ADD COLUMN `deletedBy` INT DEFAULT NULL AFTER `deletedAt`,
   ADD INDEX `idx_deleted` (`deleted`);
 
@@ -298,8 +305,8 @@ DELETE bottle:
 
 **SQL pattern**:
 ```sql
--- All cascade items get the same deletedAt timestamp
-SET @now = NOW();
+-- All cascade items get the same deletedAt timestamp (microsecond precision)
+SET @now = NOW(6);
 SET @userId = :userId;
 
 -- Example: delete wine (cascade down to bottles only)
@@ -311,6 +318,53 @@ UPDATE wine SET deleted = 1, deletedAt = @now, deletedBy = @userId
 
 -- That's it. Producer is NOT touched. No upward cascade check needed.
 ```
+
+**Note**: `NOW(6)` gives microsecond precision, virtually eliminating timestamp collisions for a single-user app. The shared `deletedAt` value is the batch identifier used by the restore endpoint.
+
+### 4.1b New Endpoint: `restoreItem.php`
+
+**Path**: `resources/php/restoreItem.php`
+**Method**: POST
+**Input**:
+```json
+{
+  "type": "wine|bottle|producer|region",
+  "id": 123
+}
+```
+
+**Response (success)**:
+```json
+{
+  "success": true,
+  "restored": {
+    "type": "wine",
+    "id": 123,
+    "name": "Château Margaux 2015",
+    "cascadeRestored": {
+      "bottles": 3
+    }
+  }
+}
+```
+
+**Restore logic** (transaction-wrapped):
+1. Look up the entity's `deletedAt` timestamp
+2. Restore the entity: `SET deleted = 0, deletedAt = NULL, deletedBy = NULL`
+3. Restore all children that share the same `deletedAt` timestamp (they were cascade-deleted together)
+
+```sql
+-- Example: restore wine + its cascade-deleted bottles
+SET @batchTimestamp = (SELECT deletedAt FROM wine WHERE wineID = :wineId);
+
+UPDATE wine SET deleted = 0, deletedAt = NULL, deletedBy = NULL
+  WHERE wineID = :wineId;
+
+UPDATE bottles SET deleted = 0, deletedAt = NULL, deletedBy = NULL
+  WHERE wineID = :wineId AND deletedAt = @batchTimestamp;
+```
+
+**Why timestamp matching works**: All items in a cascade share the same `deletedAt` value (set by `NOW(6)` in the delete transaction). Bottles that were independently deleted earlier would have a different `deletedAt` and won't be accidentally restored. This is safe because cascade is downward-only — no sibling or parent dependencies to worry about.
 
 ### 4.2 New Endpoint: `getDeleteImpact.php`
 
@@ -558,43 +612,36 @@ Layout (region example — full cascade):
 
 **Path**: `qve/src/lib/stores/delete.ts`
 
-This is the orchestrator for all delete operations. It manages the optimistic removal, undo timers, and deferred API calls.
+This is the orchestrator for all delete operations. It manages the immediate API call, optimistic store removal, and undo via restore API.
 
 ```typescript
-interface PendingDelete {
+interface PendingUndo {
   id: string;                    // Unique ID (crypto.randomUUID)
   entityType: 'wine' | 'bottle' | 'producer' | 'region';
   entityId: number;
   entityName: string;
-  snapshot: unknown;             // Data snapshot for undo restoration
-  timerId: ReturnType<typeof setTimeout>;
-  undoFn: () => void;           // Restores data to stores
-  commitFn: () => Promise<void>; // API call to execute
+  snapshot: unknown;             // Data snapshot for local rollback if restore fails
+  toastId: string;               // Reference to undo toast
 }
 
 // Public API
 requestDelete(entityType, entityId, entityName): void  // Opens modal
 confirmDelete(): Promise<void>                          // After modal confirm
-undoDelete(pendingId: string): void                    // From toast callback
-cancelAllPending(): void                               // On app teardown
+undoDelete(pendingId: string): Promise<void>            // From toast callback — calls restore API
 ```
 
 **Flow**:
 1. `requestDelete` → fetch impact → open `DeleteConfirmModal`
 2. User confirms → `confirmDelete`:
    - Snapshot entity from stores
-   - Remove from stores (optimistic)
-   - Invalidate filter option caches
-   - Show undo toast (10s)
-   - Schedule `commitFn` after 10s
+   - Call `api.deleteItem(type, id)` **immediately**
+   - On API success: remove from stores, invalidate filter caches, close modal, show undo toast (10s)
+   - On API failure: show error toast, do NOT remove from stores
 3. Undo clicked → `undoDelete`:
-   - Clear timer
-   - Restore snapshot to stores
-   - Re-invalidate filter caches
-   - Dismiss toast
-4. Timer expires → `commitFn`:
-   - Call `api.deleteItem(type, id)`
-   - On API failure: restore snapshot, show error toast
+   - Call `api.restoreItem(type, id)`
+   - On success: restore snapshot to stores, re-invalidate filter caches, dismiss toast
+   - On failure: show error toast ("Couldn't undo — item may need to be re-added")
+4. Toast expires without undo → clean up `PendingUndo` entry, done
 
 ### 5.3 Delete Button Placement
 
@@ -628,11 +675,7 @@ Add delete button to `.card-actions` alongside "Edit Rating" and "Add Bottle".
 
 **Countdown display**: `Toast.svelte` — for `undo` type, show remaining seconds next to the Undo button: `"Undo (8s)"`.
 
-**Timer pause fix** (pre-existing bug): The CSS progress bar pauses on hover but the store's `setTimeout` does not. Fix by replacing `setTimeout` with a pausable timer that respects the component's `paused` state:
-- Store tracks `remainingMs` instead of absolute timeout
-- On hover → pause timer, record remaining time
-- On unhover → restart timer with remaining time
-- This prevents accidental execution while user is reading the toast
+**Timer pause fix** (pre-existing bug, lower priority now): The CSS progress bar pauses on hover but the store's `setTimeout` does not. With immediate API delete, the toast timer no longer triggers an API call — it only controls how long the "Undo" button is visible. However, the visual mismatch is still confusing (progress bar pauses but toast dismisses). Fix by syncing the setTimeout with the component's `paused` state. This is a nice-to-have for V1, not blocking.
 
 ### 5.5 Icon Addition
 
@@ -644,6 +687,7 @@ New methods in `qve/src/lib/api/client.ts`:
 
 ```typescript
 async deleteItem(type: 'wine' | 'bottle' | 'producer' | 'region', id: number): Promise<DeleteResult>
+async restoreItem(type: 'wine' | 'bottle' | 'producer' | 'region', id: number): Promise<RestoreResult>
 async getDeleteImpact(type: string, id: number): Promise<DeleteImpact>
 ```
 
@@ -669,6 +713,16 @@ export interface DeleteResult {
     cascaded: { bottles: number; ratings: number };
   };
 }
+
+export interface RestoreResult {
+  success: boolean;
+  restored: {
+    type: string;
+    id: number;
+    name: string;
+    cascadeRestored: { bottles?: number; wines?: number; producers?: number };
+  };
+}
 ```
 
 ### 5.7 Store Modifications
@@ -691,13 +745,13 @@ export interface DeleteResult {
 | `+page.svelte` (home) | Handle `delete` event from WineGrid → call `deleteStore.requestDelete()` |
 | `edit/[id]/+page.svelte` | Add "Delete Wine" button, "Delete Bottle" button, wire to deleteStore, navigate home on delete |
 | `history/+page.svelte` | Handle `deleteRating` event from HistoryGrid → simpler confirm → delete |
-| `+layout.svelte` | On `beforeNavigate`: commit any pending deletes (fire-and-forget) and clear timers. OR: let timers persist since toast is in layout. **Decision**: let timers persist — toasts survive navigation. |
+| `+layout.svelte` | Undo toasts persist across navigation (toast container is in layout). No special handling needed — delete already happened on the server. |
 
 ### 5.9 Mobile / iOS Safari Considerations
 
 - **Touch targets**: Delete buttons use same 32px circular style as existing actions — adequate since they're only visible on card expand (full-width)
 - **Swipe-to-delete**: NOT implementing in V1 (conflicts with card tap and filter scroll)
-- **Tab switch survival**: Store pending delete IDs + expiry timestamps in `sessionStorage`. On visibility change (tab resume), check if undo window has expired; if so, fire the API call immediately
+- **Tab switch**: No special handling needed — delete API fires immediately, so the server is always authoritative. If the user switches apps and comes back, the undo toast may have expired but the delete is already committed. No sessionStorage persistence required.
 - **BottleSelector "×" button**: Minimum 44×44px tap area (Apple HIG) around the small icon
 
 ---
@@ -716,22 +770,22 @@ export interface DeleteResult {
 5. User reads impact, clicks "Delete"
 6. deleteStore.confirmDelete():
    a. Snapshots wine + its entries from wines/history stores
-   b. wines.removeWineFromList(wineID)
-   c. history.removeDrunkWinesByWineId(wineID) (if any)
-   d. filterOptions.invalidate()
-   e. modal.close()
-   f. toast.undo('"Château Margaux" deleted', () => deleteStore.undoDelete(pendingId))
-   g. setTimeout(10000, () => deleteStore.commit(pendingId))
-7a. IF user clicks "Undo" within 10s:
-   - Clear timer
-   - wines.restoreWineToList(snapshot)
-   - history.restoreDrunkWines(historySnapshot)
-   - filterOptions.invalidate()
-   - toast.dismiss()
-7b. IF timer expires:
-   - api.deleteItem('wine', wineID)
-   - On success: remove pending entry, done
-   - On failure: restoreWineToList(snapshot), toast.error('Delete failed')
+   b. api.deleteItem('wine', wineID) — IMMEDIATE API call
+   c. On API success:
+      - wines.removeWineFromList(wineID)
+      - history.removeDrunkWinesByWineId(wineID) (if any)
+      - filterOptions.invalidate()
+      - modal.close()
+      - toast.undo('"Château Margaux" deleted', () => deleteStore.undoDelete(pendingId))
+   d. On API failure:
+      - modal.close()
+      - toast.error('Delete failed')
+      - No store changes (item stays in UI)
+7. IF user clicks "Undo" within 10s:
+   - api.restoreItem('wine', wineID)
+   - On success: restoreWineToList(snapshot), restoreDrunkWines(historySnapshot), filterOptions.invalidate()
+   - On failure: toast.error('Couldn't undo — item may need to be re-added')
+8. IF toast expires: clean up PendingUndo entry, done
 ```
 
 ### 6.2 Bottle Delete (from Edit Page)
@@ -742,10 +796,10 @@ export interface DeleteResult {
    (No cascade — bottle delete never affects the parent wine)
 3. On confirm:
    a. Snapshot bottle from editWine store
-   b. editWine.removeBottleFromList(bottleId)
-   c. toast.undo('"750ml" deleted', undoFn)
-   d. setTimeout(10000, commitFn)
-4. On commit: api.deleteItem('bottle', bottleId)
+   b. api.deleteItem('bottle', bottleId) — IMMEDIATE
+   c. On success: editWine.removeBottleFromList(bottleId), toast.undo(...)
+   d. On failure: toast.error('Delete failed')
+4. On undo: api.restoreItem('bottle', bottleId), editWine.restoreBottle(snapshot)
 ```
 
 Note: Even if this is the last bottle, the wine remains. The wine will show with 0 bottles in the cellar view (existing empty-bottle wines are already handled by the UI).
@@ -758,11 +812,10 @@ Note: Even if this is the last bottle, the wine remains. The wine will show with
    (No cascade needed — independent deletion)
 3. On confirm:
    a. Snapshot entry from history store
-   b. history.removeDrunkWine(bottleId)
-   c. toast.undo('Rating deleted', undoFn)
-   d. setTimeout(10000, commitFn)
-4. On commit: api.deleteItem('bottle', bottleId)
-   (sets bottles.deleted = 1 for the drunk bottle)
+   b. api.deleteItem('bottle', bottleId) — IMMEDIATE
+   c. On success: history.removeDrunkWine(bottleId), toast.undo(...)
+   d. On failure: toast.error('Delete failed')
+4. On undo: api.restoreItem('bottle', bottleId), history.restoreDrunkWine(snapshot)
 ```
 
 ---
@@ -795,7 +848,7 @@ Note: Even if this is the last bottle, the wine remains. The wine will show with
 
 ### 7.7 iOS Tab Switch During Undo Window
 **Scenario**: User deletes wine, switches to Camera app, returns 30 seconds later.
-**Mitigation**: Persist pending delete state to `sessionStorage`. On visibility change (`visibilitychange` event), check if timer expired; if so, fire API call immediately.
+**Mitigation**: No special handling needed. The delete API already fired immediately on confirm — the server state is correct. The undo toast will have expired while the app was backgrounded, so the user simply can't undo. This is the expected behavior.
 
 ### 7.8 checkDuplicate Ghost Matches
 **Scenario**: Adding a wine similar to a soft-deleted one triggers duplicate warning.
@@ -805,20 +858,25 @@ Note: Even if this is the last bottle, the wine remains. The wine will show with
 **Scenario**: After optimistic delete, filter pills show stale counts ("France (12)" should be "France (11)").
 **Mitigation**: Call `filterOptions.invalidate()` after every optimistic delete and undo. Counts refresh on next filter interaction.
 
-### 7.10 Delete API Failure After Timer
-**Scenario**: 10 seconds pass, API call fires, but network/server error occurs.
-**Mitigation**: Restore the item from snapshot and show error toast: "Delete failed — your item has been restored."
+### 7.10 Delete API Failure
+**Scenario**: User confirms delete, but the immediate API call fails (network/server error).
+**Mitigation**: Show error toast: "Delete failed". Do NOT remove the item from stores — it stays in the UI as if nothing happened. The user can retry.
+
+### 7.11 Restore API Failure
+**Scenario**: User clicks "Undo", but the restore API call fails.
+**Mitigation**: Show error toast: "Couldn't undo — you may need to re-add this item". The item remains deleted on the server. The local store snapshot is discarded. This is an edge case (server was reachable moments ago for the delete) but must be handled gracefully.
 
 ---
 
 ## 8. File Change Manifest
 
-### New Files (5)
+### New Files (6)
 
 | File | Purpose |
 |------|---------|
 | `resources/sql/migrations/WIN-80_soft_delete.sql` | Database migration script |
 | `resources/php/deleteItem.php` | Soft delete endpoint with cascade |
+| `resources/php/restoreItem.php` | Undo soft delete (restore entity + cascade children) |
 | `resources/php/getDeleteImpact.php` | Cascade impact preview endpoint |
 | `qve/src/lib/components/modals/DeleteConfirmModal.svelte` | Cascade confirmation modal |
 | `qve/src/lib/stores/delete.ts` | Delete orchestration store |
@@ -875,7 +933,7 @@ Note: Even if this is the last bottle, the wine remains. The wine will show with
 | `qve/src/routes/edit/[id]/+page.svelte` | Add Delete Wine/Bottle buttons |
 | `qve/src/routes/history/+page.svelte` | Handle deleteRating event |
 
-**Total: 5 new files + 37 modified files**
+**Total: 6 new files + 37 modified files**
 
 ---
 
@@ -883,11 +941,12 @@ Note: Even if this is the last bottle, the wine remains. The wine will show with
 
 ### Phase 1: Database + Backend Foundation
 1. Run migration script (`WIN-80_soft_delete.sql`)
-2. Create `deleteItem.php` with full cascade logic
-3. Create `getDeleteImpact.php`
-4. Add `AND deleted = 0` to ALL existing PHP endpoints (the big sweep)
-5. Test: verify all views exclude soft-deleted records
-6. Test: verify cascade deletes work correctly
+2. Create `deleteItem.php` with full cascade logic (using `NOW(6)` for batch timestamp)
+3. Create `restoreItem.php` with timestamp-matched cascade restore
+4. Create `getDeleteImpact.php`
+5. Add `AND deleted = 0` to ALL existing PHP endpoints (the big sweep)
+6. Test: verify all views exclude soft-deleted records
+7. Test: verify cascade delete + restore round-trip works correctly
 
 ### Phase 2: Frontend Foundation
 7. Add `trash` icon to `Icon.svelte`
@@ -908,12 +967,11 @@ Note: Even if this is the last bottle, the wine remains. The wine will show with
 20. Add "×" to `BottleSelector.svelte`
 
 ### Phase 4: Edge Cases & Polish
-21. Implement sessionStorage persistence for pending deletes
-22. Handle tab-switch timer recovery
-23. Add store restore methods (wines, history, editWine)
-24. Test undo flow end-to-end
-25. Test mobile/iOS Safari
-26. Test filter count invalidation after delete/undo
+21. Add store restore methods (wines, history, editWine)
+22. Test delete + undo round-trip end-to-end
+23. Test restore API failure handling
+24. Test mobile/iOS Safari
+25. Test filter count invalidation after delete/undo
 
 ---
 
@@ -940,13 +998,13 @@ The plan was stress-tested by a dedicated technical reviewer. All critical and m
 
 | # | Severity | Issue | Resolution |
 |---|----------|-------|------------|
-| 1 | **Critical** | Undo mechanism conflict (immediate vs delayed API) | Resolved: Delayed API (AD-1) |
+| 1 | **Critical** | Undo mechanism conflict (immediate vs delayed API) | Resolved: Immediate API + restore endpoint (AD-1) — eliminates lost-delete risk on tab kill/app switch |
 | 2 | **Critical** | UNIQUE constraint blocks re-creation | Resolved: Drop constraints entirely, app-level prevention sufficient (§3.3) |
 | 3 | Major | Column naming inconsistency (`isDeleted` vs `deleted`) | Resolved: Standardized on `deleted` (AD-2) |
 | 4 | Minor | `deletedBy` column unpopulated | Resolved: Populate with userId (§4.1) |
 | 5 | Major | Filter count cache invalidation | Resolved: filterOptions.invalidate() after every delete/undo (§5.2) |
 | 6 | Major | getCellarValue.php miscount | Resolved: Added to query audit (§4.3) |
-| 7 | Major | Batch timestamp fragility | Resolved: N/A — eliminated by delayed API approach |
+| 7 | Major | Batch timestamp fragility | Resolved: `NOW(6)` microsecond precision eliminates collisions for single-user app (§4.1) |
 | 8 | Major | grapemix/critic_scores JOIN filtering | Resolved: Noted in §3.6, queries must JOIN through wine |
 | 9 | Major | Edit page redirect + undo interaction | Resolved: Restore to list, don't navigate back (§7.5) |
 | 10 | Major | History store missing remove functions | Resolved: Added to store modifications (§5.7) |
@@ -957,4 +1015,4 @@ The plan was stress-tested by a dedicated technical reviewer. All critical and m
 | 15 | Minor | getDrunkWines JOIN semantics | Resolved: Use bottles.deleted (AD-3) |
 | 16 | Minor | Concurrent delete + undo cascade | Resolved: Eliminated by downward-only cascade — no cross-delete dependencies (§7.4) |
 | 17 | Minor | DeleteConfirmModal vs ConfirmModal | Resolved: New component (§5.1) |
-| 18 | Minor | sessionStorage tab-switch survival | Resolved: §5.9, §7.7 |
+| 18 | Minor | sessionStorage tab-switch survival | Resolved: N/A — eliminated by immediate API approach. Server always authoritative. (§7.7) |
