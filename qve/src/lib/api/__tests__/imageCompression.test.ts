@@ -58,8 +58,14 @@ function setupMainThreadMocks(imgWidth: number, imgHeight: number) {
 		}
 	);
 
-	// Canvas mock
-	const mockCtx = { drawImage };
+	// Canvas mock — track call order for white-fill-before-draw assertion
+	const callOrder: string[] = [];
+	const fillRect = vi.fn((..._args: unknown[]) => { callOrder.push('fillRect'); });
+	const mockCtx = {
+		drawImage: (...args: unknown[]) => { callOrder.push('drawImage'); drawImage(...args); },
+		fillRect,
+		fillStyle: '',
+	};
 	const mockCanvas = {
 		set width(v: number) { canvasWidth = v; },
 		get width() { return canvasWidth; },
@@ -75,6 +81,9 @@ function setupMainThreadMocks(imgWidth: number, imgHeight: number) {
 		get canvasHeight() { return canvasHeight; },
 		readAsDataURL,
 		drawImage,
+		fillRect,
+		mockCtx,
+		callOrder,
 		toDataURL,
 		triggerFileReaderLoad(data = 'data:image/jpeg;base64,abc') {
 			fileReaderOnload?.({ target: { result: data } });
@@ -217,6 +226,26 @@ describe('compressImageForIdentification (WIN-237)', () => {
 
 			const result = await promise;
 			expect(result.mimeType).toBe('image/jpeg');
+		});
+	});
+
+	describe('transparency handling', () => {
+		it('should fill canvas with white before drawing image (main-thread path)', async () => {
+			const mocks = setupMainThreadMocks(640, 480);
+			const file = createMockFile('label.png', 'image/png');
+
+			const promise = api.compressImageForIdentification(file);
+
+			await vi.waitFor(() => expect(mocks.readAsDataURL).toHaveBeenCalled());
+			mocks.triggerFileReaderLoad();
+			await vi.waitFor(() => expect(mocks.drawImage).toHaveBeenCalled());
+
+			await promise;
+
+			// White fill must happen before drawImage
+			expect(mocks.mockCtx.fillStyle).toBe('#ffffff');
+			expect(mocks.fillRect).toHaveBeenCalledWith(0, 0, 640, 480);
+			expect(mocks.callOrder).toEqual(['fillRect', 'drawImage']);
 		});
 	});
 

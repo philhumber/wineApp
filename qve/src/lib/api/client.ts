@@ -1241,6 +1241,8 @@ class WineApiClient {
         const { bitmap, width, height } = e.data;
         const canvas = new OffscreenCanvas(width, height);
         const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
         ctx.drawImage(bitmap, 0, 0, width, height);
         bitmap.close();
         const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.85 });
@@ -1302,6 +1304,8 @@ class WineApiClient {
 
           canvas.width = width;
           canvas.height = height;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, width, height);
           ctx.drawImage(img, 0, 0, width, height);
 
           const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
