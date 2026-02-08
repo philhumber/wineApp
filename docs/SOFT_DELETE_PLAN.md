@@ -158,21 +158,13 @@ ALTER TABLE region
   ADD INDEX `idx_deleted` (`deleted`);
 ```
 
-### 3.3 UNIQUE Constraint Modification
+### 3.3 Drop UNIQUE Constraints
 
-**Critical**: `producers` has `UNIQUE KEY producerName` and `region` has `UNIQUE KEY regionName`. Soft-deleted records would block re-creation of items with the same name.
-
-**Fix**: Change to composite unique keys. MySQL treats each `NULL` as distinct in unique indexes, so active records (`deletedAt = NULL`) remain unique while multiple soft-deleted records can coexist.
+`producers` has `UNIQUE KEY producerName` and `region` has `UNIQUE KEY regionName`. Soft-deleted records would block re-creation of items with the same name. Rather than adding composite key complexity, simply drop the constraints — duplicate prevention is already handled at the application level (`addWine.php` looks up existing producers/regions by name before inserting).
 
 ```sql
--- Fix UNIQUE constraints to allow re-creation after soft delete
-ALTER TABLE producers
-  DROP INDEX `producerName`,
-  ADD UNIQUE KEY `uq_producer_active` (`producerName`, `deletedAt`);
-
-ALTER TABLE region
-  DROP INDEX `regionName`,
-  ADD UNIQUE KEY `uq_region_active` (`regionName`, `deletedAt`);
+ALTER TABLE producers DROP INDEX `producerName`;
+ALTER TABLE region DROP INDEX `regionName`;
 ```
 
 ### 3.4 Composite Indexes for Query Performance
@@ -230,14 +222,9 @@ ALTER TABLE region
   ADD COLUMN `deletedBy` INT DEFAULT NULL AFTER `deletedAt`,
   ADD INDEX `idx_deleted` (`deleted`);
 
--- 3. Fix UNIQUE constraints
-ALTER TABLE producers
-  DROP INDEX `producerName`,
-  ADD UNIQUE KEY `uq_producer_active` (`producerName`, `deletedAt`);
-
-ALTER TABLE region
-  DROP INDEX `regionName`,
-  ADD UNIQUE KEY `uq_region_active` (`regionName`, `deletedAt`);
+-- 3. Drop UNIQUE constraints (app-level duplicate prevention is sufficient)
+ALTER TABLE producers DROP INDEX `producerName`;
+ALTER TABLE region DROP INDEX `regionName`;
 
 -- 4. Add composite indexes
 ALTER TABLE bottles
@@ -784,7 +771,7 @@ Note: Even if this is the last bottle, the wine remains. The wine will show with
 
 ### 7.1 UNIQUE Constraint on Re-creation
 **Scenario**: User soft-deletes a producer named "Domaine Leroy", then adds a new wine by "Domaine Leroy".
-**Mitigation**: Composite unique key `(producerName, deletedAt)` — active records have `deletedAt = NULL` (unique), soft-deleted records have non-NULL timestamps (distinct from active).
+**Mitigation**: UNIQUE constraints on `producerName` and `regionName` are dropped entirely (§3.3). Duplicate prevention is handled at the application level (`addWine.php` looks up by name with `AND deleted = 0` before inserting). No schema-level conflict possible.
 
 ### 7.2 addWine.php Matches Soft-Deleted Producer
 **Scenario**: Add Wine looks up "Domaine Leroy" and finds the soft-deleted record.
@@ -954,7 +941,7 @@ The plan was stress-tested by a dedicated technical reviewer. All critical and m
 | # | Severity | Issue | Resolution |
 |---|----------|-------|------------|
 | 1 | **Critical** | Undo mechanism conflict (immediate vs delayed API) | Resolved: Delayed API (AD-1) |
-| 2 | **Critical** | UNIQUE constraint blocks re-creation | Resolved: Composite key with deletedAt (§3.3) |
+| 2 | **Critical** | UNIQUE constraint blocks re-creation | Resolved: Drop constraints entirely, app-level prevention sufficient (§3.3) |
 | 3 | Major | Column naming inconsistency (`isDeleted` vs `deleted`) | Resolved: Standardized on `deleted` (AD-2) |
 | 4 | Minor | `deletedBy` column unpopulated | Resolved: Populate with userId (§4.1) |
 | 5 | Major | Filter count cache invalidation | Resolved: filterOptions.invalidate() after every delete/undo (§5.2) |
