@@ -81,6 +81,21 @@ Users currently cannot remove accidentally-added wines, bottles, producers, or r
 
 **Rationale**: Ratings are 1:1 with drunk bottles. The `getDrunkWines.php` query JOINs through bottles already. Adding `AND bottles.deleted = 0` naturally excludes deleted history entries.
 
+**Important — Rating Aggregation**: The `ratings` table has its own `wineID` column, and the avgRating/avgOverallRating/avgValueRating/allNotes/buyAgainPercent/ratingCount subqueries in `getWines.php` (lines 46-49, 142-146) query `ratings` by `wineID` **without joining through bottles**. This means soft-deleting a bottle would NOT automatically exclude its rating from the wine's aggregate score. To fix this, all rating subqueries must join through bottles and check `bottles.deleted = 0`:
+
+```sql
+-- Before (broken — includes ratings for deleted bottles):
+SELECT ROUND(AVG(overallRating), 2) FROM ratings WHERE ratings.wineID = wine.wineID
+
+-- After (correct — excludes ratings for deleted bottles):
+SELECT ROUND(AVG(r.overallRating), 2)
+  FROM ratings r
+  JOIN bottles b ON b.bottleID = r.bottleID AND b.deleted = 0
+  WHERE r.wineID = wine.wineID
+```
+
+This applies to all 6 rating subqueries in `getWines.php` and the `buyAgainPercent`/`ratingCount` queries.
+
 ### AD-4: Cascade Goes Down Only — Never Up
 
 **Decision**: Deleting children never affects the parent. Deleting all wines from a producer does NOT auto-delete the producer. Deleting all bottles from a wine does NOT auto-delete the wine. Orphaned parents persist.
@@ -392,7 +407,8 @@ Every existing PHP endpoint that reads from affected tables needs `AND deleted =
 | Location | Change |
 |----------|--------|
 | Main WHERE clause | Add `AND w.deleted = 0` |
-| All bottle subqueries (avgRating, standardPrice, bottleSources, buyAgainPercent, avgPricePerLiterEUR, etc.) | Add `AND b.deleted = 0` to each |
+| All bottle subqueries (standardPrice, bottleSources, avgPricePerLiterEUR, bottleCount, etc.) | Add `AND b.deleted = 0` to each |
+| **Rating subqueries** (avgRating, avgOverallRating, avgValueRating, allNotes, buyAgainPercent, ratingCount — lines 46-49, 142-146) | **Add `JOIN bottles b ON b.bottleID = r.bottleID AND b.deleted = 0`** — these query `ratings` by `wineID` without going through bottles, so deleted bottle ratings would still be included without this fix |
 | Producer JOIN | Add `AND p.deleted = 0` |
 | Region JOIN | Add `AND r.deleted = 0` |
 
