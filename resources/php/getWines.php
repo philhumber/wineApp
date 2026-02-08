@@ -212,9 +212,14 @@
 		}
 
 		// Free text search across multiple fields (WIN-24)
+		// Uses REGEXP with word-start boundary for prefix matching
+		// e.g. "champan" matches "champagne", but "hampagne" does not
+		// e.g. "aux" matches "Aux Bons Crus" but not "bordeaux"
 		if (!empty($searchQuery) && mb_strlen($searchQuery, 'UTF-8') >= 3) {
-			$escapedSearch = str_replace(['%', '_'], ['\\%', '\\_'], $searchQuery);
-			$searchTerm = '%' . $escapedSearch . '%';
+			// Escape regex special characters for MySQL REGEXP
+			$escapedSearch = preg_quote($searchQuery);
+			// Word-start boundary: matches from beginning of words (prefix matching)
+			$searchPattern = '\\b' . $escapedSearch;
 
 			$searchConditions = [];
 			$searchFields = [
@@ -224,8 +229,8 @@
 			];
 
 			foreach ($searchFields as $i => $field) {
-				$searchConditions[] = "$field COLLATE utf8mb4_0900_ai_ci LIKE :search_$i";
-				$params[":search_$i"] = $searchTerm;
+				$searchConditions[] = "$field COLLATE utf8mb4_0900_ai_ci REGEXP :search_$i";
+				$params[":search_$i"] = $searchPattern;
 			}
 
 			$where[] = '(' . implode(' OR ', $searchConditions) . ')';
