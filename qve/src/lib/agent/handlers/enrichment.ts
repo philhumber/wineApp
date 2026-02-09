@@ -27,7 +27,7 @@ import {
   generateEnrichmentErrorChips,
   generateCacheMatchChips,
 } from '../services';
-import { createAbortController, wasCancelled, lockScroll } from '$lib/stores/agent';
+import { createAbortController, wasCancelled, lockScroll, unlockScroll, getRequestId } from '../requestLifecycle';
 
 // ===========================================
 // Action Types
@@ -155,9 +155,17 @@ function handleCacheConfirmationRequired(enrichmentResult: {
     ? [matchedTo.producer, matchedTo.wineName, matchedTo.vintage].filter(Boolean).join(' ')
     : 'a similar wine';
 
+  const searchedFor = enrichmentResult.searchedFor;
+  const searchedForName = searchedFor
+    ? [searchedFor.producer, searchedFor.wineName, searchedFor.vintage].filter(Boolean).join(' ')
+    : undefined;
+
+  // Unlock scroll so cache confirmation messages scroll into view
+  unlockScroll();
+
   conversation.addMessage(
     conversation.createTextMessage(
-      getMessageByKey(MessageKey.ENRICH_CACHE_CONFIRM, { wineName: matchedName })
+      getMessageByKey(MessageKey.ENRICH_CACHE_CONFIRM, { wineName: matchedName, searchedForName })
     )
   );
 
@@ -201,7 +209,8 @@ async function executeEnrichment(
         enrichment.updateEnrichmentStreamingField(field, String(value), true);
       },
       undefined, // onEvent
-      abortController.signal
+      abortController.signal,
+      getRequestId()
     );
 
     // WIN-187: Skip processing if cancelled during the await
@@ -392,6 +401,9 @@ async function handleConfirmCacheMatch(messageId: string): Promise<void> {
 
   conversation.addTypingMessage(getMessageByKey(MessageKey.ENRICH_USING_CACHE));
 
+  // Lock scroll during streaming (same pattern as handleLearnMore)
+  lockScroll();
+
   await executeEnrichment(
     lastRequest.producer,
     lastRequest.wineName,
@@ -441,6 +453,9 @@ async function handleForceRefresh(messageId: string): Promise<void> {
   conversation.setPhase('enriching');
 
   conversation.addTypingMessage(getMessageByKey(MessageKey.ENRICH_REFRESHING));
+
+  // Lock scroll during streaming (same pattern as handleLearnMore)
+  lockScroll();
 
   await executeEnrichment(
     lastRequest.producer,

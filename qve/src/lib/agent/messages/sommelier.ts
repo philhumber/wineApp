@@ -366,7 +366,9 @@ export const sommelierMessages: PersonalityMessages = {
     `Here's what I found about ${wn(ctx.wineName || 'this wine')}. What would you like to do next?`,
 
   [MessageKey.ENRICH_CACHE_CONFIRM]: (ctx: MessageContext) =>
-    `I found cached data for ${wn(ctx.wineName || 'a similar wine')}. Is this the wine you're looking for?`,
+    ctx.searchedForName
+      ? `I found cached data for ${wn(ctx.wineName || 'a similar wine')}, but you asked about ${wn(String(ctx.searchedForName))}. Would you like to use what I have?`
+      : `I found cached data for ${wn(ctx.wineName || 'a similar wine')}. Is this the wine you're looking for?`,
 
   [MessageKey.ENRICH_USING_CACHE]:
     'Using cached data...',
