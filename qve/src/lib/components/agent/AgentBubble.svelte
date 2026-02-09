@@ -7,22 +7,24 @@
 	 * Size: 56x56px (touch-friendly)
 	 * States: idle, hover, loading, hasResult, panelOpen
 	 */
-	import { agent, agentLoading, agentHasResult, agentPanelOpen } from '$lib/stores';
+	import { agentPanelOpen, togglePanel } from '$lib/stores/agentPanel';
+	import { isIdentifying } from '$lib/stores/agentIdentification';
+	import { isEnriching } from '$lib/stores/agentEnrichment';
+	import { hasResult } from '$lib/stores/agentIdentification';
 
 	// Reactive state
-	$: isLoading = $agentLoading;
-	$: hasResult = $agentHasResult;
+	$: isLoading = $isIdentifying || $isEnriching;
 	$: isPanelOpen = $agentPanelOpen;
 
 	function handleClick() {
-		agent.togglePanel();
+		togglePanel();
 	}
 </script>
 
 <button
 	class="agent-bubble"
 	class:loading={isLoading}
-	class:has-result={hasResult && !isPanelOpen}
+	class:has-result={$hasResult && !isPanelOpen}
 	class:panel-open={isPanelOpen}
 	on:click={handleClick}
 	aria-label={isPanelOpen ? 'Close Wine Assistant' : 'Open Wine Assistant'}

@@ -13,13 +13,12 @@
 
 	// Stores
 	import {
-		agent,
-		agentPanelOpen,
 		wines,
 		winesLoading,
 		targetWineID,
 		viewMode
 	} from '$lib/stores';
+	import { agentPanelOpen, closePanel } from '$lib/stores/agentPanel';
 	import {
 		agentMessages,
 		agentPhase,
@@ -161,7 +160,7 @@
 		await delay(COMPLETION_DELAY_MS);
 
 		// Close the panel
-		agent.closePanel();
+		closePanel();
 
 		// Clear origin tracking
 		clearOrigin();
@@ -235,7 +234,7 @@
 	}
 
 	function handleClose() {
-		agent.closePanel();
+		closePanel();
 	}
 
 	function handleStartOver() {

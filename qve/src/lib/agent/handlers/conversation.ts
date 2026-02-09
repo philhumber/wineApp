@@ -16,7 +16,9 @@ import * as conversation from '$lib/stores/agentConversation';
 import * as identification from '$lib/stores/agentIdentification';
 import * as enrichment from '$lib/stores/agentEnrichment';
 import * as addWine from '$lib/stores/agentAddWine';
-import { agent, abortCurrentRequest } from '$lib/stores/agent';
+import { closePanel } from '$lib/stores/agentPanel';
+import { abortCurrentRequest, getRequestId } from '../requestLifecycle';
+import { api } from '$lib/api';
 import {
   getLastAction,
   clearLastAction,
@@ -122,7 +124,7 @@ export function handleGoBack(): void {
  */
 export function handleCancel(): void {
   console.log('[Conversation] cancel');
-  agent.closePanel();
+  closePanel();
 }
 
 /**
@@ -131,6 +133,12 @@ export function handleCancel(): void {
  */
 export function handleCancelRequest(): void {
   console.log('[Conversation] cancel_request');
+
+  // WIN-227: Send server-side cancel token before aborting fetch
+  const requestId = getRequestId();
+  if (requestId) {
+    api.cancelAgentRequest(requestId);
+  }
 
   // WIN-187: Abort any in-flight HTTP request
   abortCurrentRequest();
@@ -144,8 +152,12 @@ export function handleCancelRequest(): void {
   // Remove typing message
   conversation.removeTypingMessage();
 
-  // Reset to awaiting input phase
-  conversation.setPhase('awaiting_input');
+  // Transition to the appropriate phase based on where we were cancelled from.
+  // From 'enriching': user already has an identified wine, go back to 'confirming'.
+  // From 'identifying' or other phases: go to 'awaiting_input'.
+  const currentPhase = conversation.getCurrentPhase();
+  const cancelPhase = currentPhase === 'enriching' ? 'confirming' : 'awaiting_input';
+  conversation.setPhase(cancelPhase);
 
   // Add friendly cancellation message with action chips
   conversation.addMessage(

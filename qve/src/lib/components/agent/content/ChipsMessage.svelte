@@ -3,7 +3,7 @@
   import { fly } from 'svelte/transition';
   import type { AgentMessage, AgentAction } from '$lib/agent/types';
   import { updateMessage, agentMessages, clearNewFlag } from '$lib/stores/agentConversation';
-  import { isScrollLocked } from '$lib/stores/agent';
+  import { isScrollLocked } from '$lib/agent/requestLifecycle';
 
   export let message: AgentMessage;
 

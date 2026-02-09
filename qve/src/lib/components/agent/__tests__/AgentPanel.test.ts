@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, cleanup, fireEvent, screen, waitFor } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import AgentPanel from '../AgentPanel.svelte';
-import { agent, agentPanelOpen } from '$lib/stores';
+import { agentPanelOpen, openPanel, closePanel } from '$lib/stores/agentPanel';
 import { resetConversation } from '$lib/stores/agentConversation';
 import { get } from 'svelte/store';
 
@@ -55,14 +55,14 @@ describe('AgentPanel', () => {
 
 	describe('panel structure', () => {
 		it('should not render when panel is closed', () => {
-			agent.closePanel();
+			closePanel();
 			render(AgentPanel);
 
 			expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 		});
 
 		it('should render when panel is open', () => {
-			agent.openPanel();
+			openPanel();
 			render(AgentPanel);
 
 			expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -70,21 +70,21 @@ describe('AgentPanel', () => {
 		});
 
 		it('should have close button', () => {
-			agent.openPanel();
+			openPanel();
 			render(AgentPanel);
 
 			expect(screen.getByLabelText('Close')).toBeInTheDocument();
 		});
 
 		it('should have start over button', () => {
-			agent.openPanel();
+			openPanel();
 			render(AgentPanel);
 
 			expect(screen.getByText('Start Over')).toBeInTheDocument();
 		});
 
 		it('should close when close button clicked', async () => {
-			agent.openPanel();
+			openPanel();
 			render(AgentPanel);
 
 			const closeBtn = screen.getByLabelText('Close');
@@ -95,7 +95,7 @@ describe('AgentPanel', () => {
 		});
 
 		it('should close when backdrop clicked', async () => {
-			agent.openPanel();
+			openPanel();
 			const { container } = render(AgentPanel);
 
 			const backdrop = container.querySelector('.agent-backdrop');
@@ -123,7 +123,7 @@ describe('AgentPanel', () => {
 				writable: true,
 			});
 
-			agent.openPanel();
+			openPanel();
 			render(AgentPanel);
 
 			expect(visualViewportMock.addEventListener).toHaveBeenCalledWith(
@@ -144,7 +144,7 @@ describe('AgentPanel', () => {
 				writable: true,
 			});
 
-			agent.openPanel();
+			openPanel();
 			const { unmount } = render(AgentPanel);
 
 			unmount();
@@ -167,7 +167,7 @@ describe('AgentPanel', () => {
 				writable: true,
 			});
 
-			agent.openPanel();
+			openPanel();
 			const { container } = render(AgentPanel);
 
 			// Get the resize handler
@@ -196,7 +196,7 @@ describe('AgentPanel', () => {
 				writable: true,
 			});
 
-			agent.openPanel();
+			openPanel();
 			const { container } = render(AgentPanel);
 
 			const resizeHandler = visualViewportMock.addEventListener.mock.calls[0]?.[1];
@@ -216,7 +216,7 @@ describe('AgentPanel', () => {
 				delete (window as unknown as Record<string, unknown>).visualViewport;
 			}
 
-			agent.openPanel();
+			openPanel();
 
 			// Should not throw
 			expect(() => render(AgentPanel)).not.toThrow();
@@ -225,7 +225,7 @@ describe('AgentPanel', () => {
 
 	describe('CSS mobile styles', () => {
 		it('should have panel element with correct class', () => {
-			agent.openPanel();
+			openPanel();
 			const { container } = render(AgentPanel);
 
 			const panel = container.querySelector('.agent-panel');

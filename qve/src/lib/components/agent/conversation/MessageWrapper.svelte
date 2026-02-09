@@ -4,7 +4,7 @@
   import MessageContent from './MessageContent.svelte';
   import type { AgentMessage, AgentAction, TextMessageData } from '$lib/agent/types';
   import { agentMessages } from '$lib/stores/agentConversation';
-  import { isScrollLocked } from '$lib/stores/agent';
+  import { isScrollLocked } from '$lib/agent/requestLifecycle';
 
   export let message: AgentMessage;
 

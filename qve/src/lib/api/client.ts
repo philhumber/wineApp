@@ -845,13 +845,17 @@ class WineApiClient {
     text: string,
     onField?: StreamFieldCallback,
     onEvent?: StreamEventCallback,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    requestId?: string | null
   ): Promise<AgentIdentificationResultWithMeta> {
     const url = `${this.baseURL}agent/identifyTextStream.php`;
 
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...this.authHeaders };
+    if (requestId) headers['X-Request-Id'] = requestId;
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...this.authHeaders },
+      headers,
       body: JSON.stringify({ text }),
       signal
     });
@@ -936,7 +940,8 @@ class WineApiClient {
     supplementaryText?: string,
     onField?: StreamFieldCallback,
     onEvent?: StreamEventCallback,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    requestId?: string | null
   ): Promise<AgentIdentificationResultWithMeta> {
     const url = `${this.baseURL}agent/identifyImageStream.php`;
 
@@ -945,9 +950,12 @@ class WineApiClient {
       body.supplementaryText = supplementaryText;
     }
 
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...this.authHeaders };
+    if (requestId) headers['X-Request-Id'] = requestId;
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...this.authHeaders },
+      headers,
       body: JSON.stringify(body),
       signal
     });
@@ -1061,13 +1069,17 @@ class WineApiClient {
     forceRefresh = false,
     onField?: StreamFieldCallback,
     onEvent?: StreamEventCallback,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    requestId?: string | null
   ): Promise<AgentEnrichmentResult> {
     const url = `${this.baseURL}agent/agentEnrichStream.php`;
 
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...this.authHeaders };
+    if (requestId) headers['X-Request-Id'] = requestId;
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...this.authHeaders },
+      headers,
       body: JSON.stringify({ producer, wineName, vintage, wineType, region, confirmMatch, forceRefresh }),
       signal
     });
@@ -1163,6 +1175,28 @@ class WineApiClient {
       throw new Error(response.message || 'Failed to clarify match');
     }
     return response.data;
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // AI AGENT CANCELLATION (WIN-227)
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Cancel an in-flight agent request server-side via cancel token.
+   * Creates a token file that PHP checkpoints poll for.
+   */
+  async cancelAgentRequest(requestId: string): Promise<void> {
+    const url = `${this.baseURL}agent/cancelRequest.php`;
+    try {
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...this.authHeaders },
+        body: JSON.stringify({ requestId }),
+      });
+    } catch {
+      // Best-effort — if this fails, the client-side abort still works
+      console.warn('[API] Failed to send server-side cancel for', requestId);
+    }
   }
 
   // ─────────────────────────────────────────────────────────

@@ -53,13 +53,15 @@ if (!($config['streaming']['enabled'] ?? false)) {
 
 // Initialize SSE
 initSSE();
+registerCancelCleanup();
 
 try {
     // WIN-254: Server-authoritative userId — ignore client-supplied value
     $userId = getAgentUserId();
     $service = getAgentIdentificationService($userId);
 
-    error_log('IdentifyTextStream: Starting streaming identification for: ' . substr($input['text'], 0, 50));
+    $requestId = getRequestId() ?? '-';
+    error_log("[Agent] identifyText: request={$requestId} text=\"" . substr($input['text'], 0, 50) . '"');
 
     // Stream identification with field callback
     $result = $service->identifyStreaming($input, function ($field, $value) {
@@ -68,7 +70,7 @@ try {
 
     if (!$result['success']) {
         $errorType = $result['errorType'] ?? 'identification_error';
-        error_log('IdentifyTextStream: Error - ' . ($result['error'] ?? 'unknown'));
+        error_log("[Agent] identifyText: error type={$errorType} msg=" . ($result['error'] ?? 'unknown'));
 
         sendSSE('error', [
             'type' => $errorType,
@@ -84,7 +86,14 @@ try {
     $needsEscalation = $result['confidence'] < $tier1Threshold && ($config['streaming']['tier1_only'] ?? true);
 
     if ($needsEscalation) {
-        // Don't emit Tier 1 confidence - we'll emit the escalated one instead
+        // WIN-227: Skip escalation if client cancelled via token
+        if (isRequestCancelled()) {
+            error_log("[Agent] identifyText: CANCELLED before escalation (confidence={$result['confidence']})");
+            sendSSE('done', []);
+            exit;
+        }
+
+        error_log("[Agent] identifyText: escalating (streaming confidence={$result['confidence']}, threshold={$tier1Threshold})");
         sendSSE('escalating', ['message' => 'Looking deeper...']);
 
         // Do non-streaming escalation for better accuracy
@@ -163,10 +172,17 @@ try {
     $finalResult = $needsEscalation && isset($escalatedResult) && $escalatedResult['success'] && $escalatedResult['confidence'] > $result['confidence']
         ? $escalatedResult
         : $result;
+
+    $producer = $finalResult['parsed']['producer'] ?? '?';
+    $wine = $finalResult['parsed']['wineName'] ?? '?';
+    $conf = $finalResult['confidence'] ?? 0;
+    $tier = $finalResult['escalation']['final_tier'] ?? ($needsEscalation ? 'escalated' : 'tier1');
+    error_log("[Agent] identifyText: done producer=\"{$producer}\" wine=\"{$wine}\" confidence={$conf} tier={$tier}");
+
     try {
         $llmClient->logIdentificationResult($finalResult);
     } catch (\Exception $logEx) {
-        error_log('Failed to log identification result: ' . $logEx->getMessage());
+        error_log("[Agent] identifyText: failed to log result — " . $logEx->getMessage());
     }
 
     sendSSE('done', []);

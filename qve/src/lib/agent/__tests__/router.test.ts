@@ -6,7 +6,7 @@ import * as conversation from '$lib/stores/agentConversation';
 import * as identification from '$lib/stores/agentIdentification';
 import * as enrichment from '$lib/stores/agentEnrichment';
 import * as addWine from '$lib/stores/agentAddWine';
-import { agent } from '$lib/stores/agent';
+import { closePanel } from '$lib/stores/agentPanel';
 import * as handlers from '../handlers';
 
 // Mock all stores
@@ -69,10 +69,11 @@ vi.mock('$lib/stores/agentAddWine', async () => {
 	};
 });
 
-vi.mock('$lib/stores/agent', () => ({
-	agent: {
-		closePanel: vi.fn(),
-	},
+vi.mock('$lib/stores/agentPanel', () => ({
+	closePanel: vi.fn(),
+	openPanel: vi.fn(),
+	togglePanel: vi.fn(),
+	agentPanelOpen: { subscribe: vi.fn() },
 }));
 
 // Mock the handlers module
@@ -117,7 +118,7 @@ describe('router', () => {
 		it('should route cancel to conversation handler', async () => {
 			await dispatchAction({ type: 'cancel' });
 
-			expect(agent.closePanel).toHaveBeenCalled();
+			expect(closePanel).toHaveBeenCalled();
 		});
 
 		it('should route retry to conversation handler', async () => {

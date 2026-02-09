@@ -42,7 +42,7 @@ import {
   handleGoBack,
   handleRetry,
 } from './conversation';
-import { createAbortController, wasCancelled } from '$lib/stores/agent';
+import { createAbortController, wasCancelled, getRequestId } from '../requestLifecycle';
 
 // ===========================================
 // Action Types
@@ -347,7 +347,8 @@ async function executeTextIdentification(
         identification.updateStreamingField(field, String(value), true);
       },
       undefined, // onEvent
-      abortController.signal
+      abortController.signal,
+      getRequestId()
     );
 
     // WIN-187: Skip processing if cancelled during the await
@@ -396,7 +397,8 @@ async function executeImageIdentification(
         identification.updateStreamingField(field, String(value), true);
       },
       undefined, // onEvent
-      abortController.signal
+      abortController.signal,
+      getRequestId()
     );
 
     // WIN-187: Skip processing if cancelled during the await

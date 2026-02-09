@@ -67,10 +67,7 @@ if (!($config['streaming']['enabled'] ?? false)) {
 
 // Initialize SSE
 initSSE();
-
-// Debug: Send initial test event
-error_log('IdentifyImageStream: SSE initialized, sending test event');
-sendSSE('debug', ['message' => 'SSE stream started', 'timestamp' => date('H:i:s')]);
+registerCancelCleanup();
 
 try {
     // WIN-254: Server-authoritative userId — ignore client-supplied value
@@ -86,17 +83,17 @@ try {
         $identifyInput['supplementaryText'] = $supplementaryText;
     }
 
-    error_log('IdentifyImageStream: Starting streaming image identification');
+    $requestId = getRequestId() ?? '-';
+    error_log("[Agent] identifyImage: request={$requestId} mimeType={$input['mimeType']}" . ($supplementaryText ? " text=\"" . substr($supplementaryText, 0, 50) . '"' : ''));
 
     // Stream identification with field callback
     $result = $service->identifyStreamingImage($identifyInput, function ($field, $value) {
-        error_log("IdentifyImageStream: Field received - {$field}");
         sendSSE('field', ['field' => $field, 'value' => $value]);
     });
 
     if (!$result['success']) {
         $errorType = $result['errorType'] ?? 'identification_error';
-        error_log('IdentifyImageStream: Error - ' . ($result['error'] ?? 'unknown'));
+        error_log("[Agent] identifyImage: error type={$errorType} msg=" . ($result['error'] ?? 'unknown'));
 
         sendSSE('error', [
             'type' => $errorType,
@@ -112,7 +109,14 @@ try {
     $needsEscalation = $result['confidence'] < $tier1Threshold && ($config['streaming']['tier1_only'] ?? true);
 
     if ($needsEscalation) {
-        // Don't emit Tier 1 confidence - we'll emit the escalated one instead
+        // WIN-227: Skip escalation if client cancelled via token
+        if (isRequestCancelled()) {
+            error_log("[Agent] identifyImage: CANCELLED before escalation (confidence={$result['confidence']})");
+            sendSSE('done', []);
+            exit;
+        }
+
+        error_log("[Agent] identifyImage: escalating (streaming confidence={$result['confidence']}, threshold={$tier1Threshold})");
         sendSSE('escalating', ['message' => 'Looking deeper...']);
 
         // Do non-streaming escalation
@@ -193,10 +197,17 @@ try {
     $finalResult = $needsEscalation && isset($escalatedResult) && $escalatedResult['success'] && $escalatedResult['confidence'] > $result['confidence']
         ? $escalatedResult
         : $result;
+
+    $producer = $finalResult['parsed']['producer'] ?? '?';
+    $wine = $finalResult['parsed']['wineName'] ?? '?';
+    $conf = $finalResult['confidence'] ?? 0;
+    $tier = $finalResult['escalation']['final_tier'] ?? ($needsEscalation ? 'escalated' : 'tier1');
+    error_log("[Agent] identifyImage: done producer=\"{$producer}\" wine=\"{$wine}\" confidence={$conf} tier={$tier}");
+
     try {
         $llmClient->logIdentificationResult($finalResult);
     } catch (\Exception $logEx) {
-        error_log('Failed to log identification result: ' . $logEx->getMessage());
+        error_log("[Agent] identifyImage: failed to log result — " . $logEx->getMessage());
     }
 
     sendSSE('done', []);

@@ -15,9 +15,10 @@ import * as conversation from '$lib/stores/agentConversation';
 import * as identification from '$lib/stores/agentIdentification';
 import * as enrichment from '$lib/stores/agentEnrichment';
 import { clearState } from '$lib/stores/agentPersistence';
-import { _resetAbortState } from '$lib/stores/agent';
+import { _resetAbortState } from '../requestLifecycle';
+import { setLastAction, getLastAction } from '../middleware/retryTracker';
 import { api } from '$lib/api';
-import type { ChipsMessageData, AgentChip } from '../types';
+import type { ChipsMessageData, AgentChip, AgentAction } from '../types';
 
 // Mock the API module
 vi.mock('$lib/api', () => ({
@@ -26,6 +27,7 @@ vi.mock('$lib/api', () => ({
 		identifyImageStream: vi.fn(),
 		enrichWineStream: vi.fn(),
 		checkDuplicate: vi.fn(),
+		cancelAgentRequest: vi.fn(),
 	},
 }));
 
@@ -335,6 +337,95 @@ describe('LLM Request Cancellation (WIN-187)', () => {
 				const enrichmentMessages = finalMessages.filter((m) => m.category === 'enrichment');
 				expect(enrichmentMessages).toHaveLength(0);
 			}
+		});
+
+		it('should transition to confirming (not awaiting_input) when cancelling enrichment', async () => {
+			// Set up state directly: greeting → awaiting_input → confirming → enriching
+			conversation.resetConversation(); // bypasses validation, sets awaiting_input
+			conversation.setPhase('confirming'); // awaiting_input → confirming (valid)
+			conversation.setPhase('enriching'); // confirming → enriching (valid)
+			expect(conversation.getCurrentPhase()).toBe('enriching');
+
+			// Cancel while enriching
+			await dispatchAction({ type: 'cancel_request' });
+
+			// Should go back to confirming (user still has an identified wine),
+			// NOT awaiting_input which is an invalid transition from enriching
+			expect(conversation.getCurrentPhase()).toBe('confirming');
+		});
+
+		it('should allow retry of learn action after cancellation via retry tracker', async () => {
+			// The 'learn' action must be in DEFAULT_RETRYABLE_ACTIONS so that
+			// "Try Again" can replay it after cancellation.
+
+			// Simulate dispatching a learn action through the middleware chain
+			// so the retry tracker records it
+			vi.mocked(api.enrichWineStream).mockImplementation(async () => {
+				await delay(100);
+				throw new DOMException('Aborted', 'AbortError');
+			});
+
+			// Set up state: get to confirming with an identification result
+			conversation.resetConversation();
+			conversation.setPhase('confirming');
+			identification.setResult({
+				producer: 'Château Margaux',
+				wineName: 'Grand Vin',
+				vintage: '2018',
+				region: 'Margaux',
+				country: 'France',
+				type: 'Red',
+			});
+
+			// Dispatch learn — this goes through the middleware chain including withRetryTracking
+			const learnPromise = dispatchAction({ type: 'learn', messageId: 'msg_test' });
+			await delay(10);
+
+			// Cancel
+			await dispatchAction({ type: 'cancel_request' });
+			await learnPromise;
+
+			// The retry tracker should have recorded the 'learn' action
+			const lastAction = getLastAction();
+			expect(lastAction).not.toBeNull();
+			expect(lastAction?.type).toBe('learn');
+		});
+
+		it('should track learn action via chip_tap for retry', async () => {
+			// In the real app, chips dispatch as chip_tap which is unwrapped in the router.
+			// The unwrapped action must go through middleware so the retry tracker captures it.
+
+			vi.mocked(api.enrichWineStream).mockImplementation(async () => {
+				await delay(100);
+				throw new DOMException('Aborted', 'AbortError');
+			});
+
+			// Set up state: confirming with identification result
+			conversation.resetConversation();
+			conversation.setPhase('confirming');
+			identification.setResult({
+				producer: 'Château Margaux',
+				wineName: 'Grand Vin',
+				vintage: '2018',
+				region: 'Margaux',
+				country: 'France',
+				type: 'Red',
+			});
+
+			// Dispatch as chip_tap (how ChipsMessage.svelte dispatches)
+			const learnPromise = dispatchAction({
+				type: 'chip_tap',
+				payload: { action: 'learn', messageId: 'msg_chips_1' },
+			} as unknown as AgentAction);
+			await delay(10);
+
+			await dispatchAction({ type: 'cancel_request' });
+			await learnPromise;
+
+			// The retry tracker should have recorded the unwrapped 'learn' action
+			const lastAction = getLastAction();
+			expect(lastAction).not.toBeNull();
+			expect(lastAction?.type).toBe('learn');
 		});
 	});
 
