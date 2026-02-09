@@ -17,10 +17,13 @@
   $: text = data.text;
 
   let containerElement: HTMLElement;
+  let enrichmentCardCountOnMount = 0;
 
   // Clear isNew flag quickly so typing doesn't block subsequent messages
   // Also scroll into view - this BYPASSES scroll lock intentionally
   onMount(() => {
+    enrichmentCardCountOnMount = document.querySelectorAll('[data-enrichment-card]').length;
+
     if (message.isNew) {
       clearNewFlag(message.id);
     }
@@ -28,19 +31,25 @@
     // This ensures the loading message is visible during enrichment
     if (containerElement) {
       requestAnimationFrame(() => {
-        containerElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        if (containerElement) {
+          containerElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
       });
     }
   });
 
-  // When typing indicator is removed, scroll to enrichment card if present
-  // This compensates for content shift when the typing indicator disappears
-  // BYPASSES scroll lock intentionally
+  // When typing indicator is removed, scroll to the NEW enrichment card if one appeared.
+  // Only scrolls if enrichment card count increased since mount — prevents scrolling
+  // back to old enrichment cards when typing indicator is replaced by non-enrichment
+  // content (e.g. cache confirmation chips). BYPASSES scroll lock intentionally.
   onDestroy(() => {
     requestAnimationFrame(() => {
-      const enrichmentCard = document.querySelector('[data-enrichment-card]');
-      if (enrichmentCard) {
-        enrichmentCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const enrichmentCards = document.querySelectorAll('[data-enrichment-card]');
+      if (enrichmentCards.length > enrichmentCardCountOnMount) {
+        const enrichmentCard = enrichmentCards[enrichmentCards.length - 1];
+        if (enrichmentCard) {
+          enrichmentCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       }
     });
   });
