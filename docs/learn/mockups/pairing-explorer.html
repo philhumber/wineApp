@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Food & Wine Pairing - Qve Learn</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Outfit', system-ui, sans-serif;
+  --bg: #FAF9F7; --bg-subtle: #F5F3F0; --surface: #FFFFFF;
+  --text-primary: #2D2926; --text-secondary: #5C5652; --text-tertiary: #8A847D;
+  --accent: #A69B8A; --accent-subtle: #C4BAA9; --accent-muted: #D9D2C6;
+  --divider: #E8E4DE; --divider-subtle: #F0EDE8;
+  --success: #6B8E6B; --error: #B87A7A; --warning: #C4A35A; --info: #7A8B9B;
+  --wine-rating: #8B4A5C; --value-rating: #7A8B6B;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 24px; --space-6: 32px; --space-8: 48px;
+  --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px; --radius-pill: 100px;
+  --shadow-sm: 0 1px 2px rgba(45,41,38,0.03);
+  --shadow-md: 0 2px 8px rgba(45,41,38,0.04), 0 1px 2px rgba(45,41,38,0.03);
+  --shadow-lg: 0 8px 24px rgba(45,41,38,0.06), 0 2px 4px rgba(45,41,38,0.03);
+}
+[data-theme="dark"] {
+  --bg: #0C0B0A; --bg-subtle: #141312; --surface: #1A1918;
+  --text-primary: #F0EDE6; --text-secondary: #A8A29A; --text-tertiary: #6B665F;
+  --accent: #B8AFA0; --accent-subtle: #7A756C; --accent-muted: #4A4640;
+  --divider: #2A2826; --divider-subtle: #1F1E1C;
+  --success: #8BA88B; --error: #C99999; --warning: #D4B86A; --info: #9AABB8;
+  --wine-rating: #A06B7D; --value-rating: #8BA88B;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.15);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.15);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.15);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); background: var(--bg); color: var(--text-primary); line-height: 1.5; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.app-frame { max-width: 430px; margin: 0 auto; min-height: 100vh; background: var(--bg); }
+@media (min-width: 768px) { .app-frame { max-width: 680px; } }
+
+.header { position: sticky; top: 0; z-index: 100; background: var(--surface); border-bottom: 1px solid var(--divider); }
+.header-top { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.back-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-radius: var(--radius-md); font-size: 1.2rem; text-decoration: none; }
+.back-btn:hover { background: var(--bg-subtle); }
+.breadcrumbs { display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-4) var(--space-3); font-size: 0.75rem; color: var(--text-tertiary); }
+.breadcrumbs a { color: var(--text-tertiary); text-decoration: none; }
+.breadcrumbs a:hover { color: var(--accent); }
+
+/* Search */
+.search-section {
+  padding: var(--space-4);
+  animation: fadeInUp 0.7s cubic-bezier(0.33,1,0.68,1) both;
+}
+.search-prompt {
+  font-family: var(--font-serif); font-size: 1.5rem; font-weight: 500;
+  line-height: 1.3; margin-bottom: var(--space-3);
+}
+.search-prompt span { color: var(--accent); }
+.search-input-wrap { position: relative; }
+.search-input {
+  width: 100%; padding: var(--space-3) var(--space-4) var(--space-3) 40px;
+  border: 1px solid var(--divider); border-radius: var(--radius-pill);
+  background: var(--surface); font-family: var(--font-sans);
+  font-size: 0.9375rem; color: var(--text-primary); outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.search-input::placeholder { color: var(--text-tertiary); }
+.search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(166,155,138,0.12); }
+.search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary); font-size: 0.9rem; }
+
+/* Category Browse */
+.section-label {
+  font-family: var(--font-sans); font-weight: 600; font-size: 0.625rem;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary);
+  padding: var(--space-5) var(--space-4) var(--space-3);
+}
+.food-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3);
+  padding: 0 var(--space-4);
+}
+@media (min-width: 500px) { .food-grid { grid-template-columns: repeat(4, 1fr); } }
+.food-card {
+  background: var(--surface); border: 1px solid var(--divider); border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-2); text-align: center;
+  cursor: pointer; transition: all 0.2s;
+  animation: fadeInUp 0.7s cubic-bezier(0.33,1,0.68,1) both;
+}
+.food-card:nth-child(1) { animation-delay: 0.03s; }
+.food-card:nth-child(2) { animation-delay: 0.06s; }
+.food-card:nth-child(3) { animation-delay: 0.09s; }
+.food-card:nth-child(4) { animation-delay: 0.12s; }
+.food-card:nth-child(5) { animation-delay: 0.15s; }
+.food-card:nth-child(6) { animation-delay: 0.18s; }
+.food-card:hover { border-color: var(--accent-subtle); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.food-card.active { border-color: var(--accent); background: var(--bg-subtle); }
+.food-icon { font-size: 1.75rem; margin-bottom: var(--space-2); display: block; }
+.food-name { font-size: 0.8125rem; color: var(--text-primary); }
+.food-count { font-size: 0.6875rem; color: var(--text-tertiary); margin-top: 2px; }
+
+/* Pairing Result */
+.result-section {
+  margin: var(--space-4); padding: 0;
+  animation: fadeInUp 0.7s cubic-bezier(0.33,1,0.68,1) 0.1s both;
+}
+.result-card {
+  background: var(--surface); border: 1px solid var(--divider); border-radius: var(--radius-lg);
+  overflow: hidden; margin-bottom: var(--space-3);
+}
+.result-header {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--divider-subtle);
+}
+.result-title {
+  font-family: var(--font-serif); font-size: 1.25rem; font-weight: 500;
+}
+.result-subtitle { font-size: 0.8125rem; color: var(--text-secondary); margin-top: var(--space-1); }
+.result-body { padding: var(--space-4); }
+.result-wines { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-3); }
+.result-wine {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3); background: var(--bg-subtle); border-radius: var(--radius-md);
+}
+.result-wine-icon { font-size: 1.25rem; }
+.result-wine-info { flex: 1; }
+.result-wine-type { font-size: 0.875rem; font-weight: 400; }
+.result-wine-grapes { font-size: 0.6875rem; color: var(--text-tertiary); }
+.result-reasoning {
+  font-family: var(--font-serif); font-style: italic;
+  font-size: 0.9375rem; color: var(--text-secondary); line-height: 1.5;
+  padding: var(--space-3); background: var(--bg-subtle); border-radius: var(--radius-md);
+  border-left: 3px solid var(--accent);
+}
+
+/* Intensity Match */
+.intensity-section {
+  margin: var(--space-4); background: var(--surface);
+  border: 1px solid var(--divider); border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  animation: fadeInUp 0.7s cubic-bezier(0.33,1,0.68,1) 0.15s both;
+}
+.intensity-title {
+  font-family: var(--font-sans); font-weight: 600; font-size: 0.625rem;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary);
+  margin-bottom: var(--space-3);
+}
+.intensity-bar-wrap { position: relative; margin-bottom: var(--space-3); }
+.intensity-bar {
+  height: 12px; background: var(--bg-subtle); border-radius: 6px; overflow: hidden;
+  position: relative;
+}
+.intensity-fill {
+  position: absolute; height: 100%; border-radius: 6px;
+  transition: all 0.6s cubic-bezier(0.33,1,0.68,1);
+}
+.intensity-fill.food { background: var(--warning); opacity: 0.6; left: 0; }
+.intensity-fill.wine { background: var(--wine-rating); opacity: 0.6; left: 0; }
+.intensity-labels {
+  display: flex; justify-content: space-between; margin-top: var(--space-2);
+}
+.intensity-label { font-size: 0.6875rem; color: var(--text-tertiary); }
+.intensity-match-badge {
+  text-align: center; margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: rgba(107,142,107,0.08); border-radius: var(--radius-pill);
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: 0.8125rem; color: var(--success);
+}
+
+/* From Your Cellar */
+.cellar-section {
+  margin: var(--space-4); background: var(--surface);
+  border: 1px solid var(--divider); border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  animation: fadeInUp 0.7s cubic-bezier(0.33,1,0.68,1) 0.2s both;
+}
+.cellar-title {
+  font-family: var(--font-sans); font-weight: 600; font-size: 0.625rem;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary);
+  margin-bottom: var(--space-3);
+}
+.cellar-wine {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3); background: var(--bg-subtle); border-radius: var(--radius-md);
+  margin-bottom: var(--space-2);
+}
+.cellar-wine:last-child { margin-bottom: 0; }
+.cellar-wine-thumb {
+  width: 40px; height: 52px; border-radius: var(--radius-sm);
+  background: var(--divider); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 1.25rem;
+}
+.cellar-wine-info { flex: 1; min-width: 0; }
+.cellar-wine-name { font-family: var(--font-serif); font-size: 0.9375rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cellar-wine-detail { font-size: 0.6875rem; color: var(--text-tertiary); }
+.cellar-wine-match {
+  font-size: 0.6875rem; color: var(--success);
+  padding: var(--space-1) var(--space-2);
+  background: rgba(107,142,107,0.08);
+  border-radius: var(--radius-pill);
+  flex-shrink: 0;
+}
+
+/* Unexpected Pairings */
+.unexpected-section {
+  margin: var(--space-4); background: var(--surface);
+  border: 1px solid var(--divider); border-radius: var(--radius-lg);
+  overflow: hidden;
+  animation: fadeInUp 0.7s cubic-bezier(0.33,1,0.68,1) 0.25s both;
+}
+.unexpected-header {
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-subtle); border-bottom: 1px solid var(--divider-subtle);
+  display: flex; align-items: center; gap: var(--space-2);
+}
+.unexpected-badge {
+  font-family: var(--font-sans); font-weight: 600; font-size: 0.625rem;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--warning);
+}
+.unexpected-body { padding: var(--space-4); }
+.unexpected-item {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3); background: var(--bg-subtle); border-radius: var(--radius-md);
+  margin-bottom: var(--space-2); cursor: pointer; transition: all 0.2s;
+  border: 1px solid transparent;
+}
+.unexpected-item:last-child { margin-bottom: 0; }
+.unexpected-item:hover { border-color: var(--accent-subtle); }
+.unexpected-emoji { font-size: 1.25rem; }
+.unexpected-text { flex: 1; }
+.unexpected-pairing { font-size: 0.875rem; }
+.unexpected-why { font-size: 0.6875rem; color: var(--text-tertiary); }
+.unexpected-arrow { color: var(--text-tertiary); }
+
+.theme-toggle { position: fixed; top: var(--space-4); right: var(--space-4); z-index: 200; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--divider); background: var(--surface); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.1rem; box-shadow: var(--shadow-md); }
+@media (max-width: 460px) { .theme-toggle { top: auto; bottom: 20px; right: var(--space-4); } }
+.footer-spacer { height: var(--space-8); }
+</style>
+</head>
+<body>
+<button class="theme-toggle" onclick="toggleTheme()"><span id="theme-icon">&#9789;</span></button>
+<div class="app-frame">
+  <header class="header">
+    <div class="header-top">
+      <a class="back-btn" href="learn-hub.html">&#8249;</a>
+      <span style="font-family:var(--font-serif);font-size:1.125rem;font-weight:500">Pairings</span>
+    </div>
+    <div class="breadcrumbs">
+      <a href="learn-hub.html">Learn</a><span style="margin:0 4px">&#8250;</span>
+      <span style="color:var(--text-primary)">Pairings</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Search Prompt -->
+    <div class="search-section">
+      <div class="search-prompt">What should I open <span>with...</span></div>
+      <div class="search-input-wrap">
+        <span class="search-icon">&#128269;</span>
+        <input class="search-input" type="text" placeholder="grilled salmon, roast chicken, cheese..." value="grilled lamb">
+      </div>
+    </div>
+
+    <!-- Food Categories -->
+    <p class="section-label">Browse by Category</p>
+    <div class="food-grid">
+      <div class="food-card">
+        <span class="food-icon">&#129472;</span>
+        <div class="food-name">Seafood</div>
+        <div class="food-count">12 rules</div>
+      </div>
+      <div class="food-card active">
+        <span class="food-icon">&#129385;</span>
+        <div class="food-name">Red Meat</div>
+        <div class="food-count">10 rules</div>
+      </div>
+      <div class="food-card">
+        <span class="food-icon">&#129346;</span>
+        <div class="food-name">Poultry</div>
+        <div class="food-count">8 rules</div>
+      </div>
+      <div class="food-card">
+        <span class="food-icon">&#129472;</span>
+        <div class="food-name">Cheese</div>
+        <div class="food-count">9 rules</div>
+      </div>
+      <div class="food-card">
+        <span class="food-icon">&#129367;</span>
+        <div class="food-name">Pasta</div>
+        <div class="food-count">6 rules</div>
+      </div>
+      <div class="food-card">
+        <span class="food-icon">&#127843;</span>
+        <div class="food-name">Vegetables</div>
+        <div class="food-count">5 rules</div>
+      </div>
+      <div class="food-card">
+        <span class="food-icon">&#127846;</span>
+        <div class="food-name">Dessert</div>
+        <div class="food-count">4 rules</div>
+      </div>
+      <div class="food-card">
+        <span class="food-icon">&#127798;</span>
+        <div class="food-name">Spicy</div>
+        <div class="food-count">4 rules</div>
+      </div>
+    </div>
+
+    <!-- Pairing Result: Grilled Lamb -->
+    <div class="result-section">
+      <div class="result-card">
+        <div class="result-header">
+          <div class="result-title">Grilled Lamb</div>
+          <div class="result-subtitle">Rich, herby, with a charred exterior</div>
+        </div>
+        <div class="result-body">
+          <div class="result-wines">
+            <div class="result-wine">
+              <div class="result-wine-icon">&#127863;</div>
+              <div class="result-wine-info">
+                <div class="result-wine-type">Syrah / Shiraz</div>
+                <div class="result-wine-grapes">Northern Rhone, Barossa Valley</div>
+              </div>
+            </div>
+            <div class="result-wine">
+              <div class="result-wine-icon">&#127863;</div>
+              <div class="result-wine-info">
+                <div class="result-wine-type">Cabernet Sauvignon</div>
+                <div class="result-wine-grapes">Bordeaux, Napa Valley, Coonawarra</div>
+              </div>
+            </div>
+            <div class="result-wine">
+              <div class="result-wine-icon">&#127863;</div>
+              <div class="result-wine-info">
+                <div class="result-wine-type">Tempranillo (Rioja Reserva)</div>
+                <div class="result-wine-grapes">Rioja, Ribera del Duero</div>
+              </div>
+            </div>
+          </div>
+          <div class="result-reasoning">Lamb's richness and herby char need a wine with enough body and tannin to stand up to it, but also some aromatic complexity. Peppery Syrah is the classic match -- the wine's black pepper and dark fruit echo the herbs and charred meat.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Intensity Match -->
+    <div class="intensity-section">
+      <div class="intensity-title">Intensity Match</div>
+      <div class="intensity-bar-wrap">
+        <div style="font-size:0.6875rem;color:var(--text-secondary);margin-bottom:var(--space-1)">Grilled Lamb</div>
+        <div class="intensity-bar">
+          <div class="intensity-fill food" style="width:75%"></div>
+        </div>
+      </div>
+      <div class="intensity-bar-wrap">
+        <div style="font-size:0.6875rem;color:var(--text-secondary);margin-bottom:var(--space-1)">Northern Rhone Syrah</div>
+        <div class="intensity-bar">
+          <div class="intensity-fill wine" style="width:78%"></div>
+        </div>
+      </div>
+      <div class="intensity-labels">
+        <span class="intensity-label">Delicate</span>
+        <span class="intensity-label">Medium</span>
+        <span class="intensity-label">Powerful</span>
+      </div>
+      <div style="text-align:center;margin-top:var(--space-3)">
+        <span class="intensity-match-badge">&#9989; Excellent match -- weights balanced</span>
+      </div>
+    </div>
+
+    <!-- From Your Cellar -->
+    <div class="cellar-section">
+      <div class="cellar-title">From Your Cellar</div>
+      <div class="cellar-wine">
+        <div class="cellar-wine-thumb">&#127863;</div>
+        <div class="cellar-wine-info">
+          <div class="cellar-wine-name">Cote-Rotie La Landonne</div>
+          <div class="cellar-wine-detail">E. Guigal -- 2018 -- Syrah 100%</div>
+        </div>
+        <div class="cellar-wine-match">Best match</div>
+      </div>
+      <div class="cellar-wine">
+        <div class="cellar-wine-thumb">&#127863;</div>
+        <div class="cellar-wine-info">
+          <div class="cellar-wine-name">Chateau Lynch-Bages</div>
+          <div class="cellar-wine-detail">Pauillac -- 2016 -- Cab Sauv 72%</div>
+        </div>
+        <div class="cellar-wine-match">Great match</div>
+      </div>
+      <div class="cellar-wine">
+        <div class="cellar-wine-thumb">&#127863;</div>
+        <div class="cellar-wine-info">
+          <div class="cellar-wine-name">Rioja Gran Reserva</div>
+          <div class="cellar-wine-detail">Lopez de Heredia -- 2010 -- Tempranillo</div>
+        </div>
+        <div class="cellar-wine-match">Good match</div>
+      </div>
+    </div>
+
+    <!-- Unexpected Pairings -->
+    <div class="unexpected-section">
+      <div class="unexpected-header">
+        <span style="font-size:1rem">&#128161;</span>
+        <span class="unexpected-badge">Unexpected Pairings</span>
+      </div>
+      <div class="unexpected-body">
+        <div class="unexpected-item">
+          <div class="unexpected-emoji">&#127846;</div>
+          <div class="unexpected-text">
+            <div class="unexpected-pairing">Chocolate + Cabernet Franc</div>
+            <div class="unexpected-why">The wine's herbal notes create a fascinating contrast</div>
+          </div>
+          <div class="unexpected-arrow">&#8250;</div>
+        </div>
+        <div class="unexpected-item">
+          <div class="unexpected-emoji">&#127798;</div>
+          <div class="unexpected-text">
+            <div class="unexpected-pairing">Thai Green Curry + off-dry Riesling</div>
+            <div class="unexpected-why">Residual sugar tames the heat while acidity cuts the coconut</div>
+          </div>
+          <div class="unexpected-arrow">&#8250;</div>
+        </div>
+        <div class="unexpected-item">
+          <div class="unexpected-emoji">&#127829;</div>
+          <div class="unexpected-text">
+            <div class="unexpected-pairing">Pizza Margherita + Lambrusco</div>
+            <div class="unexpected-why">Italian sparkling red -- fizz, acid, and fruit for tomato and mozzarella</div>
+          </div>
+          <div class="unexpected-arrow">&#8250;</div>
+        </div>
+        <div class="unexpected-item">
+          <div class="unexpected-emoji">&#129472;</div>
+          <div class="unexpected-text">
+            <div class="unexpected-pairing">Fish & Chips + Champagne</div>
+            <div class="unexpected-why">Acid and bubbles cut through the batter; minerality loves the fish</div>
+          </div>
+          <div class="unexpected-arrow">&#8250;</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-spacer"></div>
+  </main>
+</div>
+<script>
+function toggleTheme() {
+  const html = document.documentElement; const icon = document.getElementById('theme-icon');
+  if (html.getAttribute('data-theme') === 'dark') { html.setAttribute('data-theme', 'light'); icon.innerHTML = '&#9789;'; }
+  else { html.setAttribute('data-theme', 'dark'); icon.innerHTML = '&#9788;'; }
+}
+</script>
+</body>
+</html>

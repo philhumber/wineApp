@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Wine Journey - Qve Learn</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Outfit', system-ui, sans-serif;
+  --bg: #FAF9F7; --bg-subtle: #F5F3F0; --surface: #FFFFFF;
+  --text-primary: #2D2926; --text-secondary: #5C5652; --text-tertiary: #8A847D;
+  --accent: #A69B8A; --accent-subtle: #C4BAA9; --accent-muted: #D9D2C6;
+  --divider: #E8E4DE; --divider-subtle: #F0EDE8;
+  --success: #6B8E6B; --error: #B87A7A; --warning: #C4A35A; --info: #7A8B9B;
+  --wine-rating: #8B4A5C; --value-rating: #7A8B6B;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 24px; --space-6: 32px; --space-8: 48px;
+  --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px; --radius-pill: 100px;
+  --shadow-sm: 0 1px 2px rgba(45,41,38,0.03);
+  --shadow-md: 0 2px 8px rgba(45,41,38,0.04), 0 1px 2px rgba(45,41,38,0.03);
+  --shadow-lg: 0 8px 24px rgba(45,41,38,0.06), 0 2px 4px rgba(45,41,38,0.03);
+}
+[data-theme="dark"] {
+  --bg: #0C0B0A; --bg-subtle: #141312; --surface: #1A1918;
+  --text-primary: #F0EDE6; --text-secondary: #A8A29A; --text-tertiary: #6B665F;
+  --accent: #B8AFA0; --accent-subtle: #7A756C; --accent-muted: #4A4640;
+  --divider: #2A2826; --divider-subtle: #1F1E1C;
+  --success: #8BA88B; --error: #C99999; --warning: #D4B86A; --info: #9AABB8;
+  --wine-rating: #A06B7D; --value-rating: #8BA88B;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.15);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.15);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.15);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); background: var(--bg); color: var(--text-primary); line-height: 1.5; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.app-frame { max-width: 430px; margin: 0 auto; min-height: 100vh; background: var(--bg); }
+@media (min-width: 768px) { .app-frame { max-width: 680px; } }
+.header { position: sticky; top: 0; z-index: 100; background: var(--surface); border-bottom: 1px solid var(--divider); }
+.header-top { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.back-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-radius: var(--radius-md); font-size: 1.2rem; text-decoration: none; }
+.back-btn:hover { background: var(--bg-subtle); }
+
+/* Hero */
+.hero {
+  padding: var(--space-5) var(--space-4);
+  animation: fadeInUp 0.7s cubic-bezier(0.33,1,0.68,1) both;
+}
+.hero-title { font-family: var(--font-serif); font-size: 1.75rem; font-weight: 500; line-height: 1.2; margin-bottom: var(--space-1); }
+.hero-subtitle { font-size: 0.8125rem; color: var(--text-secondary); }
+
+/* Radar Chart (CSS approximation) */
+.radar-section {
+  margin: 0 var(--space-4); background: var(--surface);
+  border: 1px solid var(--divider); border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  animation: fadeInUp 0.7s cubic-bezier(0.33,1,0.68,1) 0.05s both;
+}
+.radar-title {
+  font-family: var(--font-sans); font-weight: 600; font-size: 0.625rem;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary);
+  margin-bottom: var(--space-4); text-align: center;
+}
+.radar-chart {
+  width: 220px; height: 220px; margin: 0 auto var(--space-4);
+  position: relative;
+}
+.radar-bg {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+}
+.radar-bg svg { width: 100%; height: 100%; }
+.radar-label {
+  position: absolute; font-size: 0.6875rem; color: var(--text-secondary); text-align: center;
+}
+.radar-label.top { top: -4px; left: 50%; transform: translateX(-50%); }
+.radar-label.right { right: -16px; top: 50%; transform: translateY(-50%); }
+.radar-label.bottom { bottom: -4px; left: 50%; transform: translateX(-50%); }
+.radar-label.left { left: -16px; top: 50%; transform: translateY(-50%); }
+.radar-label.top-right { top: 12px; right: 0; }
+.radar-label.bottom-right { bottom: 12px; right: 0; }
+.radar-label.bottom-left { bottom: 12px; left: 0; }
+.radar-label.top-left { top: 12px; left: 0; }
+
+.taste-summary {
+  font-family: var(--font-serif); font-style: italic;
+  font-size: 0.9375rem; color: var(--text-secondary); text-align: center;
+  line-height: 1.5;
+}
+
+/* Section Card */
+.section-card {
+  margin: var(--space-4) var(--space-4) 0;
+  background: var(--surface); border: 1px solid var(--divider);
+  border-radius: var(--radius-lg); padding: var(--space-4);
+  animation: fadeInUp 0.7s cubic-bezier(0.33,1,0.68,1) both;
+}
+.section-card-title {
+  font-family: var(--font-sans); font-weight: 600; font-size: 0.625rem;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary);
+  margin-bottom: var(--space-3);
+}
+
+/* Country Grid (Map substitute) */
+.country-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2);
+}
+.country-tile {
+  text-align: center; padding: var(--space-3) var(--space-1);
+  background: var(--bg-subtle); border-radius: var(--radius-md);
+  cursor: pointer; transition: all 0.2s; border: 1px solid transparent;
+  position: relative;
+}
+.country-tile:hover { border-color: var(--accent-subtle); }
+.country-tile.explored { background: rgba(139,74,92,0.06); border-color: rgba(139,74,92,0.12); }
+.country-tile.unexplored { opacity: 0.45; }
+.country-flag { font-size: 1.5rem; display: block; margin-bottom: 2px; }
+.country-name { font-size: 0.625rem; color: var(--text-secondary); }
+.country-count {
+  position: absolute; top: 4px; right: 4px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--wine-rating); color: white; font-size: 0.5625rem;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Top Grapes Ranking */
+.grape-ranking { display: flex; flex-direction: column; gap: var(--space-2); }
+.grape-rank-item {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+}
+.grape-rank-num {
+  font-family: var(--font-serif); font-size: 1.25rem; font-weight: 600;
+  color: var(--accent); width: 24px; text-align: center; flex-shrink: 0;
+}
+.grape-rank-bar-wrap { flex: 1; }
+.grape-rank-name { font-size: 0.8125rem; margin-bottom: 3px; }
+.grape-rank-bar {
+  height: 6px; background: var(--bg-subtle); border-radius: 3px; overflow: hidden;
+}
+.grape-rank-fill { height: 100%; border-radius: 3px; background: var(--wine-rating); }
+.grape-rank-stat { font-size: 0.6875rem; color: var(--text-tertiary); width: 60px; text-align: right; flex-shrink: 0; }
+
+/* Unexplored Prompts */
+.prompt-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.prompt-item {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3); background: var(--bg-subtle); border-radius: var(--radius-md);
+  cursor: pointer; transition: all 0.2s; border: 1px solid transparent;
+}
+.prompt-item:hover { border-color: var(--accent-subtle); }
+.prompt-icon { font-size: 1.25rem; flex-shrink: 0; }
+.prompt-text { flex: 1; }
+.prompt-title { font-size: 0.875rem; }
+.prompt-desc { font-size: 0.6875rem; color: var(--text-tertiary); }
+.prompt-arrow { color: var(--text-tertiary); }
+
+/* Stats Summary */
+.stats-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3);
+}
+.stat-box {
+  padding: var(--space-3); background: var(--bg-subtle); border-radius: var(--radius-md);
+  text-align: center;
+}
+.stat-box-val { font-family: var(--font-serif); font-size: 1.5rem; font-weight: 500; }
+.stat-box-lbl { font-size: 0.6875rem; color: var(--text-tertiary); margin-top: 2px; }
+
+/* Adventurousness Score */
+.adventure-section {
+  margin: var(--space-4) var(--space-4) 0;
+  background: var(--surface); border: 1px solid var(--divider);
+  border-radius: var(--radius-lg); padding: var(--space-4);
+  text-align: center;
+  animation: fadeInUp 0.7s cubic-bezier(0.33,1,0.68,1) 0.3s both;
+}
+.adventure-score {
+  font-family: var(--font-serif); font-size: 3.5rem; font-weight: 500;
+  color: var(--wine-rating); line-height: 1;
+}
+.adventure-label {
+  font-family: var(--font-sans); font-weight: 600; font-size: 0.625rem;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary);
+  margin-top: var(--space-2); margin-bottom: var(--space-2);
+}
+.adventure-desc {
+  font-family: var(--font-serif); font-style: italic;
+  font-size: 0.9375rem; color: var(--text-secondary);
+}
+.adventure-meter {
+  margin: var(--space-4) auto 0; width: 80%; height: 8px;
+  background: var(--bg-subtle); border-radius: 4px; overflow: hidden;
+}
+.adventure-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent-muted), var(--wine-rating)); }
+.adventure-labels {
+  display: flex; justify-content: space-between; width: 80%; margin: var(--space-1) auto 0;
+  font-size: 0.625rem; color: var(--text-tertiary);
+}
+
+/* Timeline */
+.timeline { display: flex; flex-direction: column; gap: 0; position: relative; padding-left: 20px; }
+.timeline::before {
+  content: ''; position: absolute; left: 7px; top: 8px; bottom: 8px;
+  width: 2px; background: var(--divider);
+}
+.timeline-item { position: relative; padding-bottom: var(--space-4); }
+.timeline-item:last-child { padding-bottom: 0; }
+.timeline-dot {
+  position: absolute; left: -17px; top: 6px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--surface);
+}
+.timeline-item:first-child .timeline-dot { background: var(--wine-rating); }
+.timeline-date { font-size: 0.6875rem; color: var(--text-tertiary); }
+.timeline-event { font-size: 0.875rem; color: var(--text-primary); }
+.timeline-detail { font-size: 0.75rem; color: var(--text-secondary); }
+
+.theme-toggle { position: fixed; top: var(--space-4); right: var(--space-4); z-index: 200; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--divider); background: var(--surface); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.1rem; box-shadow: var(--shadow-md); }
+@media (max-width: 460px) { .theme-toggle { top: auto; bottom: 20px; right: var(--space-4); } }
+.footer-spacer { height: var(--space-8); }
+</style>
+</head>
+<body>
+<button class="theme-toggle" onclick="toggleTheme()"><span id="theme-icon">&#9789;</span></button>
+<div class="app-frame">
+  <header class="header">
+    <div class="header-top">
+      <a class="back-btn" href="learn-hub.html">&#8249;</a>
+      <span style="font-family:var(--font-serif);font-size:1.125rem;font-weight:500">Your Journey</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <h1 class="hero-title">Your Wine Journey</h1>
+      <div class="hero-subtitle">Based on 87 wines, 42 ratings, and 8 countries explored</div>
+    </div>
+
+    <!-- Taste Profile Radar -->
+    <div class="radar-section">
+      <div class="radar-title">Your Taste DNA</div>
+      <div class="radar-chart">
+        <div class="radar-bg">
+          <svg viewBox="0 0 220 220">
+            <!-- Background rings -->
+            <polygon points="110,30 185,75 185,145 110,190 35,145 35,75" fill="none" stroke="var(--divider)" stroke-width="1"/>
+            <polygon points="110,50 170,85 170,135 110,170 50,135 50,85" fill="none" stroke="var(--divider-subtle)" stroke-width="0.5"/>
+            <polygon points="110,70 155,95 155,125 110,150 65,125 65,95" fill="none" stroke="var(--divider-subtle)" stroke-width="0.5"/>
+            <!-- Data polygon -->
+            <polygon points="110,42 178,82 165,148 65,155 40,95 82,52"
+              fill="rgba(139,74,92,0.1)" stroke="var(--wine-rating)" stroke-width="2"/>
+            <!-- Dots -->
+            <circle cx="110" cy="42" r="4" fill="var(--wine-rating)"/>
+            <circle cx="178" cy="82" r="4" fill="var(--wine-rating)"/>
+            <circle cx="165" cy="148" r="4" fill="var(--wine-rating)"/>
+            <circle cx="65" cy="155" r="4" fill="var(--wine-rating)"/>
+            <circle cx="40" cy="95" r="4" fill="var(--wine-rating)"/>
+            <circle cx="82" cy="52" r="4" fill="var(--wine-rating)"/>
+          </svg>
+        </div>
+        <span class="radar-label top">Body</span>
+        <span class="radar-label top-right">Tannin</span>
+        <span class="radar-label bottom-right">Fruit</span>
+        <span class="radar-label bottom">Sweetness</span>
+        <span class="radar-label bottom-left">Earth</span>
+        <span class="radar-label top-left">Acidity</span>
+      </div>
+      <div class="taste-summary">You gravitate toward full-bodied, dry reds with moderate tannin and high acidity. Your palate favours complexity and earth over fruit-forward sweetness.</div>
+    </div>
+
+    <!-- Geographic Exploration -->
+    <div class="section-card" style="animation-delay:0.1s">
+      <div class="section-card-title">Your Wine Map</div>
+      <div class="country-grid">
+        <div class="country-tile explored">
+          <span class="country-count">34</span>
+          <span class="country-flag">&#127466;&#127479;</span>
+          <span class="country-name">France</span>
+        </div>
+        <div class="country-tile explored">
+          <span class="country-count">18</span>
+          <span class="country-flag">&#127470;&#127481;</span>
+          <span class="country-name">Italy</span>
+        </div>
+        <div class="country-tile explored">
+          <span class="country-count">12</span>
+          <span class="country-flag">&#127466;&#127480;</span>
+          <span class="country-name">Spain</span>
+        </div>
+        <div class="country-tile explored">
+          <span class="country-count">8</span>
+          <span class="country-flag">&#127462;&#127482;</span>
+          <span class="country-name">Australia</span>
+        </div>
+        <div class="country-tile explored">
+          <span class="country-count">5</span>
+          <span class="country-flag">&#127482;&#127480;</span>
+          <span class="country-name">USA</span>
+        </div>
+        <div class="country-tile explored">
+          <span class="country-count">4</span>
+          <span class="country-flag">&#127462;&#127479;</span>
+          <span class="country-name">Argentina</span>
+        </div>
+        <div class="country-tile explored">
+          <span class="country-count">3</span>
+          <span class="country-flag">&#127475;&#127487;</span>
+          <span class="country-name">New Zealand</span>
+        </div>
+        <div class="country-tile explored">
+          <span class="country-count">3</span>
+          <span class="country-flag">&#127477;&#127481;</span>
+          <span class="country-name">Portugal</span>
+        </div>
+        <div class="country-tile unexplored">
+          <span class="country-flag">&#127465;&#127466;</span>
+          <span class="country-name">Germany</span>
+        </div>
+        <div class="country-tile unexplored">
+          <span class="country-flag">&#127468;&#127479;</span>
+          <span class="country-name">Greece</span>
+        </div>
+        <div class="country-tile unexplored">
+          <span class="country-flag">&#127462;&#127481;</span>
+          <span class="country-name">Austria</span>
+        </div>
+        <div class="country-tile unexplored">
+          <span class="country-flag">&#127487;&#127462;</span>
+          <span class="country-name">S. Africa</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Grapes -->
+    <div class="section-card" style="animation-delay:0.15s">
+      <div class="section-card-title">Your Top Grapes</div>
+      <div class="grape-ranking">
+        <div class="grape-rank-item">
+          <div class="grape-rank-num">1</div>
+          <div class="grape-rank-bar-wrap">
+            <div class="grape-rank-name">Pinot Noir</div>
+            <div class="grape-rank-bar"><div class="grape-rank-fill" style="width:100%"></div></div>
+          </div>
+          <div class="grape-rank-stat">12 wines</div>
+        </div>
+        <div class="grape-rank-item">
+          <div class="grape-rank-num">2</div>
+          <div class="grape-rank-bar-wrap">
+            <div class="grape-rank-name">Cabernet Sauvignon</div>
+            <div class="grape-rank-bar"><div class="grape-rank-fill" style="width:83%"></div></div>
+          </div>
+          <div class="grape-rank-stat">10 wines</div>
+        </div>
+        <div class="grape-rank-item">
+          <div class="grape-rank-num">3</div>
+          <div class="grape-rank-bar-wrap">
+            <div class="grape-rank-name">Nebbiolo</div>
+            <div class="grape-rank-bar"><div class="grape-rank-fill" style="width:58%"></div></div>
+          </div>
+          <div class="grape-rank-stat">7 wines</div>
+        </div>
+        <div class="grape-rank-item">
+          <div class="grape-rank-num">4</div>
+          <div class="grape-rank-bar-wrap">
+            <div class="grape-rank-name">Syrah</div>
+            <div class="grape-rank-bar"><div class="grape-rank-fill" style="width:50%"></div></div>
+          </div>
+          <div class="grape-rank-stat">6 wines</div>
+        </div>
+        <div class="grape-rank-item">
+          <div class="grape-rank-num">5</div>
+          <div class="grape-rank-bar-wrap">
+            <div class="grape-rank-name">Chardonnay</div>
+            <div class="grape-rank-bar"><div class="grape-rank-fill" style="width:42%"></div></div>
+          </div>
+          <div class="grape-rank-stat">5 wines</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Unexplored Territory -->
+    <div class="section-card" style="animation-delay:0.2s">
+      <div class="section-card-title">Unexplored Territory</div>
+      <div class="prompt-list">
+        <div class="prompt-item">
+          <div class="prompt-icon">&#127815;</div>
+          <div class="prompt-text">
+            <div class="prompt-title">Try Grenache / Garnacha</div>
+            <div class="prompt-desc">Similar warmth to the Syrah you love, with red fruit and spice</div>
+          </div>
+          <div class="prompt-arrow">&#8250;</div>
+        </div>
+        <div class="prompt-item">
+          <div class="prompt-icon">&#127468;&#127479;</div>
+          <div class="prompt-text">
+            <div class="prompt-title">Explore Greece</div>
+            <div class="prompt-desc">Xinomavro shares Nebbiolo's structure. Assyrtiko is volcanic Chablis.</div>
+          </div>
+          <div class="prompt-arrow">&#8250;</div>
+        </div>
+        <div class="prompt-item">
+          <div class="prompt-icon">&#127815;</div>
+          <div class="prompt-text">
+            <div class="prompt-title">Discover Nerello Mascalese</div>
+            <div class="prompt-desc">Etna's answer to Pinot Noir -- elegant, volcanic, gaining cult status</div>
+          </div>
+          <div class="prompt-arrow">&#8250;</div>
+        </div>
+        <div class="prompt-item">
+          <div class="prompt-icon">&#127465;&#127466;</div>
+          <div class="prompt-text">
+            <div class="prompt-title">German Riesling</div>
+            <div class="prompt-desc">You have no white wines rated above 8. Riesling might change that.</div>
+          </div>
+          <div class="prompt-arrow">&#8250;</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="section-card" style="animation-delay:0.25s">
+      <div class="section-card-title">By the Numbers</div>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-box-val">8</div>
+          <div class="stat-box-lbl">Countries explored</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-val">14</div>
+          <div class="stat-box-lbl">Grape varieties</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-val">7.8</div>
+          <div class="stat-box-lbl">Avg rating</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-val">68%</div>
+          <div class="stat-box-lbl">Buy again rate</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-val" style="color:var(--wine-rating)">9.5</div>
+          <div class="stat-box-lbl">Highest rating</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-val">2015</div>
+          <div class="stat-box-lbl">Oldest vintage</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Adventurousness Score -->
+    <div class="adventure-section">
+      <div class="adventure-score">62</div>
+      <div class="adventure-label">Adventurousness Score</div>
+      <div class="adventure-desc">You are a Curious Explorer -- diverse for reds, but your white and sparkling game has room to grow.</div>
+      <div class="adventure-meter">
+        <div class="adventure-fill" style="width:62%"></div>
+      </div>
+      <div class="adventure-labels">
+        <span>Creature of Habit</span>
+        <span>Marco Polo</span>
+      </div>
+    </div>
+
+    <!-- Journey Timeline -->
+    <div class="section-card" style="animation-delay:0.35s">
+      <div class="section-card-title">Your Journey So Far</div>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-date">Feb 2026</div>
+          <div class="timeline-event">First Portuguese wine</div>
+          <div class="timeline-detail">Quinta do Noval Nacional -- rated 8.5</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-date">Jan 2026</div>
+          <div class="timeline-event">Hit 80 wines</div>
+          <div class="timeline-detail">Collection growing steadily</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-date">Dec 2025</div>
+          <div class="timeline-event">Highest rating ever: 9.5</div>
+          <div class="timeline-detail">Chambolle-Musigny 1er Cru, Roumier</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-date">Oct 2025</div>
+          <div class="timeline-event">Discovered Nebbiolo</div>
+          <div class="timeline-detail">Your 4th Italian grape variety</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-date">Aug 2025</div>
+          <div class="timeline-event">First wine added</div>
+          <div class="timeline-detail">The journey begins</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-spacer"></div>
+  </main>
+</div>
+<script>
+function toggleTheme() {
+  const html = document.documentElement; const icon = document.getElementById('theme-icon');
+  if (html.getAttribute('data-theme') === 'dark') { html.setAttribute('data-theme', 'light'); icon.innerHTML = '&#9789;'; }
+  else { html.setAttribute('data-theme', 'dark'); icon.innerHTML = '&#9788;'; }
+}
+</script>
+</body>
+</html>

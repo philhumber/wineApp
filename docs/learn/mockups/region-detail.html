@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Burgundy - Qve Learn</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Outfit', system-ui, sans-serif;
+  --bg: #FAF9F7; --bg-subtle: #F5F3F0; --surface: #FFFFFF;
+  --text-primary: #2D2926; --text-secondary: #5C5652; --text-tertiary: #8A847D;
+  --accent: #A69B8A; --accent-subtle: #C4BAA9; --accent-muted: #D9D2C6;
+  --divider: #E8E4DE; --divider-subtle: #F0EDE8;
+  --success: #6B8E6B; --error: #B87A7A; --warning: #C4A35A; --info: #7A8B9B;
+  --wine-rating: #8B4A5C; --value-rating: #7A8B6B;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 24px; --space-6: 32px; --space-8: 48px;
+  --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px; --radius-pill: 100px;
+  --shadow-sm: 0 1px 2px rgba(45,41,38,0.03);
+  --shadow-md: 0 2px 8px rgba(45,41,38,0.04), 0 1px 2px rgba(45,41,38,0.03);
+  --shadow-lg: 0 8px 24px rgba(45,41,38,0.06), 0 2px 4px rgba(45,41,38,0.03);
+}
+[data-theme="dark"] {
+  --bg: #0C0B0A; --bg-subtle: #141312; --surface: #1A1918;
+  --text-primary: #F0EDE6; --text-secondary: #A8A29A; --text-tertiary: #6B665F;
+  --accent: #B8AFA0; --accent-subtle: #7A756C; --accent-muted: #4A4640;
+  --divider: #2A2826; --divider-subtle: #1F1E1C;
+  --success: #8BA88B; --error: #C99999; --warning: #D4B86A; --info: #9AABB8;
+  --wine-rating: #A06B7D; --value-rating: #8BA88B;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.15);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.15);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.15);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); background: var(--bg); color: var(--text-primary); line-height: 1.5; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.app-frame { max-width: 430px; margin: 0 auto; min-height: 100vh; background: var(--bg); }
+@media (min-width: 768px) { .app-frame { max-width: 680px; } }
+
+.header { position: sticky; top: 0; z-index: 100; background: var(--surface); border-bottom: 1px solid var(--divider); }
+.header-top { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.back-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-radius: var(--radius-md); font-size: 1.2rem; text-decoration: none; }
+.back-btn:hover { background: var(--bg-subtle); color: var(--text-primary); }
+.breadcrumbs { display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-4) var(--space-3); font-size: 0.75rem; color: var(--text-tertiary); }
+.breadcrumbs a { color: var(--text-tertiary); text-decoration: none; }
+.breadcrumbs a:hover { color: var(--accent); }
+.breadcrumbs .sep { margin: 0 2px; }
+
+/* Hero */
+.hero {
+  padding: var(--space-5) var(--space-4);
+  animation: fadeInUp 0.7s cubic-bezier(0.33,1,0.68,1) both;
+}
+.hero-flag { font-size: 2rem; margin-bottom: var(--space-2); }
+.hero-title { font-family: var(--font-serif); font-size: 2rem; font-weight: 500; line-height: 1.2; margin-bottom: var(--space-1); }
+.hero-subtitle { font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: var(--space-3); }
+.hero-desc { font-family: var(--font-serif); font-style: italic; font-size: 1rem; color: var(--text-secondary); line-height: 1.6; }
+
+/* Stats Row */
+.stats-row {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2);
+  margin: 0 var(--space-4); padding: var(--space-3);
+  background: var(--surface); border: 1px solid var(--divider); border-radius: var(--radius-lg);
+  animation: fadeInUp 0.7s cubic-bezier(0.33,1,0.68,1) 0.05s both;
+}
+.stat { text-align: center; }
+.stat-val { font-family: var(--font-serif); font-size: 1.25rem; font-weight: 500; }
+.stat-lbl { font-size: 0.6875rem; color: var(--text-tertiary); }
+
+/* Section */
+.content-section {
+  margin: var(--space-4) var(--space-4) 0;
+  background: var(--surface); border: 1px solid var(--divider);
+  border-radius: var(--radius-lg); overflow: hidden;
+  animation: fadeInUp 0.7s cubic-bezier(0.33,1,0.68,1) both;
+}
+.section-header {
+  padding: var(--space-4);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.section-title {
+  font-family: var(--font-sans); font-weight: 600; font-size: 0.625rem;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary);
+}
+.section-body { padding: 0 var(--space-4) var(--space-4); }
+
+/* Terroir Grid */
+.terroir-grid { display: flex; flex-direction: column; gap: var(--space-3); }
+.terroir-item { display: flex; gap: var(--space-3); align-items: flex-start; }
+.terroir-icon {
+  width: 40px; height: 40px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-subtle); border-radius: var(--radius-md); font-size: 1.125rem;
+}
+.terroir-content { flex: 1; }
+.terroir-label { font-size: 0.6875rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; }
+.terroir-value { font-size: 0.875rem; color: var(--text-primary); }
+
+/* Classification */
+.classification-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.classification-item {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3); background: var(--bg-subtle); border-radius: var(--radius-md);
+}
+.classification-rank {
+  width: 32px; height: 32px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-serif); font-size: 1rem; font-weight: 600;
+  border-radius: 50%;
+}
+.classification-rank.gold { background: rgba(196,163,90,0.15); color: var(--warning); }
+.classification-rank.silver { background: rgba(166,155,138,0.15); color: var(--accent); }
+.classification-rank.bronze { background: rgba(139,74,92,0.1); color: var(--wine-rating); }
+.classification-rank.basic { background: var(--bg-subtle); color: var(--text-tertiary); }
+.classification-info { flex: 1; }
+.classification-name { font-size: 0.875rem; font-weight: 400; }
+.classification-desc { font-size: 0.6875rem; color: var(--text-tertiary); }
+
+/* Grape Cards */
+.grape-scroll { display: flex; gap: var(--space-3); overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: var(--space-2); scrollbar-width: none; }
+.grape-scroll::-webkit-scrollbar { display: none; }
+.grape-card {
+  flex-shrink: 0; width: 120px; padding: var(--space-3);
+  background: var(--bg-subtle); border-radius: var(--radius-md); text-align: center;
+  cursor: pointer; border: 1px solid transparent; transition: all 0.2s;
+}
+.grape-card:hover { border-color: var(--accent-subtle); }
+.grape-icon { font-size: 1.5rem; margin-bottom: var(--space-1); }
+.grape-name { font-size: 0.8125rem; }
+.grape-pct { font-size: 0.6875rem; color: var(--text-tertiary); }
+.grape-cellar { font-size: 0.6875rem; color: var(--wine-rating); margin-top: var(--space-1); }
+
+/* Collection Card */
+.collection-card {
+  margin: var(--space-4) var(--space-4) 0;
+  background: var(--surface); border: 1px solid var(--divider); border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  animation: fadeInUp 0.7s cubic-bezier(0.33,1,0.68,1) 0.2s both;
+}
+.collection-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); }
+.collection-title { font-family: var(--font-sans); font-weight: 600; font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary); }
+.collection-link { font-size: 0.75rem; color: var(--accent); text-decoration: none; cursor: pointer; }
+.collection-stats { display: flex; gap: var(--space-5); margin-bottom: var(--space-3); }
+.cs-item { }
+.cs-val { font-family: var(--font-serif); font-size: 1.25rem; font-weight: 500; }
+.cs-lbl { font-size: 0.6875rem; color: var(--text-tertiary); }
+.wine-row {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--divider-subtle);
+}
+.wine-row:first-of-type { border-top: none; }
+.wine-thumb {
+  width: 36px; height: 48px; border-radius: var(--radius-sm);
+  background: var(--bg-subtle); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 1rem;
+}
+.wine-info { flex: 1; min-width: 0; }
+.wine-name { font-family: var(--font-serif); font-size: 0.9375rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wine-producer { font-size: 0.6875rem; color: var(--text-tertiary); }
+.wine-rating { font-size: 0.75rem; color: var(--wine-rating); flex-shrink: 0; }
+
+/* Appellations */
+.appellation-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.appellation-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-3); background: var(--bg-subtle); border-radius: var(--radius-md);
+  cursor: pointer; transition: all 0.2s; border: 1px solid transparent;
+}
+.appellation-item:hover { border-color: var(--accent-subtle); }
+.appellation-name { font-size: 0.875rem; }
+.appellation-grapes { font-size: 0.6875rem; color: var(--text-tertiary); }
+.appellation-arrow { color: var(--text-tertiary); font-size: 0.875rem; }
+
+/* Related Regions */
+.related-scroll { display: flex; gap: var(--space-3); overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: var(--space-2); scrollbar-width: none; }
+.related-scroll::-webkit-scrollbar { display: none; }
+.related-card {
+  flex-shrink: 0; width: 140px; padding: var(--space-3);
+  background: var(--bg-subtle); border-radius: var(--radius-md);
+  cursor: pointer; border: 1px solid transparent; transition: all 0.2s;
+}
+.related-card:hover { border-color: var(--accent-subtle); }
+.related-flag { font-size: 1.25rem; margin-bottom: var(--space-1); }
+.related-name { font-size: 0.875rem; font-weight: 400; }
+.related-desc { font-size: 0.6875rem; color: var(--text-tertiary); margin-top: var(--space-1); }
+
+/* Theme Toggle */
+.theme-toggle { position: fixed; top: var(--space-4); right: var(--space-4); z-index: 200; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--divider); background: var(--surface); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.1rem; box-shadow: var(--shadow-md); }
+@media (max-width: 460px) { .theme-toggle { top: auto; bottom: 20px; right: var(--space-4); } }
+.footer-spacer { height: var(--space-8); }
+</style>
+</head>
+<body>
+<button class="theme-toggle" onclick="toggleTheme()"><span id="theme-icon">&#9789;</span></button>
+<div class="app-frame">
+  <header class="header">
+    <div class="header-top">
+      <a class="back-btn" href="learn-hub.html" title="Back">&#8249;</a>
+      <span style="font-family:var(--font-serif);font-size:1.125rem;font-weight:500">Region Detail</span>
+    </div>
+    <div class="breadcrumbs">
+      <a href="learn-hub.html">Learn</a><span class="sep">&#8250;</span>
+      <a href="#">Regions</a><span class="sep">&#8250;</span>
+      <span style="color:var(--text-primary)">Burgundy</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div class="hero-flag">&#127466;&#127479;</div>
+      <h1 class="hero-title">Burgundy</h1>
+      <div class="hero-subtitle">Bourgogne, France</div>
+      <p class="hero-desc">The spiritual home of Pinot Noir and Chardonnay. Burgundy is where terroir became a religion -- where two vineyards separated by a footpath can produce wines of entirely different character. The Climats of Burgundy are a UNESCO World Heritage Site.</p>
+    </div>
+
+    <!-- Key Stats -->
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-val">29,500</div>
+        <div class="stat-lbl">Hectares</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">Continental</div>
+        <div class="stat-lbl">Climate</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">#2</div>
+        <div class="stat-lbl">French Region</div>
+      </div>
+    </div>
+
+    <!-- Terroir -->
+    <div class="content-section" style="animation-delay:0.08s">
+      <div class="section-header">
+        <span class="section-title">Terroir</span>
+      </div>
+      <div class="section-body">
+        <div class="terroir-grid">
+          <div class="terroir-item">
+            <div class="terroir-icon">&#127758;</div>
+            <div class="terroir-content">
+              <div class="terroir-label">Soil</div>
+              <div class="terroir-value">Limestone and clay marl. The famous "Kimmeridgian" limestone of Chablis contains ancient oyster fossils from a prehistoric seabed.</div>
+            </div>
+          </div>
+          <div class="terroir-item">
+            <div class="terroir-icon">&#127780;</div>
+            <div class="terroir-content">
+              <div class="terroir-label">Climate</div>
+              <div class="terroir-value">Cool continental with warm summers. Frost risk in spring. The marginal climate is what gives Burgundy its ethereal delicacy.</div>
+            </div>
+          </div>
+          <div class="terroir-item">
+            <div class="terroir-icon">&#9968;</div>
+            <div class="terroir-content">
+              <div class="terroir-label">Geography</div>
+              <div class="terroir-value">East-facing slopes (cotes) that catch morning sun. Altitude: 200-400m. The gentle hillsides drain perfectly for vine health.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Classification -->
+    <div class="content-section" style="animation-delay:0.12s">
+      <div class="section-header">
+        <span class="section-title">Classification Hierarchy</span>
+      </div>
+      <div class="section-body">
+        <div class="classification-list">
+          <div class="classification-item">
+            <div class="classification-rank gold">GC</div>
+            <div class="classification-info">
+              <div class="classification-name">Grand Cru</div>
+              <div class="classification-desc">33 vineyards. The pinnacle. 1-2% of production.</div>
+            </div>
+          </div>
+          <div class="classification-item">
+            <div class="classification-rank silver">1er</div>
+            <div class="classification-info">
+              <div class="classification-name">Premier Cru</div>
+              <div class="classification-desc">635 vineyards. Named "climats." 10% of production.</div>
+            </div>
+          </div>
+          <div class="classification-item">
+            <div class="classification-rank bronze">V</div>
+            <div class="classification-info">
+              <div class="classification-name">Village</div>
+              <div class="classification-desc">44 village appellations. Named by commune (e.g., Gevrey-Chambertin).</div>
+            </div>
+          </div>
+          <div class="classification-item">
+            <div class="classification-rank basic">R</div>
+            <div class="classification-info">
+              <div class="classification-name">Regional</div>
+              <div class="classification-desc">Bourgogne AOC. The entry point -- still often excellent.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Key Grapes -->
+    <div class="content-section" style="animation-delay:0.15s">
+      <div class="section-header">
+        <span class="section-title">Key Grape Varieties</span>
+      </div>
+      <div class="section-body">
+        <div class="grape-scroll">
+          <a class="grape-card" href="grape-detail.html">
+            <div class="grape-icon">&#127815;</div>
+            <div class="grape-name">Pinot Noir</div>
+            <div class="grape-pct">~36% of vineyard</div>
+            <div class="grape-cellar">12 in your cellar</div>
+          </a>
+          <div class="grape-card">
+            <div class="grape-icon">&#127815;</div>
+            <div class="grape-name">Chardonnay</div>
+            <div class="grape-pct">~51% of vineyard</div>
+            <div class="grape-cellar">5 in your cellar</div>
+          </div>
+          <div class="grape-card">
+            <div class="grape-icon">&#127815;</div>
+            <div class="grape-name">Gamay</div>
+            <div class="grape-pct">Beaujolais</div>
+            <div class="grape-cellar">0 in your cellar</div>
+          </div>
+          <div class="grape-card">
+            <div class="grape-icon">&#127815;</div>
+            <div class="grape-name">Aligote</div>
+            <div class="grape-pct">~6% of vineyard</div>
+            <div class="grape-cellar">0 in your cellar</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Your Wines From Here -->
+    <div class="collection-card">
+      <div class="collection-header">
+        <span class="collection-title">Your Burgundy Collection</span>
+        <a class="collection-link">View in Cellar</a>
+      </div>
+      <div class="collection-stats">
+        <div class="cs-item"><div class="cs-val">17</div><div class="cs-lbl">Wines</div></div>
+        <div class="cs-item"><div class="cs-val">9</div><div class="cs-lbl">In Cellar</div></div>
+        <div class="cs-item"><div class="cs-val" style="color:var(--wine-rating)">8.4</div><div class="cs-lbl">Avg Rating</div></div>
+      </div>
+      <div class="wine-row">
+        <div class="wine-thumb">&#127863;</div>
+        <div class="wine-info">
+          <div class="wine-name">Chambolle-Musigny 1er Cru</div>
+          <div class="wine-producer">Domaine Georges Roumier</div>
+        </div>
+        <div class="wine-rating">&#9733; 9.5</div>
+      </div>
+      <div class="wine-row">
+        <div class="wine-thumb">&#127863;</div>
+        <div class="wine-info">
+          <div class="wine-name">Gevrey-Chambertin</div>
+          <div class="wine-producer">Domaine Armand Rousseau</div>
+        </div>
+        <div class="wine-rating">&#9733; 8.8</div>
+      </div>
+      <div class="wine-row">
+        <div class="wine-thumb">&#127863;</div>
+        <div class="wine-info">
+          <div class="wine-name">Chablis 1er Cru Montee de Tonnerre</div>
+          <div class="wine-producer">Domaine Raveneau</div>
+        </div>
+        <div class="wine-rating">&#9733; 8.5</div>
+      </div>
+    </div>
+
+    <!-- Notable Appellations -->
+    <div class="content-section" style="animation-delay:0.22s">
+      <div class="section-header">
+        <span class="section-title">Notable Appellations</span>
+      </div>
+      <div class="section-body">
+        <div class="appellation-list">
+          <div class="appellation-item">
+            <div>
+              <div class="appellation-name">Gevrey-Chambertin</div>
+              <div class="appellation-grapes">Pinot Noir -- 9 Grand Crus</div>
+            </div>
+            <div class="appellation-arrow">&#8250;</div>
+          </div>
+          <div class="appellation-item">
+            <div>
+              <div class="appellation-name">Vosne-Romanee</div>
+              <div class="appellation-grapes">Pinot Noir -- inc. Romanee-Conti</div>
+            </div>
+            <div class="appellation-arrow">&#8250;</div>
+          </div>
+          <div class="appellation-item">
+            <div>
+              <div class="appellation-name">Puligny-Montrachet</div>
+              <div class="appellation-grapes">Chardonnay -- 4 Grand Crus</div>
+            </div>
+            <div class="appellation-arrow">&#8250;</div>
+          </div>
+          <div class="appellation-item">
+            <div>
+              <div class="appellation-name">Chablis</div>
+              <div class="appellation-grapes">Chardonnay -- Kimmeridgian limestone</div>
+            </div>
+            <div class="appellation-arrow">&#8250;</div>
+          </div>
+          <div class="appellation-item">
+            <div>
+              <div class="appellation-name">Chambolle-Musigny</div>
+              <div class="appellation-grapes">Pinot Noir -- ethereal elegance</div>
+            </div>
+            <div class="appellation-arrow">&#8250;</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Explore Nearby -->
+    <div class="content-section" style="animation-delay:0.25s">
+      <div class="section-header">
+        <span class="section-title">Explore Nearby</span>
+      </div>
+      <div class="section-body">
+        <div class="related-scroll">
+          <div class="related-card">
+            <div class="related-flag">&#127466;&#127479;</div>
+            <div class="related-name">Beaujolais</div>
+            <div class="related-desc">Gamay country, just south</div>
+          </div>
+          <div class="related-card">
+            <div class="related-flag">&#127466;&#127479;</div>
+            <div class="related-name">Champagne</div>
+            <div class="related-desc">Same grapes, different magic</div>
+          </div>
+          <div class="related-card">
+            <div class="related-flag">&#127466;&#127479;</div>
+            <div class="related-name">Jura</div>
+            <div class="related-desc">Savagnin, Vin Jaune, wild</div>
+          </div>
+          <div class="related-card">
+            <div class="related-flag">&#127466;&#127479;</div>
+            <div class="related-name">Alsace</div>
+            <div class="related-desc">Aromatic whites, Grand Cru</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-spacer"></div>
+  </main>
+</div>
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const icon = document.getElementById('theme-icon');
+  if (html.getAttribute('data-theme') === 'dark') { html.setAttribute('data-theme', 'light'); icon.innerHTML = '&#9789;'; }
+  else { html.setAttribute('data-theme', 'dark'); icon.innerHTML = '&#9788;'; }
+}
+</script>
+</body>
+</html>

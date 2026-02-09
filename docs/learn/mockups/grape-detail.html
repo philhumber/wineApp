@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pinot Noir - Qve Learn</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Outfit', system-ui, sans-serif;
+  --bg: #FAF9F7; --bg-subtle: #F5F3F0; --surface: #FFFFFF;
+  --text-primary: #2D2926; --text-secondary: #5C5652; --text-tertiary: #8A847D;
+  --accent: #A69B8A; --accent-subtle: #C4BAA9; --accent-muted: #D9D2C6;
+  --divider: #E8E4DE; --divider-subtle: #F0EDE8;
+  --success: #6B8E6B; --error: #B87A7A; --warning: #C4A35A; --info: #7A8B9B;
+  --wine-rating: #8B4A5C; --value-rating: #7A8B6B;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 24px; --space-6: 32px; --space-8: 48px;
+  --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px; --radius-pill: 100px;
+  --shadow-sm: 0 1px 2px rgba(45,41,38,0.03);
+  --shadow-md: 0 2px 8px rgba(45,41,38,0.04), 0 1px 2px rgba(45,41,38,0.03);
+  --shadow-lg: 0 8px 24px rgba(45,41,38,0.06), 0 2px 4px rgba(45,41,38,0.03);
+}
+[data-theme="dark"] {
+  --bg: #0C0B0A; --bg-subtle: #141312; --surface: #1A1918;
+  --text-primary: #F0EDE6; --text-secondary: #A8A29A; --text-tertiary: #6B665F;
+  --accent: #B8AFA0; --accent-subtle: #7A756C; --accent-muted: #4A4640;
+  --divider: #2A2826; --divider-subtle: #1F1E1C;
+  --success: #8BA88B; --error: #C99999; --warning: #D4B86A; --info: #9AABB8;
+  --wine-rating: #A06B7D; --value-rating: #8BA88B;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.15);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.15);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.15);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-sans); background: var(--bg); color: var(--text-primary);
+  line-height: 1.5; overflow-x: hidden; -webkit-font-smoothing: antialiased;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.app-frame { max-width: 430px; margin: 0 auto; min-height: 100vh; background: var(--bg); }
+@media (min-width: 768px) { .app-frame { max-width: 680px; } }
+
+/* Header */
+.header {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--surface); border-bottom: 1px solid var(--divider);
+}
+.header-top {
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4);
+}
+.back-btn {
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  border: none; background: transparent; color: var(--text-secondary); cursor: pointer;
+  border-radius: var(--radius-md); font-size: 1.2rem; text-decoration: none;
+}
+.back-btn:hover { background: var(--bg-subtle); color: var(--text-primary); }
+
+/* Breadcrumbs */
+.breadcrumbs {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-3);
+  font-size: 0.75rem; color: var(--text-tertiary);
+}
+.breadcrumbs a { color: var(--text-tertiary); text-decoration: none; }
+.breadcrumbs a:hover { color: var(--accent); }
+.breadcrumbs .sep { margin: 0 2px; }
+
+/* Hero */
+.hero {
+  padding: var(--space-5) var(--space-4);
+  animation: fadeInUp 0.7s cubic-bezier(0.33,1,0.68,1) both;
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background: var(--bg-subtle); border-radius: var(--radius-pill);
+  font-size: 0.75rem; color: var(--wine-rating); margin-bottom: var(--space-3);
+}
+.hero-title {
+  font-family: var(--font-serif); font-size: 2rem; font-weight: 500;
+  line-height: 1.2; margin-bottom: var(--space-1);
+}
+.hero-pronunciation {
+  font-family: var(--font-sans); font-size: 0.8125rem; color: var(--text-tertiary);
+  font-style: italic; margin-bottom: var(--space-3);
+}
+.hero-desc {
+  font-family: var(--font-serif); font-style: italic;
+  font-size: 1rem; color: var(--text-secondary); line-height: 1.6;
+}
+.hero-pills {
+  display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3);
+}
+.hero-pill {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  background: var(--bg-subtle); border-radius: var(--radius-pill);
+  font-size: 0.75rem; color: var(--text-secondary);
+}
+
+/* Section */
+.content-section {
+  margin: var(--space-4) var(--space-4) 0;
+  background: var(--surface); border: 1px solid var(--divider);
+  border-radius: var(--radius-lg); overflow: hidden;
+  animation: fadeInUp 0.7s cubic-bezier(0.33,1,0.68,1) both;
+}
+.content-section:nth-child(2) { animation-delay: 0.05s; }
+.content-section:nth-child(3) { animation-delay: 0.1s; }
+.content-section:nth-child(4) { animation-delay: 0.15s; }
+.content-section:nth-child(5) { animation-delay: 0.2s; }
+.section-header {
+  padding: var(--space-4);
+  display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer;
+}
+.section-title {
+  font-family: var(--font-sans); font-weight: 600; font-size: 0.625rem;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary);
+}
+.section-toggle {
+  font-size: 0.875rem; color: var(--text-tertiary); transition: transform 0.3s;
+}
+.section-body { padding: 0 var(--space-4) var(--space-4); }
+
+/* Profile Bars */
+.profile-bars { display: flex; flex-direction: column; gap: var(--space-3); }
+.profile-row { display: flex; align-items: center; gap: var(--space-3); }
+.profile-label {
+  font-size: 0.8125rem; color: var(--text-secondary); width: 70px; text-align: right; flex-shrink: 0;
+}
+.profile-track {
+  flex: 1; height: 8px; background: var(--bg-subtle); border-radius: 4px; overflow: hidden; position: relative;
+}
+.profile-fill {
+  height: 100%; border-radius: 4px;
+  transition: width 0.8s cubic-bezier(0.33,1,0.68,1);
+}
+.profile-fill.body { background: var(--wine-rating); }
+.profile-fill.tannin { background: var(--accent); }
+.profile-fill.acidity { background: var(--warning); }
+.profile-fill.sweetness { background: var(--success); }
+.profile-value {
+  font-size: 0.75rem; color: var(--text-tertiary); width: 50px; flex-shrink: 0;
+}
+
+/* Flavor Tags */
+.flavor-group { margin-bottom: var(--space-3); }
+.flavor-group-label {
+  font-size: 0.6875rem; color: var(--text-tertiary); text-transform: uppercase;
+  letter-spacing: 0.08em; margin-bottom: var(--space-2);
+}
+.flavor-tags { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.flavor-tag {
+  display: inline-block; padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill); font-size: 0.75rem;
+  border: 1px solid var(--divider);
+}
+.flavor-tag.primary { background: rgba(139,74,92,0.08); color: var(--wine-rating); border-color: rgba(139,74,92,0.15); }
+.flavor-tag.secondary { background: var(--bg-subtle); color: var(--text-secondary); }
+
+/* Wine Cards */
+.wine-card {
+  display: flex; gap: var(--space-3); padding: var(--space-3);
+  background: var(--bg-subtle); border-radius: var(--radius-md);
+  margin-bottom: var(--space-2);
+}
+.wine-card:last-child { margin-bottom: 0; }
+.wine-thumb {
+  width: 48px; height: 64px; border-radius: var(--radius-sm);
+  background: var(--divider); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; color: var(--text-tertiary);
+}
+.wine-info { flex: 1; min-width: 0; }
+.wine-name {
+  font-family: var(--font-serif); font-size: 1rem; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.wine-producer { font-size: 0.75rem; color: var(--text-secondary); }
+.wine-meta { display: flex; gap: var(--space-3); margin-top: var(--space-1); }
+.wine-rating-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 0.75rem; color: var(--wine-rating);
+}
+.wine-year { font-size: 0.75rem; color: var(--text-tertiary); }
+
+/* Pairing Cards */
+.pairing-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-2);
+}
+.pairing-card {
+  padding: var(--space-3); background: var(--bg-subtle); border-radius: var(--radius-md);
+  text-align: center; cursor: pointer; transition: all 0.2s;
+  border: 1px solid transparent;
+}
+.pairing-card:hover { border-color: var(--accent-subtle); }
+.pairing-icon { font-size: 1.5rem; margin-bottom: var(--space-1); }
+.pairing-name { font-size: 0.8125rem; color: var(--text-primary); }
+
+/* Similar Grapes */
+.similar-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2);
+}
+.similar-card {
+  padding: var(--space-3); background: var(--bg-subtle); border-radius: var(--radius-md);
+  text-align: center; cursor: pointer; transition: all 0.2s;
+  border: 1px solid transparent;
+}
+.similar-card:hover { border-color: var(--accent-subtle); }
+.similar-icon { font-size: 1.25rem; margin-bottom: var(--space-1); }
+.similar-name { font-size: 0.8125rem; font-weight: 400; }
+.similar-body { font-size: 0.6875rem; color: var(--text-tertiary); }
+
+/* Did You Know */
+.dyk-card {
+  margin: var(--space-4) var(--space-4) 0;
+  background: var(--surface); border: 1px solid var(--divider);
+  border-radius: var(--radius-lg); padding: var(--space-4);
+  animation: fadeInUp 0.7s cubic-bezier(0.33,1,0.68,1) 0.25s both;
+}
+.dyk-badge {
+  font-family: var(--font-sans); font-weight: 600; font-size: 0.625rem;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--warning);
+  margin-bottom: var(--space-2);
+}
+.dyk-text {
+  font-family: var(--font-serif); font-style: italic;
+  font-size: 1rem; color: var(--text-secondary); line-height: 1.6;
+}
+
+/* Aging Indicator */
+.aging-section { display: flex; align-items: center; gap: var(--space-3); }
+.aging-visual {
+  display: flex; gap: 3px;
+}
+.aging-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 1px solid var(--divider);
+}
+.aging-dot.filled { background: var(--accent); border-color: var(--accent); }
+.aging-label { font-size: 0.8125rem; color: var(--text-secondary); }
+.aging-detail { font-size: 0.75rem; color: var(--text-tertiary); margin-top: var(--space-1); }
+
+/* Collection Summary */
+.collection-summary {
+  display: flex; justify-content: space-around;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--divider-subtle);
+  margin-bottom: var(--space-3);
+}
+.cs-item { text-align: center; }
+.cs-value {
+  font-family: var(--font-serif); font-size: 1.25rem; font-weight: 500;
+}
+.cs-label { font-size: 0.6875rem; color: var(--text-tertiary); }
+
+/* Theme Toggle */
+.theme-toggle {
+  position: fixed; top: var(--space-4); right: var(--space-4); z-index: 200;
+  width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--divider);
+  background: var(--surface); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 1.1rem; box-shadow: var(--shadow-md);
+}
+@media (max-width: 460px) { .theme-toggle { top: auto; bottom: 20px; right: var(--space-4); } }
+.footer-spacer { height: var(--space-8); }
+</style>
+</head>
+<body>
+<button class="theme-toggle" onclick="toggleTheme()"><span id="theme-icon">&#9789;</span></button>
+
+<div class="app-frame">
+  <header class="header">
+    <div class="header-top">
+      <a class="back-btn" href="learn-hub.html" title="Back">&#8249;</a>
+      <span style="font-family:var(--font-serif);font-size:1.125rem;font-weight:500">Grape Detail</span>
+    </div>
+    <div class="breadcrumbs">
+      <a href="learn-hub.html">Learn</a>
+      <span class="sep">&#8250;</span>
+      <a href="#">Grapes</a>
+      <span class="sep">&#8250;</span>
+      <span style="color:var(--text-primary)">Pinot Noir</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-badge">&#127815; Red Grape</div>
+      <h1 class="hero-title">Pinot Noir</h1>
+      <div class="hero-pronunciation">PEE-noh NWAR</div>
+      <p class="hero-desc">The heartbreak grape. Impossibly thin-skinned, maddeningly temperamental, and capable of producing the most profound wines on Earth. When Pinot Noir is good, nothing else comes close.</p>
+      <div class="hero-pills">
+        <span class="hero-pill">&#127466;&#127479; Origin: Burgundy, France</span>
+        <span class="hero-pill">&#127758; 115,000 hectares globally</span>
+      </div>
+    </div>
+
+    <!-- Flavor Profile -->
+    <div class="content-section">
+      <div class="section-header">
+        <span class="section-title">Flavor Profile</span>
+        <span class="section-toggle">&#8964;</span>
+      </div>
+      <div class="section-body">
+        <div class="profile-bars">
+          <div class="profile-row">
+            <div class="profile-label">Body</div>
+            <div class="profile-track"><div class="profile-fill body" style="width:40%"></div></div>
+            <div class="profile-value">Light-Med</div>
+          </div>
+          <div class="profile-row">
+            <div class="profile-label">Tannin</div>
+            <div class="profile-track"><div class="profile-fill tannin" style="width:35%"></div></div>
+            <div class="profile-value">Low-Med</div>
+          </div>
+          <div class="profile-row">
+            <div class="profile-label">Acidity</div>
+            <div class="profile-track"><div class="profile-fill acidity" style="width:75%"></div></div>
+            <div class="profile-value">High</div>
+          </div>
+          <div class="profile-row">
+            <div class="profile-label">Sweetness</div>
+            <div class="profile-track"><div class="profile-fill sweetness" style="width:5%"></div></div>
+            <div class="profile-value">Dry</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flavors -->
+    <div class="content-section" style="animation-delay:0.08s">
+      <div class="section-header">
+        <span class="section-title">Tasting Notes</span>
+        <span class="section-toggle">&#8964;</span>
+      </div>
+      <div class="section-body">
+        <div class="flavor-group">
+          <div class="flavor-group-label">Primary</div>
+          <div class="flavor-tags">
+            <span class="flavor-tag primary">cherry</span>
+            <span class="flavor-tag primary">raspberry</span>
+            <span class="flavor-tag primary">strawberry</span>
+            <span class="flavor-tag primary">red plum</span>
+            <span class="flavor-tag primary">mushroom</span>
+          </div>
+        </div>
+        <div class="flavor-group">
+          <div class="flavor-group-label">Secondary (with age)</div>
+          <div class="flavor-tags">
+            <span class="flavor-tag secondary">truffle</span>
+            <span class="flavor-tag secondary">earth</span>
+            <span class="flavor-tag secondary">leather</span>
+            <span class="flavor-tag secondary">forest floor</span>
+            <span class="flavor-tag secondary">rose</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Your Pinot Noir Wines -->
+    <div class="content-section" style="animation-delay:0.12s">
+      <div class="section-header">
+        <span class="section-title">Your Pinot Noir Wines</span>
+        <span style="font-size:0.75rem;color:var(--accent);cursor:pointer">View in Cellar</span>
+      </div>
+      <div class="section-body">
+        <div class="collection-summary">
+          <div class="cs-item">
+            <div class="cs-value">12</div>
+            <div class="cs-label">Wines</div>
+          </div>
+          <div class="cs-item">
+            <div class="cs-value" style="color:var(--wine-rating)">8.2</div>
+            <div class="cs-label">Avg Rating</div>
+          </div>
+          <div class="cs-item">
+            <div class="cs-value">73%</div>
+            <div class="cs-label">Buy Again</div>
+          </div>
+        </div>
+        <div class="wine-card">
+          <div class="wine-thumb">&#127863;</div>
+          <div class="wine-info">
+            <div class="wine-name">Chambolle-Musigny 1er Cru</div>
+            <div class="wine-producer">Domaine Georges Roumier</div>
+            <div class="wine-meta">
+              <span class="wine-rating-badge">&#9733; 9.5</span>
+              <span class="wine-year">2019</span>
+            </div>
+          </div>
+        </div>
+        <div class="wine-card">
+          <div class="wine-thumb">&#127863;</div>
+          <div class="wine-info">
+            <div class="wine-name">Gevrey-Chambertin</div>
+            <div class="wine-producer">Domaine Armand Rousseau</div>
+            <div class="wine-meta">
+              <span class="wine-rating-badge">&#9733; 8.8</span>
+              <span class="wine-year">2018</span>
+            </div>
+          </div>
+        </div>
+        <div class="wine-card">
+          <div class="wine-thumb">&#127863;</div>
+          <div class="wine-info">
+            <div class="wine-name">Willamette Valley Pinot Noir</div>
+            <div class="wine-producer">Domaine Drouhin Oregon</div>
+            <div class="wine-meta">
+              <span class="wine-rating-badge">&#9733; 8.0</span>
+              <span class="wine-year">2020</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Food Pairings -->
+    <div class="content-section" style="animation-delay:0.16s">
+      <div class="section-header">
+        <span class="section-title">Classic Pairings</span>
+        <span class="section-toggle">&#8964;</span>
+      </div>
+      <div class="section-body">
+        <div class="pairing-grid">
+          <div class="pairing-card">
+            <div class="pairing-icon">&#129346;</div>
+            <div class="pairing-name">Duck</div>
+          </div>
+          <div class="pairing-card">
+            <div class="pairing-icon">&#129472;</div>
+            <div class="pairing-name">Salmon</div>
+          </div>
+          <div class="pairing-card">
+            <div class="pairing-icon">&#127812;</div>
+            <div class="pairing-name">Mushroom risotto</div>
+          </div>
+          <div class="pairing-card">
+            <div class="pairing-icon">&#129472;</div>
+            <div class="pairing-name">Grilled chicken</div>
+          </div>
+          <div class="pairing-card">
+            <div class="pairing-icon">&#129472;</div>
+            <div class="pairing-name">Pork tenderloin</div>
+          </div>
+          <div class="pairing-card">
+            <div class="pairing-icon">&#129472;</div>
+            <div class="pairing-name">Soft cheese</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aging Potential -->
+    <div class="content-section" style="animation-delay:0.18s">
+      <div class="section-header">
+        <span class="section-title">Aging Potential</span>
+      </div>
+      <div class="section-body">
+        <div class="aging-section">
+          <div class="aging-visual">
+            <div class="aging-dot filled"></div>
+            <div class="aging-dot filled"></div>
+            <div class="aging-dot filled"></div>
+            <div class="aging-dot filled"></div>
+            <div class="aging-dot"></div>
+          </div>
+          <div class="aging-label">Medium-Long</div>
+        </div>
+        <div class="aging-detail">Village-level: 3-8 years. Premier Cru: 8-20 years. Grand Cru: 15-50+ years. Oregon/NZ: 5-12 years.</div>
+      </div>
+    </div>
+
+    <!-- Similar Grapes -->
+    <div class="content-section" style="animation-delay:0.2s">
+      <div class="section-header">
+        <span class="section-title">Similar Grapes to Explore</span>
+      </div>
+      <div class="section-body">
+        <div class="similar-grid">
+          <div class="similar-card">
+            <div class="similar-icon">&#127815;</div>
+            <div class="similar-name">Gamay</div>
+            <div class="similar-body">Light body, high acid</div>
+          </div>
+          <div class="similar-card">
+            <div class="similar-icon">&#127815;</div>
+            <div class="similar-name">Nebbiolo</div>
+            <div class="similar-body">Pale color, high tannin</div>
+          </div>
+          <div class="similar-card">
+            <div class="similar-icon">&#127815;</div>
+            <div class="similar-name">Nerello Mascalese</div>
+            <div class="similar-body">Volcanic elegance</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Did You Know -->
+    <div class="dyk-card">
+      <div class="dyk-badge">Did You Know?</div>
+      <div class="dyk-text">Pinot Noir is called "the heartbreak grape" because it is so difficult to grow. It has over 1,000 known clones -- more than any other grape variety. A mutation of Pinot Noir gave us Pinot Gris (grey skin) and Pinot Blanc (white skin).</div>
+    </div>
+
+    <div class="footer-spacer"></div>
+  </main>
+</div>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const icon = document.getElementById('theme-icon');
+  if (html.getAttribute('data-theme') === 'dark') {
+    html.setAttribute('data-theme', 'light'); icon.innerHTML = '&#9789;';
+  } else {
+    html.setAttribute('data-theme', 'dark'); icon.innerHTML = '&#9788;';
+  }
+}
+</script>
+</body>
+</html>
