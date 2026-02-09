@@ -25,7 +25,7 @@ try {
       -- Add events: every bottle that was ever added to the cellar
       -- (regardless of current deleted/drunk status — those are tracked as separate events)
       SELECT
-        b.dateAdded AS event_date,
+        COALESCE(b.purchaseDate, b.dateAdded) AS event_date,
         CASE WHEN b.price IS NOT NULL AND b.price > 0
           THEN b.price / COALESCE(NULLIF(c.rateToEUR, 0), 1)
           ELSE 0
