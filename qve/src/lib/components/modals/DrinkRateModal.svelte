@@ -321,7 +321,7 @@
           />
         </div>
         <div class="form-group">
-          <label class="form-label">Buy Again?</label>
+          <span class="form-label">Buy Again?</span>
           <ToggleSwitch
             checked={state.buyAgain}
             label={state.buyAgain ? 'Yes' : 'No'}

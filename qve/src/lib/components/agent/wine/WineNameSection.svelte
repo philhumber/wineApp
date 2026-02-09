@@ -11,8 +11,9 @@
 	export let fieldsMap: Map<string, StreamingField> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
-	export let isFieldTyping: (field: string) => boolean;
+	export let isFieldTyping: (field: string) => boolean; // Passed by DataCard slot - used in sibling sections
 	export let handleFieldComplete: (field: string) => void;
+	void isFieldTyping;
 
 	// For streaming mode, directly access fieldsMap to ensure proper Svelte reactivity
 	// (Calling functions in reactive statements doesn't track Map changes)

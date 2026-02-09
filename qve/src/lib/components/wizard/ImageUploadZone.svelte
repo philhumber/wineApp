@@ -97,10 +97,10 @@
 </script>
 
 <div class="form-group">
-	<label class="form-label">
+	<span class="form-label">
 		{label}
 		{#if required}<span class="required">*</span>{/if}
-	</label>
+	</span>
 
 	<div
 		class="upload-zone"

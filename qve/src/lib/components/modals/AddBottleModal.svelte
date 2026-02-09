@@ -505,8 +505,7 @@
     background-color: #FFFFFF;
   }
 
-  .form-select.has-error,
-  .form-input.has-error {
+  .form-select.has-error {
     border-color: var(--error, #b87a7a);
   }
 

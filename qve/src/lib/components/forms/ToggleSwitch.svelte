@@ -48,7 +48,7 @@
     on:click={toggle}
     on:keydown={handleKeyDown}
   >
-    <span class="toggle-knob" />
+    <span class="toggle-knob"></span>
   </button>
   {#if label}
     <label for={id} class="toggle-label">{label}</label>

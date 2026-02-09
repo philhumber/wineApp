@@ -84,7 +84,7 @@
   }
 
   .message-wrapper.streaming {
-    /* Streaming messages might have special styling */
+    opacity: 1; /* Streaming messages - reserved for animation */
   }
 
   @keyframes messageHighlight {

@@ -84,7 +84,7 @@
   $: hasPriceData = wine.standardPrice || wine.magnumPrice || wine.demiPrice || wine.smallPrice;
 </script>
 
-<article
+<div
   class="wine-card"
   class:expanded
   class:compact
@@ -249,7 +249,7 @@
       </div>
     </div>
   {/if}
-</article>
+</div>
 
 <style>
   /* ─────────────────────────────────────────────────────────

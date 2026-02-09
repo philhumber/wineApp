@@ -119,7 +119,7 @@
     : wine.overallRating ?? wine.valueRating ?? null;
 </script>
 
-<article
+<div
   class="history-card"
   class:expanded
   class:compact
@@ -276,7 +276,7 @@
       </div>
     </div>
   {/if}
-</article>
+</div>
 
 <style>
   /* ─────────────────────────────────────────────────────────

@@ -41,7 +41,7 @@ describe('ChipsMessage', () => {
 
 		// Mock scrollIntoView
 		scrollIntoViewMock = vi.fn();
-		Element.prototype.scrollIntoView = scrollIntoViewMock;
+		Element.prototype.scrollIntoView = scrollIntoViewMock as unknown as typeof Element.prototype.scrollIntoView;
 	});
 
 	afterEach(() => {

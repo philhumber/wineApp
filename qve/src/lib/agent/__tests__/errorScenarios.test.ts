@@ -309,8 +309,8 @@ describe('Error Scenarios', () => {
 			// Start over
 			await handleAgentAction({ type: 'start_over' });
 
-			// Should reset state - start_over calls startSession() which sets greeting phase
-			expect(get(conversation.agentPhase)).toBe('greeting');
+			// Should reset state - start_over calls resetConversation() which sets awaiting_input phase
+			expect(get(conversation.agentPhase)).toBe('awaiting_input');
 			expect(get(identification.hasResult)).toBe(false);
 		});
 
