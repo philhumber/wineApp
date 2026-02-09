@@ -61,6 +61,8 @@ export {
   DeleteConfirmModal,
   DuplicateWarningModal,
   SettingsModal,
-  AddBottleModal
+  AddBottleModal,
+  CellarValueModal,
+  CellarValueChart
 } from './modals';
 

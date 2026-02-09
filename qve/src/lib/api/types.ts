@@ -427,6 +427,16 @@ export interface CellarValue {
   hasIncompleteData: boolean;
 }
 
+/** Historical data point for cellar value graph (WIN-127 Phase 2) */
+export interface CellarValueHistoryPoint {
+  /** ISO date string, e.g. "2024-01-15" */
+  date: string;
+  /** Cumulative cellar value in EUR at this date */
+  totalValueEUR: number;
+  /** Total bottles in cellar at this date */
+  bottleCount: number;
+}
+
 // DUPLICATE CHECK TYPES
 // ─────────────────────────────────────────────────────────
 

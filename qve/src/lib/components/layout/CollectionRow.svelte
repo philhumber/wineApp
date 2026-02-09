@@ -4,7 +4,7 @@
    * Displays page title, view toggle (optional), and stats
    * Used in the header between the top row and filter bar
    */
-  import { viewMode } from '$lib/stores';
+  import { viewMode, modal } from '$lib/stores';
 
   export let title: string = 'Our Wines';
   export let showViewToggle: boolean = true;
@@ -54,12 +54,17 @@
       <span><strong>{wineCount}</strong> wines</span>
       {#if totalValue}
         <span class="stat-sep">&middot;</span>
-        <span>
+        <button
+          type="button"
+          class="stat-value-btn"
+          on:click={() => modal.openCellarValue()}
+          aria-label="View cellar value history"
+        >
           <strong>{totalValue}</strong>
           {#if unpricedCount > 0}
             <span class="stat-note">*{unpricedCount} unpriced</span>
           {/if}
-        </span>
+        </button>
       {/if}
     {/if}
   </div>
@@ -146,6 +151,38 @@
     font-size: 0.6875rem;
     color: var(--accent);
     margin-left: var(--space-1);
+  }
+
+  .stat-value-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    transition: color 0.2s var(--ease-out);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .stat-value-btn:hover {
+    color: var(--accent);
+  }
+
+  .stat-value-btn:active {
+    opacity: 0.7;
+  }
+
+  .stat-value-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  .stat-value-btn strong {
+    font-weight: 600;
+    color: inherit;
   }
 
   .stat-loading {

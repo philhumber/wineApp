@@ -14,6 +14,7 @@
   import DeleteConfirmModal from './DeleteConfirmModal.svelte';
   import SettingsModal from './SettingsModal.svelte';
   import ImageLightboxModal from './ImageLightboxModal.svelte';
+  import CellarValueModal from './CellarValueModal.svelte';
   import type { Wine, DrunkWine, DeleteEntityType } from '$lib/api/types';
   import type { ConfirmModalData } from '$lib/stores';
 
@@ -122,6 +123,8 @@
     on:confirm={handleDeleteConfirm}
     on:cancel={handleDeleteCancel}
   />
+{:else if modalType === 'cellarValue'}
+  <CellarValueModal on:close={handleClose} />
 {/if}
 
 <!-- Stacked confirmation overlay for dirty checks (renders on top of main modal) -->

@@ -28,6 +28,7 @@ import type {
   UserSettings,
   UpdateSettingsPayload,
   CellarValue,
+  CellarValueHistoryPoint,
   DuplicateCheckParams,
   DuplicateCheckResult,
   AgentIdentificationResult,
@@ -740,6 +741,17 @@ class WineApiClient {
       bottlesWithoutPrice: 0,
       hasIncompleteData: false
     };
+  }
+
+  /**
+   * Get cellar value history for charting (WIN-127 Phase 2)
+   * Returns daily running totals of cellar value in EUR
+   */
+  async getCellarValueHistory(): Promise<CellarValueHistoryPoint[]> {
+    const response = await this.fetchJSON<CellarValueHistoryPoint[]>(
+      'getCellarValueHistory.php'
+    );
+    return response.data ?? [];
   }
 
   // ─────────────────────────────────────────────────────────

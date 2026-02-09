@@ -11,3 +11,5 @@ export { default as DuplicateWarningModal } from './DuplicateWarningModal.svelte
 export { default as ImageLightboxModal } from './ImageLightboxModal.svelte';
 export { default as SettingsModal } from './SettingsModal.svelte';
 export { default as AddBottleModal } from './AddBottleModal.svelte';
+export { default as CellarValueModal } from './CellarValueModal.svelte';
+export { default as CellarValueChart } from './CellarValueChart.svelte';

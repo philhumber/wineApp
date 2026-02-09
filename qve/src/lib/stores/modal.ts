@@ -20,6 +20,7 @@ export type ModalType =
   | 'settings'       // Settings modal (theme, view density)
   | 'imageLightbox'  // Fullscreen image viewer
   | 'deleteConfirm'  // Delete confirmation with cascade impact
+  | 'cellarValue'    // Cellar value history graph (WIN-127 Phase 2)
   | null;
 
 /**
@@ -358,6 +359,20 @@ function createModalStore() {
       set({
         type: 'deleteConfirm',
         data: { entityType, entityId, entityName },
+        pushedHistory: pushed,
+        beforeCloseHook: undefined
+      });
+    },
+
+    /**
+     * Open cellar value history modal (WIN-127 Phase 2)
+     * Modal self-fetches data on mount
+     */
+    openCellarValue: (): void => {
+      const pushed = pushHistoryForModal('cellarValue');
+      set({
+        type: 'cellarValue',
+        data: {},
         pushedHistory: pushed,
         beforeCloseHook: undefined
       });
