@@ -1,14 +1,10 @@
 <?php
 /**
- * Authentication Middleware (WIN-203)
+ * Authentication Middleware (WIN-203, WIN-254)
  *
  * Extensible authentication layer for all PHP endpoints.
- * Currently implements API key authentication via X-API-Key header.
- *
- * Design: This function is the single authentication entry point.
- * When multi-user support launches (WIN-254+), the mechanism inside
- * can be swapped to session-based or JWT auth without changing any
- * endpoint code — only this file needs to change.
+ * Accepts EITHER API key (X-API-Key header) OR valid session cookie (QVE_SESSION).
+ * API key is checked first (cheap — no session overhead).
  *
  * Called from securityHeaders.php AFTER CORS/OPTIONS preflight handling
  * so that preflight requests work without authentication.
@@ -25,8 +21,9 @@ if (basename($_SERVER['PHP_SELF'] ?? '') === basename(__FILE__)) {
 /**
  * Authenticate the incoming request.
  *
- * Current implementation: API key in X-API-Key header compared against
- * API_AUTH_KEY constant defined in config.local.php.
+ * 1. Check API key first (cheap — no session file I/O)
+ * 2. If no valid API key, check session cookie (QVE_SESSION)
+ * 3. session_write_close() immediately after validation to prevent lock contention
  *
  * On failure: sends 401 JSON response and exits.
  * On success: returns void, endpoint logic continues.
@@ -35,10 +32,9 @@ if (basename($_SERVER['PHP_SELF'] ?? '') === basename(__FILE__)) {
  */
 function authenticate(): void
 {
-    // Ensure config is loaded (may already be loaded by databaseConnection.php,
-    // but auth runs before DB connection in the request lifecycle)
+    // Ensure config is loaded
     $configPath = __DIR__ . '/../../../wineapp-config/config.local.php';
-    
+
     if (!defined('API_AUTH_KEY')) {
         if (!file_exists($configPath)) {
             error_log('[Auth] Config file not found: ' . $configPath);
@@ -47,23 +43,48 @@ function authenticate(): void
         require_once $configPath;
     }
 
-    // Verify the API_AUTH_KEY constant is defined and non-empty
-    if (!defined('API_AUTH_KEY') || API_AUTH_KEY === '') {
-        error_log('[Auth] API_AUTH_KEY not defined or empty in config');
-        sendAuthError();
-    }
-
-    // Read the X-API-Key header
-    // PHP normalizes headers: X-API-Key becomes HTTP_X_API_KEY
+    // 1. Check API key first (cheap — no session overhead)
     $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
-
-    if ($apiKey === '' || !hash_equals(API_AUTH_KEY, $apiKey)) {
-        // Use timing-safe comparison to prevent timing attacks
-        error_log('[Auth] Invalid API key attempt from ' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
-        sendAuthError();
+    if ($apiKey !== '' && defined('API_AUTH_KEY') && API_AUTH_KEY !== '' && hash_equals(API_AUTH_KEY, $apiKey)) {
+        return; // API key valid
     }
 
-    // Authentication passed — continue to endpoint logic
+    // 2. Check session cookie (only if cookie exists — avoids creating empty sessions)
+    if (isset($_COOKIE['QVE_SESSION'])) {
+        session_name('QVE_SESSION');
+        $isSecure = (
+            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'
+        );
+        session_set_cookie_params([
+            'lifetime' => 604800,
+            'path'     => '/',
+            'domain'   => '',
+            'secure'   => $isSecure,
+            'httponly'  => true,
+            'samesite' => 'Strict'
+        ]);
+
+        if (@session_start() === false) {
+            error_log('[Auth] session_start() failed');
+            sendAuthError('Session error');
+        }
+
+        $valid = (
+            isset($_SESSION['authenticated'])
+            && $_SESSION['authenticated'] === true
+            && isset($_SESSION['auth_time'])
+            && is_int($_SESSION['auth_time'])
+            && ($_SESSION['auth_time'] + 604800) > time()
+        );
+
+        session_write_close(); // Release lock immediately — critical for concurrent requests
+
+        if ($valid) return;
+    }
+
+    // 3. Neither method passed
+    sendAuthError();
 }
 
 /**
@@ -72,15 +93,16 @@ function authenticate(): void
  * Returns a generic message that does not reveal whether the key
  * was missing, wrong, or the config is misconfigured.
  *
+ * @param string $message Optional custom message (for internal differentiation in logs)
  * @return never
  */
-function sendAuthError(): void
+function sendAuthError(string $message = 'Authentication required'): void
 {
     http_response_code(401);
     header('Content-Type: application/json');
     echo json_encode([
         'success' => false,
-        'message' => 'Unauthorized. Please check your API key.',
+        'message' => $message,
     ], JSON_PRETTY_PRINT);
     exit;
 }

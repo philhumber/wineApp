@@ -50,12 +50,31 @@ import type {
 } from './types';
 import { AgentError } from './types';
 import { PUBLIC_API_KEY } from '$env/static/public';
+import { goto } from '$app/navigation';
+import { base } from '$app/paths';
 
 class WineApiClient {
   private baseURL: string;
 
+  // WIN-254: Prevent multiple concurrent 401 redirects
+  private static redirecting = false;
+
   constructor(baseURL = '/resources/php/') {
     this.baseURL = baseURL;
+  }
+
+  /**
+   * Handle 401 Unauthorized — redirect to login page once.
+   * Static flag prevents multiple concurrent API calls from each triggering a redirect.
+   */
+  private handle401(): never {
+    if (!WineApiClient.redirecting) {
+      WineApiClient.redirecting = true;
+      goto(`${base}/login`);
+      // Reset after a short delay to allow future redirects if needed
+      setTimeout(() => { WineApiClient.redirecting = false; }, 2000);
+    }
+    throw new Error('Session expired');
   }
 
   // ─────────────────────────────────────────────────────────
@@ -101,6 +120,11 @@ class WineApiClient {
       // Check for structured agent error (works for both HTTP errors and 200 with success:false)
       if (!json.success && json.error?.type) {
         throw AgentError.fromResponse(json as AgentErrorResponse);
+      }
+
+      // WIN-254: 401 → redirect to login
+      if (response.status === 401) {
+        this.handle401();
       }
 
       // Generic HTTP error without structured info
@@ -628,6 +652,9 @@ class WineApiClient {
       body: formData
     });
 
+    // WIN-254: 401 → redirect to login
+    if (response.status === 401) this.handle401();
+
     const text = await response.text();
 
     // Backend returns "Filename: xyz.jpg" on success
@@ -873,6 +900,8 @@ class WineApiClient {
     });
 
     if (!response.ok) {
+      // WIN-254: 401 → redirect to login
+      if (response.status === 401) this.handle401();
       // Try to parse error response
       try {
         const json = await response.json();
@@ -973,6 +1002,8 @@ class WineApiClient {
     });
 
     if (!response.ok) {
+      // WIN-254: 401 → redirect to login
+      if (response.status === 401) this.handle401();
       try {
         const json = await response.json();
         if (json.error?.type) {
@@ -1097,6 +1128,8 @@ class WineApiClient {
     });
 
     if (!response.ok) {
+      // WIN-254: 401 → redirect to login
+      if (response.status === 401) this.handle401();
       try {
         const json = await response.json();
         if (json.error?.type) {
