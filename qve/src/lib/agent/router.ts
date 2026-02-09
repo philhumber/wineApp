@@ -38,7 +38,7 @@ import {
   handleCameraAction,
   getHandlerCategory,
 } from './handlers';
-import { unlockScroll } from '$lib/stores/agent';
+import { unlockScroll } from './requestLifecycle';
 
 // ===========================================
 // Action Aliases
@@ -117,7 +117,11 @@ async function routeAction(action: AgentAction): Promise<void> {
       payload: payload.data,
     } as AgentAction;
 
-    await routeAction(unwrapped);
+    // Route through dispatchAction (not routeAction) so the unwrapped action
+    // goes through the full middleware chain — including retry tracking.
+    // Without this, chip-tapped actions bypass the retry tracker and
+    // "Try Again" can't replay them after cancellation/error.
+    await dispatchAction(unwrapped);
     return;
   }
 

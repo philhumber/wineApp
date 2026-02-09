@@ -2,7 +2,8 @@
   import { onMount, onDestroy } from 'svelte';
   import { beforeNavigate, afterNavigate } from '$app/navigation';
   import { get } from 'svelte/store';
-  import { theme, menuOpen, closeMenu, saveScrollPosition, getScrollPosition, modal, isModalOpen, viewMode, collectionName, agentPanelOpen } from '$stores';
+  import { theme, menuOpen, closeMenu, saveScrollPosition, getScrollPosition, modal, isModalOpen, viewMode, collectionName } from '$stores';
+  import { agentPanelOpen } from '$lib/stores/agentPanel';
   import { displayCurrency } from '$lib/stores/currency';
   import { ToastContainer, SideMenu } from '$lib/components';
   import { ModalContainer } from '$lib/components/modals';

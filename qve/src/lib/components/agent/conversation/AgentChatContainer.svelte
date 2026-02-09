@@ -18,7 +18,7 @@
 	import { agentMessages, agentPhase } from '$lib/stores/agentConversation';
 	import { isIdentifying, streamingFields } from '$lib/stores/agentIdentification';
 	import { isEnriching, enrichmentStreamingFields } from '$lib/stores/agentEnrichment';
-	import { isScrollLocked } from '$lib/stores/agent';
+	import { isScrollLocked } from '$lib/agent/requestLifecycle';
 
 	export let messages: AgentMessage[] = [];
 

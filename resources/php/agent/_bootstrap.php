@@ -510,6 +510,66 @@ function sendSSEError(\Exception $e, string $endpoint = 'stream'): void
     exit;
 }
 
+// ===========================================
+// Request Cancellation Helpers (WIN-227)
+// ===========================================
+
+/**
+ * Get the request ID from the X-Request-Id header.
+ *
+ * @return string|null Request ID or null if not provided
+ */
+function getRequestId(): ?string
+{
+    return $_SERVER['HTTP_X_REQUEST_ID'] ?? null;
+}
+
+/**
+ * Get the cancel token file path for a request ID.
+ *
+ * @param string $requestId The request ID
+ * @return string File path for the cancel token
+ */
+function getCancelTokenPath(string $requestId): string
+{
+    $safe = preg_replace('/[^a-zA-Z0-9_-]/', '', $requestId);
+    return sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'agent_cancel_' . $safe;
+}
+
+/**
+ * Check if the current request has been cancelled via cancel token.
+ * Call at key checkpoints (before escalation, between tiers, in curl loops).
+ *
+ * @return bool True if the request has been cancelled
+ */
+function isRequestCancelled(): bool
+{
+    $requestId = getRequestId();
+    if (!$requestId) {
+        return false;
+    }
+    return file_exists(getCancelTokenPath($requestId));
+}
+
+/**
+ * Register shutdown function to clean up cancel token files.
+ * Call early in each streaming endpoint.
+ *
+ * @return void
+ */
+function registerCancelCleanup(): void
+{
+    $requestId = getRequestId();
+    if ($requestId) {
+        $path = getCancelTokenPath($requestId);
+        register_shutdown_function(function () use ($path) {
+            if (file_exists($path)) {
+                @unlink($path);
+            }
+        });
+    }
+}
+
 /**
  * Check if streaming is enabled for a task
  *

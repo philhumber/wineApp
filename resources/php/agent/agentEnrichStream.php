@@ -46,6 +46,7 @@ if (!($config['streaming']['enabled'] ?? false)) {
 
 // Initialize SSE
 initSSE();
+registerCancelCleanup();
 
 $identification = [
     'parsed' => [
@@ -64,12 +65,20 @@ try {
     // WIN-254: Server-authoritative userId — ignore client-supplied value
     $service = getAgentEnrichmentService(getAgentUserId());
 
-    error_log('AgentEnrichStream: Starting enrichment for: ' . $body['producer'] . ' ' . $body['wineName']);
+    $requestId = getRequestId() ?? '-';
+    error_log("[Agent] enrich: request={$requestId} producer=\"{$body['producer']}\" wine=\"{$body['wineName']}\"");
 
     // For now, use non-streaming enrichment and emit fields progressively
     // Full streaming enrichment can be added to EnrichmentService later
     $result = $service->enrich($identification, $confirmMatch, $forceRefresh);
     $resultArray = $result->toArray();
+
+    // WIN-227: Skip field emission if client cancelled during enrich()
+    if (isRequestCancelled()) {
+        error_log("[Agent] enrich: CANCELLED after enrich()");
+        sendSSE('done', []);
+        exit;
+    }
 
     // Check for pending confirmation (canonical name resolution)
     if ($resultArray['pendingConfirmation'] ?? false) {
@@ -114,6 +123,11 @@ try {
     ];
 
     foreach ($fieldOrder as $field) {
+        // WIN-227: Stop emitting fields if client cancelled
+        if (isRequestCancelled()) {
+            error_log("[Agent] enrich: CANCELLED during field emission");
+            break;
+        }
         if (isset($data[$field]) && $data[$field] !== null) {
             sendSSE('field', ['field' => $field, 'value' => $data[$field]]);
             // Small delay to simulate streaming effect
@@ -123,6 +137,9 @@ try {
 
     // Send the complete result
     sendSSE('result', $resultArray);
+
+    $fieldCount = count(array_filter($data, fn($v) => $v !== null));
+    error_log("[Agent] enrich: done fields={$fieldCount} cached=" . ($resultArray['cached'] ?? false ? 'yes' : 'no'));
 
     sendSSE('done', []);
 

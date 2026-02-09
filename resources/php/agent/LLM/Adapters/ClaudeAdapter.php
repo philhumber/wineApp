@@ -200,62 +200,29 @@ class ClaudeAdapter implements LLMProviderInterface
      */
     private function logContextChain(string $type, string $model, array $payload, array $options): void
     {
-        \error_log("╔══════════════════════════════════════════════════════════════════");
-        \error_log("║ 🍷 CLAUDE CONTEXT CHAIN [{$type}]");
-        \error_log("╠══════════════════════════════════════════════════════════════════");
-        \error_log("║ Provider: claude");
-        \error_log("║ Model: {$model}");
-        \error_log("║ Temperature: " . ($options['temperature'] ?? 'default'));
-        \error_log("║ Max Tokens: " . ($payload['max_tokens'] ?? 'default'));
+        $maxTokens = $payload['max_tokens'] ?? '?';
+        $temp = $options['temperature'] ?? 'default';
+        $hasSystem = !empty($payload['system']) ? ' system=' . \strlen($payload['system']) . 'ch' : '';
 
-        if (!empty($payload['system'])) {
-            \error_log("╠──────────────────────────────────────────────────────────────────");
-            \error_log("║ SYSTEM PROMPT:");
-            foreach (\explode("\n", \substr($payload['system'], 0, 500)) as $line) {
-                \error_log("║   " . $line);
-            }
-            if (\strlen($payload['system']) > 500) {
-                \error_log("║   ... [truncated, total " . \strlen($payload['system']) . " chars]");
-            }
-        }
-
-        \error_log("╠──────────────────────────────────────────────────────────────────");
-        \error_log("║ MESSAGES:");
-
-        foreach ($payload['messages'] as $idx => $message) {
-            $role = $message['role'] ?? 'unknown';
-            \error_log("║   [{$idx}] Role: {$role}");
-
+        // Summarise input size
+        $promptLen = 0;
+        $hasImage = false;
+        foreach ($payload['messages'] as $message) {
             if (\is_string($message['content'])) {
-                $content = \substr($message['content'], 0, 800);
-                foreach (\explode("\n", $content) as $line) {
-                    \error_log("║       " . $line);
-                }
-                if (\strlen($message['content']) > 800) {
-                    \error_log("║       ... [truncated, total " . \strlen($message['content']) . " chars]");
-                }
+                $promptLen += \strlen($message['content']);
             } elseif (\is_array($message['content'])) {
-                foreach ($message['content'] as $partIdx => $part) {
-                    $partType = $part['type'] ?? 'unknown';
-                    \error_log("║       Part {$partIdx}: type={$partType}");
-                    if ($partType === 'text' && isset($part['text'])) {
-                        $text = \substr($part['text'], 0, 500);
-                        foreach (\explode("\n", $text) as $line) {
-                            \error_log("║         " . $line);
-                        }
-                        if (\strlen($part['text']) > 500) {
-                            \error_log("║         ... [truncated, total " . \strlen($part['text']) . " chars]");
-                        }
-                    } elseif ($partType === 'image') {
-                        $mediaType = $part['source']['media_type'] ?? 'unknown';
-                        $dataLen = \strlen($part['source']['data'] ?? '');
-                        \error_log("║         [IMAGE: {$mediaType}, {$dataLen} chars base64]");
+                foreach ($message['content'] as $part) {
+                    if (($part['type'] ?? '') === 'text') {
+                        $promptLen += \strlen($part['text'] ?? '');
+                    } elseif (($part['type'] ?? '') === 'image') {
+                        $hasImage = true;
                     }
                 }
             }
         }
+        $inputDesc = $hasImage ? "image+{$promptLen}ch" : "{$promptLen}ch";
 
-        \error_log("╚══════════════════════════════════════════════════════════════════");
+        \error_log("[Agent] LLM request: provider=claude model={$model} type={$type}{$hasSystem} maxTokens={$maxTokens} temp={$temp} input={$inputDesc}");
     }
 
     /**
@@ -290,10 +257,45 @@ class ClaudeAdapter implements LLMProviderInterface
 
         \curl_setopt_array($ch, $options);
 
-        $response = \curl_exec($ch);
+        // WIN-227: Use curl_multi for periodic abort detection during blocking requests.
+        // PROGRESSFUNCTION doesn't reliably fire during the "waiting for response" phase,
+        // so curl_multi gives PHP control back every second to probe the connection.
+        $mh = \curl_multi_init();
+        \curl_multi_add_handle($mh, $ch);
+
+        do {
+            $status = \curl_multi_exec($mh, $active);
+
+            if ($active) {
+                // WIN-227: Abort if client cancelled (token file or connection_aborted)
+                if (\headers_sent()) {
+                    echo ": \n\n";
+                    @\flush();
+                }
+                if (\connection_aborted() || isRequestCancelled()) {
+                    \error_log('[Agent] LLM cancelled: provider=claude (curl_multi loop)');
+                    \curl_multi_remove_handle($mh, $ch);
+                    \curl_close($ch);
+                    \curl_multi_close($mh);
+                    return [
+                        'data' => null,
+                        'httpCode' => 0,
+                        'error' => 'Client disconnected',
+                    ];
+                }
+
+                // Wait up to 1 second for cURL activity
+                \curl_multi_select($mh, 1.0);
+            }
+        } while ($active && $status === CURLM_OK);
+
+        $response = \curl_multi_getcontent($ch);
         $httpCode = \curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = \curl_error($ch);
+
+        \curl_multi_remove_handle($mh, $ch);
         \curl_close($ch);
+        \curl_multi_close($mh);
 
         return [
             'data' => $response ? \json_decode($response, true) : null,
@@ -334,6 +336,8 @@ class ClaudeAdapter implements LLMProviderInterface
         $costConfig = $this->getCostConfig($model);
         $costUSD = ($inputTokens * $costConfig['input'] / 1000000) +
                    ($outputTokens * $costConfig['output'] / 1000000);
+
+        \error_log("[Agent] LLM response: provider=claude model={$model} tokens={$inputTokens}+{$outputTokens} latency={$latencyMs}ms cost=\${$costUSD}");
 
         return new LLMResponse([
             'success' => true,

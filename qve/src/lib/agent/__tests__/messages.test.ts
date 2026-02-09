@@ -588,6 +588,33 @@ describe('template function safety', () => {
 });
 
 // ===========================================
+// Cache Confirmation Message Tests (WIN-XXX)
+// ===========================================
+
+describe('cache confirmation message includes searchedFor context', () => {
+  it('should include the searched-for wine name when different from matched wine', () => {
+    const message = getMessageByKey(MessageKey.ENRICH_CACHE_CONFIRM, {
+      wineName: 'Moet Chandon Rose Imperial',
+      searchedForName: 'Moet Chandon Nectar Imperial',
+    });
+
+    // Must mention what the user actually searched for
+    expect(message).toContain('Nectar Imperial');
+    // Must also mention the cached match
+    expect(message).toContain('Rose Imperial');
+  });
+
+  it('should still work without searchedForName (backwards compat)', () => {
+    const message = getMessageByKey(MessageKey.ENRICH_CACHE_CONFIRM, {
+      wineName: 'Chateau Margaux 2015',
+    });
+
+    expect(message).toContain('Chateau Margaux');
+    expect(message).not.toContain('undefined');
+  });
+});
+
+// ===========================================
 // Chip Label Tests
 // ===========================================
 

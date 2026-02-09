@@ -52,7 +52,7 @@ if (in_array($origin, $allowedOrigins, true)) {
 if ($allowedOrigin !== '') {
     header('Access-Control-Allow-Origin: ' . $allowedOrigin);
     header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, X-Requested-With, X-API-Key');
+    header('Access-Control-Allow-Headers: Content-Type, X-Requested-With, X-API-Key, X-Request-Id');
     header('Access-Control-Max-Age: 86400');
     // Vary by Origin so caches don't serve wrong CORS headers
     header('Vary: Origin');

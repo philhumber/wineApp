@@ -364,9 +364,17 @@ class IdentificationService
         $response = $this->llmClient->streamComplete('identify_text', $prompt, $onField, $options);
 
         if (!$response->success) {
+            // WIN-227: Don't fallback if client cancelled — streaming "failed" due to abort
+            if (isRequestCancelled()) {
+                return [
+                    'success' => false,
+                    'error' => 'Request cancelled',
+                    'errorType' => 'cancelled',
+                ];
+            }
+
             // On streaming error, fall back to non-streaming if configured
             if ($this->config['streaming']['fallback_on_error'] ?? true) {
-                \error_log("IdentificationService: Streaming failed, falling back to non-streaming");
                 return $this->identify($input);
             }
 
@@ -484,8 +492,16 @@ class IdentificationService
         );
 
         if (!$response->success) {
+            // WIN-227: Don't fallback if client cancelled — streaming "failed" due to abort
+            if (isRequestCancelled()) {
+                return [
+                    'success' => false,
+                    'error' => 'Request cancelled',
+                    'errorType' => 'cancelled',
+                ];
+            }
+
             if ($this->config['streaming']['fallback_on_error'] ?? true) {
-                \error_log("IdentificationService: Image streaming failed, falling back");
                 return $this->identify($input);
             }
 
@@ -643,8 +659,11 @@ PROMPT;
         // ─────────────────────────────────────────────────────
         // TIER 1: Fast (Gemini 3 Flash, low thinking)
         // ─────────────────────────────────────────────────────
+        $tierModel = $this->config['model_tiers']['fast']['model'] ?? 'gemini-3-flash-preview';
+        error_log("[Agent] identify(text): Tier 1 starting model={$tierModel}");
         $result = $this->processWithGemini($inputText, 'fast');
         if (!$result['success']) {
+            error_log("[Agent] identify(text): Tier 1 FAILED — " . ($result['error'] ?? 'unknown'));
             return [
                 'success' => false,
                 'error' => $result['error'] ?? 'Processing failed',
@@ -665,15 +684,25 @@ PROMPT;
         ];
         $escalationData['total_cost'] += $result['cost'] ?? 0;
 
+        error_log("[Agent] identify(text): Tier 1 done confidence={$result['confidence']} threshold={$tier1Threshold}");
+
         // Check Tier 1 threshold
         if ($result['confidence'] >= $tier1Threshold) {
             $escalationData['final_tier'] = 'tier1';
             return $this->buildTextResult($result, 'auto_populate', $intent, $escalationData);
         }
 
+        // WIN-227: Bail early if client cancelled before escalation
+        if (isRequestCancelled()) {
+            error_log("[Agent] identify(text): CANCELLED before Tier 1.5");
+            $escalationData['final_tier'] = 'tier1';
+            return $this->buildTextResult($result, 'suggest', $intent, $escalationData);
+        }
+
         // ─────────────────────────────────────────────────────
         // TIER 1.5: Retry (Gemini 3 Flash, high thinking)
         // ─────────────────────────────────────────────────────
+        error_log("[Agent] identify(text): Tier 1.5 starting (escalating from {$result['confidence']})");
         $tier1Result = $result; // Save for context
         $result = $this->processWithGemini($inputText, 'detailed', $tier1Result);
 
@@ -692,17 +721,27 @@ PROMPT;
 
             // Use better result - only add cost if we're using this tier's result
             if ($result['confidence'] < $tier1Result['confidence']) {
+                error_log("[Agent] identify(text): Tier 1.5 worse ({$result['confidence']}), keeping Tier 1 ({$tier1Result['confidence']})");
                 $result = $tier1Result; // Keep tier 1 result if it was better
             } else {
                 $escalationData['total_cost'] += $result['cost'] ?? 0;
             }
         } else {
-            // Tier 1.5 failed, keep tier 1 result
+            error_log("[Agent] identify(text): Tier 1.5 FAILED, keeping Tier 1");
             $result = $tier1Result;
         }
 
+        error_log("[Agent] identify(text): Tier 1.5 done confidence={$result['confidence']} threshold={$tier1_5Threshold}");
+
         // Check Tier 1.5 threshold
         if ($result['confidence'] >= $tier1_5Threshold) {
+            $escalationData['final_tier'] = 'tier1_5';
+            return $this->buildTextResult($result, 'suggest', $intent, $escalationData);
+        }
+
+        // WIN-227: Bail early if client cancelled before Tier 2
+        if (isRequestCancelled()) {
+            error_log("[Agent] identify(text): CANCELLED before Tier 2");
             $escalationData['final_tier'] = 'tier1_5';
             return $this->buildTextResult($result, 'suggest', $intent, $escalationData);
         }
@@ -712,6 +751,7 @@ PROMPT;
         // ─────────────────────────────────────────────────────
         // Check if Claude is available before attempting
         if ($this->llmClient->isProviderAvailable('claude')) {
+            error_log("[Agent] identify(text): Tier 2 starting model=claude-sonnet-4-5 (escalating from {$result['confidence']})");
             $tier1_5Result = $result; // Save for context
             $claudeResult = $this->processWithClaude($inputText, 'claude-sonnet-4-5-20250929', $tier1_5Result);
 
@@ -731,8 +771,13 @@ PROMPT;
                     $result = $claudeResult;
                     $escalationData['total_cost'] += $claudeResult['cost'] ?? 0;
                 }
+                error_log("[Agent] identify(text): Tier 2 done confidence={$claudeResult['confidence']}");
+            } else {
+                error_log("[Agent] identify(text): Tier 2 FAILED");
             }
         }
+
+        error_log("[Agent] identify(text): best confidence={$result['confidence']} threshold={$tier2Threshold}");
 
         // Check Tier 2 threshold
         if ($result['confidence'] >= $tier2Threshold) {
@@ -744,6 +789,7 @@ PROMPT;
         // USER CHOICE: Below 60% - always offer premium model
         // ─────────────────────────────────────────────────────
         // Any confidence below tier2Threshold (60%) offers the premium model option
+        error_log("[Agent] identify(text): low confidence — offering user_choice");
         $escalationData['final_tier'] = 'user_choice';
         $finalResult = $this->buildTextResult($result, 'user_choice', $intent, $escalationData, [
             'options' => ['try_harder', 'tell_me_more'],
@@ -982,9 +1028,12 @@ PROMPT;
         // ─────────────────────────────────────────────────────
         // TIER 1: Fast (Gemini 3 Flash, low thinking)
         // ─────────────────────────────────────────────────────
+        $tierModel = $this->config['model_tiers']['fast']['model'] ?? 'gemini-3-flash-preview';
+        error_log("[Agent] identify(image): Tier 1 starting model={$tierModel}");
         $result = $this->processVisionWithGemini($imageData, $mimeType, 'fast', $processOptions);
 
         if (!$result['success']) {
+            error_log("[Agent] identify(image): Tier 1 FAILED — " . ($result['error'] ?? 'unknown'));
             return [
                 'success' => false,
                 'error' => $result['error'] ?? 'Processing failed',
@@ -1007,15 +1056,25 @@ PROMPT;
         ];
         $escalationData['total_cost'] += $result['cost'] ?? 0;
 
+        error_log("[Agent] identify(image): Tier 1 done confidence={$result['confidence']} threshold={$tier1Threshold}");
+
         // Check Tier 1 threshold
         if ($result['confidence'] >= $tier1Threshold) {
             $escalationData['final_tier'] = 'tier1';
             return $this->buildImageResult($result, 'auto_populate', $escalationData, $quality);
         }
 
+        // WIN-227: Bail early if client cancelled before escalation
+        if (isRequestCancelled()) {
+            error_log("[Agent] identify(image): CANCELLED before Tier 1.5");
+            $escalationData['final_tier'] = 'tier1';
+            return $this->buildImageResult($result, 'suggest', $escalationData, $quality);
+        }
+
         // ─────────────────────────────────────────────────────
         // TIER 1.5: Detailed (Gemini 3 Flash, high thinking)
         // ─────────────────────────────────────────────────────
+        error_log("[Agent] identify(image): Tier 1.5 starting (escalating from {$result['confidence']})");
         $tier1Result = $result; // Save for context
         $result = $this->processVisionWithGemini($imageData, $mimeType, 'detailed', $processOptions);
 
@@ -1034,17 +1093,27 @@ PROMPT;
 
             // Use better result - only add cost if we're using this tier's result
             if ($result['confidence'] < $tier1Result['confidence']) {
+                error_log("[Agent] identify(image): Tier 1.5 worse ({$result['confidence']}), keeping Tier 1 ({$tier1Result['confidence']})");
                 $result = $tier1Result; // Keep tier 1 result if it was better
             } else {
                 $escalationData['total_cost'] += $result['cost'] ?? 0;
             }
         } else {
-            // Tier 1.5 failed, keep tier 1 result
+            error_log("[Agent] identify(image): Tier 1.5 FAILED, keeping Tier 1");
             $result = $tier1Result;
         }
 
+        error_log("[Agent] identify(image): Tier 1.5 done confidence={$result['confidence']} threshold={$tier1_5Threshold}");
+
         // Check Tier 1.5 threshold
         if ($result['confidence'] >= $tier1_5Threshold) {
+            $escalationData['final_tier'] = 'tier1_5';
+            return $this->buildImageResult($result, 'suggest', $escalationData, $quality);
+        }
+
+        // WIN-227: Bail early if client cancelled before Tier 2
+        if (isRequestCancelled()) {
+            error_log("[Agent] identify(image): CANCELLED before Tier 2");
             $escalationData['final_tier'] = 'tier1_5';
             return $this->buildImageResult($result, 'suggest', $escalationData, $quality);
         }
@@ -1053,6 +1122,7 @@ PROMPT;
         // TIER 2: Balanced (Claude Sonnet 4.5 with vision)
         // ─────────────────────────────────────────────────────
         if ($this->llmClient->isProviderAvailable('claude')) {
+            error_log("[Agent] identify(image): Tier 2 starting model=claude-sonnet-4-5 (escalating from {$result['confidence']})");
             $tier1_5Result = $result; // Save for context
             $claudeResult = $this->processVisionWithClaude(
                 $imageData,
@@ -1077,8 +1147,13 @@ PROMPT;
                     $result = $claudeResult;
                     $escalationData['total_cost'] += $claudeResult['cost'] ?? 0;
                 }
+                error_log("[Agent] identify(image): Tier 2 done confidence={$claudeResult['confidence']}");
+            } else {
+                error_log("[Agent] identify(image): Tier 2 FAILED");
             }
         }
+
+        error_log("[Agent] identify(image): best confidence={$result['confidence']} threshold={$tier2Threshold}");
 
         // Check Tier 2 threshold
         if ($result['confidence'] >= $tier2Threshold) {
@@ -1089,6 +1164,7 @@ PROMPT;
         // ─────────────────────────────────────────────────────
         // USER CHOICE: Below 60% - always offer premium model
         // ─────────────────────────────────────────────────────
+        error_log("[Agent] identify(image): low confidence — offering user_choice");
         $escalationData['final_tier'] = 'user_choice';
         $finalResult = $this->buildImageResult($result, 'user_choice', $escalationData, $quality, [
             'options' => ['try_harder', 'tell_me_more'],
