@@ -49,7 +49,7 @@ type ConversationActionType =
  * Keeps chat history with a divider, adds a fresh greeting.
  */
 export function handleStartOver(): void {
-  console.log('[Conversation] start_over');
+  if (import.meta.env.DEV) console.debug('[Conversation] start_over');
 
   // Clear all stores
   identification.resetIdentification();
@@ -66,7 +66,7 @@ export function handleStartOver(): void {
  * Returns to the previous phase in the conversation.
  */
 export function handleGoBack(): void {
-  console.log('[Conversation] go_back');
+  if (import.meta.env.DEV) console.debug('[Conversation] go_back');
 
   const currentPhase = conversation.getCurrentPhase();
 
@@ -123,7 +123,7 @@ export function handleGoBack(): void {
  * Closes the agent panel.
  */
 export function handleCancel(): void {
-  console.log('[Conversation] cancel');
+  if (import.meta.env.DEV) console.debug('[Conversation] cancel');
   closePanel();
 }
 
@@ -132,7 +132,7 @@ export function handleCancel(): void {
  * Aborts in-flight LLM request and shows friendly message with chips.
  */
 export function handleCancelRequest(): void {
-  console.log('[Conversation] cancel_request');
+  if (import.meta.env.DEV) console.debug('[Conversation] cancel_request');
 
   // WIN-227: Send server-side cancel token before aborting fetch
   const requestId = getRequestId();
@@ -177,7 +177,7 @@ export function handleCancelRequest(): void {
  * Clears identification and awaits fresh input.
  */
 export function handleNewInput(messageId?: string): void {
-  console.log('[Conversation] new_input');
+  if (import.meta.env.DEV) console.debug('[Conversation] new_input');
 
   if (messageId) {
     conversation.disableMessage(messageId);
@@ -192,7 +192,7 @@ export function handleNewInput(messageId?: string): void {
  * Alias for start_over.
  */
 export function handleStartFresh(messageId?: string): void {
-  console.log('[Conversation] start_fresh');
+  if (import.meta.env.DEV) console.debug('[Conversation] start_fresh');
 
   if (messageId) {
     conversation.disableMessage(messageId);
@@ -206,7 +206,7 @@ export function handleStartFresh(messageId?: string): void {
  * Error recovery variant - clears state and starts fresh.
  */
 export function handleStartOverError(messageId?: string): void {
-  console.log('[Conversation] start_over_error');
+  if (import.meta.env.DEV) console.debug('[Conversation] start_over_error');
 
   if (messageId) {
     conversation.disableMessage(messageId);
@@ -222,7 +222,7 @@ export function handleStartOverError(messageId?: string): void {
  * @returns The action to retry, or null if no action available
  */
 export function handleRetry(): AgentAction | null {
-  console.log('[Conversation] retry');
+  if (import.meta.env.DEV) console.debug('[Conversation] retry');
 
   const lastAction = getLastAction();
 

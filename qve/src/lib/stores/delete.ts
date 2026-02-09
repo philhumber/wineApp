@@ -151,7 +151,7 @@ function createPausableTimer(
 async function executeDelete(pending: PendingDelete): Promise<void> {
   try {
     await api.deleteItem(pending.entityType, pending.entityId);
-    console.log(`[Delete] Soft deleted ${pending.entityType} ${pending.entityId}`);
+    if (import.meta.env.DEV) console.debug(`[Delete] Soft deleted ${pending.entityType} ${pending.entityId}`);
   } catch (error) {
     console.error(`[Delete] Failed to delete ${pending.entityType}:`, error);
     // On failure, restore the item

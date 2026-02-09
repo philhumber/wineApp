@@ -100,8 +100,6 @@ try {
         throw new Exception('AI service is temporarily unavailable');
     }
 
-    error_log("Making Gemini API request to: " . $model);
-
     $apiResponse = @file_get_contents($apiUrl, false, $context);
 
     if ($apiResponse === false) {
@@ -112,8 +110,6 @@ try {
         // WIN-217: Don't leak the raw error message to the client
         throw new Exception('AI request failed. Please try again.');
     }
-
-    error_log("Gemini API response received, length: " . strlen($apiResponse));
 
     // Check HTTP response code from headers
     $httpCode = 0;

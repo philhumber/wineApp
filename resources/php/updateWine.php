@@ -89,8 +89,6 @@
             if (!$oldData) {
                 throw new Exception('Wine not found or has been deleted');
             }
-            error_log('SQL: ' . $sqlQuery);
-            error_log('Params: ' . print_r($params, true));
 
             // 8. Perform database operation
             $stmt = $pdo->prepare($sqlQuery);

@@ -281,14 +281,14 @@ export function loadState(): PersistedState | null {
 
   // Check version
   if (state.version !== CURRENT_VERSION) {
-    console.log('[AgentPersistence] Version mismatch, clearing state');
+    console.info('[AgentPersistence] Version mismatch, clearing state');
     clearState();
     return null;
   }
 
   // Check session timeout
   if (Date.now() - state.lastActivityAt > SESSION_TIMEOUT_MS) {
-    console.log('[AgentPersistence] Session expired, clearing state');
+    console.info('[AgentPersistence] Session expired, clearing state');
     clearState();
     return null;
   }
