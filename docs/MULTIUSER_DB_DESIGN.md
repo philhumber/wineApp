@@ -243,6 +243,7 @@ ALTER TABLE audit_log
 | **learnContent** | Shared | New table Phase 2+ | Curated articles for everyone |
 | **learnTopicLinks** | Shared | New table Phase 2+ | Knowledge graph |
 | **learnTasteInsights** | Per-user | New table Phase 2+ | Computed personal insights |
+| **learnProgress** | Per-user | New table Phase 3 | Quiz scores, learning path completion |
 
 ### The Producer Problem
 
@@ -385,6 +386,46 @@ CREATE TABLE learnTasteInsights (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
+### Quiz & Learning Path Progress (Phase 3)
+
+Exploration tracking (Layer 1) and collection-as-progress (Layer 2) cover Phases 1-2. But when quizzes and learning paths land in Phase 3, a dedicated progress table is needed:
+
+```sql
+-- Quiz scores, learning path completion, tasting challenges (per-user)
+CREATE TABLE learnProgress (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    userId          INT NOT NULL,
+    progressType    ENUM('quiz','learning_path','tasting_challenge') NOT NULL,
+    topicType       VARCHAR(50) NOT NULL,           -- 'grape', 'region', 'appellation', etc.
+    topicId         INT NULL,                       -- specific grape/region, NULL for general
+    pathSlug        VARCHAR(100) NULL,              -- 'confident-beginner', 'explorer', etc.
+    stepNumber      INT NULL,                       -- position in learning path
+    status          ENUM('not_started','in_progress','completed') DEFAULT 'not_started',
+    score           DECIMAL(5,2) NULL,              -- quiz percentage
+    attempts        INT DEFAULT 0,
+    bestScore       DECIMAL(5,2) NULL,
+    metadata        JSON NULL,                      -- answers given, time taken
+    startedAt       TIMESTAMP NULL,
+    completedAt     TIMESTAMP NULL,
+    CONSTRAINT fk_progress_user FOREIGN KEY (userId) REFERENCES users(id),
+    INDEX idx_user_type (userId, progressType),
+    INDEX idx_user_path (userId, pathSlug, stepNumber)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+### Four Layers of Progress
+
+Progress in Learn is multi-dimensional — not a single completion bar:
+
+| Layer | What It Tracks | Source | Phase |
+|-------|---------------|--------|-------|
+| **Exploration** | Pages viewed, time spent, revisits | `learnExplorationLog` | 1 |
+| **Collection** | Grapes tasted, countries explored, adventurousness score | Computed from `wine` + `ratings` (no table) | 1 |
+| **Understanding** | Quiz scores, learning path completion | `learnProgress` | 3 |
+| **Taste Evolution** | Palate patterns, preference shifts | `learnTasteInsights` | 2 |
+
+The Content Strategy (`docs/learn/CONTENT_STRATEGY.md`) explicitly calls for **"no guilt-inducing gamification"** — progress is presented as exploration counters ("8 of 42 grapes"), not streaks or XP. Layer 2 (collection-as-progress) is the most powerful: you progress by drinking, not studying.
+
 ### Learn Personalization Queries — Multi-User Pattern
 
 The 5 key personalization queries from `docs/learn/DATA_STRATEGY.md` all follow the same pattern — shared reference data JOINed with user-filtered cellar data:
@@ -498,14 +539,16 @@ This means the knowledge graph is populated from **shared data** — no per-user
 5. Region, appellation, style, pairing detail pages
 6. Taste profile / Wine DNA page (uses `learnTasteInsights`)
 
-### Phase 3: Agent Integration + Journal (Sprints 18-19)
+### Phase 3: Agent Integration + Quiz Progress (Sprints 18-19)
 
-**Goal**: AI-powered learning, structured tasting.
+**Goal**: AI-powered learning, structured tasting, quiz/path progress tracking.
 
 1. Agent "learn" intent in router
 2. Post-enrichment Learn suggestion chips
 3. Agent-driven quiz mode
-4. Tasting journal (optional — if demand exists)
+4. Create `learnProgress` table (see Section 6)
+5. Learning path tracking (5 curated journeys from `CONTENT_STRATEGY.md`)
+6. Tasting journal (optional — if demand exists)
 
 ### Phase 4: Social & Sharing (Future)
 
@@ -565,6 +608,7 @@ $stmt->execute(['userId' => $userId]);
 | Bottle inventory & prices | Strict per-user | `WHERE user_id = :userId` |
 | Learn exploration/bookmarks | Strict per-user | `WHERE userId = :userId` |
 | Learn taste insights | Strict per-user | `WHERE userId = :userId` |
+| Learn quiz/path progress | Strict per-user | `WHERE userId = :userId` |
 | Agent sessions & usage | Strict per-user | Already implemented with `userId` FK |
 | Reference data | Shared (read-only for users) | No user_id column, admin-only writes |
 | Enrichment cache | Shared | No user_id, keyed by wine name |
@@ -678,10 +722,10 @@ Frontend: no user context        →       Frontend: currentUser in auth store
 | Cache | 3 | 3 | 3 | 3 |
 | Reference | 6 | 6 | 7 (+processes) | 7 |
 | Auth | 0 | 1 (users) | 1 | 1 |
-| Learn (per-user) | 0 | 2 (explore, bookmarks) | 3 (+insights) | 3 |
+| Learn (per-user) | 0 | 2 (explore, bookmarks) | 3 (+insights) | 4 (+progress) |
 | Learn (shared) | 0 | 0 | 2 (content, links) | 2 |
 | Views | 3 | 3 | 3 | 3+ |
-| **Total** | **31** | **34** | **38** | **38+** |
+| **Total** | **31** | **34** | **38** | **39+** |
 
 ## Appendix C: Related Documents
 
