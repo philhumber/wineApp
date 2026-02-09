@@ -78,7 +78,8 @@
 	$: dataAttributes = {
 		'enrichment-card': true
 	};
-</script>
+
+	</script>
 
 <DataCard
 	{state}

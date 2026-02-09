@@ -1,15 +1,21 @@
 <?php
 	// 1. Include dependencies at the top
+    require_once 'securityHeaders.php';
     require_once 'databaseConnection.php';
     require_once 'audit_log.php';
-
+    require_once 'validators.php';
+    require_once 'errorHandler.php';
+    // Start session if not already started
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
     // 2. Initialize response
     $response = ['success' => false, 'message' => '', 'data' => null];
 
     try {
         // 3. Get database connection
         $pdo = getDBConnection();
-        
+
         // 4. Get and validate input
         $data = json_decode(file_get_contents('php://input'), true);
 
@@ -25,23 +31,13 @@
         }
 
         // Get and validate other fields
-        $bottleSize = trim($data['bottleSize'] ?? '');
-        if (empty($bottleSize)) {
-            throw new Exception('Bottle size is required');
-        }
-
-        $location = trim($data['location'] ?? '');
-        if (empty($location)) {
-            throw new Exception('Location is required');
-        }
-
-        $source = trim($data['bottleSource'] ?? '');
-        if (empty($source)) {
-            throw new Exception('Source is required');
-        }
-        $bottlePrice = trim($data['bottlePrice'] ?? null);
-        $bottleCurrency = trim($data['bottleCurrency'] ?? null);
-        $purchaseDate = !empty($data['purchaseDate']) ? trim($data['purchaseDate']) : null;
+        $bottleSize = validateStringField($data['bottleSize'] ?? '', 'Bottle size', true, 50);
+        $location = validateStringField($data['location'] ?? '', 'Storage location', true, 50);
+        $source = validateStringField($data['bottleSource'] ?? '', 'Source', true, 50);
+        $priceCurrency = validatePriceCurrency($data['bottlePrice'] ?? null, $data['bottleCurrency'] ?? null);
+        $bottlePrice = $priceCurrency['price'];
+        $bottleCurrency = $priceCurrency['currency'];
+        $purchaseDate = validatePurchaseDate($data['purchaseDate'] ?? null);
 
         $userID = $_SESSION['userID'] ?? null;
 
@@ -67,13 +63,13 @@
         $pdo->beginTransaction();
 
         try {
-            // 8. Get OLD data before update (for audit log)
-            $stmt = $pdo->prepare("SELECT * FROM bottles WHERE bottleID = ?");
+            // 8. Get OLD data before update (for audit log) - exclude soft-deleted
+            $stmt = $pdo->prepare("SELECT * FROM bottles WHERE bottleID = ? AND deleted = 0");
             $stmt->execute([$bottleID]);
             $oldData = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             if (!$oldData) {
-                throw new Exception('Bottle not found');
+                throw new Exception('Bottle not found or has been deleted');
             }
 
             // 8. Perform database operation
@@ -94,15 +90,15 @@
             ];
 
             logUpdate($pdo, 'bottles', $bottleID, $oldData, $newData, $userID);
-            
+
             // 11. Commit transaction
             $pdo->commit();
-            
+
             // 12. Set success response
             $response['success'] = true;
             $response['message'] = 'Bottle updated successfully!';
             $response['data'] = ['bottleID' => $bottleID];
-        
+
         } catch (Exception $e) {
             // 13. Rollback on error
             $pdo->rollBack();
@@ -110,10 +106,9 @@
         }
 
     } catch (Exception $e) {
-        // 14. Handle all errors
+        // 14. Handle all errors (WIN-217: sanitize error messages)
         $response['success'] = false;
-        $response['message'] = $e->getMessage();
-        error_log("Error in updateBottle.php: " . $e->getMessage());
+        $response['message'] = safeErrorMessage($e, 'updateBottle');
     }
 
     // 15. Return JSON response

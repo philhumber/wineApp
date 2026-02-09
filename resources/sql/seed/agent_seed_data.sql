@@ -1,596 +1,693 @@
 -- =====================================================
--- AI Agent Phase 1 - Seed Data
--- Wine AI Sommelier Reference Data
+-- Qvé Wine App - Seed Data
+-- Reference data for AI Agent + core lookup tables
+-- Source: phpMyAdmin export (winelist DB) + refWineStyles
 -- =====================================================
 
 SET NAMES utf8mb4;
 
 -- =====================================================
--- Grape Characteristics (~50 common varieties)
+-- Core Lookup Tables
 -- =====================================================
 
-INSERT INTO refGrapeCharacteristics
-(grapeName, alternateNames, color, body, tannin, acidity, primaryFlavors, secondaryFlavors, agingPotential, classicPairings) VALUES
+INSERT INTO `worlds` (`name`) VALUES
+('New World'),
+('Old World'),
+('Other World');
 
--- RED GRAPES
-('Cabernet Sauvignon', NULL, 'red', 'full', 'high', 'medium',
- '["blackcurrant", "cedar", "tobacco", "dark cherry", "graphite"]',
- '["vanilla", "chocolate", "leather"]', 'very-long',
- '["lamb", "beef", "hard cheese", "grilled meats"]'),
+INSERT INTO `winetype` (`wineTypeID`, `wineType`) VALUES
+(1, 'Red'),
+(2, 'White'),
+(3, 'Rosé'),
+(4, 'Orange'),
+(5, 'Sparkling'),
+(6, 'Dessert'),
+(7, 'Rice'),
+(8, 'Fruit'),
+(9, 'Honey'),
+(10, 'Cider');
 
-('Pinot Noir', NULL, 'red', 'light', 'low', 'medium-high',
- '["red cherry", "raspberry", "strawberry", "earth", "mushroom"]',
- '["cola", "clove", "forest floor"]', 'medium',
- '["duck", "salmon", "pork", "mushroom dishes", "chicken"]'),
+INSERT INTO `bottle_sizes` (`sizeCode`, `sizeName`, `volumeLitres`, `isActive`, `sortOrder`) VALUES
+('Balthazar', 'Balthazar (12L)', 12.000, 1, 11),
+('Demi', 'Demi (375ml)', 0.375, 1, 3),
+('Jeroboam', 'Jeroboam (3L)', 3.000, 1, 7),
+('Litre', 'Litre (1L)', 1.000, 1, 5),
+('Magnum', 'Magnum (1.5L)', 1.500, 1, 6),
+('Methuselah', 'Methuselah (6L)', 6.000, 1, 9),
+('Nebuchadnezzar', 'Nebuchadnezzar (15L)', 15.000, 1, 12),
+('Piccolo', 'Piccolo (187.5ml)', 0.187, 1, 1),
+('Quarter', 'Quarter (200ml)', 0.200, 1, 2),
+('Rehoboam', 'Rehoboam (4.5L)', 4.500, 1, 8),
+('Salmanazar', 'Salmanazar (9L)', 9.000, 1, 10),
+('Standard', 'Standard (750ml)', 0.750, 1, 4);
 
-('Merlot', NULL, 'red', 'medium-full', 'medium', 'medium',
- '["plum", "cherry", "chocolate", "herbs", "bay leaf"]',
- '["vanilla", "mocha", "tobacco"]', 'medium',
- '["roast chicken", "pasta", "mushrooms", "pork tenderloin"]'),
+INSERT INTO `currencies` (`currencyCode`, `currencyName`, `symbol`, `rateToEUR`, `isActive`, `sortOrder`, `lastUpdated`) VALUES
+('AUD', 'Australian Dollar', 'A$', 1.650000, 1, 4, '2026-01-25 19:54:57'),
+('CHF', 'Swiss Franc', 'CHF ', 0.950000, 1, 6, '2026-01-25 19:54:57'),
+('DKK', 'Danish Krone', 'kr ', 7.450000, 1, 7, '2026-01-25 19:54:57'),
+('EUR', 'Euro', '€', 1.000000, 1, 2, '2026-01-25 19:54:57'),
+('GBP', 'British Pound', '£', 0.854700, 1, 1, '2026-01-25 19:54:57'),
+('HKD', 'Hong Kong Dollar', 'HK$', 8.500000, 1, 11, '2026-01-25 19:54:57'),
+('JPY', 'Japanese Yen', '¥', 160.000000, 1, 10, '2026-01-25 19:54:57'),
+('NOK', 'Norwegian Krone', 'kr ', 11.500000, 1, 8, '2026-01-25 19:54:57'),
+('NZD', 'New Zealand Dollar', 'NZ$', 1.750000, 1, 5, '2026-01-25 19:54:57'),
+('SEK', 'Swedish Krona', 'kr ', 11.494253, 1, 9, '2026-01-25 19:54:57'),
+('USD', 'US Dollar', '$', 1.086957, 1, 3, '2026-01-25 19:54:57');
 
-('Syrah', '["Shiraz"]', 'red', 'full', 'medium-high', 'medium',
- '["blackberry", "pepper", "smoke", "meat", "olive"]',
- '["bacon", "tar", "violet"]', 'long',
- '["grilled meats", "stews", "game", "barbecue", "lamb"]'),
+INSERT INTO `grapes` (`grapeID`, `grapeName`, `description`, `picture`) VALUES
+(1, 'Pinot Noir', 'Pinot Noir is a thin-skinned, early-ripening grape variety that thrives in cool to moderate climates and is known for its delicate, aromatic wines with high acidity and soft tannins. It is notoriously difficult to grow, as it is highly susceptible to disease, rot, and climate variation, requiring well-drained soils and careful vineyard management. Pinot Noir prefers limestone-rich or well-draining soils and flourishes in regions like Burgundy, Oregon, and New Zealand, where cooler temperatures allow for slow, even ripening, preserving its signature bright red fruit, floral, and earthy aromas. The grape''s thin skins and tight clusters make it vulnerable to botrytis and mildew, demanding meticulous canopy management to ensure airflow and sun exposure. Despite its challenges, Pinot Noir produces some of the world''s most elegant and terroir-expressive wines, known for their silky texture and complex aromatics.', 'https://upload.wikimedia.org/wikipedia/commons/c/c4/Grape_near_Sancerre.jpg'),
+(2, 'Chardonnay', 'Chardonnay is a versatile, green-skinned grape variety that adapts well to a wide range of climates, making it one of the most widely planted white wine grapes in the world. It thrives in cool, moderate, and warm climates, expressing different characteristics depending on terroir and winemaking style. In cooler regions like Chablis and Champagne, Chardonnay retains high acidity and citrus-driven flavors, while in warmer climates like California and Australia, it develops richer, tropical fruit notes. The grape grows vigorously and is relatively resilient to disease, though it can be susceptible to frost in early budding regions. Chardonnay''s neutral flavor profile makes it an excellent canvas for winemaking techniques, including oak aging (adding vanilla and spice notes) and malolactic fermentation (bringing creamy, buttery textures).', 'https://upload.wikimedia.org/wikipedia/commons/6/66/Chardonnay.jpg'),
+(3, 'Meunier', 'Meunier, often called Pinot Meunier, is a black-skinned grape variety primarily used in Champagne blends, though it is increasingly being recognized for its potential in single-varietal wines. It thrives in cool climates and is particularly valued for its hardiness and ability to withstand frost, making it an essential grape in the cool, northern vineyards of Champagne. Meunier is a mutant of Pinot Noir and shares some characteristics, but it buds later and ripens earlier, reducing the risk of spring frost damage. The grape''s name, meaning ''miller'' in French, comes from the white, powdery appearance of its leaves, which are covered in fine hairs. Meunier contributes softness, fruitiness, and approachability to Champagne, offering flavors of red berries, orchard fruit, and floral notes, often making wines that are more immediate and expressive in youth compared to Pinot Noir-based Champagnes.', 'https://upload.wikimedia.org/wikipedia/commons/f/f4/Pinot_Meunier.jpg');
 
-('Tempranillo', '["Tinto Fino", "Tinta Roriz", "Aragonez"]', 'red', 'medium-full', 'medium-high', 'medium',
- '["cherry", "leather", "tobacco", "tomato", "dried fig"]',
- '["vanilla", "dill", "coconut"]', 'long',
- '["lamb", "cured meats", "tapas", "chorizo", "manchego"]'),
-
-('Sangiovese', '["Brunello", "Prugnolo Gentile"]', 'red', 'medium', 'medium-high', 'high',
- '["cherry", "tomato", "herbs", "tea", "rose"]',
- '["tobacco", "leather", "earth"]', 'long',
- '["tomato-based pasta", "pizza", "grilled vegetables", "hard Italian cheese"]'),
-
-('Nebbiolo', NULL, 'red', 'full', 'high', 'high',
- '["cherry", "rose", "tar", "truffle", "dried herbs"]',
- '["leather", "licorice", "menthol"]', 'very-long',
- '["truffle dishes", "braised meats", "aged cheese", "risotto"]'),
-
-('Grenache', '["Garnacha", "Cannonau"]', 'red', 'medium-full', 'medium-low', 'medium',
- '["raspberry", "strawberry", "orange peel", "white pepper", "herbs"]',
- '["leather", "tar", "licorice"]', 'medium',
- '["grilled lamb", "Mediterranean cuisine", "roasted vegetables"]'),
-
-('Malbec', '["Côt"]', 'red', 'full', 'medium-high', 'medium',
- '["plum", "blackberry", "black cherry", "cocoa", "violet"]',
- '["vanilla", "tobacco", "leather"]', 'medium',
- '["grilled steak", "barbecue", "empanadas", "hard cheese"]'),
-
-('Zinfandel', '["Primitivo"]', 'red', 'full', 'medium', 'medium',
- '["blackberry", "raspberry", "black pepper", "licorice", "jam"]',
- '["vanilla", "tobacco", "cinnamon"]', 'medium',
- '["barbecue", "pizza", "grilled sausages", "spicy food"]'),
-
-('Cabernet Franc', NULL, 'red', 'medium', 'medium', 'medium-high',
- '["raspberry", "bell pepper", "violet", "graphite", "herbs"]',
- '["tobacco", "cedar"]', 'medium',
- '["roast chicken", "pork", "vegetable dishes", "goat cheese"]'),
-
-('Mourvèdre', '["Monastrell", "Mataro"]', 'red', 'full', 'high', 'medium',
- '["blackberry", "meat", "earth", "game", "black pepper"]',
- '["leather", "herbs"]', 'long',
- '["game", "lamb", "hearty stews", "aged cheese"]'),
-
-('Petit Verdot', NULL, 'red', 'full', 'high', 'medium',
- '["violet", "blueberry", "plum", "sage", "pencil lead"]',
- '["leather", "smoke"]', 'long',
- '["beef", "lamb", "hard aged cheese"]'),
-
-('Barbera', NULL, 'red', 'medium', 'low', 'high',
- '["cherry", "plum", "herbs", "licorice", "dried flowers"]',
- '["vanilla", "spice"]', 'medium',
- '["tomato-based dishes", "pizza", "pasta", "cured meats"]'),
-
-('Dolcetto', NULL, 'red', 'medium', 'medium', 'medium-low',
- '["black cherry", "licorice", "prune", "cocoa", "almond"]',
- NULL, 'drink-now',
- '["pasta", "pizza", "antipasti", "cured meats"]'),
-
--- WHITE GRAPES
-('Chardonnay', NULL, 'white', 'medium-full', NULL, 'medium',
- '["apple", "citrus", "pear", "melon"]',
- '["butter", "vanilla", "toast", "hazelnut"]', 'medium',
- '["lobster", "chicken", "cream sauces", "rich fish", "soft cheese"]'),
-
-('Sauvignon Blanc', NULL, 'white', 'light', NULL, 'high',
- '["grapefruit", "grass", "green apple", "gooseberry", "lime"]',
- '["jalapeño", "passionfruit", "boxwood"]', 'drink-now',
- '["goat cheese", "seafood", "salads", "asparagus", "sushi"]'),
-
-('Riesling', NULL, 'white', 'light', NULL, 'high',
- '["lime", "green apple", "peach", "apricot", "honey"]',
- '["petrol", "slate", "ginger"]', 'very-long',
- '["spicy food", "pork", "shellfish", "Asian cuisine", "duck"]'),
-
-('Pinot Grigio', '["Pinot Gris"]', 'white', 'light', NULL, 'medium-high',
- '["lemon", "green apple", "pear", "almond", "honey"]',
- '["ginger", "stone fruit"]', 'drink-now',
- '["light seafood", "salads", "light pasta", "aperitif"]'),
-
-('Gewürztraminer', NULL, 'white', 'medium-full', NULL, 'medium-low',
- '["lychee", "rose", "ginger", "grapefruit", "mango"]',
- '["honey", "spice", "smoke"]', 'medium',
- '["Asian cuisine", "spicy food", "foie gras", "soft cheese"]'),
-
-('Viognier', NULL, 'white', 'full', NULL, 'medium-low',
- '["peach", "apricot", "tangerine", "honeysuckle", "mango"]',
- '["vanilla", "cream", "spice"]', 'short',
- '["rich seafood", "cream sauces", "Thai food", "roast chicken"]'),
-
-('Chenin Blanc', NULL, 'white', 'medium', NULL, 'high',
- '["apple", "quince", "honey", "chamomile", "ginger"]',
- '["lanolin", "straw", "beeswax"]', 'very-long',
- '["pork", "Thai cuisine", "soft cheese", "fruit-based dishes"]'),
-
-('Albariño', '["Alvarinho"]', 'white', 'light', NULL, 'high',
- '["lemon", "grapefruit", "peach", "apricot", "saline"]',
- '["almond", "herbs"]', 'drink-now',
- '["seafood", "shellfish", "ceviche", "light fish"]'),
-
-('Grüner Veltliner', NULL, 'white', 'light', NULL, 'high',
- '["green apple", "lime", "white pepper", "radish", "herbs"]',
- '["lentil", "citrus zest"]', 'medium',
- '["Wiener Schnitzel", "Asian fusion", "salads", "vegetables"]'),
-
-('Muscadet', '["Melon de Bourgogne"]', 'white', 'light', NULL, 'high',
- '["lemon", "green apple", "pear", "saline", "chalk"]',
- '["yeast", "brioche"]', 'drink-now',
- '["oysters", "mussels", "seafood", "light fish"]'),
-
-('Torrontés', NULL, 'white', 'light', NULL, 'medium',
- '["peach", "rose", "geranium", "citrus", "lychee"]',
- NULL, 'drink-now',
- '["spicy food", "ceviche", "Asian cuisine", "appetizers"]'),
-
-('Semillon', '["Sémillon"]', 'white', 'medium-full', NULL, 'medium-low',
- '["lemon", "apple", "papaya", "fig", "honey"]',
- '["lanolin", "toast", "waxy"]', 'long',
- '["rich fish", "chicken", "cream sauces", "foie gras"]'),
-
-('Vermentino', '["Rolle", "Pigato"]', 'white', 'light', NULL, 'medium-high',
- '["lime", "grapefruit", "green apple", "almond", "herbs"]',
- '["saline", "fennel"]', 'drink-now',
- '["Mediterranean seafood", "pesto", "light appetizers"]'),
-
--- ROSÉ/PINK GRAPES
-('Grenache Rosé', NULL, 'pink', 'light', NULL, 'medium',
- '["strawberry", "watermelon", "rose petal", "citrus"]',
- '["herbs", "white pepper"]', 'drink-now',
- '["salads", "grilled fish", "Mediterranean cuisine", "appetizers"]');
+-- Additional grape varieties (39 new entries)
+-- Aligned with refGrapeCharacteristics + refAppellations/refWineStyles references
+INSERT IGNORE INTO `grapes` (`grapeID`, `grapeName`, `description`, `picture`) VALUES
+(4, 'Cabernet Sauvignon', 'Cabernet Sauvignon is the world''s most widely planted red grape variety, producing full-bodied wines with firm tannins, deep color, and aromas of blackcurrant, cedar, and tobacco. A natural cross of Cabernet Franc and Sauvignon Blanc, it thrives in warm climates and is the backbone of Bordeaux''s Left Bank blends, as well as iconic wines from Napa Valley, Chile, and Australia.', 'https://upload.wikimedia.org/wikipedia/commons/3/36/Cabernet_Sauvignon_Gaillac.jpg'),
+(5, 'Merlot', 'Merlot is a soft, plummy red grape that produces approachable, medium to full-bodied wines with velvety tannins and flavors of plum, cherry, chocolate, and herbs. It is the dominant grape in Bordeaux''s Right Bank appellations like Pomerol and Saint-Émilion, and is widely planted worldwide for both single-varietal wines and blends.', 'https://upload.wikimedia.org/wikipedia/commons/0/0d/Merlot_grape_cluster.jpg'),
+(6, 'Syrah', 'Syrah (known as Shiraz in Australia) produces bold, deeply colored red wines with flavors of blackberry, pepper, smoke, and meat. It is the sole red grape of the Northern Rhône''s prestigious appellations like Hermitage and Côte-Rôtie, and in Australia''s Barossa Valley it produces rich, fruit-forward wines with chocolate and spice notes.', 'https://upload.wikimedia.org/wikipedia/commons/5/5d/Syrah_grape.jpg'),
+(7, 'Tempranillo', 'Tempranillo is Spain''s most important red grape, producing medium to full-bodied wines with flavors of cherry, leather, tobacco, and dried fig. Known as Tinto Fino in Ribera del Duero and Tinta Roriz in Portugal, it is the backbone of Rioja and ages exceptionally well in both American and French oak, developing complex vanilla and spice notes.', 'https://upload.wikimedia.org/wikipedia/commons/0/03/Tempranillo.jpg'),
+(8, 'Sangiovese', 'Sangiovese is Italy''s most planted red grape and the soul of Tuscan winemaking, producing wines with bright cherry, tomato leaf, tea, and herbal flavors alongside firm acidity. Known as Brunello in Montalcino and Prugnolo Gentile in Montepulciano, it is the primary grape in Chianti Classico, Brunello di Montalcino, and Vino Nobile.', 'https://upload.wikimedia.org/wikipedia/commons/3/3f/Sangiovese_di_Romagna.jpg'),
+(9, 'Nebbiolo', 'Nebbiolo is a noble Italian red grape that produces powerful, long-lived wines with high tannins, high acidity, and complex aromas of cherry, rose, tar, and truffle. Despite its pale garnet color, it is intensely structured and is the sole grape behind Barolo and Barbaresco, two of Italy''s most celebrated and age-worthy wines.', 'https://upload.wikimedia.org/wikipedia/commons/e/eb/Nebbiolo.jpg'),
+(10, 'Grenache', 'Grenache (Garnacha in Spain, Cannonau in Sardinia) is a heat-loving red grape that produces generous, fruit-forward wines with flavors of raspberry, strawberry, white pepper, and herbs. It is the most planted grape in the Southern Rhône and a key component of Châteauneuf-du-Pape blends, and in Spain it excels in Priorat''s old-vine bottlings.', 'https://upload.wikimedia.org/wikipedia/commons/5/58/Grenache_noir.jpg'),
+(11, 'Malbec', 'Malbec is a deeply colored red grape originally from Cahors, France, that found its modern identity in Argentina''s Mendoza region, where it produces plush, velvety wines with intense flavors of plum, blackberry, violet, and cocoa. It thrives at high altitude where UV intensity concentrates color and flavor, making Argentine Malbec one of the world''s most recognizable wine styles.', 'https://upload.wikimedia.org/wikipedia/commons/8/87/Malbec_-_C%C3%B4t.jpg'),
+(12, 'Zinfandel', 'Zinfandel (known as Primitivo in southern Italy) is a versatile red grape that produces bold, jammy wines with flavors of blackberry, raspberry, pepper, and licorice. It is California''s heritage grape, with some old vines dating back over 100 years, producing concentrated, high-alcohol wines that range from fruit-forward everyday reds to complex, age-worthy bottlings.', 'https://upload.wikimedia.org/wikipedia/commons/b/bb/Zinfandel_grapes.jpg'),
+(13, 'Cabernet Franc', 'Cabernet Franc is an aromatic red grape that produces medium-bodied wines with flavors of raspberry, bell pepper, violet, and graphite alongside moderate tannins. A parent of Cabernet Sauvignon, it shines as a varietal wine in the Loire Valley''s Chinon and Bourgueil, and plays a crucial blending role in Bordeaux, particularly on the Right Bank in Saint-Émilion.', 'https://upload.wikimedia.org/wikipedia/commons/a/aa/Cabernet_Franc_Grape.jpg'),
+(14, 'Mourvèdre', 'Mourvèdre (Monastrell in Spain, Mataro in Australia) is a thick-skinned, late-ripening red grape that produces deeply colored, tannic wines with flavors of blackberry, earth, game, and black pepper. It requires significant heat to ripen fully and is a key blending partner in Southern Rhône GSM blends and Bandol, where it contributes structure and meaty complexity.', 'https://upload.wikimedia.org/wikipedia/commons/b/b5/Mourvedre_grapevine.jpg'),
+(15, 'Petit Verdot', 'Petit Verdot is a late-ripening red grape used primarily as a seasoning grape in Bordeaux blends, contributing deep color, firm tannins, and violet, blueberry, and sage aromatics. While rarely bottled as a varietal in France due to ripening difficulties, it excels in warmer New World climates like Spain, Australia, and Virginia, where it can fully mature.', 'https://upload.wikimedia.org/wikipedia/commons/3/31/Petit_Verdot.jpg'),
+(16, 'Barbera', 'Barbera is a high-acid, low-tannin red grape from Piedmont that produces vibrant, food-friendly wines with flavors of cherry, plum, herbs, and dried flowers. It is Italy''s third most planted red grape and thrives in the Asti and Alba zones, where modern winemaking and oak aging have elevated it from a simple everyday wine to a serious, age-worthy bottling.', 'https://upload.wikimedia.org/wikipedia/commons/a/a0/Barbera_grapes.jpg'),
+(17, 'Dolcetto', 'Dolcetto is an early-ripening Piedmontese red grape that produces soft, fruity wines with flavors of black cherry, licorice, prune, and almond. Its name means "little sweet one" referring to the grape''s sweetness at harvest, though the wines ferment dry with gentle tannins and low acidity, making them ideal everyday drinking companions to Italian cuisine.', 'https://upload.wikimedia.org/wikipedia/commons/d/dc/Dolcetto_Vitigno.jpg'),
+(18, 'Sauvignon Blanc', 'Sauvignon Blanc is an aromatic white grape known for its pungent, refreshing wines with flavors of grapefruit, grass, green apple, and gooseberry. It is the signature grape of the Loire Valley''s Sancerre and Pouilly-Fumé as well as New Zealand''s Marlborough region, and contributes crisp acidity and herbaceous character to both varietal wines and Bordeaux white blends.', 'https://upload.wikimedia.org/wikipedia/commons/f/f3/Sauvignon_blanc_grapes.jpg'),
+(19, 'Riesling', 'Riesling is one of the world''s great aromatic white grapes, capable of producing wines across the entire sweetness spectrum from bone-dry to lusciously sweet. It is defined by its piercing acidity, floral and stone fruit aromatics, and remarkable ability to reflect terroir, excelling in cool-climate regions like Germany''s Mosel, Alsace, and Australia''s Clare Valley, where it develops characteristic petrol and slate notes with age.', 'https://upload.wikimedia.org/wikipedia/commons/c/c4/Riesling_grapes_leaves.jpg'),
+(20, 'Pinot Grigio', 'Pinot Grigio (Pinot Gris in Alsace) is a mutation of Pinot Noir with grayish-pink skins that produces wines ranging from light and crisp (Italian style) to rich and honeyed (Alsatian style). In northern Italy, it is vinified for freshness with lemon, green apple, and almond flavors, while in Alsace it produces fuller-bodied wines with stone fruit, honey, and ginger notes.', 'https://upload.wikimedia.org/wikipedia/commons/d/d2/Pinot_gris_leaves_and_grape_cluster.jpg'),
+(21, 'Gewürztraminer', 'Gewürztraminer is an intensely aromatic white grape with distinctive pink-hued skins, producing full-bodied, low-acid wines with exotic flavors of lychee, rose, ginger, and tropical fruit. It is the signature grape of Alsace, where it reaches its fullest expression, and is also grown successfully in Germany, northern Italy, and New Zealand.', 'https://upload.wikimedia.org/wikipedia/commons/f/fe/Gewuerztraminer_Weinsberg_20070925.jpg'),
+(22, 'Viognier', 'Viognier is a richly perfumed white grape producing full-bodied wines with heady aromas of peach, apricot, tangerine, and honeysuckle. Once nearly extinct and confined to the Northern Rhône''s tiny Condrieu appellation, it has been widely replanted worldwide and is sometimes co-fermented with Syrah to add aromatics and stabilize color.', 'https://upload.wikimedia.org/wikipedia/commons/e/e3/Viognier.jpg'),
+(23, 'Chenin Blanc', 'Chenin Blanc is an extraordinarily versatile white grape with naturally high acidity, capable of producing everything from bone-dry minerally wines to rich botrytized dessert wines and fine sparkling wines. It is the star of the Loire Valley''s Vouvray and Savennières appellations, and in South Africa (where it is called Steen) it is the most widely planted variety.', 'https://upload.wikimedia.org/wikipedia/commons/3/3e/Chenin_Blanc_grapes.jpg'),
+(24, 'Albariño', 'Albariño (Alvarinho in Portugal) is a thick-skinned, aromatic white grape from the Atlantic coast of Iberia that produces refreshing wines with flavors of lemon, grapefruit, peach, and a distinctive saline minerality. It is the premier grape of Spain''s Rías Baixas region and Portugal''s Vinho Verde, where the maritime climate preserves its vibrant acidity and seafood-friendly character.', 'https://upload.wikimedia.org/wikipedia/commons/e/e2/Albari%C3%B1o_grape.jpg'),
+(25, 'Grüner Veltliner', 'Grüner Veltliner is Austria''s signature white grape, covering roughly a third of the country''s vineyards and producing wines that range from light, peppery everyday wines to concentrated, age-worthy grand cru bottlings. Its distinctive white pepper spice, green apple crunch, and herbal character make it one of the most food-versatile white wines in the world.', 'https://upload.wikimedia.org/wikipedia/commons/2/2f/Gr%C3%BCner_Veltliner_Traube.jpg'),
+(26, 'Muscadet', 'Muscadet, properly known as Melon de Bourgogne, is a neutral white grape that produces lean, mineral-driven wines with flavors of lemon, green apple, and chalk. Grown almost exclusively around the city of Nantes at the western end of the Loire Valley, it undergoes sur lie aging (on its yeast lees) which adds a creamy texture and subtle brioche notes that perfectly complement oysters and shellfish.', 'https://upload.wikimedia.org/wikipedia/commons/b/ba/Melon_de_Bourgogne.jpg'),
+(27, 'Torrontés', 'Torrontés is Argentina''s signature white grape, producing highly aromatic wines with perfumed flavors of peach, rose, geranium, and citrus that evoke Muscat-like intensity while finishing dry and refreshing. It thrives at high altitude in the northwestern Salta and Cafayate regions, where dramatic day-night temperature swings preserve its natural acidity and aromatic purity.', 'https://upload.wikimedia.org/wikipedia/commons/5/5b/Torront%C3%A9s_grape.jpg'),
+(28, 'Sémillon', 'Sémillon is a golden-skinned white grape that produces both dry and sweet wines of remarkable complexity and longevity. It is the primary grape in Sauternes'' legendary botrytized dessert wines and, in Australia''s Hunter Valley, it produces uniquely lean, unoaked dry wines that develop extraordinary honey, toast, and citrus complexity with decades of bottle age.', 'https://upload.wikimedia.org/wikipedia/commons/f/f8/Semillon_blanc.jpg'),
+(29, 'Vermentino', 'Vermentino (known as Rolle in Provence and Pigato in Liguria) is a Mediterranean white grape producing crisp, refreshing wines with flavors of lime, grapefruit, green apple, and a distinctive herbal, saline character. It thrives in coastal regions of Sardinia, Corsica, Provence, and Liguria, where sea breezes and poor soils concentrate its bright, mineral-driven personality.', 'https://upload.wikimedia.org/wikipedia/commons/a/a4/Vermentino_grape.jpg'),
+(30, 'Grenache Rosé', 'Grenache Rosé is a pink-berried mutation of Grenache Noir that is particularly prized for producing high-quality rosé wines with delicate flavors of strawberry, watermelon, rose petal, and citrus. It is a key component of Provence rosé blends and is also used as a varietal wine, where its light body and moderate acidity create elegant, refreshing wines.', ''),
+(31, 'Gamay', 'Gamay is a fruity, light-bodied red grape that is the sole variety behind Beaujolais and its famous cru wines. It thrives on the granite soils of Beaujolais, where it produces juicy, aromatic wines with bright cherry, raspberry, and floral flavors, low tannins, and a distinctive pepperiness, often vinified using carbonic maceration for immediate, exuberant drinkability.', 'https://upload.wikimedia.org/wikipedia/commons/4/40/Gamay.png'),
+(32, 'Cinsault', 'Cinsault (sometimes spelled Cinsaut) is a heat-resistant red grape widely grown in southern France and South Africa, producing light, aromatic wines with soft tannins and flavors of red berries, herbs, and spice. It is a key blending grape in Provence rosé and Southern Rhône reds, and in South Africa it was crossed with Pinot Noir to create the Pinotage variety.', 'https://upload.wikimedia.org/wikipedia/commons/c/c1/Cinsaut_grapevine.jpg'),
+(33, 'Corvina', 'Corvina is the principal red grape of the Veneto''s Valpolicella zone, producing wines with distinctive sour cherry, almond, and herbal flavors alongside moderate tannins. It is the backbone of both fresh Valpolicella and the dried-grape Amarone della Valpolicella, where the appassimento process concentrates its fruit into rich, raisiny, high-alcohol wines of remarkable depth.', 'https://upload.wikimedia.org/wikipedia/commons/7/72/Corvina_Veronese.jpg'),
+(34, 'Rondinella', 'Rondinella is a red blending grape from the Veneto used alongside Corvina in Valpolicella and Amarone wines. It contributes color, body, and neutral fruit character to the blend, and its thick skins make it well-suited to the appassimento drying process used in Amarone production.', ''),
+(35, 'Molinara', 'Molinara is a light-skinned red grape traditionally used in small amounts in Valpolicella and Amarone blends from the Veneto. Named for its flour-dusted appearance (from the Italian ''mulino'' meaning mill), it contributes acidity and lightness to blends, though its role has diminished in favor of Corvina and Rondinella.', ''),
+(36, 'Garganega', 'Garganega is the principal white grape of the Veneto, best known as the primary variety in Soave, where it produces elegant wines with flavors of white peach, almond, citrus, and a distinctive mineral undertone. It is a vigorous, late-ripening variety that benefits from careful yield management, with the best examples from volcanic soils showing fine texture and excellent aging potential.', 'https://upload.wikimedia.org/wikipedia/commons/7/72/Garganega.jpg'),
+(37, 'Glera', 'Glera is the grape behind Prosecco, Italy''s beloved sparkling wine from the Veneto and Friuli regions. It produces light, aromatic wines with flavors of green apple, pear, white flowers, and a gentle frothy sparkle, vinified using the Charmat (tank) method to preserve its fresh, fruity character rather than the yeasty complexity of bottle-fermented sparkling wines.', 'https://upload.wikimedia.org/wikipedia/commons/7/7d/Glera_grapes.jpg'),
+(38, 'Touriga Nacional', 'Touriga Nacional is Portugal''s most prestigious red grape, producing deeply colored, intensely aromatic wines with concentrated flavors of blackberry, violet, dark chocolate, and resinous herbs. It is the finest component in Port blends from the Douro Valley and increasingly valued as a dry table wine grape, producing structured, age-worthy wines throughout Portugal.', 'https://upload.wikimedia.org/wikipedia/commons/e/e9/Touriga_Nacional.jpg'),
+(39, 'Touriga Franca', 'Touriga Franca is the most widely planted red grape in Portugal''s Douro Valley, valued for its consistency, generous fruit, and aromatic contribution to Port and dry table wine blends. It produces perfumed wines with flavors of wild berries, rose petals, and spice, with softer tannins than Touriga Nacional, making it an essential blending partner.', ''),
+(40, 'Macabeo', 'Macabeo (known as Viura in Rioja) is a white grape widely planted across Spain, where it is the primary variety in Cava sparkling wine and white Rioja. It produces neutral, mild wines with moderate acidity and flavors of green apple, chamomile, and light floral notes, serving as an excellent base for both sparkling wine production and oak-aged white styles.', 'https://upload.wikimedia.org/wikipedia/commons/e/ea/Macabeo.jpg'),
+(41, 'Parellada', 'Parellada is a delicate, high-altitude white grape from Catalonia that is one of the three traditional Cava grapes alongside Macabeo and Xarel-lo. It contributes floral aromatics, light body, and refreshing acidity to Cava blends, and is the most altitude-sensitive of the trio, producing its finest fruit above 500 meters in Penedès.', ''),
+(42, 'Xarel-lo', 'Xarel-lo is a robust, characterful white grape native to Catalonia and one of the three traditional Cava grapes, where it contributes body, structure, and earthy, herbal complexity to blends. Increasingly bottled as a varietal still wine, it produces textured whites with flavors of apple, fennel, and Mediterranean herbs, reflecting its warm-climate coastal terroir.', '');
 
 -- =====================================================
--- Pairing Rules (Hierarchical - ~100 rules)
+-- Abbreviations (Producer & Wine name expansions)
 -- =====================================================
 
-INSERT INTO refPairingRules
-(foodCategory, foodSubcategory, foodItem, preparationMethod, wineTypes, wineStyles, grapeVarieties, avoidTypes, specificity, reasoning, source) VALUES
-
--- GENERAL RULES (specificity 1)
-('Seafood', NULL, NULL, NULL, '["Sparkling", "White"]', NULL, NULL, '["Red"]', 1,
- 'Light wines complement delicate seafood; tannins clash with fish oils', 'Wine Folly'),
-
-('Red Meat', NULL, NULL, NULL, '["Red"]', NULL, NULL, NULL, 1,
- 'Tannins cut through fat and protein; fuller body matches meat weight', 'CMS'),
-
-('Poultry', NULL, NULL, NULL, '["White", "Rosé", "Red"]', NULL, NULL, NULL, 1,
- 'Versatile protein pairs widely depending on preparation', 'The Flavor Bible'),
-
-('Pork', NULL, NULL, NULL, '["White", "Rosé", "Red"]', NULL, NULL, NULL, 1,
- 'Medium weight protein pairs with lighter reds and fuller whites', 'Wine Folly'),
-
-('Vegetarian', NULL, NULL, NULL, '["White", "Rosé", "Red"]', NULL, NULL, NULL, 1,
- 'Pair based on preparation method and dominant flavors', 'The Flavor Bible'),
-
-('Cheese', NULL, NULL, NULL, '["Red", "White", "Sparkling", "Dessert", "Fortified"]', NULL, NULL, NULL, 1,
- 'Match intensity of cheese with wine; contrast or complement flavors', 'CMS'),
-
-('Pasta', NULL, NULL, NULL, '["Red", "White"]', NULL, NULL, NULL, 1,
- 'Pair with sauce, not pasta itself', 'Wine Folly'),
-
-('Desserts', NULL, NULL, NULL, '["Dessert", "Sparkling", "Fortified"]', NULL, NULL, '["Red"]', 1,
- 'Wine should be sweeter than the dessert', 'CMS'),
-
--- SEAFOOD RULES (specificity 2-4)
-('Seafood', 'Shellfish', NULL, NULL, '["Sparkling", "White"]', '["Brut", "Blanc de Blancs"]', '["Chardonnay", "Muscadet"]', '["Red"]', 2,
- 'High acid and mineral whites complement briny shellfish', 'CMS'),
-
-('Seafood', 'Shellfish', 'Oysters', 'raw', '["Sparkling", "White"]', '["Blanc de Blancs", "Muscadet", "Chablis"]', '["Chardonnay", "Melon de Bourgogne"]', '["Red"]', 4,
- 'Mineral, crisp wines echo ocean brininess; champagne bubbles cleanse', 'Wine Folly'),
-
-('Seafood', 'Shellfish', 'Lobster', 'butter-poached', '["White", "Sparkling"]', '["Oaked Chardonnay"]', '["Chardonnay"]', NULL, 4,
- 'Rich buttery lobster matches rich buttery Chardonnay', 'CMS'),
-
-('Seafood', 'Shellfish', 'Crab', NULL, '["White", "Sparkling"]', '["Blanc de Blancs"]', '["Chardonnay", "Sauvignon Blanc"]', NULL, 3,
- 'Delicate sweet meat pairs with elegant whites', 'Wine Folly'),
-
-('Seafood', 'Fish', 'Salmon', 'grilled', '["White", "Rosé", "Red"]', NULL, '["Pinot Noir", "Chardonnay"]', NULL, 3,
- 'Rich fatty fish handles medium-bodied Pinot Noir', 'CMS'),
-
-('Seafood', 'Fish', 'Salmon', 'smoked', '["Sparkling", "White"]', '["Brut Rosé"]', '["Chardonnay", "Pinot Noir"]', NULL, 4,
- 'Smoky richness pairs with toasty champagne', 'Wine Folly'),
-
-('Seafood', 'Fish', 'Tuna', 'seared', '["Red", "Rosé"]', NULL, '["Pinot Noir", "Grenache"]', NULL, 3,
- 'Meaty tuna handles light reds served slightly cool', 'CMS'),
-
-('Seafood', 'Fish', NULL, 'fried', '["Sparkling", "White"]', '["Brut"]', '["Chardonnay", "Albariño"]', NULL, 3,
- 'High acid and bubbles cut through fried coating', 'Wine Folly'),
-
-('Seafood', 'Fish', NULL, 'grilled', '["White"]', NULL, '["Sauvignon Blanc", "Vermentino", "Albariño"]', NULL, 2,
- 'Char notes pair with herbaceous whites', 'The Flavor Bible'),
-
--- RED MEAT RULES (specificity 2-4)
-('Red Meat', 'Beef', NULL, NULL, '["Red"]', NULL, '["Cabernet Sauvignon", "Malbec", "Syrah"]', NULL, 2,
- 'Bold tannins and dark fruit complement beef richness', 'CMS'),
-
-('Red Meat', 'Beef', 'Steak', 'grilled', '["Red"]', NULL, '["Cabernet Sauvignon", "Malbec", "Syrah"]', NULL, 3,
- 'High tannin cuts through char and fat; dark fruit echoes Maillard', 'Wine Folly'),
-
-('Red Meat', 'Beef', 'Filet Mignon', NULL, '["Red"]', NULL, '["Pinot Noir", "Merlot"]', NULL, 4,
- 'Leaner cut pairs with softer, more elegant reds', 'CMS'),
-
-('Red Meat', 'Beef', 'Ribeye', NULL, '["Red"]', NULL, '["Cabernet Sauvignon", "Malbec"]', NULL, 4,
- 'Fatty marbled cut needs high tannin wines', 'Wine Folly'),
-
-('Red Meat', 'Beef', NULL, 'braised', '["Red"]', NULL, '["Nebbiolo", "Sangiovese", "Syrah"]', NULL, 3,
- 'Long-cooked beef pairs with structured, earthy wines', 'The Flavor Bible'),
-
-('Red Meat', 'Lamb', NULL, NULL, '["Red"]', NULL, '["Cabernet Sauvignon", "Syrah", "Tempranillo"]', NULL, 2,
- 'Lamb''s gaminess matches with structured, herbal reds', 'CMS'),
-
-('Red Meat', 'Lamb', 'Lamb Chops', 'herb-crusted', '["Red"]', NULL, '["Cabernet Sauvignon", "Syrah", "Tempranillo"]', NULL, 4,
- 'Herbal notes in wine complement herb crust', 'Wine Folly'),
-
-('Red Meat', 'Lamb', 'Rack of Lamb', NULL, '["Red"]', '["Bordeaux", "Rioja"]', '["Cabernet Sauvignon", "Tempranillo"]', NULL, 4,
- 'Classic pairing with classic wine regions', 'CMS'),
-
-('Red Meat', 'Venison', NULL, NULL, '["Red"]', NULL, '["Pinot Noir", "Syrah"]', NULL, 2,
- 'Game meat pairs with earthy, forest-floor notes', 'The Flavor Bible'),
-
--- POULTRY RULES (specificity 2-4)
-('Poultry', 'Chicken', NULL, 'roasted', '["White", "Red"]', NULL, '["Chardonnay", "Pinot Noir"]', NULL, 2,
- 'Roast chicken is a bridge wine - works with both colors', 'CMS'),
-
-('Poultry', 'Chicken', NULL, 'fried', '["Sparkling", "Rosé"]', '["Brut"]', '["Chardonnay"]', NULL, 3,
- 'Bubbles and acid cut through crispy fried coating', 'Wine Folly'),
-
-('Poultry', 'Chicken', NULL, 'grilled', '["White", "Rosé"]', NULL, '["Chardonnay", "Viognier"]', NULL, 2,
- 'Char complements fuller bodied whites', 'The Flavor Bible'),
-
-('Poultry', 'Duck', NULL, NULL, '["Red"]', '["Burgundy"]', '["Pinot Noir"]', NULL, 2,
- 'Rich duck fat pairs perfectly with Pinot Noir acidity', 'CMS'),
-
-('Poultry', 'Duck', 'Duck Confit', NULL, '["Red"]', NULL, '["Pinot Noir", "Grenache"]', NULL, 4,
- 'Fat-rich confit needs high acid red wines', 'Wine Folly'),
-
-('Poultry', 'Turkey', NULL, NULL, '["White", "Red", "Rosé"]', NULL, '["Pinot Noir", "Zinfandel", "Riesling"]', NULL, 2,
- 'Thanksgiving turkey pairs with fruit-forward wines', 'The Flavor Bible'),
-
--- PORK RULES (specificity 2-4)
-('Pork', 'Pork', 'Pork Chops', 'grilled', '["White", "Red"]', NULL, '["Chardonnay", "Pinot Noir"]', NULL, 3,
- 'Grilled pork matches oaked Chardonnay or light reds', 'CMS'),
-
-('Pork', 'Pork', 'Pork Belly', NULL, '["White", "Sparkling"]', NULL, '["Riesling", "Gewürztraminer"]', NULL, 4,
- 'Fat-rich belly needs high acid to cut through', 'Wine Folly'),
-
-('Pork', 'Pork', 'Prosciutto', NULL, '["Sparkling", "White"]', '["Prosecco"]', '["Glera", "Pinot Grigio"]', NULL, 4,
- 'Salty cured ham pairs with light bubbles', 'CMS'),
-
-('Pork', 'Pork', 'Bacon', NULL, '["Red", "Sparkling"]', NULL, '["Pinot Noir", "Chardonnay"]', NULL, 3,
- 'Smoky bacon pairs with earthy Pinot or toasty sparkling', 'The Flavor Bible'),
-
--- CHEESE RULES (specificity 2-4)
-('Cheese', 'Soft', NULL, NULL, '["Sparkling", "White"]', '["Champagne"]', '["Chardonnay"]', NULL, 2,
- 'Creamy cheeses pair with high-acid wines', 'CMS'),
-
-('Cheese', 'Soft', 'Brie', NULL, '["Sparkling", "White"]', '["Champagne", "Blanc de Blancs"]', '["Chardonnay"]', NULL, 3,
- 'Bubbles cut through creamy Brie texture', 'Wine Folly'),
-
-('Cheese', 'Soft', 'Camembert', NULL, '["Sparkling", "Red"]', '["Champagne"]', '["Chardonnay", "Pinot Noir"]', NULL, 3,
- 'Earthy Camembert pairs with earthy Pinot', 'The Flavor Bible'),
-
-('Cheese', 'Hard', NULL, NULL, '["Red"]', NULL, '["Cabernet Sauvignon", "Tempranillo"]', NULL, 2,
- 'Aged hard cheeses match tannic reds', 'CMS'),
-
-('Cheese', 'Hard', 'Parmigiano-Reggiano', NULL, '["Red", "Sparkling"]', '["Lambrusco"]', '["Sangiovese"]', NULL, 4,
- 'Italian cheese with Italian wine - classic pairing', 'Wine Folly'),
-
-('Cheese', 'Hard', 'Manchego', NULL, '["Red"]', '["Rioja"]', '["Tempranillo"]', NULL, 4,
- 'Spanish cheese with Spanish wine', 'CMS'),
-
-('Cheese', 'Blue', NULL, NULL, '["Dessert", "Fortified"]', '["Sauternes", "Port"]', NULL, NULL, 2,
- 'Sweet wines balance salty, pungent blue cheese', 'Wine Folly'),
-
-('Cheese', 'Blue', 'Roquefort', NULL, '["Dessert"]', '["Sauternes"]', '["Semillon", "Sauvignon Blanc"]', NULL, 4,
- 'Classic French pairing: sweet Sauternes with salty Roquefort', 'CMS'),
-
-('Cheese', 'Blue', 'Stilton', NULL, '["Fortified"]', '["Vintage Port"]', NULL, NULL, 4,
- 'Classic British pairing after dinner', 'The Flavor Bible'),
-
-('Cheese', 'Goat', NULL, NULL, '["White"]', NULL, '["Sauvignon Blanc"]', NULL, 2,
- 'High acid wine matches tangy goat cheese', 'Wine Folly'),
-
-('Cheese', 'Goat', 'Chèvre', NULL, '["White"]', '["Sancerre", "Pouilly-Fumé"]', '["Sauvignon Blanc"]', NULL, 4,
- 'Loire Valley classic - local cheese with local wine', 'CMS'),
-
--- PASTA RULES (specificity 2-4)
-('Pasta', NULL, NULL, 'tomato-based', '["Red"]', NULL, '["Sangiovese", "Barbera"]', NULL, 2,
- 'Italian wines with Italian food; acidity matches tomato', 'Wine Folly'),
-
-('Pasta', NULL, NULL, 'cream-based', '["White"]', NULL, '["Chardonnay"]', NULL, 2,
- 'Rich cream sauce matches rich buttery Chardonnay', 'CMS'),
-
-('Pasta', NULL, NULL, 'pesto', '["White"]', NULL, '["Vermentino", "Sauvignon Blanc"]', NULL, 3,
- 'Herbaceous wine matches herbaceous pesto', 'The Flavor Bible'),
-
-('Pasta', NULL, 'Carbonara', NULL, '["White"]', NULL, '["Chardonnay", "Pinot Grigio"]', NULL, 4,
- 'Egg and cheese richness needs crisp white', 'Wine Folly'),
-
-('Pasta', NULL, 'Bolognese', NULL, '["Red"]', NULL, '["Sangiovese"]', NULL, 4,
- 'Classic ragù pairs with Chianti Classico', 'CMS'),
-
--- DESSERT RULES (specificity 2-4)
-('Desserts', 'Chocolate', NULL, NULL, '["Fortified", "Red"]', '["Port", "Banyuls"]', NULL, NULL, 2,
- 'Dark chocolate needs sweet fortified wines', 'Wine Folly'),
-
-('Desserts', 'Chocolate', 'Dark Chocolate', NULL, '["Fortified"]', '["Vintage Port", "Banyuls"]', NULL, NULL, 4,
- 'Intense cocoa matches intense Port', 'CMS'),
-
-('Desserts', 'Fruit', NULL, NULL, '["Dessert", "Sparkling"]', '["Moscato d''Asti"]', '["Muscat"]', NULL, 2,
- 'Light fruity desserts pair with light sweet wines', 'The Flavor Bible'),
-
-('Desserts', 'Fruit', 'Apple Tart', NULL, '["Dessert"]', '["Late Harvest Riesling"]', '["Riesling"]', NULL, 4,
- 'Apple in wine mirrors apple in tart', 'Wine Folly'),
-
-('Desserts', 'Custard', NULL, NULL, '["Dessert"]', '["Sauternes", "Tokaji"]', '["Semillon"]', NULL, 3,
- 'Rich custard matches rich botrytis wines', 'CMS'),
-
-('Desserts', 'Custard', 'Crème Brûlée', NULL, '["Dessert"]', '["Sauternes"]', '["Semillon", "Sauvignon Blanc"]', NULL, 4,
- 'Caramelized sugar pairs with honeyed Sauternes', 'Wine Folly');
+INSERT INTO `refAbbreviations` (`id`, `abbreviation`, `expansion`, `context`, `priority`, `isActive`, `createdAt`) VALUES
+(1, 'Ch.', 'Château', 'producer', 10, 1, '2026-02-09 16:00:03'),
+(2, 'Cht.', 'Château', 'producer', 10, 1, '2026-02-09 16:00:03'),
+(3, 'Chateau', 'Château', 'producer', 9, 1, '2026-02-09 16:00:03'),
+(4, 'Dom.', 'Domaine', 'producer', 10, 1, '2026-02-09 16:00:03'),
+(5, 'Wgt.', 'Weingut', 'producer', 10, 1, '2026-02-09 16:00:03'),
+(6, 'Bod.', 'Bodega', 'producer', 10, 1, '2026-02-09 16:00:03'),
+(7, 'Tnta.', 'Tenuta', 'producer', 10, 1, '2026-02-09 16:00:03'),
+(8, 'Cstl.', 'Castello', 'producer', 10, 1, '2026-02-09 16:00:03'),
+(9, 'Qtà.', 'Quinta', 'producer', 10, 1, '2026-02-09 16:00:03'),
+(10, 'Clos', 'Clos', 'producer', 5, 1, '2026-02-09 16:00:03'),
+(11, 'Marchesi', 'Marchesi', 'producer', 5, 1, '2026-02-09 16:00:03'),
+(12, 'GC', 'Grand Cru', 'wine', 5, 1, '2026-02-09 16:00:03'),
+(13, 'PC', 'Premier Cru', 'wine', 5, 1, '2026-02-09 16:00:03'),
+(14, '1er Cru', 'Premier Cru', 'wine', 5, 1, '2026-02-09 16:00:03'),
+(15, 'VV', 'Vieilles Vignes', 'wine', 5, 1, '2026-02-09 16:00:03'),
+(16, 'Res.', 'Reserva', 'wine', 5, 1, '2026-02-09 16:00:03'),
+(17, 'Rsv.', 'Riserva', 'wine', 5, 1, '2026-02-09 16:00:03'),
+(18, 'Gran Res.', 'Gran Reserva', 'wine', 5, 1, '2026-02-09 16:00:03'),
+(19, 'Ste.', 'Sainte', 'both', 8, 1, '2026-02-09 16:00:03'),
+(20, 'St.', 'Saint', 'both', 8, 1, '2026-02-09 16:00:03'),
+(21, 'Mt.', 'Mont', 'both', 7, 1, '2026-02-09 16:00:03'),
+(22, 'Mte.', 'Monte', 'both', 7, 1, '2026-02-09 16:00:03');
 
 -- =====================================================
--- Intensity Profiles
+-- Grape Characteristics (29 varieties)
 -- =====================================================
 
-INSERT INTO refIntensityProfiles
-(entityType, entityName, weight, richness, acidityNeed, tanninTolerance, sweetnessAffinity) VALUES
-
--- FOODS
-('food', 'Oysters', 0.15, 0.20, 0.90, 0.05, 0.10),
-('food', 'Grilled Steak', 0.85, 0.80, 0.40, 0.90, 0.05),
-('food', 'Roast Chicken', 0.50, 0.45, 0.60, 0.40, 0.15),
-('food', 'Salmon', 0.55, 0.60, 0.55, 0.30, 0.10),
-('food', 'Lobster', 0.45, 0.70, 0.65, 0.10, 0.15),
-('food', 'Lamb Chops', 0.75, 0.70, 0.50, 0.80, 0.05),
-('food', 'Duck Confit', 0.70, 0.85, 0.70, 0.50, 0.10),
-('food', 'Pork Belly', 0.65, 0.90, 0.80, 0.30, 0.20),
-('food', 'Mushroom Risotto', 0.55, 0.65, 0.50, 0.40, 0.10),
-('food', 'Grilled Vegetables', 0.35, 0.30, 0.60, 0.25, 0.15),
-('food', 'Foie Gras', 0.60, 0.95, 0.70, 0.10, 0.80),
-('food', 'Dark Chocolate', 0.50, 0.75, 0.30, 0.40, 0.90),
-
--- WINE TYPES
-('wine_type', 'Sparkling', 0.20, 0.25, NULL, NULL, NULL),
-('wine_type', 'White', 0.35, 0.40, NULL, NULL, NULL),
-('wine_type', 'Rosé', 0.40, 0.35, NULL, NULL, NULL),
-('wine_type', 'Red', 0.70, 0.65, NULL, NULL, NULL),
-('wine_type', 'Dessert', 0.55, 0.80, NULL, NULL, NULL),
-('wine_type', 'Fortified', 0.75, 0.85, NULL, NULL, NULL),
-
--- GRAPES
-('grape', 'Cabernet Sauvignon', 0.85, 0.75, NULL, NULL, NULL),
-('grape', 'Pinot Noir', 0.40, 0.45, NULL, NULL, NULL),
-('grape', 'Merlot', 0.65, 0.60, NULL, NULL, NULL),
-('grape', 'Syrah', 0.80, 0.70, NULL, NULL, NULL),
-('grape', 'Chardonnay', 0.55, 0.55, NULL, NULL, NULL),
-('grape', 'Sauvignon Blanc', 0.30, 0.25, NULL, NULL, NULL),
-('grape', 'Riesling', 0.25, 0.30, NULL, NULL, NULL);
+INSERT INTO `refGrapeCharacteristics` (`id`, `grapeName`, `alternateNames`, `color`, `body`, `tannin`, `acidity`, `sweetness`, `primaryFlavors`, `secondaryFlavors`, `agingPotential`, `classicPairings`, `createdAt`) VALUES
+(1, 'Cabernet Sauvignon', NULL, 'red', 'full', 'high', 'medium', 'dry', '["blackcurrant", "cedar", "tobacco", "dark cherry", "graphite"]', '["vanilla", "chocolate", "leather"]', 'very-long', '["lamb", "beef", "hard cheese", "grilled meats"]', '2026-02-01 16:59:36'),
+(2, 'Pinot Noir', NULL, 'red', 'light', 'low', 'medium-high', 'dry', '["red cherry", "raspberry", "strawberry", "earth", "mushroom"]', '["cola", "clove", "forest floor"]', 'medium', '["duck", "salmon", "pork", "mushroom dishes", "chicken"]', '2026-02-01 16:59:36'),
+(3, 'Merlot', NULL, 'red', 'medium-full', 'medium', 'medium', 'dry', '["plum", "cherry", "chocolate", "herbs", "bay leaf"]', '["vanilla", "mocha", "tobacco"]', 'medium', '["roast chicken", "pasta", "mushrooms", "pork tenderloin"]', '2026-02-01 16:59:36'),
+(4, 'Syrah', '["Shiraz"]', 'red', 'full', 'medium-high', 'medium', 'dry', '["blackberry", "pepper", "smoke", "meat", "olive"]', '["bacon", "tar", "violet"]', 'long', '["grilled meats", "stews", "game", "barbecue", "lamb"]', '2026-02-01 16:59:36'),
+(5, 'Tempranillo', '["Tinto Fino", "Tinta Roriz", "Aragonez"]', 'red', 'medium-full', 'medium-high', 'medium', 'dry', '["cherry", "leather", "tobacco", "tomato", "dried fig"]', '["vanilla", "dill", "coconut"]', 'long', '["lamb", "cured meats", "tapas", "chorizo", "manchego"]', '2026-02-01 16:59:36'),
+(6, 'Sangiovese', '["Brunello", "Prugnolo Gentile"]', 'red', 'medium', 'medium-high', 'high', 'dry', '["cherry", "tomato", "herbs", "tea", "rose"]', '["tobacco", "leather", "earth"]', 'long', '["tomato-based pasta", "pizza", "grilled vegetables", "hard Italian cheese"]', '2026-02-01 16:59:36'),
+(7, 'Nebbiolo', NULL, 'red', 'full', 'high', 'high', 'dry', '["cherry", "rose", "tar", "truffle", "dried herbs"]', '["leather", "licorice", "menthol"]', 'very-long', '["truffle dishes", "braised meats", "aged cheese", "risotto"]', '2026-02-01 16:59:36'),
+(8, 'Grenache', '["Garnacha", "Cannonau"]', 'red', 'medium-full', 'medium-low', 'medium', 'dry', '["raspberry", "strawberry", "orange peel", "white pepper", "herbs"]', '["leather", "tar", "licorice"]', 'medium', '["grilled lamb", "Mediterranean cuisine", "roasted vegetables"]', '2026-02-01 16:59:36'),
+(9, 'Malbec', '["Côt"]', 'red', 'full', 'medium-high', 'medium', 'dry', '["plum", "blackberry", "black cherry", "cocoa", "violet"]', '["vanilla", "tobacco", "leather"]', 'medium', '["grilled steak", "barbecue", "empanadas", "hard cheese"]', '2026-02-01 16:59:36'),
+(10, 'Zinfandel', '["Primitivo"]', 'red', 'full', 'medium', 'medium', 'dry', '["blackberry", "raspberry", "black pepper", "licorice", "jam"]', '["vanilla", "tobacco", "cinnamon"]', 'medium', '["barbecue", "pizza", "grilled sausages", "spicy food"]', '2026-02-01 16:59:36'),
+(11, 'Cabernet Franc', NULL, 'red', 'medium', 'medium', 'medium-high', 'dry', '["raspberry", "bell pepper", "violet", "graphite", "herbs"]', '["tobacco", "cedar"]', 'medium', '["roast chicken", "pork", "vegetable dishes", "goat cheese"]', '2026-02-01 16:59:36'),
+(12, 'Mourvèdre', '["Monastrell", "Mataro"]', 'red', 'full', 'high', 'medium', 'dry', '["blackberry", "meat", "earth", "game", "black pepper"]', '["leather", "herbs"]', 'long', '["game", "lamb", "hearty stews", "aged cheese"]', '2026-02-01 16:59:36'),
+(13, 'Petit Verdot', NULL, 'red', 'full', 'high', 'medium', 'dry', '["violet", "blueberry", "plum", "sage", "pencil lead"]', '["leather", "smoke"]', 'long', '["beef", "lamb", "hard aged cheese"]', '2026-02-01 16:59:36'),
+(14, 'Barbera', NULL, 'red', 'medium', 'low', 'high', 'dry', '["cherry", "plum", "herbs", "licorice", "dried flowers"]', '["vanilla", "spice"]', 'medium', '["tomato-based dishes", "pizza", "pasta", "cured meats"]', '2026-02-01 16:59:36'),
+(15, 'Dolcetto', NULL, 'red', 'medium', 'medium', 'medium-low', 'dry', '["black cherry", "licorice", "prune", "cocoa", "almond"]', NULL, 'drink-now', '["pasta", "pizza", "antipasti", "cured meats"]', '2026-02-01 16:59:36'),
+(16, 'Chardonnay', NULL, 'white', 'medium-full', NULL, 'medium', 'dry', '["apple", "citrus", "pear", "melon"]', '["butter", "vanilla", "toast", "hazelnut"]', 'medium', '["lobster", "chicken", "cream sauces", "rich fish", "soft cheese"]', '2026-02-01 16:59:36'),
+(17, 'Sauvignon Blanc', NULL, 'white', 'light', NULL, 'high', 'dry', '["grapefruit", "grass", "green apple", "gooseberry", "lime"]', '["jalapeño", "passionfruit", "boxwood"]', 'drink-now', '["goat cheese", "seafood", "salads", "asparagus", "sushi"]', '2026-02-01 16:59:36'),
+(18, 'Riesling', NULL, 'white', 'light', NULL, 'high', 'dry', '["lime", "green apple", "peach", "apricot", "honey"]', '["petrol", "slate", "ginger"]', 'very-long', '["spicy food", "pork", "shellfish", "Asian cuisine", "duck"]', '2026-02-01 16:59:36'),
+(19, 'Pinot Grigio', '["Pinot Gris"]', 'white', 'light', NULL, 'medium-high', 'dry', '["lemon", "green apple", "pear", "almond", "honey"]', '["ginger", "stone fruit"]', 'drink-now', '["light seafood", "salads", "light pasta", "aperitif"]', '2026-02-01 16:59:36'),
+(20, 'Gewürztraminer', NULL, 'white', 'medium-full', NULL, 'medium-low', 'dry', '["lychee", "rose", "ginger", "grapefruit", "mango"]', '["honey", "spice", "smoke"]', 'medium', '["Asian cuisine", "spicy food", "foie gras", "soft cheese"]', '2026-02-01 16:59:36'),
+(21, 'Viognier', NULL, 'white', 'full', NULL, 'medium-low', 'dry', '["peach", "apricot", "tangerine", "honeysuckle", "mango"]', '["vanilla", "cream", "spice"]', 'short', '["rich seafood", "cream sauces", "Thai food", "roast chicken"]', '2026-02-01 16:59:36'),
+(22, 'Chenin Blanc', NULL, 'white', 'medium', NULL, 'high', 'dry', '["apple", "quince", "honey", "chamomile", "ginger"]', '["lanolin", "straw", "beeswax"]', 'very-long', '["pork", "Thai cuisine", "soft cheese", "fruit-based dishes"]', '2026-02-01 16:59:36'),
+(23, 'Albariño', '["Alvarinho"]', 'white', 'light', NULL, 'high', 'dry', '["lemon", "grapefruit", "peach", "apricot", "saline"]', '["almond", "herbs"]', 'drink-now', '["seafood", "shellfish", "ceviche", "light fish"]', '2026-02-01 16:59:36'),
+(24, 'Grüner Veltliner', NULL, 'white', 'light', NULL, 'high', 'dry', '["green apple", "lime", "white pepper", "radish", "herbs"]', '["lentil", "citrus zest"]', 'medium', '["Wiener Schnitzel", "Asian fusion", "salads", "vegetables"]', '2026-02-01 16:59:36'),
+(25, 'Muscadet', '["Melon de Bourgogne"]', 'white', 'light', NULL, 'high', 'dry', '["lemon", "green apple", "pear", "saline", "chalk"]', '["yeast", "brioche"]', 'drink-now', '["oysters", "mussels", "seafood", "light fish"]', '2026-02-01 16:59:36'),
+(26, 'Torrontés', NULL, 'white', 'light', NULL, 'medium', 'dry', '["peach", "rose", "geranium", "citrus", "lychee"]', NULL, 'drink-now', '["spicy food", "ceviche", "Asian cuisine", "appetizers"]', '2026-02-01 16:59:36'),
+(27, 'Semillon', '["Sémillon"]', 'white', 'medium-full', NULL, 'medium-low', 'dry', '["lemon", "apple", "papaya", "fig", "honey"]', '["lanolin", "toast", "waxy"]', 'long', '["rich fish", "chicken", "cream sauces", "foie gras"]', '2026-02-01 16:59:36'),
+(28, 'Vermentino', '["Rolle", "Pigato"]', 'white', 'light', NULL, 'medium-high', 'dry', '["lime", "grapefruit", "green apple", "almond", "herbs"]', '["saline", "fennel"]', 'drink-now', '["Mediterranean seafood", "pesto", "light appetizers"]', '2026-02-01 16:59:36'),
+(29, 'Grenache Rosé', NULL, 'pink', 'light', NULL, 'medium', 'dry', '["strawberry", "watermelon", "rose petal", "citrus"]', '["herbs", "white pepper"]', 'drink-now', '["salads", "grilled fish", "Mediterranean cuisine", "appetizers"]', '2026-02-01 16:59:36');
 
 -- =====================================================
--- Wine Styles (~40 styles)
+-- Appellations (47 key wine regions)
 -- =====================================================
 
-INSERT INTO refWineStyles
-(styleName, wineType, description, characteristics, typicalGrapes, typicalRegions, servingTemp) VALUES
-
--- SPARKLING STYLES
-('Blanc de Blancs', 'Sparkling', 'White sparkling wine made exclusively from white grapes, typically Chardonnay',
- '{"body": "light", "acidity": "high", "sweetness": "dry", "bubbles": "fine"}',
- '["Chardonnay"]', '["Champagne", "California", "England"]', '6-8°C'),
-
-('Blanc de Noirs', 'Sparkling', 'White sparkling wine made from red grapes (Pinot Noir and/or Pinot Meunier)',
- '{"body": "medium", "acidity": "high", "sweetness": "dry", "bubbles": "fine"}',
- '["Pinot Noir", "Pinot Meunier"]', '["Champagne"]', '6-8°C'),
-
-('Brut', 'Sparkling', 'Dry sparkling wine with minimal residual sugar (less than 12g/L)',
- '{"body": "light", "acidity": "high", "sweetness": "dry", "bubbles": "fine"}',
- '["Chardonnay", "Pinot Noir", "Pinot Meunier"]', '["Champagne", "Cava", "Franciacorta"]', '6-8°C'),
-
-('Brut Nature', 'Sparkling', 'Bone-dry sparkling wine with no dosage added (less than 3g/L sugar)',
- '{"body": "light", "acidity": "very high", "sweetness": "bone-dry", "bubbles": "fine"}',
- '["Chardonnay", "Pinot Noir"]', '["Champagne"]', '6-8°C'),
-
-('Brut Rosé', 'Sparkling', 'Dry pink sparkling wine, made by blending or maceration',
- '{"body": "light", "acidity": "high", "sweetness": "dry", "bubbles": "fine"}',
- '["Pinot Noir", "Chardonnay"]', '["Champagne", "Franciacorta"]', '6-8°C'),
-
-('Prosecco', 'Sparkling', 'Italian sparkling wine made from Glera grape using tank method',
- '{"body": "light", "acidity": "medium", "sweetness": "off-dry", "bubbles": "frothy"}',
- '["Glera"]', '["Veneto", "Friuli"]', '6-8°C'),
-
-('Cava', 'Sparkling', 'Spanish sparkling wine made using traditional method',
- '{"body": "light", "acidity": "high", "sweetness": "dry", "bubbles": "fine"}',
- '["Macabeo", "Parellada", "Xarel-lo"]', '["Penedès", "Catalunya"]', '6-8°C'),
-
--- WHITE STYLES
-('Oaked Chardonnay', 'White', 'Full-bodied white wine aged in oak barrels with MLF',
- '{"body": "full", "acidity": "medium", "sweetness": "dry", "oak": "heavy"}',
- '["Chardonnay"]', '["Burgundy", "California", "Australia"]', '10-13°C'),
-
-('Unoaked Chardonnay', 'White', 'Crisp, fruit-forward white without oak influence',
- '{"body": "medium", "acidity": "medium-high", "sweetness": "dry", "oak": "none"}',
- '["Chardonnay"]', '["Chablis", "Chile", "New Zealand"]', '8-10°C'),
-
-('Crisp White', 'White', 'High-acid, refreshing white wine with citrus and green notes',
- '{"body": "light", "acidity": "high", "sweetness": "dry"}',
- '["Sauvignon Blanc", "Albariño", "Muscadet"]', '["Loire Valley", "New Zealand", "Galicia"]', '6-8°C'),
-
-('Aromatic White', 'White', 'Intensely perfumed white wine with floral and fruit aromas',
- '{"body": "light to medium", "acidity": "medium", "sweetness": "off-dry to sweet"}',
- '["Gewürztraminer", "Muscat", "Torrontés"]', '["Alsace", "Germany", "Argentina"]', '8-10°C'),
-
-('Rich White', 'White', 'Full-bodied white with weight and texture',
- '{"body": "full", "acidity": "medium-low", "sweetness": "dry"}',
- '["Viognier", "Marsanne", "Roussanne"]', '["Rhône Valley", "California"]', '10-12°C'),
-
--- RED STYLES
-('Light Red', 'Red', 'Delicate red wine with soft tannins and bright fruit',
- '{"body": "light", "tannin": "low", "acidity": "high", "sweetness": "dry"}',
- '["Pinot Noir", "Gamay", "Schiava"]', '["Burgundy", "Beaujolais", "Alto Adige"]', '14-16°C'),
-
-('Medium Red', 'Red', 'Balanced red with moderate tannins and fruit',
- '{"body": "medium", "tannin": "medium", "acidity": "medium", "sweetness": "dry"}',
- '["Merlot", "Sangiovese", "Grenache"]', '["Bordeaux", "Tuscany", "Rhône"]', '16-18°C'),
-
-('Full-Bodied Red', 'Red', 'Powerful red with firm tannins and concentrated fruit',
- '{"body": "full", "tannin": "high", "acidity": "medium", "sweetness": "dry"}',
- '["Cabernet Sauvignon", "Syrah", "Nebbiolo"]', '["Napa Valley", "Barossa", "Piedmont"]', '17-19°C'),
-
-('Bordeaux Blend', 'Red', 'Classic blend dominated by Cabernet Sauvignon or Merlot',
- '{"body": "full", "tannin": "high", "acidity": "medium", "sweetness": "dry"}',
- '["Cabernet Sauvignon", "Merlot", "Cabernet Franc"]', '["Bordeaux", "Napa Valley", "Chile"]', '17-18°C'),
-
-('Rhône Blend', 'Red', 'Southern Rhône style blend based on Grenache',
- '{"body": "medium-full", "tannin": "medium", "acidity": "medium", "sweetness": "dry"}',
- '["Grenache", "Syrah", "Mourvèdre"]', '["Châteauneuf-du-Pape", "Gigondas", "Australia"]', '16-18°C'),
-
-('Super Tuscan', 'Red', 'Tuscan wine blending Italian and international varieties',
- '{"body": "full", "tannin": "high", "acidity": "medium-high", "sweetness": "dry"}',
- '["Sangiovese", "Cabernet Sauvignon", "Merlot"]', '["Tuscany"]', '17-18°C'),
-
--- ROSÉ STYLES
-('Provence Rosé', 'Rosé', 'Pale, dry rosé with delicate flavors',
- '{"body": "light", "acidity": "high", "sweetness": "dry"}',
- '["Grenache", "Cinsault", "Mourvèdre"]', '["Provence"]', '8-10°C'),
-
-('Tavel', 'Rosé', 'Fuller-bodied, more structured rosé',
- '{"body": "medium", "acidity": "medium", "sweetness": "dry"}',
- '["Grenache", "Cinsault"]', '["Tavel", "Rhône"]', '10-12°C'),
-
--- DESSERT STYLES
-('Late Harvest', 'Dessert', 'Sweet wine from late-picked grapes with concentrated sugar',
- '{"body": "medium", "acidity": "high", "sweetness": "sweet"}',
- '["Riesling", "Gewürztraminer", "Semillon"]', '["Alsace", "Germany", "California"]', '6-8°C'),
-
-('Botrytis', 'Dessert', 'Sweet wine from grapes affected by noble rot',
- '{"body": "full", "acidity": "high", "sweetness": "very sweet"}',
- '["Semillon", "Sauvignon Blanc", "Furmint"]', '["Sauternes", "Tokaji", "Loire"]', '6-8°C'),
-
-('Ice Wine', 'Dessert', 'Sweet wine from grapes frozen on the vine',
- '{"body": "medium", "acidity": "very high", "sweetness": "very sweet"}',
- '["Riesling", "Vidal"]', '["Canada", "Germany"]', '6-8°C'),
-
--- FORTIFIED STYLES
-('Vintage Port', 'Fortified', 'Aged vintage port from a single year',
- '{"body": "full", "tannin": "high", "sweetness": "sweet", "fortified": true}',
- '["Touriga Nacional", "Tinta Roriz", "Touriga Franca"]', '["Douro"]', '16-18°C'),
-
-('Tawny Port', 'Fortified', 'Barrel-aged port with oxidative character',
- '{"body": "medium", "sweetness": "sweet", "fortified": true}',
- '["Touriga Nacional", "Tinta Roriz"]', '["Douro"]', '12-14°C'),
-
-('Fino Sherry', 'Fortified', 'Dry, pale sherry aged under flor',
- '{"body": "light", "acidity": "high", "sweetness": "dry", "fortified": true}',
- '["Palomino"]', '["Jerez"]', '7-9°C'),
-
-('Amontillado', 'Fortified', 'Sherry aged under flor then oxidatively',
- '{"body": "medium", "acidity": "medium", "sweetness": "dry", "fortified": true}',
- '["Palomino"]', '["Jerez"]', '12-14°C'),
-
-('Oloroso', 'Fortified', 'Rich, oxidatively aged dry sherry',
- '{"body": "full", "acidity": "medium", "sweetness": "dry", "fortified": true}',
- '["Palomino"]', '["Jerez"]', '12-14°C'),
-
-('PX Sherry', 'Fortified', 'Intensely sweet sherry from dried Pedro Ximénez grapes',
- '{"body": "full", "sweetness": "very sweet", "fortified": true}',
- '["Pedro Ximénez"]', '["Jerez", "Montilla-Moriles"]', '12-14°C');
+INSERT INTO `refAppellations` (`id`, `appellationName`, `normalizedName`, `country`, `region`, `subRegion`, `wineTypes`, `primaryGrapes`, `classificationLevel`, `parentAppellation`, `createdAt`) VALUES
+(1, 'Bordeaux', 'bordeaux', 'France', 'Bordeaux', NULL, '["Red", "White"]', '["Cabernet Sauvignon", "Merlot", "Sauvignon Blanc"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(2, 'Margaux', 'margaux', 'France', 'Bordeaux', 'Médoc', '["Red"]', '["Cabernet Sauvignon", "Merlot"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(3, 'Pauillac', 'pauillac', 'France', 'Bordeaux', 'Médoc', '["Red"]', '["Cabernet Sauvignon", "Merlot"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(4, 'Saint-Émilion', 'saintémilion', 'France', 'Bordeaux', 'Right Bank', '["Red"]', '["Merlot", "Cabernet Franc"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(5, 'Pomerol', 'pomerol', 'France', 'Bordeaux', 'Right Bank', '["Red"]', '["Merlot", "Cabernet Franc"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(6, 'Sauternes', 'sauternes', 'France', 'Bordeaux', NULL, '["Dessert"]', '["Semillon", "Sauvignon Blanc"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(7, 'Champagne', 'champagne', 'France', 'Champagne', NULL, '["Sparkling"]', '["Chardonnay", "Pinot Noir", "Pinot Meunier"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(8, 'Burgundy', 'burgundy', 'France', 'Burgundy', NULL, '["Red", "White"]', '["Pinot Noir", "Chardonnay"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(9, 'Chablis', 'chablis', 'France', 'Burgundy', 'Chablis', '["White"]', '["Chardonnay"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(10, 'Côte de Nuits', 'côtedenuits', 'France', 'Burgundy', NULL, '["Red"]', '["Pinot Noir"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(11, 'Côte de Beaune', 'côtedebeaune', 'France', 'Burgundy', NULL, '["Red", "White"]', '["Pinot Noir", "Chardonnay"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(12, 'Northern Rhône', 'northernrhône', 'France', 'Rhône Valley', NULL, '["Red", "White"]', '["Syrah", "Viognier"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(13, 'Côte-Rôtie', 'côterôtie', 'France', 'Rhône Valley', 'Northern Rhône', '["Red"]', '["Syrah", "Viognier"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(14, 'Hermitage', 'hermitage', 'France', 'Rhône Valley', 'Northern Rhône', '["Red", "White"]', '["Syrah", "Marsanne", "Roussanne"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(15, 'Châteauneuf-du-Pape', 'châteauneufdupape', 'France', 'Rhône Valley', 'Southern Rhône', '["Red", "White"]', '["Grenache", "Syrah", "Mourvèdre"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(16, 'Loire Valley', 'loirevalley', 'France', 'Loire Valley', NULL, '["White", "Red", "Rosé", "Sparkling"]', '["Sauvignon Blanc", "Chenin Blanc", "Cabernet Franc"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(17, 'Sancerre', 'sancerre', 'France', 'Loire Valley', 'Central Loire', '["White", "Red"]', '["Sauvignon Blanc", "Pinot Noir"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(18, 'Vouvray', 'vouvray', 'France', 'Loire Valley', 'Touraine', '["White", "Sparkling"]', '["Chenin Blanc"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(19, 'Alsace', 'alsace', 'France', 'Alsace', NULL, '["White"]', '["Riesling", "Gewürztraminer", "Pinot Gris"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(20, 'Provence', 'provence', 'France', 'Provence', NULL, '["Rosé", "Red", "White"]', '["Grenache", "Cinsault", "Mourvèdre"]', 'AOC', NULL, '2026-02-01 16:59:36'),
+(21, 'Piedmont', 'piedmont', 'Italy', 'Piedmont', NULL, '["Red", "White", "Sparkling"]', '["Nebbiolo", "Barbera", "Moscato"]', 'DOCG', NULL, '2026-02-01 16:59:36'),
+(22, 'Barolo', 'barolo', 'Italy', 'Piedmont', NULL, '["Red"]', '["Nebbiolo"]', 'DOCG', NULL, '2026-02-01 16:59:36'),
+(23, 'Barbaresco', 'barbaresco', 'Italy', 'Piedmont', NULL, '["Red"]', '["Nebbiolo"]', 'DOCG', NULL, '2026-02-01 16:59:36'),
+(24, 'Tuscany', 'tuscany', 'Italy', 'Tuscany', NULL, '["Red", "White"]', '["Sangiovese", "Trebbiano"]', 'DOC', NULL, '2026-02-01 16:59:36'),
+(25, 'Chianti Classico', 'chianticlassico', 'Italy', 'Tuscany', 'Chianti', '["Red"]', '["Sangiovese"]', 'DOCG', NULL, '2026-02-01 16:59:36'),
+(26, 'Brunello di Montalcino', 'brunellodimontalcino', 'Italy', 'Tuscany', 'Montalcino', '["Red"]', '["Sangiovese"]', 'DOCG', NULL, '2026-02-01 16:59:36'),
+(27, 'Bolgheri', 'bolgheri', 'Italy', 'Tuscany', NULL, '["Red"]', '["Cabernet Sauvignon", "Merlot", "Sangiovese"]', 'DOC', NULL, '2026-02-01 16:59:36'),
+(28, 'Veneto', 'veneto', 'Italy', 'Veneto', NULL, '["Red", "White", "Sparkling"]', '["Corvina", "Garganega", "Glera"]', 'DOC', NULL, '2026-02-01 16:59:36'),
+(29, 'Prosecco', 'prosecco', 'Italy', 'Veneto', NULL, '["Sparkling"]', '["Glera"]', 'DOC', NULL, '2026-02-01 16:59:36'),
+(30, 'Amarone della Valpolicella', 'amaronedellavalpolicella', 'Italy', 'Veneto', 'Valpolicella', '["Red"]', '["Corvina", "Rondinella", "Molinara"]', 'DOCG', NULL, '2026-02-01 16:59:36'),
+(31, 'Rioja', 'rioja', 'Spain', 'Rioja', NULL, '["Red", "White"]', '["Tempranillo", "Garnacha", "Viura"]', 'DOCa', NULL, '2026-02-01 16:59:36'),
+(32, 'Ribera del Duero', 'riberadelduero', 'Spain', 'Castilla y León', NULL, '["Red"]', '["Tempranillo"]', 'DO', NULL, '2026-02-01 16:59:36'),
+(33, 'Priorat', 'priorat', 'Spain', 'Catalonia', NULL, '["Red"]', '["Garnacha", "Cariñena"]', 'DOCa', NULL, '2026-02-01 16:59:36'),
+(34, 'Rías Baixas', 'ríasbaixas', 'Spain', 'Galicia', NULL, '["White"]', '["Albariño"]', 'DO', NULL, '2026-02-01 16:59:36'),
+(35, 'Jerez', 'jerez', 'Spain', 'Andalusia', NULL, '["Fortified"]', '["Palomino", "Pedro Ximénez"]', 'DO', NULL, '2026-02-01 16:59:36'),
+(36, 'Napa Valley', 'napavalley', 'USA', 'California', NULL, '["Red", "White"]', '["Cabernet Sauvignon", "Chardonnay"]', 'AVA', NULL, '2026-02-01 16:59:36'),
+(37, 'Sonoma County', 'sonomacounty', 'USA', 'California', NULL, '["Red", "White"]', '["Pinot Noir", "Chardonnay", "Zinfandel"]', 'AVA', NULL, '2026-02-01 16:59:36'),
+(38, 'Willamette Valley', 'willamettevalley', 'USA', 'Oregon', NULL, '["Red", "White"]', '["Pinot Noir", "Pinot Gris"]', 'AVA', NULL, '2026-02-01 16:59:36'),
+(39, 'Barossa Valley', 'barossavalley', 'Australia', 'South Australia', NULL, '["Red", "White"]', '["Shiraz", "Grenache", "Riesling"]', 'GI', NULL, '2026-02-01 16:59:36'),
+(40, 'McLaren Vale', 'mclarenvale', 'Australia', 'South Australia', NULL, '["Red"]', '["Shiraz", "Grenache"]', 'GI', NULL, '2026-02-01 16:59:36'),
+(41, 'Margaret River', 'margaretriver', 'Australia', 'Western Australia', NULL, '["Red", "White"]', '["Cabernet Sauvignon", "Chardonnay"]', 'GI', NULL, '2026-02-01 16:59:36'),
+(42, 'Marlborough', 'marlborough', 'New Zealand', 'South Island', NULL, '["White"]', '["Sauvignon Blanc", "Pinot Noir"]', 'GI', NULL, '2026-02-01 16:59:36'),
+(43, 'Central Otago', 'centralotago', 'New Zealand', 'South Island', NULL, '["Red"]', '["Pinot Noir"]', 'GI', NULL, '2026-02-01 16:59:36'),
+(44, 'Mendoza', 'mendoza', 'Argentina', 'Mendoza', NULL, '["Red", "White"]', '["Malbec", "Torrontés"]', NULL, NULL, '2026-02-01 16:59:36'),
+(45, 'Douro', 'douro', 'Portugal', 'Douro', NULL, '["Red", "Fortified"]', '["Touriga Nacional", "Tinta Roriz"]', 'DOC', NULL, '2026-02-01 16:59:36'),
+(46, 'Mosel', 'mosel', 'Germany', 'Mosel', NULL, '["White"]', '["Riesling"]', 'QbA', NULL, '2026-02-01 16:59:36'),
+(47, 'Rheingau', 'rheingau', 'Germany', 'Rheingau', NULL, '["White"]', '["Riesling"]', 'QbA', NULL, '2026-02-01 16:59:36');
 
 -- =====================================================
--- Appellations (Key wine regions)
+-- Intensity Profiles (25 entries)
 -- =====================================================
 
-INSERT INTO refAppellations
-(appellationName, country, region, subRegion, wineTypes, primaryGrapes, classificationLevel) VALUES
+INSERT INTO `refIntensityProfiles` (`id`, `entityType`, `entityName`, `weight`, `richness`, `acidityNeed`, `tanninTolerance`, `sweetnessAffinity`, `createdAt`) VALUES
+(1, 'food', 'Oysters', 0.15, 0.20, 0.90, 0.05, 0.10, '2026-02-01 16:59:36'),
+(2, 'food', 'Grilled Steak', 0.85, 0.80, 0.40, 0.90, 0.05, '2026-02-01 16:59:36'),
+(3, 'food', 'Roast Chicken', 0.50, 0.45, 0.60, 0.40, 0.15, '2026-02-01 16:59:36'),
+(4, 'food', 'Salmon', 0.55, 0.60, 0.55, 0.30, 0.10, '2026-02-01 16:59:36'),
+(5, 'food', 'Lobster', 0.45, 0.70, 0.65, 0.10, 0.15, '2026-02-01 16:59:36'),
+(6, 'food', 'Lamb Chops', 0.75, 0.70, 0.50, 0.80, 0.05, '2026-02-01 16:59:36'),
+(7, 'food', 'Duck Confit', 0.70, 0.85, 0.70, 0.50, 0.10, '2026-02-01 16:59:36'),
+(8, 'food', 'Pork Belly', 0.65, 0.90, 0.80, 0.30, 0.20, '2026-02-01 16:59:36'),
+(9, 'food', 'Mushroom Risotto', 0.55, 0.65, 0.50, 0.40, 0.10, '2026-02-01 16:59:36'),
+(10, 'food', 'Grilled Vegetables', 0.35, 0.30, 0.60, 0.25, 0.15, '2026-02-01 16:59:36'),
+(11, 'food', 'Foie Gras', 0.60, 0.95, 0.70, 0.10, 0.80, '2026-02-01 16:59:36'),
+(12, 'food', 'Dark Chocolate', 0.50, 0.75, 0.30, 0.40, 0.90, '2026-02-01 16:59:36'),
+(13, 'wine_type', 'Sparkling', 0.20, 0.25, NULL, NULL, NULL, '2026-02-01 16:59:36'),
+(14, 'wine_type', 'White', 0.35, 0.40, NULL, NULL, NULL, '2026-02-01 16:59:36'),
+(15, 'wine_type', 'Rosé', 0.40, 0.35, NULL, NULL, NULL, '2026-02-01 16:59:36'),
+(16, 'wine_type', 'Red', 0.70, 0.65, NULL, NULL, NULL, '2026-02-01 16:59:36'),
+(17, 'wine_type', 'Dessert', 0.55, 0.80, NULL, NULL, NULL, '2026-02-01 16:59:36'),
+(18, 'wine_type', 'Fortified', 0.75, 0.85, NULL, NULL, NULL, '2026-02-01 16:59:36'),
+(19, 'grape', 'Cabernet Sauvignon', 0.85, 0.75, NULL, NULL, NULL, '2026-02-01 16:59:36'),
+(20, 'grape', 'Pinot Noir', 0.40, 0.45, NULL, NULL, NULL, '2026-02-01 16:59:36'),
+(21, 'grape', 'Merlot', 0.65, 0.60, NULL, NULL, NULL, '2026-02-01 16:59:36'),
+(22, 'grape', 'Syrah', 0.80, 0.70, NULL, NULL, NULL, '2026-02-01 16:59:36'),
+(23, 'grape', 'Chardonnay', 0.55, 0.55, NULL, NULL, NULL, '2026-02-01 16:59:36'),
+(24, 'grape', 'Sauvignon Blanc', 0.30, 0.25, NULL, NULL, NULL, '2026-02-01 16:59:36'),
+(25, 'grape', 'Riesling', 0.25, 0.30, NULL, NULL, NULL, '2026-02-01 16:59:36');
 
--- FRANCE
-('Bordeaux', 'France', 'Bordeaux', NULL, '["Red", "White"]', '["Cabernet Sauvignon", "Merlot", "Sauvignon Blanc"]', 'AOC'),
-('Margaux', 'France', 'Bordeaux', 'Médoc', '["Red"]', '["Cabernet Sauvignon", "Merlot"]', 'AOC'),
-('Pauillac', 'France', 'Bordeaux', 'Médoc', '["Red"]', '["Cabernet Sauvignon", "Merlot"]', 'AOC'),
-('Saint-Émilion', 'France', 'Bordeaux', 'Right Bank', '["Red"]', '["Merlot", "Cabernet Franc"]', 'AOC'),
-('Pomerol', 'France', 'Bordeaux', 'Right Bank', '["Red"]', '["Merlot", "Cabernet Franc"]', 'AOC'),
-('Sauternes', 'France', 'Bordeaux', NULL, '["Dessert"]', '["Semillon", "Sauvignon Blanc"]', 'AOC'),
+-- =====================================================
+-- Pairing Rules (58 hierarchical rules)
+-- =====================================================
 
-('Champagne', 'France', 'Champagne', NULL, '["Sparkling"]', '["Chardonnay", "Pinot Noir", "Pinot Meunier"]', 'AOC'),
+INSERT INTO `refPairingRules` (`id`, `foodCategory`, `foodSubcategory`, `foodItem`, `preparationMethod`, `wineTypes`, `wineStyles`, `grapeVarieties`, `avoidTypes`, `avoidStyles`, `specificity`, `reasoning`, `source`, `isActive`, `createdAt`) VALUES
+(1, 'Seafood', NULL, NULL, NULL, '["Sparkling", "White"]', NULL, NULL, '["Red"]', NULL, 1, 'Light wines complement delicate seafood; tannins clash with fish oils', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(2, 'Red Meat', NULL, NULL, NULL, '["Red"]', NULL, NULL, NULL, NULL, 1, 'Tannins cut through fat and protein; fuller body matches meat weight', 'CMS', 1, '2026-02-01 16:59:36'),
+(3, 'Poultry', NULL, NULL, NULL, '["White", "Rosé", "Red"]', NULL, NULL, NULL, NULL, 1, 'Versatile protein pairs widely depending on preparation', 'The Flavor Bible', 1, '2026-02-01 16:59:36'),
+(4, 'Pork', NULL, NULL, NULL, '["White", "Rosé", "Red"]', NULL, NULL, NULL, NULL, 1, 'Medium weight protein pairs with lighter reds and fuller whites', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(5, 'Vegetarian', NULL, NULL, NULL, '["White", "Rosé", "Red"]', NULL, NULL, NULL, NULL, 1, 'Pair based on preparation method and dominant flavors', 'The Flavor Bible', 1, '2026-02-01 16:59:36'),
+(6, 'Cheese', NULL, NULL, NULL, '["Red", "White", "Sparkling", "Dessert", "Fortified"]', NULL, NULL, NULL, NULL, 1, 'Match intensity of cheese with wine; contrast or complement flavors', 'CMS', 1, '2026-02-01 16:59:36'),
+(7, 'Pasta', NULL, NULL, NULL, '["Red", "White"]', NULL, NULL, NULL, NULL, 1, 'Pair with sauce, not pasta itself', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(8, 'Desserts', NULL, NULL, NULL, '["Dessert", "Sparkling", "Fortified"]', NULL, NULL, '["Red"]', NULL, 1, 'Wine should be sweeter than the dessert', 'CMS', 1, '2026-02-01 16:59:36'),
+(9, 'Seafood', 'Shellfish', NULL, NULL, '["Sparkling", "White"]', '["Brut", "Blanc de Blancs"]', '["Chardonnay", "Muscadet"]', '["Red"]', NULL, 2, 'High acid and mineral whites complement briny shellfish', 'CMS', 1, '2026-02-01 16:59:36'),
+(10, 'Seafood', 'Shellfish', 'Oysters', 'raw', '["Sparkling", "White"]', '["Blanc de Blancs", "Muscadet", "Chablis"]', '["Chardonnay", "Melon de Bourgogne"]', '["Red"]', NULL, 4, 'Mineral, crisp wines echo ocean brininess; champagne bubbles cleanse', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(11, 'Seafood', 'Shellfish', 'Lobster', 'butter-poached', '["White", "Sparkling"]', '["Oaked Chardonnay"]', '["Chardonnay"]', NULL, NULL, 4, 'Rich buttery lobster matches rich buttery Chardonnay', 'CMS', 1, '2026-02-01 16:59:36'),
+(12, 'Seafood', 'Shellfish', 'Crab', NULL, '["White", "Sparkling"]', '["Blanc de Blancs"]', '["Chardonnay", "Sauvignon Blanc"]', NULL, NULL, 3, 'Delicate sweet meat pairs with elegant whites', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(13, 'Seafood', 'Fish', 'Salmon', 'grilled', '["White", "Rosé", "Red"]', NULL, '["Pinot Noir", "Chardonnay"]', NULL, NULL, 3, 'Rich fatty fish handles medium-bodied Pinot Noir', 'CMS', 1, '2026-02-01 16:59:36'),
+(14, 'Seafood', 'Fish', 'Salmon', 'smoked', '["Sparkling", "White"]', '["Brut Rosé"]', '["Chardonnay", "Pinot Noir"]', NULL, NULL, 4, 'Smoky richness pairs with toasty champagne', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(15, 'Seafood', 'Fish', 'Tuna', 'seared', '["Red", "Rosé"]', NULL, '["Pinot Noir", "Grenache"]', NULL, NULL, 3, 'Meaty tuna handles light reds served slightly cool', 'CMS', 1, '2026-02-01 16:59:36'),
+(16, 'Seafood', 'Fish', NULL, 'fried', '["Sparkling", "White"]', '["Brut"]', '["Chardonnay", "Albariño"]', NULL, NULL, 3, 'High acid and bubbles cut through fried coating', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(17, 'Seafood', 'Fish', NULL, 'grilled', '["White"]', NULL, '["Sauvignon Blanc", "Vermentino", "Albariño"]', NULL, NULL, 2, 'Char notes pair with herbaceous whites', 'The Flavor Bible', 1, '2026-02-01 16:59:36'),
+(18, 'Red Meat', 'Beef', NULL, NULL, '["Red"]', NULL, '["Cabernet Sauvignon", "Malbec", "Syrah"]', NULL, NULL, 2, 'Bold tannins and dark fruit complement beef richness', 'CMS', 1, '2026-02-01 16:59:36'),
+(19, 'Red Meat', 'Beef', 'Steak', 'grilled', '["Red"]', NULL, '["Cabernet Sauvignon", "Malbec", "Syrah"]', NULL, NULL, 3, 'High tannin cuts through char and fat; dark fruit echoes Maillard', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(20, 'Red Meat', 'Beef', 'Filet Mignon', NULL, '["Red"]', NULL, '["Pinot Noir", "Merlot"]', NULL, NULL, 4, 'Leaner cut pairs with softer, more elegant reds', 'CMS', 1, '2026-02-01 16:59:36'),
+(21, 'Red Meat', 'Beef', 'Ribeye', NULL, '["Red"]', NULL, '["Cabernet Sauvignon", "Malbec"]', NULL, NULL, 4, 'Fatty marbled cut needs high tannin wines', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(22, 'Red Meat', 'Beef', NULL, 'braised', '["Red"]', NULL, '["Nebbiolo", "Sangiovese", "Syrah"]', NULL, NULL, 3, 'Long-cooked beef pairs with structured, earthy wines', 'The Flavor Bible', 1, '2026-02-01 16:59:36'),
+(23, 'Red Meat', 'Lamb', NULL, NULL, '["Red"]', NULL, '["Cabernet Sauvignon", "Syrah", "Tempranillo"]', NULL, NULL, 2, 'Lamb''s gaminess matches with structured, herbal reds', 'CMS', 1, '2026-02-01 16:59:36'),
+(24, 'Red Meat', 'Lamb', 'Lamb Chops', 'herb-crusted', '["Red"]', NULL, '["Cabernet Sauvignon", "Syrah", "Tempranillo"]', NULL, NULL, 4, 'Herbal notes in wine complement herb crust', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(25, 'Red Meat', 'Lamb', 'Rack of Lamb', NULL, '["Red"]', '["Bordeaux", "Rioja"]', '["Cabernet Sauvignon", "Tempranillo"]', NULL, NULL, 4, 'Classic pairing with classic wine regions', 'CMS', 1, '2026-02-01 16:59:36'),
+(26, 'Red Meat', 'Venison', NULL, NULL, '["Red"]', NULL, '["Pinot Noir", "Syrah"]', NULL, NULL, 2, 'Game meat pairs with earthy, forest-floor notes', 'The Flavor Bible', 1, '2026-02-01 16:59:36'),
+(27, 'Poultry', 'Chicken', NULL, 'roasted', '["White", "Red"]', NULL, '["Chardonnay", "Pinot Noir"]', NULL, NULL, 2, 'Roast chicken is a bridge wine - works with both colors', 'CMS', 1, '2026-02-01 16:59:36'),
+(28, 'Poultry', 'Chicken', NULL, 'fried', '["Sparkling", "Rosé"]', '["Brut"]', '["Chardonnay"]', NULL, NULL, 3, 'Bubbles and acid cut through crispy fried coating', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(29, 'Poultry', 'Chicken', NULL, 'grilled', '["White", "Rosé"]', NULL, '["Chardonnay", "Viognier"]', NULL, NULL, 2, 'Char complements fuller bodied whites', 'The Flavor Bible', 1, '2026-02-01 16:59:36'),
+(30, 'Poultry', 'Duck', NULL, NULL, '["Red"]', '["Burgundy"]', '["Pinot Noir"]', NULL, NULL, 2, 'Rich duck fat pairs perfectly with Pinot Noir acidity', 'CMS', 1, '2026-02-01 16:59:36'),
+(31, 'Poultry', 'Duck', 'Duck Confit', NULL, '["Red"]', NULL, '["Pinot Noir", "Grenache"]', NULL, NULL, 4, 'Fat-rich confit needs high acid red wines', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(32, 'Poultry', 'Turkey', NULL, NULL, '["White", "Red", "Rosé"]', NULL, '["Pinot Noir", "Zinfandel", "Riesling"]', NULL, NULL, 2, 'Thanksgiving turkey pairs with fruit-forward wines', 'The Flavor Bible', 1, '2026-02-01 16:59:36'),
+(33, 'Pork', 'Pork', 'Pork Chops', 'grilled', '["White", "Red"]', NULL, '["Chardonnay", "Pinot Noir"]', NULL, NULL, 3, 'Grilled pork matches oaked Chardonnay or light reds', 'CMS', 1, '2026-02-01 16:59:36'),
+(34, 'Pork', 'Pork', 'Pork Belly', NULL, '["White", "Sparkling"]', NULL, '["Riesling", "Gewürztraminer"]', NULL, NULL, 4, 'Fat-rich belly needs high acid to cut through', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(35, 'Pork', 'Pork', 'Prosciutto', NULL, '["Sparkling", "White"]', '["Prosecco"]', '["Glera", "Pinot Grigio"]', NULL, NULL, 4, 'Salty cured ham pairs with light bubbles', 'CMS', 1, '2026-02-01 16:59:36'),
+(36, 'Pork', 'Pork', 'Bacon', NULL, '["Red", "Sparkling"]', NULL, '["Pinot Noir", "Chardonnay"]', NULL, NULL, 3, 'Smoky bacon pairs with earthy Pinot or toasty sparkling', 'The Flavor Bible', 1, '2026-02-01 16:59:36'),
+(37, 'Cheese', 'Soft', NULL, NULL, '["Sparkling", "White"]', '["Champagne"]', '["Chardonnay"]', NULL, NULL, 2, 'Creamy cheeses pair with high-acid wines', 'CMS', 1, '2026-02-01 16:59:36'),
+(38, 'Cheese', 'Soft', 'Brie', NULL, '["Sparkling", "White"]', '["Champagne", "Blanc de Blancs"]', '["Chardonnay"]', NULL, NULL, 3, 'Bubbles cut through creamy Brie texture', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(39, 'Cheese', 'Soft', 'Camembert', NULL, '["Sparkling", "Red"]', '["Champagne"]', '["Chardonnay", "Pinot Noir"]', NULL, NULL, 3, 'Earthy Camembert pairs with earthy Pinot', 'The Flavor Bible', 1, '2026-02-01 16:59:36'),
+(40, 'Cheese', 'Hard', NULL, NULL, '["Red"]', NULL, '["Cabernet Sauvignon", "Tempranillo"]', NULL, NULL, 2, 'Aged hard cheeses match tannic reds', 'CMS', 1, '2026-02-01 16:59:36'),
+(41, 'Cheese', 'Hard', 'Parmigiano-Reggiano', NULL, '["Red", "Sparkling"]', '["Lambrusco"]', '["Sangiovese"]', NULL, NULL, 4, 'Italian cheese with Italian wine - classic pairing', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(42, 'Cheese', 'Hard', 'Manchego', NULL, '["Red"]', '["Rioja"]', '["Tempranillo"]', NULL, NULL, 4, 'Spanish cheese with Spanish wine', 'CMS', 1, '2026-02-01 16:59:36'),
+(43, 'Cheese', 'Blue', NULL, NULL, '["Dessert", "Fortified"]', '["Sauternes", "Port"]', NULL, NULL, NULL, 2, 'Sweet wines balance salty, pungent blue cheese', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(44, 'Cheese', 'Blue', 'Roquefort', NULL, '["Dessert"]', '["Sauternes"]', '["Semillon", "Sauvignon Blanc"]', NULL, NULL, 4, 'Classic French pairing: sweet Sauternes with salty Roquefort', 'CMS', 1, '2026-02-01 16:59:36'),
+(45, 'Cheese', 'Blue', 'Stilton', NULL, '["Fortified"]', '["Vintage Port"]', NULL, NULL, NULL, 4, 'Classic British pairing after dinner', 'The Flavor Bible', 1, '2026-02-01 16:59:36'),
+(46, 'Cheese', 'Goat', NULL, NULL, '["White"]', NULL, '["Sauvignon Blanc"]', NULL, NULL, 2, 'High acid wine matches tangy goat cheese', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(47, 'Cheese', 'Goat', 'Chèvre', NULL, '["White"]', '["Sancerre", "Pouilly-Fumé"]', '["Sauvignon Blanc"]', NULL, NULL, 4, 'Loire Valley classic - local cheese with local wine', 'CMS', 1, '2026-02-01 16:59:36'),
+(48, 'Pasta', NULL, NULL, 'tomato-based', '["Red"]', NULL, '["Sangiovese", "Barbera"]', NULL, NULL, 2, 'Italian wines with Italian food; acidity matches tomato', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(49, 'Pasta', NULL, NULL, 'cream-based', '["White"]', NULL, '["Chardonnay"]', NULL, NULL, 2, 'Rich cream sauce matches rich buttery Chardonnay', 'CMS', 1, '2026-02-01 16:59:36'),
+(50, 'Pasta', NULL, NULL, 'pesto', '["White"]', NULL, '["Vermentino", "Sauvignon Blanc"]', NULL, NULL, 3, 'Herbaceous wine matches herbaceous pesto', 'The Flavor Bible', 1, '2026-02-01 16:59:36'),
+(51, 'Pasta', NULL, 'Carbonara', NULL, '["White"]', NULL, '["Chardonnay", "Pinot Grigio"]', NULL, NULL, 4, 'Egg and cheese richness needs crisp white', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(52, 'Pasta', NULL, 'Bolognese', NULL, '["Red"]', NULL, '["Sangiovese"]', NULL, NULL, 4, 'Classic ragù pairs with Chianti Classico', 'CMS', 1, '2026-02-01 16:59:36'),
+(53, 'Desserts', 'Chocolate', NULL, NULL, '["Fortified", "Red"]', '["Port", "Banyuls"]', NULL, NULL, NULL, 2, 'Dark chocolate needs sweet fortified wines', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(54, 'Desserts', 'Chocolate', 'Dark Chocolate', NULL, '["Fortified"]', '["Vintage Port", "Banyuls"]', NULL, NULL, NULL, 4, 'Intense cocoa matches intense Port', 'CMS', 1, '2026-02-01 16:59:36'),
+(55, 'Desserts', 'Fruit', NULL, NULL, '["Dessert", "Sparkling"]', '["Moscato d''Asti"]', '["Muscat"]', NULL, NULL, 2, 'Light fruity desserts pair with light sweet wines', 'The Flavor Bible', 1, '2026-02-01 16:59:36'),
+(56, 'Desserts', 'Fruit', 'Apple Tart', NULL, '["Dessert"]', '["Late Harvest Riesling"]', '["Riesling"]', NULL, NULL, 4, 'Apple in wine mirrors apple in tart', 'Wine Folly', 1, '2026-02-01 16:59:36'),
+(57, 'Desserts', 'Custard', NULL, NULL, '["Dessert"]', '["Sauternes", "Tokaji"]', '["Semillon"]', NULL, NULL, 3, 'Rich custard matches rich botrytis wines', 'CMS', 1, '2026-02-01 16:59:36'),
+(58, 'Desserts', 'Custard', 'Crème Brûlée', NULL, '["Dessert"]', '["Sauternes"]', '["Semillon", "Sauvignon Blanc"]', NULL, NULL, 4, 'Caramelized sugar pairs with honeyed Sauternes', 'Wine Folly', 1, '2026-02-01 16:59:36');
 
-('Burgundy', 'France', 'Burgundy', NULL, '["Red", "White"]', '["Pinot Noir", "Chardonnay"]', 'AOC'),
-('Chablis', 'France', 'Burgundy', 'Chablis', '["White"]', '["Chardonnay"]', 'AOC'),
-('Côte de Nuits', 'France', 'Burgundy', NULL, '["Red"]', '["Pinot Noir"]', 'AOC'),
-('Côte de Beaune', 'France', 'Burgundy', NULL, '["Red", "White"]', '["Pinot Noir", "Chardonnay"]', 'AOC'),
+-- =====================================================
+-- Wine Styles (30 styles)
+-- =====================================================
 
-('Northern Rhône', 'France', 'Rhône Valley', NULL, '["Red", "White"]', '["Syrah", "Viognier"]', 'AOC'),
-('Côte-Rôtie', 'France', 'Rhône Valley', 'Northern Rhône', '["Red"]', '["Syrah", "Viognier"]', 'AOC'),
-('Hermitage', 'France', 'Rhône Valley', 'Northern Rhône', '["Red", "White"]', '["Syrah", "Marsanne", "Roussanne"]', 'AOC'),
-('Châteauneuf-du-Pape', 'France', 'Rhône Valley', 'Southern Rhône', '["Red", "White"]', '["Grenache", "Syrah", "Mourvèdre"]', 'AOC'),
+INSERT INTO `refWineStyles` (`id`, `styleName`, `wineType`, `description`, `characteristics`, `typicalGrapes`, `typicalRegions`, `servingTemp`, `createdAt`) VALUES
+(1, 'Blanc de Blancs', 'Sparkling', 'White sparkling wine made exclusively from white grapes, typically Chardonnay', '{"body": "light", "acidity": "high", "sweetness": "dry", "bubbles": "fine"}', '["Chardonnay"]', '["Champagne", "California", "England"]', '6-8°C', '2026-02-01 16:59:36'),
+(2, 'Blanc de Noirs', 'Sparkling', 'White sparkling wine made from red grapes (Pinot Noir and/or Pinot Meunier)', '{"body": "medium", "acidity": "high", "sweetness": "dry", "bubbles": "fine"}', '["Pinot Noir", "Pinot Meunier"]', '["Champagne"]', '6-8°C', '2026-02-01 16:59:36'),
+(3, 'Brut', 'Sparkling', 'Dry sparkling wine with minimal residual sugar (less than 12g/L)', '{"body": "light", "acidity": "high", "sweetness": "dry", "bubbles": "fine"}', '["Chardonnay", "Pinot Noir", "Pinot Meunier"]', '["Champagne", "Cava", "Franciacorta"]', '6-8°C', '2026-02-01 16:59:36'),
+(4, 'Brut Nature', 'Sparkling', 'Bone-dry sparkling wine with no dosage added (less than 3g/L sugar)', '{"body": "light", "acidity": "very high", "sweetness": "bone-dry", "bubbles": "fine"}', '["Chardonnay", "Pinot Noir"]', '["Champagne"]', '6-8°C', '2026-02-01 16:59:36'),
+(5, 'Brut Rosé', 'Sparkling', 'Dry pink sparkling wine, made by blending or maceration', '{"body": "light", "acidity": "high", "sweetness": "dry", "bubbles": "fine"}', '["Pinot Noir", "Chardonnay"]', '["Champagne", "Franciacorta"]', '6-8°C', '2026-02-01 16:59:36'),
+(6, 'Prosecco', 'Sparkling', 'Italian sparkling wine made from Glera grape using tank method', '{"body": "light", "acidity": "medium", "sweetness": "off-dry", "bubbles": "frothy"}', '["Glera"]', '["Veneto", "Friuli"]', '6-8°C', '2026-02-01 16:59:36'),
+(7, 'Cava', 'Sparkling', 'Spanish sparkling wine made using traditional method', '{"body": "light", "acidity": "high", "sweetness": "dry", "bubbles": "fine"}', '["Macabeo", "Parellada", "Xarel-lo"]', '["Penedès", "Catalunya"]', '6-8°C', '2026-02-01 16:59:36'),
+(8, 'Oaked Chardonnay', 'White', 'Full-bodied white wine aged in oak barrels with MLF', '{"body": "full", "acidity": "medium", "sweetness": "dry", "oak": "heavy"}', '["Chardonnay"]', '["Burgundy", "California", "Australia"]', '10-13°C', '2026-02-01 16:59:36'),
+(9, 'Unoaked Chardonnay', 'White', 'Crisp, fruit-forward white without oak influence', '{"body": "medium", "acidity": "medium-high", "sweetness": "dry", "oak": "none"}', '["Chardonnay"]', '["Chablis", "Chile", "New Zealand"]', '8-10°C', '2026-02-01 16:59:36'),
+(10, 'Crisp White', 'White', 'High-acid, refreshing white wine with citrus and green notes', '{"body": "light", "acidity": "high", "sweetness": "dry"}', '["Sauvignon Blanc", "Albariño", "Muscadet"]', '["Loire Valley", "New Zealand", "Galicia"]', '6-8°C', '2026-02-01 16:59:36'),
+(11, 'Aromatic White', 'White', 'Intensely perfumed white wine with floral and fruit aromas', '{"body": "light to medium", "acidity": "medium", "sweetness": "off-dry to sweet"}', '["Gewürztraminer", "Muscat", "Torrontés"]', '["Alsace", "Germany", "Argentina"]', '8-10°C', '2026-02-01 16:59:36'),
+(12, 'Rich White', 'White', 'Full-bodied white with weight and texture', '{"body": "full", "acidity": "medium-low", "sweetness": "dry"}', '["Viognier", "Marsanne", "Roussanne"]', '["Rhône Valley", "California"]', '10-12°C', '2026-02-01 16:59:36'),
+(13, 'Light Red', 'Red', 'Delicate red wine with soft tannins and bright fruit', '{"body": "light", "tannin": "low", "acidity": "high", "sweetness": "dry"}', '["Pinot Noir", "Gamay", "Schiava"]', '["Burgundy", "Beaujolais", "Alto Adige"]', '14-16°C', '2026-02-01 16:59:36'),
+(14, 'Medium Red', 'Red', 'Balanced red with moderate tannins and fruit', '{"body": "medium", "tannin": "medium", "acidity": "medium", "sweetness": "dry"}', '["Merlot", "Sangiovese", "Grenache"]', '["Bordeaux", "Tuscany", "Rhône"]', '16-18°C', '2026-02-01 16:59:36'),
+(15, 'Full-Bodied Red', 'Red', 'Powerful red with firm tannins and concentrated fruit', '{"body": "full", "tannin": "high", "acidity": "medium", "sweetness": "dry"}', '["Cabernet Sauvignon", "Syrah", "Nebbiolo"]', '["Napa Valley", "Barossa", "Piedmont"]', '17-19°C', '2026-02-01 16:59:36'),
+(16, 'Bordeaux Blend', 'Red', 'Classic blend dominated by Cabernet Sauvignon or Merlot', '{"body": "full", "tannin": "high", "acidity": "medium", "sweetness": "dry"}', '["Cabernet Sauvignon", "Merlot", "Cabernet Franc"]', '["Bordeaux", "Napa Valley", "Chile"]', '17-18°C', '2026-02-01 16:59:36'),
+(17, 'Rhône Blend', 'Red', 'Southern Rhône style blend based on Grenache', '{"body": "medium-full", "tannin": "medium", "acidity": "medium", "sweetness": "dry"}', '["Grenache", "Syrah", "Mourvèdre"]', '["Châteauneuf-du-Pape", "Gigondas", "Australia"]', '16-18°C', '2026-02-01 16:59:36'),
+(18, 'Super Tuscan', 'Red', 'Tuscan wine blending Italian and international varieties', '{"body": "full", "tannin": "high", "acidity": "medium-high", "sweetness": "dry"}', '["Sangiovese", "Cabernet Sauvignon", "Merlot"]', '["Tuscany"]', '17-18°C', '2026-02-01 16:59:36'),
+(19, 'Provence Rosé', 'Rosé', 'Pale, dry rosé with delicate flavors', '{"body": "light", "acidity": "high", "sweetness": "dry"}', '["Grenache", "Cinsault", "Mourvèdre"]', '["Provence"]', '8-10°C', '2026-02-01 16:59:36'),
+(20, 'Tavel', 'Rosé', 'Fuller-bodied, more structured rosé', '{"body": "medium", "acidity": "medium", "sweetness": "dry"}', '["Grenache", "Cinsault"]', '["Tavel", "Rhône"]', '10-12°C', '2026-02-01 16:59:36'),
+(21, 'Late Harvest', 'Dessert', 'Sweet wine from late-picked grapes with concentrated sugar', '{"body": "medium", "acidity": "high", "sweetness": "sweet"}', '["Riesling", "Gewürztraminer", "Semillon"]', '["Alsace", "Germany", "California"]', '6-8°C', '2026-02-01 16:59:36'),
+(22, 'Botrytis', 'Dessert', 'Sweet wine from grapes affected by noble rot', '{"body": "full", "acidity": "high", "sweetness": "very sweet"}', '["Semillon", "Sauvignon Blanc", "Furmint"]', '["Sauternes", "Tokaji", "Loire"]', '6-8°C', '2026-02-01 16:59:36'),
+(23, 'Ice Wine', 'Dessert', 'Sweet wine from grapes frozen on the vine', '{"body": "medium", "acidity": "very high", "sweetness": "very sweet"}', '["Riesling", "Vidal"]', '["Canada", "Germany"]', '6-8°C', '2026-02-01 16:59:36'),
+(24, 'Vintage Port', 'Fortified', 'Aged vintage port from a single year', '{"body": "full", "tannin": "high", "sweetness": "sweet", "fortified": true}', '["Touriga Nacional", "Tinta Roriz", "Touriga Franca"]', '["Douro"]', '16-18°C', '2026-02-01 16:59:36'),
+(25, 'Tawny Port', 'Fortified', 'Barrel-aged port with oxidative character', '{"body": "medium", "sweetness": "sweet", "fortified": true}', '["Touriga Nacional", "Tinta Roriz"]', '["Douro"]', '12-14°C', '2026-02-01 16:59:36'),
+(26, 'Fino Sherry', 'Fortified', 'Dry, pale sherry aged under flor', '{"body": "light", "acidity": "high", "sweetness": "dry", "fortified": true}', '["Palomino"]', '["Jerez"]', '7-9°C', '2026-02-01 16:59:36'),
+(27, 'Amontillado', 'Fortified', 'Sherry aged under flor then oxidatively', '{"body": "medium", "acidity": "medium", "sweetness": "dry", "fortified": true}', '["Palomino"]', '["Jerez"]', '12-14°C', '2026-02-01 16:59:36'),
+(28, 'Oloroso', 'Fortified', 'Rich, oxidatively aged dry sherry', '{"body": "full", "acidity": "medium", "sweetness": "dry", "fortified": true}', '["Palomino"]', '["Jerez"]', '12-14°C', '2026-02-01 16:59:36'),
+(29, 'PX Sherry', 'Fortified', 'Intensely sweet sherry from dried Pedro Ximénez grapes', '{"body": "full", "sweetness": "very sweet", "fortified": true}', '["Pedro Ximénez"]', '["Jerez", "Montilla-Moriles"]', '12-14°C', '2026-02-01 16:59:36'),
+(30, 'Moscato d''Asti', 'Sparkling', 'Lightly sparkling, low-alcohol sweet wine from Piedmont', '{"body": "light", "acidity": "medium", "sweetness": "sweet", "bubbles": "gentle"}', '["Muscat"]', '["Piedmont"]', '5-7°C', '2026-02-01 16:59:36');
 
-('Loire Valley', 'France', 'Loire Valley', NULL, '["White", "Red", "Rosé", "Sparkling"]', '["Sauvignon Blanc", "Chenin Blanc", "Cabernet Franc"]', 'AOC'),
-('Sancerre', 'France', 'Loire Valley', 'Central Loire', '["White", "Red"]', '["Sauvignon Blanc", "Pinot Noir"]', 'AOC'),
-('Vouvray', 'France', 'Loire Valley', 'Touraine', '["White", "Sparkling"]', '["Chenin Blanc"]', 'AOC'),
+-- =====================================================
+-- Countries (33 wine-producing nations)
+-- =====================================================
 
-('Alsace', 'France', 'Alsace', NULL, '["White"]', '["Riesling", "Gewürztraminer", "Pinot Gris"]', 'AOC'),
-('Provence', 'France', 'Provence', NULL, '["Rosé", "Red", "White"]', '["Grenache", "Cinsault", "Mourvèdre"]', 'AOC'),
+INSERT IGNORE INTO `country` (`countryID`, `countryName`, `code`, `world_code`, `full_name`, `iso3`, `number`, `continent`,
+  `wineHistory`, `classificationSystem`, `keyGrapes`, `totalVineyardHectares`, `wineRankingWorld`) VALUES
+-- Old World
+(1, 'France', 'FR', 'Old World', 'French Republic', 'FRA', '250', 'EU',
+  'France has been at the centre of the wine world since Roman times, establishing the appellation system that became the global model for quality classification. Its diverse terroirs from the cool north (Champagne, Burgundy) to the warm south (Rhône, Provence) produce the world''s most iconic wines, and French grape varieties — Cabernet Sauvignon, Merlot, Chardonnay, Pinot Noir — are now planted worldwide.',
+  'The AOC/AOP (Appellation d''Origine Contrôlée/Protégée) system classifies wines by geographic origin and production rules, from broad regional appellations to single-vineyard Grand Crus. Below AOP sits IGP (Indication Géographique Protégée) for country wines, and Vin de France for table wines.',
+  '["Cabernet Sauvignon", "Merlot", "Pinot Noir", "Chardonnay", "Syrah", "Sauvignon Blanc", "Grenache", "Chenin Blanc"]',
+  789000, 2),
+(2, 'Italy', 'IT', 'Old World', 'Italian Republic', 'ITA', '380', 'EU',
+  'Italy has been producing wine for over 4,000 years and is consistently the world''s largest or second-largest producer by volume. With over 500 native grape varieties cultivated across 20 regions from the Alps to Sicily, Italy offers unparalleled diversity, from Piedmont''s Nebbiolo to Tuscany''s Sangiovese to the volcanic wines of Etna.',
+  'The Italian system has four tiers: DOCG (Denominazione di Origine Controllata e Garantita) at the top for the most prestigious wines, DOC (Denominazione di Origine Controllata) for quality regional wines, IGT (Indicazione Geografica Tipica) for innovative wines like Super Tuscans, and Vino da Tavola for table wines.',
+  '["Sangiovese", "Nebbiolo", "Barbera", "Corvina", "Glera", "Pinot Grigio", "Garganega", "Vermentino"]',
+  718000, 1),
+(3, 'Spain', 'ES', 'Old World', 'Kingdom of Spain', 'ESP', '724', 'EU',
+  'Spain has the largest vineyard area in the world, with a winemaking tradition stretching back to the Phoenicians around 1100 BC. Its hot, arid climate and vast central plateau produce enormous volumes, while prestige regions like Rioja, Ribera del Duero, and Priorat craft world-class wines from native varieties like Tempranillo and Garnacha.',
+  'Spain''s classification system is headed by DOCa/DOQ (Denominación de Origen Calificada) for the two top regions (Rioja and Priorat), followed by DO (Denominación de Origen) for quality regions, Vino de la Tierra for country wines, and Vino de Mesa for table wines. Within DO wines, aging classifications include Joven, Crianza, Reserva, and Gran Reserva.',
+  '["Tempranillo", "Garnacha", "Albariño", "Macabeo", "Cariñena", "Xarel-lo", "Parellada"]',
+  941000, 3),
+(4, 'Portugal', 'PT', 'Old World', 'Portuguese Republic', 'PRT', '620', 'EU',
+  'Portugal''s wine heritage dates back over 2,000 years, but it is best known for Port wine from the Douro Valley, one of the world''s oldest demarcated wine regions (1756). Beyond Port, Portugal has emerged as a source of exceptional dry reds and whites from indigenous grape varieties, with regions like the Alentejo and Dão gaining international recognition.',
+  'The DOC (Denominação de Origem Controlada) system classifies Portugal''s top wine regions, with Vinho Regional (equivalent to IGP) below it for broader regional wines. The Douro, Dão, Alentejo, and Vinho Verde are among the most important DOCs.',
+  '["Touriga Nacional", "Touriga Franca", "Tinta Roriz", "Alvarinho", "Fernão Pires"]',
+  194000, 11),
+(5, 'Germany', 'DE', 'Old World', 'Federal Republic of Germany', 'DEU', '276', 'EU',
+  'Germany is one of the world''s greatest white wine producers, with a winemaking tradition dating to Roman settlements along the Rhine and Mosel rivers. Its cool climate produces Rieslings of extraordinary purity and longevity, ranging from bone-dry to lusciously sweet, and its steep, slate-covered vineyard slopes are among the most dramatic in the world.',
+  'Germany''s classification system is based on grape ripeness levels (Prädikat): Kabinett, Spätlese, Auslese, Beerenauslese, Eiswein, and Trockenbeerenauslese, from lightest to most concentrated. The VDP (Verband Deutscher Prädikatsweingüter) association uses a Burgundy-inspired site classification: Gutswein, Ortswein, Erste Lage, and Grosse Lage (Grand Cru equivalent).',
+  '["Riesling", "Spätburgunder", "Müller-Thurgau", "Silvaner", "Grauburgunder"]',
+  103000, 9),
+(6, 'Austria', 'AT', 'Old World', 'Republic of Austria', 'AUT', '040', 'EU',
+  'Austria has a distinctive wine culture centred on indigenous varieties, particularly Grüner Veltliner, which accounts for roughly a third of all plantings. The country rebuilt its reputation after a 1985 wine scandal led to some of the world''s strictest wine laws, and today Austrian wines — from the terraced Wachau vineyards to the sweet wines of Neusiedlersee — are celebrated for their precision and purity.',
+  'Austria''s DAC (Districtus Austriae Controllatus) system classifies wines by region and style, emphasizing terroir expression. The Wachau region has its own system: Steinfeder (light), Federspiel (medium), and Smaragd (full-bodied). Quality levels range from Wein (table wine) through Qualitätswein to Prädikatswein.',
+  '["Grüner Veltliner", "Riesling", "Zweigelt", "Blaufränkisch", "St. Laurent"]',
+  48000, 17),
+(7, 'Greece', 'GR', 'Old World', 'Hellenic Republic', 'GRC', '300', 'EU',
+  'Greece is one of the oldest wine-producing countries in the world, with a viticultural history spanning over 6,500 years. Ancient Greeks spread vine cultivation across the Mediterranean and developed sophisticated winemaking techniques. Today, Greece is experiencing a quality revolution with producers championing indigenous varieties like Assyrtiko from Santorini and Xinomavro from Naoussa.',
+  'The Greek system uses PDO (Protected Designation of Origin, formerly OPAP/OPE) for quality wines from defined regions and PGI (Protected Geographical Indication) for regional wines. Notable PDO regions include Naoussa, Nemea, and Santorini.',
+  '["Assyrtiko", "Xinomavro", "Agiorgitiko", "Moschofilero", "Mavrodaphne"]',
+  63000, 15),
+(8, 'Hungary', 'HU', 'Old World', 'Hungary', 'HUN', '348', 'EU',
+  'Hungary has one of Europe''s oldest wine traditions, with the Tokaj region producing sweet wines that were prized by European royalty as early as the 17th century — Louis XIV called Tokaji "the wine of kings, the king of wines." The country boasts unique indigenous varieties and diverse terroirs, from the volcanic soils of Somló to the warm shores of Lake Balaton.',
+  'Hungary uses an OEM (Oltalom alatt álló Eredetmegjelölés) system equivalent to PDO, with 37 wine regions. Tokaj wines have their own classification based on sweetness: Szamorodni (dry or sweet) and Aszú (3-6 puttonyos, indicating sweetness level). Quality levels include DHC (Districtus Hungaricus Controllatus) for regional specificity.',
+  '["Furmint", "Hárslevelű", "Kadarka", "Kékfrankos", "Juhfark"]',
+  65000, 16),
+(9, 'Switzerland', 'CH', 'Old World', 'Swiss Confederation', 'CHE', '756', 'EU',
+  'Switzerland produces excellent wines that are rarely seen abroad because the Swiss consume virtually all of their own production. The steep terraced vineyards of the Valais (the country''s largest wine region) and the shores of Lake Geneva (Lavaux, a UNESCO World Heritage site) produce distinctive wines from Chasselas, the national white grape, as well as fine Pinot Noir and Merlot.',
+  'Swiss wine classification uses AOC (Appellation d''Origine Contrôlée) at the cantonal level, with each canton setting its own regulations. The three main wine regions are the French-speaking Romandie (Valais, Vaud, Geneva), the Italian-speaking Ticino, and the German-speaking eastern cantons.',
+  '["Chasselas", "Pinot Noir", "Merlot", "Gamay", "Petite Arvine"]',
+  15000, 20),
+(10, 'Georgia', 'GE', 'Old World', 'Georgia', 'GEO', '268', 'AS',
+  'Georgia is widely regarded as the cradle of wine, with archaeological evidence of winemaking dating back 8,000 years to around 6000 BC. The country''s traditional qvevri method — fermenting and aging wine in large clay vessels buried underground — was inscribed on UNESCO''s Intangible Cultural Heritage list in 2013. Georgia boasts over 500 indigenous grape varieties and is experiencing a global renaissance of interest.',
+  'Georgia uses a PDO (Protected Designation of Origin) system with appellations such as Kakheti, Kartli, and Imereti. Wines are also classified by production method: European-style conventional winemaking and traditional qvevri (amber/orange) winemaking.',
+  '["Saperavi", "Rkatsiteli", "Mtsvane", "Kisi", "Chinuri"]',
+  55000, 19),
+(11, 'Croatia', 'HR', 'Old World', 'Republic of Croatia', 'HRV', '191', 'EU',
+  'Croatia has a wine history dating to the ancient Greeks and Romans, with vineyards lining its stunning Adriatic coastline and islands. The country''s most famous contribution to world wine is Tribidrag (Crljenak Kaštelanski), which DNA profiling confirmed as the ancestor of California''s Zinfandel. Croatian wines are increasingly gaining international recognition for their quality and indigenous character.',
+  'Croatia''s wine regions are classified under EU PDO/PGI regulations, with four main regions: Slavonia and the Danube, Croatian Uplands, Istria and Kvarner, and Dalmatia. Quality levels range from stolno vino (table wine) to vrhunsko vino (premium quality).',
+  '["Graševina", "Plavac Mali", "Malvazija Istarska", "Pošip", "Tribidrag"]',
+  21000, NULL),
+(12, 'Romania', 'RO', 'Old World', 'Romania', 'ROU', '642', 'EU',
+  'Romania is one of Europe''s largest wine producers with a history stretching back to the Dacians and Romans. Its diverse climate zones and terrain produce both indigenous varieties like Fetească Neagră and international grapes, though much of its potential remains underexplored on the global market. The country has been modernizing rapidly with EU investment.',
+  'Romania uses the DOC (Denumire de Origine Controlată) system with sub-classifications: DOC-CMD (late harvest), DOC-CT (selected harvest), and DOC-CIB (noble harvest). Below DOC are IG (Indicație Geografică) for regional wines and Vin de Masă for table wines.',
+  '["Fetească Neagră", "Fetească Albă", "Fetească Regală", "Tămâioasă Românească"]',
+  191000, 12),
+(13, 'Slovenia', 'SI', 'Old World', 'Republic of Slovenia', 'SVN', '705', 'EU',
+  'Slovenia sits at the crossroads of Alpine, Mediterranean, and Pannonian climates, producing remarkable wines from its three distinct wine regions. The Goriška Brda (Collio) region bordering Italy is world-renowned for its orange wines and skin-contact whites, and the country''s small-scale, artisanal approach to winemaking has earned it a cult following among natural wine enthusiasts.',
+  'Slovenia uses a ZGP (Zaščitena Geografska Označba) system with three wine regions: Podravje, Posavje, and Primorska. Quality classifications include namizno vino (table wine), deželno vino (country wine), kakovostno vino (quality wine), and vrhunsko vino (premium quality).',
+  '["Rebula", "Malvazija", "Šipon", "Refošk", "Zelen"]',
+  16000, NULL),
+(14, 'United Kingdom', 'GB', 'Old World', 'United Kingdom of Great Britain and Northern Ireland', 'GBR', '826', 'EU',
+  'English and Welsh wine production has grown dramatically since the 2000s, driven by climate change making southern England increasingly suitable for sparkling wine production. The chalk soils of Sussex and Kent are geologically identical to those of Champagne, and English sparkling wines now regularly compete with and beat Champagne in blind tastings. The industry has grown from around 100 vineyards in 2000 to over 900.',
+  'The UK uses the PDO (Protected Designation of Origin) system with designations such as Sussex PDO (awarded 2022) and English Quality Sparkling Wine. There is also PGI English Regional Wine and PGI Welsh Regional Wine.',
+  '["Chardonnay", "Pinot Noir", "Pinot Meunier", "Bacchus"]',
+  4000, NULL),
+(15, 'Czech Republic', 'CZ', 'Old World', 'Czech Republic', 'CZE', '203', 'EU',
+  'The Czech Republic has a wine tradition centred in the southern Moravia region, which produces around 96% of the country''s wine. The continental climate with warm summers is well-suited to both white and red varieties, and Czech wines have been improving steadily with modern investment while remaining largely unknown outside Central Europe.',
+  'Czech wines are classified under the VOC (Vína Originální Certifikace) system for regional designation, similar to the French AOC. Quality levels include stolní víno (table wine), zemské víno (country wine), jakostní víno (quality wine), and přívlastkové víno (Prädikat equivalent with ripeness categories).',
+  '["Grüner Veltliner", "Riesling", "Müller-Thurgau", "Frankovka", "Svatovavřinecké"]',
+  18000, NULL),
+(16, 'Bulgaria', 'BG', 'Old World', 'Republic of Bulgaria', 'BGR', '100', 'EU',
+  'Bulgaria has ancient winemaking roots dating to the Thracians around 3000 BC and was the world''s fourth-largest wine exporter during the communist era. The country grows both international varieties and distinctive indigenous grapes like Mavrud and Melnik, and is undergoing a quality renaissance as a new generation of producers invests in modern winemaking.',
+  'Bulgaria uses a GI (Geographical Indication) and PDO (Protected Designation of Origin) system under EU regulations. The two main Thracian and Danubian wine regions encompass over 50 sub-regions. Quality levels include DGO (wines with geographical origin) and DGO-Reserva.',
+  '["Mavrud", "Melnik", "Rubin", "Dimyat", "Misket"]',
+  63000, NULL),
+(17, 'Moldova', 'MD', 'Old World', 'Republic of Moldova', 'MDA', '498', 'EU',
+  'Moldova is one of the most wine-dependent economies in the world, with vineyards covering roughly 4% of the country''s total area. It houses the Mileștii Mici wine collection, certified by Guinness as the world''s largest, with nearly 2 million bottles in underground tunnels stretching over 200 km. The country has been modernizing its industry with a focus on quality over bulk production.',
+  'Moldova uses an IG (Indicație Geografică) and DOP (Denumire de Origine Protejată) system. Four main wine regions are recognized: Valul lui Traian, Codru, Ștefan Vodă, and Divin. The country is transitioning from Soviet-era bulk production toward quality-focused regional wines.',
+  '["Fetească Neagră", "Fetească Albă", "Rară Neagră", "Viorica"]',
+  136000, 18),
+(18, 'Turkey', 'TR', 'Old World', 'Republic of Türkiye', 'TUR', '792', 'AS',
+  'Anatolia is one of the birthplaces of viticulture, with evidence of winemaking dating back to 7000 BC, and Turkey has the world''s fourth-largest vineyard area — though most grapes are consumed as table grapes or raisins. Despite the country''s Muslim-majority population, a small but growing wine industry produces interesting wines from indigenous varieties like Öküzgözü and Boğazkere in regions like Cappadocia and Eastern Anatolia.',
+  'Turkey uses a GI (Geographical Indication) system recognizing wine regions, though it is less developed than European systems. Key producing regions include Thrace (Trakya), the Aegean coast, Cappadocia (Central Anatolia), and Eastern Anatolia.',
+  '["Öküzgözü", "Boğazkere", "Narince", "Emir", "Kalecik Karası"]',
+  410000, NULL),
+(19, 'Lebanon', 'LB', 'Old World', 'Lebanese Republic', 'LBN', '422', 'AS',
+  'Lebanon has one of the world''s oldest continuously producing wine cultures, with Phoenician merchants spreading viticulture across the Mediterranean from around 3000 BC. The Bekaa Valley, with its high altitude, warm days, and cool nights, is the heart of Lebanese winemaking. Château Musar, founded in 1930, put Lebanese wine on the global map, and the country now has over 50 wineries producing acclaimed wines.',
+  'Lebanon has no formal classification system akin to European appellations. Wines are generally labelled by producer, variety, and region. The Bekaa Valley is the primary recognized region, with emerging areas in Mount Lebanon and Batroun.',
+  '["Cabernet Sauvignon", "Cinsault", "Carignan", "Obaideh", "Merwah"]',
+  3000, NULL),
+(20, 'Israel', 'IL', 'Old World', 'State of Israel', 'ISR', '376', 'AS',
+  'Israel is one of the birthplaces of winemaking, with a viticultural history spanning over 5,000 years, though modern quality wine production only revived in the 1980s. Today, Israel produces world-class wines, particularly from high-altitude vineyards in the Golan Heights and Upper Galilee, where the cool climate allows for slow ripening and complex flavors. The industry has grown to over 300 wineries.',
+  'Israel does not have a formal appellation system. Wines are typically labelled by producer and variety, with five recognized wine regions: Galilee, Shomron, Samson, Negev, and Judean Hills. Many wines carry kosher certification.',
+  '["Cabernet Sauvignon", "Syrah", "Merlot", "Carignan", "Chardonnay"]',
+  5500, NULL),
+-- New World
+(21, 'United States', 'US', 'New World', 'United States of America', 'USA', '840', 'NA',
+  'The United States is the world''s fourth-largest wine producer, with California accounting for over 80% of production. The modern American wine industry was catalyzed by the famous 1976 "Judgment of Paris" blind tasting, when California wines bested top French wines. Today, all 50 states produce wine, with Oregon, Washington, New York, and Virginia emerging as serious quality regions alongside California''s Napa and Sonoma.',
+  'The AVA (American Viticultural Area) system designates geographic regions based on distinguishing climate, soil, and elevation features, but unlike European systems, it does not regulate grape varieties or winemaking methods. There are over 270 AVAs, with some nested (e.g., Rutherford within Napa Valley within North Coast).',
+  '["Cabernet Sauvignon", "Chardonnay", "Pinot Noir", "Zinfandel", "Merlot"]',
+  390000, 4),
+(22, 'Australia', 'AU', 'New World', 'Commonwealth of Australia', 'AUS', '036', 'OC',
+  'Australian wine production began with European settlement in the late 18th century and has grown into one of the world''s most innovative and export-driven industries. The country''s vast size encompasses climates from cool-maritime (Tasmania, Yarra Valley) to hot-continental (Barossa Valley, McLaren Vale). Australian winemakers pioneered screw cap closures, precision viticulture, and bold, fruit-forward styles that redefined New World wine.',
+  'Australia uses a GI (Geographical Indication) system that defines wine zones, regions, and sub-regions. There are over 65 GI regions across states. The Langton''s Classification of Distinguished Australian Wine provides an unofficial quality ranking similar to Bordeaux''s 1855 classification.',
+  '["Shiraz", "Chardonnay", "Cabernet Sauvignon", "Riesling", "Grenache", "Sémillon"]',
+  146000, 5),
+(23, 'New Zealand', 'NZ', 'New World', 'New Zealand', 'NZL', '554', 'OC',
+  'New Zealand''s wine industry is remarkably young — commercial production only began in the 1970s — yet it has achieved global recognition with extraordinary speed, particularly for Marlborough Sauvignon Blanc, which redefined the grape with its intensely pungent, tropical style. The cool maritime climate across both islands produces wines of exceptional freshness and varietal purity, with Central Otago Pinot Noir and Hawke''s Bay Syrah also gaining acclaim.',
+  'New Zealand uses a GI (Geographical Indication) system recognizing wine regions. The main regions include Marlborough, Hawke''s Bay, Central Otago, Martinborough, Waipara, and Gisborne. There is no formal quality classification system beyond the regional designations.',
+  '["Sauvignon Blanc", "Pinot Noir", "Chardonnay", "Syrah", "Pinot Gris"]',
+  42000, 13),
+(24, 'Argentina', 'AR', 'New World', 'Argentine Republic', 'ARG', '032', 'SA',
+  'Argentina is the world''s fifth-largest wine producer and the largest in South America, with a winemaking tradition brought by Spanish missionaries in the 16th century. The country''s vineyards, planted at some of the highest altitudes in the world (up to 3,000m in Salta), produce intense, sun-drenched wines. Malbec, which struggled in its native France, became Argentina''s flagship variety and global calling card in Mendoza.',
+  'Argentina uses a DOC (Denominación de Origen Controlada) system, though its adoption is limited. The IG (Indicación Geográfica) system recognizes broader wine regions. Mendoza is subdivided into sub-regions including Luján de Cuyo, Valle de Uco, and Maipú, with increasing focus on altitude and terroir designation.',
+  '["Malbec", "Torrontés", "Cabernet Sauvignon", "Bonarda", "Criolla"]',
+  215000, 7),
+(25, 'Chile', 'CL', 'New World', 'Republic of Chile', 'CHL', '152', 'SA',
+  'Chile''s unique geography — the Andes to the east, the Pacific to the west, the Atacama Desert to the north, and Antarctica to the south — creates a natural barrier that has kept its vineyards phylloxera-free, meaning many vines grow on their own rootstock. The country produces excellent value wines and has championed Carmenère, a grape long thought extinct in its native Bordeaux, as its signature variety.',
+  'Chile uses a DO (Denominación de Origen) system recognizing wine regions from north to south. Key regions include Maipo Valley, Colchagua, Casablanca, Leyda, and Biobío. A Costa (coast), Entre Cordilleras (between ranges), and Andes designation system was added in 2011 to reflect east-west terroir differences.',
+  '["Cabernet Sauvignon", "Carmenère", "Sauvignon Blanc", "Merlot", "País"]',
+  200000, 6),
+(26, 'South Africa', 'ZA', 'New World', 'Republic of South Africa', 'ZAF', '710', 'AF',
+  'South Africa has been producing wine since 1659, making it one of the oldest New World wine regions. The Western Cape''s Mediterranean climate, influenced by the cold Benguela Current, creates ideal growing conditions. The country''s signature grape is Chenin Blanc (locally called Steen), which accounts for nearly 20% of all plantings, and Pinotage — a uniquely South African cross of Pinot Noir and Cinsault — is its most distinctive red variety.',
+  'South Africa''s Wine of Origin (WO) system classifies wines by geographic units, regions, districts, and wards. The main districts include Stellenbosch, Paarl, Franschhoek, Swartland, Walker Bay, and Constantia. The Integrated Production of Wine (IPW) scheme certifies sustainable production.',
+  '["Chenin Blanc", "Pinotage", "Cabernet Sauvignon", "Shiraz", "Chardonnay"]',
+  125000, 8),
+(27, 'Brazil', 'BR', 'New World', 'Federative Republic of Brazil', 'BRA', '076', 'SA',
+  'Brazil is South America''s third-largest wine producer, with production centred in the southernmost state of Rio Grande do Sul, particularly the Serra Gaúcha highlands settled by Italian immigrants in the 19th century. The warm, humid climate poses viticultural challenges, but the emerging Vale dos Vinhedos region has gained international recognition and DOC status, producing quality wines from both international and hybrid varieties.',
+  'Brazil uses an IG (Indicação Geográfica) and DO (Denominação de Origem) system. Vale dos Vinhedos was the first region to receive DO status. Other recognized GI regions include Pinto Bandeira, Monte Belo, and Altos Montes in the Serra Gaúcha.',
+  '["Merlot", "Cabernet Sauvignon", "Chardonnay", "Moscato", "Tannat"]',
+  82000, 14),
+(28, 'Uruguay', 'UY', 'New World', 'Oriental Republic of Uruguay', 'URY', '858', 'SA',
+  'Uruguay is a small but quality-focused wine producer, with Tannat — originally from southwestern France — as its signature grape, producing robust, tannic reds with remarkable depth. The maritime climate influenced by the Atlantic and the Río de la Plata moderates temperatures, and the country''s boutique-scale wineries in Canelones and Maldonado are gaining recognition for wines that balance power with elegance.',
+  'Uruguay uses a wine origin system recognizing major wine regions, with Canelones, Montevideo, Colonia, and Maldonado as the primary areas. There is no formal appellation hierarchy, though regional labeling is becoming more common.',
+  '["Tannat", "Merlot", "Cabernet Sauvignon", "Sauvignon Blanc", "Albariño"]',
+  6000, NULL),
+(29, 'Canada', 'CA', 'New World', 'Canada', 'CAN', '124', 'NA',
+  'Canada''s wine industry has grown significantly since the 1990s, with Ontario''s Niagara Peninsula and British Columbia''s Okanagan Valley as the two main producing regions. The country is the world''s largest producer of ice wine (Eiswein), taking advantage of reliably cold winters to freeze grapes on the vine for intensely sweet, concentrated wines that have become a Canadian specialty.',
+  'Canada uses the VQA (Vintners Quality Alliance) system in Ontario and British Columbia, regulating grape source, variety, and production methods. Sub-appellations like Niagara-on-the-Lake, Twenty Mile Bench, and the Okanagan''s Golden Mile Bench provide increasing specificity.',
+  '["Riesling", "Chardonnay", "Pinot Noir", "Cabernet Franc", "Vidal"]',
+  13000, NULL),
+(30, 'Mexico', 'MX', 'New World', 'United Mexican States', 'MEX', '484', 'NA',
+  'Mexico is the oldest wine-producing country in the Americas, with Spanish missionaries planting vines in the 16th century. The Valle de Guadalupe in Baja California has emerged as the country''s flagship wine region, producing acclaimed wines in a Mediterranean-like climate. Mexico''s wine industry is growing rapidly, driven by a new generation of winemakers and increasing domestic interest in quality wine.',
+  'Mexico does not have a formal wine classification system. The main recognized wine region is the Valle de Guadalupe in Baja California''s wine country, with emerging regions in Querétaro, Aguascalientes, Coahuila, and Zacatecas.',
+  '["Cabernet Sauvignon", "Tempranillo", "Nebbiolo", "Grenache", "Chenin Blanc"]',
+  35000, NULL),
+(31, 'China', 'CN', 'New World', 'People''s Republic of China', 'CHN', '156', 'AS',
+  'China has rapidly become one of the world''s largest wine-consuming and producing nations, with a modern industry that began in earnest in the 1980s. The Ningxia region at the eastern edge of the Gobi Desert has emerged as China''s most promising fine wine region, producing Bordeaux-style reds that have won international blind tastings. Despite having one of the world''s largest vineyard areas, most grapes are consumed as table fruit.',
+  'China uses a GI system with recognized wine regions including Ningxia, Xinjiang, Hebei (including the Changli and Huailai sub-regions), Shandong (Yantai), and Yunnan. There is no formal quality classification system, though Ningxia has developed its own winery classification modeled on the Bordeaux system.',
+  '["Cabernet Sauvignon", "Merlot", "Cabernet Gernischt", "Marselan", "Chardonnay"]',
+  785000, 10),
+(32, 'India', 'IN', 'New World', 'Republic of India', 'IND', '356', 'AS',
+  'India''s modern wine industry is centered in the western state of Maharashtra, particularly around the city of Nashik, where high-altitude vineyards (500-700m) benefit from a tropical climate moderated by elevation. The industry has grown from a handful of producers in the 1990s to over 100 wineries, led by pioneering estates like Sula Vineyards and Grover Zampa that have proven India can produce quality wines.',
+  'India does not have a formal wine appellation system. The primary wine-producing regions are Nashik and Pune in Maharashtra, and Bangalore in Karnataka. The Indian wine market is growing rapidly but remains small relative to the population.',
+  '["Cabernet Sauvignon", "Shiraz", "Sauvignon Blanc", "Chenin Blanc", "Zinfandel"]',
+  155000, NULL),
+(33, 'Japan', 'JP', 'New World', 'Japan', 'JPN', '392', 'AS',
+  'Japan''s wine industry has a distinctive character built around Koshu, an indigenous pink-skinned grape that has been cultivated for over 1,000 years. The primary wine region is Yamanashi Prefecture, centered around the city of Katsunuma, where volcanic soils and a cool climate produce delicate, refined wines. Japanese wine quality has improved dramatically, with Koshu gaining international recognition for its subtle, minerally style.',
+  'Japan introduced a wine labeling standard in 2018 requiring "Japanese wine" (Nihon Wine) to be made exclusively from domestically grown grapes. The GI system recognizes Yamanashi as the primary designated wine region. Wines made from imported juice or concentrate must be labeled "domestically produced wine" rather than "Japanese wine."',
+  '["Koshu", "Muscat Bailey A", "Merlot", "Chardonnay", "Cabernet Sauvignon"]',
+  17000, NULL);
 
--- ITALY
-('Piedmont', 'Italy', 'Piedmont', NULL, '["Red", "White", "Sparkling"]', '["Nebbiolo", "Barbera", "Moscato"]', 'DOCG'),
-('Barolo', 'Italy', 'Piedmont', NULL, '["Red"]', '["Nebbiolo"]', 'DOCG'),
-('Barbaresco', 'Italy', 'Piedmont', NULL, '["Red"]', '["Nebbiolo"]', 'DOCG'),
+-- =====================================================
+-- Regions (30 major wine regions)
+-- Aligned with refAppellations region values
+-- =====================================================
 
-('Tuscany', 'Italy', 'Tuscany', NULL, '["Red", "White"]', '["Sangiovese", "Trebbiano"]', 'DOC'),
-('Chianti Classico', 'Italy', 'Tuscany', 'Chianti', '["Red"]', '["Sangiovese"]', 'DOCG'),
-('Brunello di Montalcino', 'Italy', 'Tuscany', 'Montalcino', '["Red"]', '["Sangiovese"]', 'DOCG'),
-('Bolgheri', 'Italy', 'Tuscany', NULL, '["Red"]', '["Cabernet Sauvignon", "Merlot", "Sangiovese"]', 'DOC'),
-
-('Veneto', 'Italy', 'Veneto', NULL, '["Red", "White", "Sparkling"]', '["Corvina", "Garganega", "Glera"]', 'DOC'),
-('Prosecco', 'Italy', 'Veneto', NULL, '["Sparkling"]', '["Glera"]', 'DOC'),
-('Amarone della Valpolicella', 'Italy', 'Veneto', 'Valpolicella', '["Red"]', '["Corvina", "Rondinella", "Molinara"]', 'DOCG'),
-
--- SPAIN
-('Rioja', 'Spain', 'Rioja', NULL, '["Red", "White"]', '["Tempranillo", "Garnacha", "Viura"]', 'DOCa'),
-('Ribera del Duero', 'Spain', 'Castilla y León', NULL, '["Red"]', '["Tempranillo"]', 'DO'),
-('Priorat', 'Spain', 'Catalonia', NULL, '["Red"]', '["Garnacha", "Cariñena"]', 'DOCa'),
-('Rías Baixas', 'Spain', 'Galicia', NULL, '["White"]', '["Albariño"]', 'DO'),
-('Jerez', 'Spain', 'Andalusia', NULL, '["Fortified"]', '["Palomino", "Pedro Ximénez"]', 'DO'),
-
--- USA
-('Napa Valley', 'USA', 'California', NULL, '["Red", "White"]', '["Cabernet Sauvignon", "Chardonnay"]', 'AVA'),
-('Sonoma County', 'USA', 'California', NULL, '["Red", "White"]', '["Pinot Noir", "Chardonnay", "Zinfandel"]', 'AVA'),
-('Willamette Valley', 'USA', 'Oregon', NULL, '["Red", "White"]', '["Pinot Noir", "Pinot Gris"]', 'AVA'),
-
--- AUSTRALIA
-('Barossa Valley', 'Australia', 'South Australia', NULL, '["Red", "White"]', '["Shiraz", "Grenache", "Riesling"]', 'GI'),
-('McLaren Vale', 'Australia', 'South Australia', NULL, '["Red"]', '["Shiraz", "Grenache"]', 'GI'),
-('Margaret River', 'Australia', 'Western Australia', NULL, '["Red", "White"]', '["Cabernet Sauvignon", "Chardonnay"]', 'GI'),
-
--- NEW ZEALAND
-('Marlborough', 'New Zealand', 'South Island', NULL, '["White"]', '["Sauvignon Blanc", "Pinot Noir"]', 'GI'),
-('Central Otago', 'New Zealand', 'South Island', NULL, '["Red"]', '["Pinot Noir"]', 'GI'),
-
--- ARGENTINA
-('Mendoza', 'Argentina', 'Mendoza', NULL, '["Red", "White"]', '["Malbec", "Torrontés"]', NULL),
-
--- PORTUGAL
-('Douro', 'Portugal', 'Douro', NULL, '["Red", "Fortified"]', '["Touriga Nacional", "Tinta Roriz"]', 'DOC'),
-
--- GERMANY
-('Mosel', 'Germany', 'Mosel', NULL, '["White"]', '["Riesling"]', 'QbA'),
-('Rheingau', 'Germany', 'Rheingau', NULL, '["White"]', '["Riesling"]', 'QbA');
+INSERT IGNORE INTO `region` (`regionID`, `regionName`, `countryID`, `description`, `climate`, `soil`, `map`) VALUES
+-- France (countryID = 1)
+(1, 'Bordeaux', 1,
+  'France''s largest fine wine region, situated on the Atlantic coast around the Gironde estuary, producing the world''s most celebrated Cabernet Sauvignon and Merlot blends.',
+  'Maritime climate moderated by the Atlantic Ocean and Gironde estuary, with mild winters, warm summers, and risk of autumn rain during harvest.',
+  'Left Bank: deep gravel and sand over limestone; Right Bank: clay and limestone plateau; Entre-Deux-Mers: clay-limestone.',
+  ''),
+(2, 'Champagne', 1,
+  'The northernmost major wine region of France, exclusively producing the world''s most famous sparkling wine from Chardonnay, Pinot Noir, and Meunier.',
+  'Cool continental climate at the edge of vine viability, with average temperatures around 10°C, providing high acidity essential for sparkling wine production.',
+  'Chalk subsoil (belemnite chalk) with thin topsoil, providing excellent drainage, mineral character, and temperature regulation through heat retention.',
+  ''),
+(3, 'Burgundy', 1,
+  'A storied region producing the world''s most terroir-expressive Pinot Noir and Chardonnay, with a classification system from regional wines to individual Grand Cru vineyards.',
+  'Continental climate with cold winters, warm summers, and the risk of spring frost and autumn hail; south-facing slopes provide crucial sun exposure.',
+  'Predominantly Jurassic limestone and marl with significant variation over short distances, forming the basis of Burgundy''s complex vineyard hierarchy.',
+  ''),
+(4, 'Rhône Valley', 1,
+  'A major river valley wine region divided into the Northern Rhône (steep, terraced Syrah vineyards) and the Southern Rhône (warmer, Grenache-based blends including Châteauneuf-du-Pape).',
+  'Northern Rhône: continental with cool winds; Southern Rhône: Mediterranean with intense sun, low rainfall, and the powerful Mistral wind.',
+  'Northern Rhône: granite and schist on steep slopes; Southern Rhône: large rounded stones (galets roulés), sand, clay, and limestone.',
+  ''),
+(5, 'Loire Valley', 1,
+  'France''s longest river valley wine region, stretching 1,000 km from the Atlantic to central France, producing diverse styles from Muscadet to Sancerre to sweet Vouvray.',
+  'Maritime influence in the west (Muscadet), transitioning to continental in the east (Sancerre), with moderating river influence throughout.',
+  'Highly varied: schist and volcanic rock in Muscadet, tuffeau limestone in Touraine and Vouvray, flint (silex) and Kimmeridgian clay in Sancerre and Pouilly-Fumé.',
+  ''),
+(6, 'Alsace', 1,
+  'A narrow strip of vineyards along the eastern slopes of the Vosges Mountains, producing aromatic white wines — primarily Riesling, Gewürztraminer, and Pinot Gris — in a distinctly Germanic style.',
+  'Semi-continental with low rainfall (one of France''s driest regions) due to the rain shadow of the Vosges Mountains, providing long, dry autumns ideal for late-harvest wines.',
+  'Extraordinarily diverse with 13 identified soil types across the 51 Grand Cru vineyards, including granite, limestone, marl, sandstone, volcanic, and clay.',
+  ''),
+(7, 'Provence', 1,
+  'The oldest wine region in France, founded by Greek colonists around 600 BC, now world-famous for its pale, elegant rosé wines that account for the vast majority of production.',
+  'Mediterranean with hot, dry summers, mild winters, abundant sunshine (2,900+ hours/year), and the cooling Mistral wind that helps prevent disease.',
+  'Limestone, schist, and clay, with the best rosé vineyards on well-drained, calcareous soils that stress the vines for concentrated, mineral-driven wines.',
+  ''),
+-- Italy (countryID = 2)
+(8, 'Piedmont', 2,
+  'Northwestern Italy''s premier wine region, home to Barolo and Barbaresco (from Nebbiolo), as well as Barbera d''Asti and the sparkling Moscato d''Asti, nestled in the foothills of the Alps.',
+  'Continental with cold, foggy winters (Piedmont means "foot of the mountain") and warm summers; significant diurnal temperature variation aids aromatic development.',
+  'Calcareous marl and clay (known locally as Tortonian and Helvetian soils), with the best Nebbiolo vineyards on south-facing hillside exposures.',
+  ''),
+(9, 'Tuscany', 2,
+  'Central Italy''s most famous wine region, home to Chianti, Brunello di Montalcino, Vino Nobile, and the innovative Super Tuscan wines blending Sangiovese with international varieties.',
+  'Mediterranean in coastal areas (Bolgheri, Maremma), transitioning to continental inland; warm days and cool nights in the central hills produce well-balanced wines.',
+  'Galestro (friable maite-like shale) and alberese (compact limestone) in Chianti; clay and limestone in Montalcino; sandy, alluvial soils on the coast.',
+  ''),
+(10, 'Veneto', 2,
+  'Northeastern Italy''s most productive wine region, home to Prosecco, Soave, Valpolicella, and the legendary dried-grape Amarone, stretching from the Alps to the Adriatic.',
+  'Continental to sub-Mediterranean with cold winters and warm summers, moderated by Lake Garda in the west and Alpine foothills providing cooling breezes.',
+  'Volcanic basalt and limestone in Soave, glacial moraines in Valpolicella, alluvial plains in the lowlands, and clay-limestone in the Prosecco hills.',
+  ''),
+(11, 'Sicily', 2,
+  'Italy''s largest island and one of its most dynamic wine regions, producing increasingly acclaimed wines from indigenous varieties like Nero d''Avola and Nerello Mascalese on the slopes of Mount Etna.',
+  'Hot Mediterranean with intense sunshine, limited rainfall, and cooling sea breezes; the volcanic slopes of Etna provide a dramatically cooler, high-altitude microclimate.',
+  'Volcanic (on Etna with black basalt and ash at up to 1,000m altitude), clay and limestone in the interior, and sandy coastal soils.',
+  ''),
+-- Spain (countryID = 3)
+(12, 'Rioja', 3,
+  'Spain''s most prestigious wine region, renowned for its age-worthy Tempranillo-based reds that are traditionally aged in American oak, producing wines of elegance, complexity, and remarkable value.',
+  'Continental with Atlantic influence in Rioja Alta and Rioja Alavesa (cooler, higher altitude), Mediterranean influence in Rioja Oriental (warmer, drier).',
+  'Calcareous clay in Rioja Alta and Alavesa (finer wines), alluvial and ferrous clay in Rioja Oriental (fuller, more robust wines).',
+  ''),
+(13, 'Castilla y León', 3,
+  'Spain''s vast central plateau region, home to Ribera del Duero (producing powerful Tempranillo reds at 800m+ altitude), Rueda (crisp Verdejo whites), and Toro (bold, concentrated reds).',
+  'Extreme continental with very hot summers, bitterly cold winters, and wide diurnal temperature swings of up to 20°C that preserve acidity in the grapes.',
+  'Sandy, limestone, and chalky soils over clay subsoil; Ribera del Duero''s high plateau has thin, poor soils that naturally limit yields.',
+  ''),
+(14, 'Catalonia', 3,
+  'Spain''s northeastern Mediterranean region, home to Cava sparkling wine (from Penedès), the intense old-vine reds of Priorat, and the fresh wines of the Costa Brava.',
+  'Mediterranean with warm, dry summers and mild winters; the mountainous Priorat interior is hotter and drier with extreme terroir conditions.',
+  'Penedès: limestone and clay; Priorat: distinctive llicorella (black slate and quartz) that forces vines deep for water and produces intensely concentrated wines.',
+  ''),
+(15, 'Galicia', 3,
+  'Spain''s green, Atlantic northwestern corner, producing the country''s finest white wines — particularly Albariño from Rías Baixas — with a maritime climate more reminiscent of northern Europe than the Iberian Peninsula.',
+  'Cool, wet Atlantic climate with high rainfall and maritime influence, producing wines of fresh acidity and aromatic intensity.',
+  'Granite and sandy soils with good drainage, essential in a region with high rainfall; the decomposed granite contributes mineral character to the wines.',
+  ''),
+(16, 'Andalusia', 3,
+  'Spain''s southernmost region, home to the Sherry Triangle (Jerez de la Frontera, Sanlúcar de Barrameda, El Puerto de Santa María), producing the world''s greatest fortified wines in a unique solera aging system.',
+  'Hot Mediterranean with intense sunshine, moderated by Atlantic breezes; the Poniente and Levante winds play crucial roles in the flor yeast development essential for Fino and Manzanilla Sherry.',
+  'Albariza — brilliant white, chalky, calcium-rich soil that retains moisture through the scorching summer and reflects sunlight upward to the vines.',
+  ''),
+-- Portugal (countryID = 4)
+(17, 'Douro', 4,
+  'One of the world''s oldest demarcated wine regions (1756), famous for Port wine and increasingly acclaimed for its complex dry red table wines from indigenous Portuguese varieties.',
+  'Continental with extreme temperatures: brutally hot summers (regularly exceeding 40°C) and cold winters, moderated by the Douro River and its tributaries.',
+  'Schist (metamorphic rock that splits into layers), allowing vine roots to penetrate deep for water; the steep terraced hillsides are among the most dramatic vineyard landscapes in the world.',
+  ''),
+-- Germany (countryID = 5)
+(18, 'Mosel', 5,
+  'Germany''s most iconic wine region, producing ethereal, light-bodied Rieslings from impossibly steep slate-covered slopes along the winding Mosel River and its tributaries the Saar and Ruwer.',
+  'Cool continental at the northern limit of viticulture; the steep south-facing slopes and heat-retaining slate soils are essential for ripening in this marginal climate.',
+  'Devonian blue, grey, and red slate that absorbs heat during the day and radiates it back at night, combined with quartzite; the slate gives Mosel Riesling its distinctive flinty minerality.',
+  ''),
+(19, 'Rheingau', 5,
+  'A compact, prestigious region on the north bank of the Rhine where the river turns east-west, creating ideal south-facing exposures for Riesling that produce fuller, more structured wines than the Mosel.',
+  'Moderate continental, warmed by the Rhine''s reflected heat and protected from cold northern winds by the Taunus Mountains; one of Germany''s warmest wine regions.',
+  'Deep, weathered slate, quartzite, and loess (windblown silt) over limestone, producing Rieslings with more body and power than the Mosel''s lighter style.',
+  ''),
+(20, 'Pfalz', 5,
+  'Germany''s second-largest wine region and its warmest, sheltered by the Haardt Mountains, producing both elegant Rieslings and increasingly fine Spätburgunder (Pinot Noir) reds.',
+  'The warmest and driest of Germany''s major wine regions, protected from western rainfall by the Pfälzerwald forest; Mediterranean-like conditions in the best sites.',
+  'Diverse: limestone, sandstone, basalt, and loess; the varied geology across the region produces a wide range of wine styles from the same grape varieties.',
+  ''),
+-- USA (countryID = 21)
+(21, 'California', 21,
+  'The dominant American wine region producing over 80% of US wine, from the iconic Cabernet Sauvignon of Napa Valley to Sonoma''s Pinot Noir, Central Coast Rhône varieties, and the old-vine Zinfandels of Lodi.',
+  'Mediterranean with warm, dry summers and mild, wet winters; enormous climatic diversity from the fog-cooled Sonoma Coast to the hot inland Central Valley.',
+  'Extraordinarily diverse: volcanic soils in Napa, Goldridge sandy loam in Sonoma, limestone in Paso Robles, and ancient alluvial deposits in the Central Valley.',
+  ''),
+(22, 'Oregon', 21,
+  'A cool-climate wine region in the Pacific Northwest that has established itself as one of the world''s premier Pinot Noir regions, with the Willamette Valley at its heart.',
+  'Cool maritime with warm, dry summers and cool, wet winters; similar latitude and climate to Burgundy, which attracted early Pinot Noir pioneers in the 1960s.',
+  'Volcanic basalt (Jory soils) and marine sedimentary (Willakenzie) soils in the Willamette Valley, providing well-drained, mineral-rich conditions for Pinot Noir.',
+  ''),
+-- Australia (countryID = 22)
+(23, 'South Australia', 22,
+  'Australia''s most important wine state, home to the Barossa Valley (powerful Shiraz), McLaren Vale, Adelaide Hills (cool-climate elegance), Clare Valley (Riesling), and Coonawarra (Cabernet Sauvignon).',
+  'Mediterranean to continental; ranges from the cool Adelaide Hills (500m altitude) to the warm Barossa Valley floor, with the Clare Valley''s high altitude providing cool-climate conditions.',
+  'Ancient, deeply weathered soils: red-brown earth and sandy loam in the Barossa, terra rossa (red limestone clay) in Coonawarra, and slate and schist in Clare Valley.',
+  ''),
+(24, 'Western Australia', 22,
+  'A premium wine region anchored by Margaret River, producing world-class Cabernet Sauvignon-Merlot blends and Chardonnay in a maritime climate compared to a southern Bordeaux.',
+  'Mediterranean maritime with warm, dry summers moderated by Indian Ocean breezes; Margaret River''s climate is remarkably consistent with low vintage variation.',
+  'Ancient granitic and gneissic soils (laterite gravel over clay) in Margaret River, providing excellent drainage and moderate fertility that naturally limits yields.',
+  ''),
+-- New Zealand (countryID = 23)
+(25, 'South Island', 23,
+  'Home to Marlborough (the world''s most recognized Sauvignon Blanc region) and Central Otago (the world''s southernmost wine region, famous for Pinot Noir), with dramatically different terroirs.',
+  'Cool maritime in Marlborough with high sunshine hours and cool nights; Central Otago is continental with the most extreme temperature range in New Zealand.',
+  'Marlborough: stony, free-draining alluvial greywacke soils of the Wairau Plain; Central Otago: schist, loess, and mica over ancient gold-bearing rock.',
+  ''),
+(26, 'Hawke''s Bay', 23,
+  'New Zealand''s second-largest wine region on the North Island''s east coast, known for full-bodied Bordeaux-style reds from the Gimblett Gravels sub-region and rich Chardonnay.',
+  'Warm maritime, one of New Zealand''s sunniest regions with significantly more heat units than Marlborough; autumn can be wet, favoring early-ripening varieties.',
+  'The famed Gimblett Gravels: deep, free-draining alluvial greywacke shingle deposited by historic river flooding, providing exceptional warmth and drainage for red varieties.',
+  ''),
+-- Argentina (countryID = 24)
+(27, 'Mendoza', 24,
+  'Argentina''s most important wine region, responsible for over 70% of the country''s production, with vineyards planted at extraordinary altitudes from 600m to over 1,500m in the Andean foothills.',
+  'Arid continental desert climate with less than 200mm annual rainfall, intense UV at altitude, and dramatic diurnal temperature swings of 15-20°C preserving acidity.',
+  'Alluvial soils deposited by Andean snowmelt: sandy, rocky, and calcareous with excellent drainage; the Uco Valley''s high-altitude limestone and gravel produce the most concentrated wines.',
+  ''),
+-- Chile (countryID = 25)
+(28, 'Central Valley', 25,
+  'Chile''s most productive wine region, encompassing the sub-valleys of Maipo, Rapel (Colchagua, Cachapoal), Curicó, and Maule, producing the bulk of Chile''s quality wine from Cabernet Sauvignon and Carmenère.',
+  'Mediterranean with warm, dry summers and cool, wet winters; the Andes to the east and Pacific to the west create cooling influences that vary dramatically across the valley.',
+  'Alluvial soils from Andean rivers with varying proportions of clay, sand, and gravel; the best sites have well-drained, stony soils on the valley sides rather than the fertile valley floor.',
+  ''),
+-- South Africa (countryID = 26)
+(29, 'Stellenbosch', 26,
+  'South Africa''s most prestigious wine district, producing world-class Cabernet Sauvignon, Bordeaux-style blends, and Chenin Blanc, with a mountain-framed landscape of exceptional beauty.',
+  'Mediterranean moderated by the cold Benguela Current from the Atlantic; cooling afternoon breezes (the "Cape Doctor") reduce temperatures, and varied mountain aspects create diverse microclimates.',
+  'Decomposed granite (Helderberg, Simonsberg), sandstone (Bottelary Hills), and ancient weathered Table Mountain sandstone, providing well-drained, mineral-rich soils of varying depth.',
+  ''),
+-- Canada (countryID = 29)
+(30, 'Niagara Peninsula', 29,
+  'Ontario''s premier wine region on the shores of Lake Ontario, protected by the Niagara Escarpment, producing exceptional Riesling, Chardonnay, and Pinot Noir, as well as Canada''s renowned ice wines.',
+  'Cool continental moderated by Lake Ontario''s thermal mass, which delays spring frost and extends the growing season; reliably cold winters enable consistent ice wine production.',
+  'Glacial till and lacustrine clay deposited by ancient Lake Iroquois, with the Beamsville Bench''s well-drained, elevated soils providing the best conditions for premium table wines.',
+  '');

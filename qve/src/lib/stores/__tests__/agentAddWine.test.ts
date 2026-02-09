@@ -368,29 +368,29 @@ describe('agentAddWine', () => {
 		describe('updateBottleFormData', () => {
 			it('should update form data', () => {
 				startAddFlow(sampleWineResult);
-				updateBottleFormData({ size: '750ml', location: 'Cellar A' });
+				updateBottleFormData({ bottleSize: '750ml', storageLocation: 'Cellar A' });
 
-				expect(get(bottleFormData)).toEqual({ size: '750ml', location: 'Cellar A' });
+				expect(get(bottleFormData)).toEqual({ bottleSize: '750ml', storageLocation: 'Cellar A' });
 			});
 
 			it('should merge with existing data', () => {
 				startAddFlow(sampleWineResult);
-				updateBottleFormData({ size: '750ml' });
-				updateBottleFormData({ location: 'Cellar A' });
+				updateBottleFormData({ bottleSize: '750ml' });
+				updateBottleFormData({ storageLocation: 'Cellar A' });
 
-				expect(get(bottleFormData)).toEqual({ size: '750ml', location: 'Cellar A' });
+				expect(get(bottleFormData)).toEqual({ bottleSize: '750ml', storageLocation: 'Cellar A' });
 			});
 
 			it('should overwrite existing fields', () => {
 				startAddFlow(sampleWineResult);
-				updateBottleFormData({ size: '750ml' });
-				updateBottleFormData({ size: '1500ml' });
+				updateBottleFormData({ bottleSize: '750ml' });
+				updateBottleFormData({ bottleSize: '1500ml' });
 
-				expect(get(bottleFormData).size).toBe('1500ml');
+				expect(get(bottleFormData).bottleSize).toBe('1500ml');
 			});
 
 			it('should do nothing if no flow', () => {
-				updateBottleFormData({ size: '750ml' });
+				updateBottleFormData({ bottleSize: '750ml' });
 				expect(get(bottleFormData)).toEqual({});
 			});
 		});
@@ -539,7 +539,7 @@ describe('agentAddWine', () => {
 			startAddFlow(sampleWineResult);
 			setEntityMatches('region', sampleEntityMatches.region);
 			selectMatch('region', sampleEntityMatches.region[0]);
-			updateBottleFormData({ size: '750ml' });
+			updateBottleFormData({ bottleSize: '750ml' });
 			setExistingWine(42, 3);
 			cancelAddFlow();
 
@@ -667,8 +667,8 @@ describe('agentAddWine', () => {
 
 			it('should return form data when flow exists', () => {
 				startAddFlow(sampleWineResult);
-				updateBottleFormData({ size: '750ml' });
-				expect(getBottleFormData()).toEqual({ size: '750ml' });
+				updateBottleFormData({ bottleSize: '750ml' });
+				expect(getBottleFormData()).toEqual({ bottleSize: '750ml' });
 			});
 		});
 	});

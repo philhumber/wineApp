@@ -17,7 +17,7 @@ import * as conversation from '$lib/stores/agentConversation';
 import * as identification from '$lib/stores/agentIdentification';
 import * as enrichment from '$lib/stores/agentEnrichment';
 import * as addWine from '$lib/stores/agentAddWine';
-import { agent } from '$lib/stores/agent';
+import { closePanel } from '$lib/stores/agentPanel';
 
 // Mock all stores
 vi.mock('$lib/stores/agentConversation', async () => {
@@ -62,10 +62,11 @@ vi.mock('$lib/stores/agentAddWine', () => ({
 	resetAddWine: vi.fn(),
 }));
 
-vi.mock('$lib/stores/agent', () => ({
-	agent: {
-		closePanel: vi.fn(),
-	},
+vi.mock('$lib/stores/agentPanel', () => ({
+	closePanel: vi.fn(),
+	openPanel: vi.fn(),
+	togglePanel: vi.fn(),
+	agentPanelOpen: { subscribe: vi.fn() },
 }));
 
 // ===========================================
@@ -166,7 +167,7 @@ describe('conversation handlers', () => {
 		it('should close the agent panel', () => {
 			handleCancel();
 
-			expect(agent.closePanel).toHaveBeenCalled();
+			expect(closePanel).toHaveBeenCalled();
 		});
 	});
 
@@ -213,7 +214,7 @@ describe('conversation handlers', () => {
 			const result = await handleConversationAction({ type: 'cancel' });
 
 			expect(result).toBeNull();
-			expect(agent.closePanel).toHaveBeenCalled();
+			expect(closePanel).toHaveBeenCalled();
 		});
 
 		it('should handle retry action and return action to retry', async () => {

@@ -121,7 +121,7 @@
 
 <style>
   .form-message {
-    /* Form components handle their own styling */
+    display: contents; /* Form components handle their own styling */
   }
 
   .form-placeholder {

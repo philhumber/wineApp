@@ -9,6 +9,7 @@
 	export let required: boolean = false;
 	export let disabled: boolean = false;
 	export let error: string = '';
+	export let maxlength: number | undefined = undefined;
 	export let id: string = name || `input-${Math.random().toString(36).slice(2, 9)}`;
 
 	const dispatch = createEventDispatcher<{
@@ -47,6 +48,7 @@
 		{value}
 		{placeholder}
 		{disabled}
+		{maxlength}
 		class="form-input"
 		class:invalid={!!error}
 		class:date-input={type === 'date'}

@@ -14,7 +14,7 @@
  * Sprint 3 extraction from handleAgentAction.ts monolith.
  */
 
-import type { AgentAction, EntityType, AgentErrorInfo, WineIdentificationResult, BottleFormData } from '../types';
+import type { AgentAction, EntityType, AgentErrorInfo, WineIdentificationResult, BottleFormData, EnrichmentData } from '../types';
 import type { AddWineFlowState } from '$lib/stores/agentAddWine';
 import type { AddWinePayload } from '$lib/api/types';
 import { AgentError } from '$lib/api/types';
@@ -24,6 +24,7 @@ import * as conversation from '$lib/stores/agentConversation';
 import { addMessageWithDelay } from '$lib/stores/agentConversation';
 import * as identification from '$lib/stores/agentIdentification';
 import * as addWine from '$lib/stores/agentAddWine';
+import * as enrichment from '$lib/stores/agentEnrichment';
 import { api } from '$lib/api';
 import {
   generateDuplicateWineChips,
@@ -255,11 +256,46 @@ async function showBottleForm(): Promise<void> {
 // Payload Building & Submission
 // ===========================================
 
+// WIN-144: Convert base64 image data to a File for upload
+function base64ToFile(base64Data: string, mimeType: string): File {
+  const byteChars = atob(base64Data);
+  const byteArray = new Uint8Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) {
+    byteArray[i] = byteChars.charCodeAt(i);
+  }
+  const ext = mimeType === 'image/png' ? 'png' : 'jpg';
+  return new File([byteArray], `wine-photo.${ext}`, { type: mimeType });
+}
+
+// WIN-144: Parse percentage string (e.g., "75", "40-50%", "~60%") to number
+function parsePercentage(value: string | undefined): number | null {
+  if (!value) return null;
+  const match = value.match(/(\d+)/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+// WIN-144: Format structured tasting notes into a single string
+function formatTastingNotes(data: EnrichmentData | null): string {
+  if (!data?.tastingNotes) return '';
+  const parts: string[] = [];
+  if (data.tastingNotes.nose?.length) parts.push(`Nose: ${data.tastingNotes.nose.join(', ')}`);
+  if (data.tastingNotes.palate?.length) parts.push(`Palate: ${data.tastingNotes.palate.join(', ')}`);
+  if (data.tastingNotes.finish) parts.push(`Finish: ${data.tastingNotes.finish}`);
+  return parts.join('. ');
+}
+
+// WIN-144: Format food pairings array into a comma-separated string
+function formatFoodPairings(data: EnrichmentData | null): string {
+  if (!data?.foodPairings?.length) return '';
+  return data.foodPairings.join(', ');
+}
+
 /**
  * Build the AddWinePayload from the current flow state.
  */
 function buildAddWinePayload(flow: AddWineFlowState): AddWinePayload {
   const { wineResult, selectedEntities, newEntities, bottleFormData } = flow;
+  const enrichmentData = enrichment.getData();
 
   const isCreateRegion = !selectedEntities.region && !!newEntities.region;
   const isCreateProducer = !selectedEntities.producer && !!newEntities.producer;
@@ -310,14 +346,27 @@ function buildAddWinePayload(flow: AddWineFlowState): AddWinePayload {
     isNonVintage,
     wineType: wineResult.type || 'Red',
     appellation: wineResult.appellation || '',
-    wineDescription: '',
-    wineTasting: '',
-    winePairing: '',
-    winePicture: 'images/wines/placeBottle.png',
+    wineDescription: enrichmentData?.overview || '',
+    wineTasting: formatTastingNotes(enrichmentData),
+    winePairing: formatFoodPairings(enrichmentData),
+    winePicture: 'images/wines/placeBottle.png',  // May be overridden by image upload in submitWine()
+
+    // WIN-144: Enrichment data
+    drinkWindowStart: enrichmentData?.drinkWindow?.start,
+    drinkWindowEnd: enrichmentData?.drinkWindow?.end,
+    grapes: enrichmentData?.grapeComposition?.map(g => ({
+      grape: g.grape,
+      percentage: parsePercentage(g.percentage)
+    })),
+    criticScores: enrichmentData?.criticScores?.map(c => ({
+      critic: c.critic,
+      score: c.score,
+      scoreYear: c.vintage
+    })),
 
     // Bottle
-    bottleType: bottleFormData.size || '750ml',
-    storageLocation: bottleFormData.location || '',
+    bottleType: bottleFormData.bottleSize || '750ml',
+    storageLocation: bottleFormData.storageLocation || '',
     bottleSource: bottleFormData.source || '',
     bottlePrice: bottleFormData.price !== undefined ? String(bottleFormData.price) : '',
     bottleCurrency: bottleFormData.currency || '',
@@ -342,8 +391,23 @@ async function submitWine(): Promise<void> {
   conversation.addTypingMessage(getMessageByKey(MessageKey.ADD_SUBMITTING));
 
   try {
+    // WIN-144: Upload agent image if available
+    let uploadedPicturePath: string | null = null;
+    const imageData = identification.getCurrentState().lastImageData;
+    if (imageData?.data && imageData?.mimeType) {
+      try {
+        const file = base64ToFile(imageData.data, imageData.mimeType);
+        uploadedPicturePath = await api.uploadImage(file);
+      } catch (e) {
+        console.warn('Agent image upload failed, using placeholder:', e);
+      }
+    }
+
     // Build and submit payload
     const payload = buildAddWinePayload(flow);
+    if (uploadedPicturePath) {
+      payload.winePicture = uploadedPicturePath;
+    }
     const result = await api.addWine(payload);
 
     conversation.removeTypingMessage();
@@ -390,8 +454,8 @@ async function submitAddBottleToExisting(existingWineId: number): Promise<void> 
   try {
     const bottlePayload = {
       wineID: existingWineId,
-      bottleSize: flow.bottleFormData.size || '750ml',
-      bottleLocation: flow.bottleFormData.location,
+      bottleSize: flow.bottleFormData.bottleSize || '750ml',
+      bottleLocation: flow.bottleFormData.storageLocation,
       bottleSource: flow.bottleFormData.source,
       bottlePrice: flow.bottleFormData.price,
       bottleCurrency: flow.bottleFormData.currency,

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { AgentMessage, WineIdentificationResult } from '$lib/agent/types';
+  import type { AgentMessage, WineIdentificationResult, WineResultMessageData } from '$lib/agent/types';
   import type { AgentParsedWine } from '$lib/api/types';
   import WineCard from '../cards/WineCard.svelte';
   import { clearNewFlag } from '$lib/stores';
@@ -14,22 +14,11 @@
     }
   });
 
-  // Extract result from message data
-  // Handle both new architecture (message.data.result) and potential edge cases
-  $: rawData = message.data as any;
-  $: result = ((): WineIdentificationResult | null => {
-    // New architecture: message.data.category === 'wine_result' with result property
-    if (rawData?.category === 'wine_result' && rawData?.result) {
-      return rawData.result;
-    }
-    // Fallback: maybe result is directly on data (shouldn't happen but safety check)
-    if (rawData?.wineName || rawData?.producer) {
-      return rawData as WineIdentificationResult;
-    }
-    return null;
-  })();
-
-  $: confidence = rawData?.category === 'wine_result' ? rawData?.confidence : (rawData?.confidence ?? undefined);
+  // Extract result from message data using discriminated union narrowing
+  $: isWineResult = message.data.category === 'wine_result';
+  $: wineResultData = isWineResult ? message.data as WineResultMessageData : null;
+  $: result = wineResultData?.result ?? null;
+  $: confidence = wineResultData?.confidence ?? undefined;
   $: isStreaming = message.isStreaming ?? false;
 
   // Determine card state based on message streaming state

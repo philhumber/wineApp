@@ -14,8 +14,11 @@
 		hasBottles,
 		wineTypeOptions,
 		modal,
-		targetWineID
+		targetWineID,
+		deleteStore,
+		wines
 	} from '$stores';
+	import { get } from 'svelte/store';
 
 	// Get wine ID from URL
 	$: wineID = parseInt($page.params.id || '0', 10);
@@ -154,6 +157,9 @@
 
 	// Handle save
 	async function handleSave() {
+		// WIN-228: Prevent double-click before isSubmitting propagates from store
+		if (isSubmitting) return;
+
 		let success = false;
 
 		if (activeTab === 'wine') {
@@ -176,10 +182,40 @@
 		editWine.selectBottle(event.detail.bottleID);
 	}
 
+	// Handle delete from bottle pill × button
+	function handleBottlePillDelete(event: CustomEvent<{ bottle: import('$lib/api/types').Bottle }>) {
+		const { bottle } = event.detail;
+		const bottleName = `${bottle.bottleSize} bottle`;
+
+		modal.confirm({
+			title: 'Delete bottle?',
+			message: `Are you sure you want to delete ${bottleName}?`,
+			confirmLabel: 'Delete',
+			cancelLabel: 'Cancel',
+			variant: 'danger',
+			onConfirm: () => {
+				modal.close();
+				// Start delete with undo
+				deleteStore.startDelete('bottle', bottle.bottleID, bottleName, { parentWineId: wineID });
+				// Update local state - remove bottle from list
+				editWine.removeBottle(bottle.bottleID);
+			},
+			onCancel: () => {
+				modal.close();
+			}
+		});
+	}
+
 	// Wine form input (WIN-176: value can be string or boolean for isNonVintage)
 	function handleWineInput(event: CustomEvent<{ field: string; value: string | boolean }>) {
 		const { field, value } = event.detail;
 		editWine.setWineField(field as keyof typeof state.wine, value as never);
+	}
+
+	// Wine form blur
+	function handleWineBlur(event: CustomEvent<{ field: string; value: string }>) {
+		const { field, value } = event.detail;
+		editWine.validateWineFieldBlur(field as keyof typeof state.wine, value);
 	}
 
 	// Wine image handlers
@@ -200,8 +236,48 @@
 		editWine.setBottleField(field as keyof typeof state.bottle, value);
 	}
 
+	// Bottle form blur
+	function handleBottleBlur(event: CustomEvent<{ field: string; value: string }>) {
+		const { field, value } = event.detail;
+		editWine.validateBottleFieldBlur(field as keyof typeof state.bottle, value);
+	}
+
 	// Compute if current tab can submit
 	$: canSubmit = activeTab === 'wine' ? $canSubmitWine : $canSubmitBottle;
+
+	// Handle delete wine
+	function handleDeleteWine() {
+		const wineName = state.wine.wineName || 'this wine';
+		// Open delete confirmation modal
+		modal.openDeleteConfirm('wine', wineID, wineName);
+	}
+
+	// Handle delete bottle
+	function handleDeleteBottle() {
+		const bottleID = state.selectedBottleID;
+		if (!bottleID) return;
+
+		const bottle = state.bottles.find(b => b.bottleID === bottleID);
+		const bottleName = bottle ? `${bottle.bottleSize} bottle` : 'this bottle';
+
+		modal.confirm({
+			title: 'Delete bottle?',
+			message: `Are you sure you want to delete ${bottleName}?`,
+			confirmLabel: 'Delete',
+			cancelLabel: 'Cancel',
+			variant: 'danger',
+			onConfirm: () => {
+				modal.close();
+				// Start delete with undo
+				deleteStore.startDelete('bottle', bottleID, bottleName, { parentWineId: wineID });
+				// Update local state - remove bottle from list
+				editWine.removeBottle(bottleID);
+			},
+			onCancel: () => {
+				modal.close();
+			}
+		});
+	}
 </script>
 
 <svelte:head>
@@ -257,6 +333,7 @@
 						errors={state.errors}
 						disabled={isSubmitting}
 						on:input={handleWineInput}
+						on:blur={handleWineBlur}
 						on:imageSelect={handleImageSelect}
 						on:imageClear={handleImageClear}
 					/>
@@ -278,6 +355,7 @@
 							selectedID={state.selectedBottleID}
 							disabled={isSubmitting}
 							on:select={handleBottleSelect}
+							on:delete={handleBottlePillDelete}
 						/>
 
 						{#if state.selectedBottleID}
@@ -286,6 +364,7 @@
 								errors={state.errors}
 								disabled={isSubmitting}
 								on:input={handleBottleInput}
+								on:blur={handleBottleBlur}
 							/>
 						{/if}
 					{/if}
@@ -294,6 +373,18 @@
 
 			<!-- Form Navigation -->
 			<div class="form-nav">
+				{#if activeTab === 'wine'}
+					<button class="btn btn-danger-outline" on:click={handleDeleteWine} disabled={isSubmitting}>
+						<Icon name="trash" size={14} />
+						Delete Wine
+					</button>
+				{:else if activeTab === 'bottle' && state.selectedBottleID}
+					<button class="btn btn-danger-outline" on:click={handleDeleteBottle} disabled={isSubmitting}>
+						<Icon name="trash" size={14} />
+						Delete Bottle
+					</button>
+				{/if}
+				<div class="form-nav-spacer"></div>
 				<button class="btn btn-secondary" on:click={handleCancel} disabled={isSubmitting}>
 					Cancel
 				</button>
@@ -472,6 +563,22 @@
 	.btn-primary:hover:not(:disabled) {
 		background: var(--text-secondary);
 		border-color: var(--text-secondary);
+	}
+
+	.btn-danger-outline {
+		color: var(--error);
+		background: transparent;
+		border: 1px solid var(--error);
+		opacity: 0.8;
+	}
+
+	.btn-danger-outline:hover:not(:disabled) {
+		opacity: 1;
+		background: rgba(184, 122, 122, 0.08);
+	}
+
+	.form-nav-spacer {
+		flex: 1;
 	}
 
 	/* Responsive */

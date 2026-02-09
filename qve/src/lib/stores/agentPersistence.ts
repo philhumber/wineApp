@@ -90,6 +90,9 @@ const lastPersistError = writable<string | null>(null);
 // Debounce timer
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 
+// Accumulated state during debounce window (fixes WIN-230 race condition)
+let pendingState: Partial<PersistedState> = {};
+
 // ===========================================
 // Storage Helpers
 // ===========================================
@@ -124,8 +127,15 @@ function getLocalStorage(): Storage | null {
 /**
  * Persist state to sessionStorage with debouncing.
  * Call this whenever state changes.
+ *
+ * State changes are accumulated during the debounce window to prevent
+ * race conditions where concurrent calls could overwrite each other.
+ * (WIN-230 fix)
  */
 export function persistState(state: Partial<PersistedState>, immediate = false): void {
+  // Accumulate state changes during debounce window
+  pendingState = { ...pendingState, ...state };
+
   if (persistTimer) {
     clearTimeout(persistTimer);
     persistTimer = null;
@@ -133,17 +143,24 @@ export function persistState(state: Partial<PersistedState>, immediate = false):
 
   const doPersist = () => {
     const storage = getStorage();
-    if (!storage) return;
+    if (!storage) {
+      pendingState = {};
+      return;
+    }
+
+    // Capture and clear pending state atomically
+    const stateToWrite = pendingState;
+    pendingState = {};
 
     isPersisting.set(true);
     lastPersistError.set(null);
 
     try {
-      // Load existing state and merge
+      // Load existing state and merge with accumulated changes
       const existing = loadStateRaw() ?? createEmptyState();
       const merged: PersistedState = {
         ...existing,
-        ...state,
+        ...stateToWrite,
         version: CURRENT_VERSION,
         lastActivityAt: Date.now(),
       };
@@ -162,7 +179,7 @@ export function persistState(state: Partial<PersistedState>, immediate = false):
     } catch (e) {
       // Quota exceeded - try graceful degradation
       if (isQuotaError(e)) {
-        persistWithDegradation(state);
+        persistWithDegradation(stateToWrite);
       } else {
         lastPersistError.set(e instanceof Error ? e.message : 'Unknown error');
         console.error('[AgentPersistence] Failed to persist:', e);
@@ -264,14 +281,14 @@ export function loadState(): PersistedState | null {
 
   // Check version
   if (state.version !== CURRENT_VERSION) {
-    console.log('[AgentPersistence] Version mismatch, clearing state');
+    console.info('[AgentPersistence] Version mismatch, clearing state');
     clearState();
     return null;
   }
 
   // Check session timeout
   if (Date.now() - state.lastActivityAt > SESSION_TIMEOUT_MS) {
-    console.log('[AgentPersistence] Session expired, clearing state');
+    console.info('[AgentPersistence] Session expired, clearing state');
     clearState();
     return null;
   }
@@ -311,6 +328,12 @@ export function clearState(): void {
   const storage = getStorage();
   if (storage) {
     storage.removeItem(STORAGE_KEY);
+  }
+  // Also clear any pending accumulated state
+  pendingState = {};
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
   }
 }
 

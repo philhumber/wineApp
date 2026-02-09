@@ -1,7 +1,10 @@
 <?php
   // 1. Include dependencies at the top
+  require_once 'securityHeaders.php';
   require_once 'databaseConnection.php';
   require_once 'audit_log.php';
+  require_once 'validators.php';
+  require_once 'errorHandler.php';
 
   // Start session if not already started
   if (session_status() === PHP_SESSION_NONE) {
@@ -22,21 +25,19 @@
       $ratingID = $inputData['ratingID'] ?? null;
       $wineID = $inputData['wineID'] ?? null;
       $bottleID = $inputData['bottleID'] ?? null;
-      $overallRating = $inputData['overallRating'] ?? null;
-      $valueRating = $inputData['valueRating'] ?? null;
       $drinkDate = $inputData['drinkDate'] ?? '';
       $buyAgain = $inputData['buyAgain'] ?? 0;
-      $notes = $inputData['notes'] ?? '';
+      $notes = validateStringField($inputData['notes'] ?? null, 'Notes', false, 2000);
 
-      // Optional ratings (0-5 scale, nullable)
-      $complexityRating = isset($inputData['complexityRating']) && $inputData['complexityRating'] > 0
-          ? (int)$inputData['complexityRating'] : null;
-      $drinkabilityRating = isset($inputData['drinkabilityRating']) && $inputData['drinkabilityRating'] > 0
-          ? (int)$inputData['drinkabilityRating'] : null;
-      $surpriseRating = isset($inputData['surpriseRating']) && $inputData['surpriseRating'] > 0
-          ? (int)$inputData['surpriseRating'] : null;
-      $foodPairingRating = isset($inputData['foodPairingRating']) && $inputData['foodPairingRating'] > 0
-          ? (int)$inputData['foodPairingRating'] : null;
+      // Required ratings (1-10)
+      $overallRating = validateRating($inputData['overallRating'] ?? null, 'Overall rating', true, 1, 10);
+      $valueRating = validateRating($inputData['valueRating'] ?? null, 'Value rating', true, 1, 10);
+
+      // Optional sub-ratings (1-5, NULL = not rated)
+      $complexityRating = validateRating($inputData['complexityRating'] ?? null, 'Complexity rating', false, 1, 5);
+      $drinkabilityRating = validateRating($inputData['drinkabilityRating'] ?? null, 'Drinkability rating', false, 1, 5);
+      $surpriseRating = validateRating($inputData['surpriseRating'] ?? null, 'Surprise rating', false, 1, 5);
+      $foodPairingRating = validateRating($inputData['foodPairingRating'] ?? null, 'Food pairing rating', false, 1, 5);
 
       // Validate required fields
       if (empty($ratingID)) {
@@ -47,12 +48,6 @@
       }
       if (empty($bottleID)) {
           throw new Exception('Invalid bottle ID');
-      }
-      if (!isset($overallRating) || $overallRating < 1 || $overallRating > 10) {
-          throw new Exception('Invalid overall rating (must be 1-10)');
-      }
-      if (!isset($valueRating) || $valueRating < 1 || $valueRating > 10) {
-          throw new Exception('Invalid value rating (must be 1-10)');
       }
 
       // Process date
@@ -74,12 +69,18 @@
 
       try {
           // 6. Get OLD data before update (for audit log)
-          $stmt = $pdo->prepare("SELECT * FROM ratings WHERE ratingID = :ratingID");
+          // Also verify the bottle hasn't been soft-deleted
+          $stmt = $pdo->prepare("
+              SELECT r.*
+              FROM ratings r
+              JOIN bottles b ON r.bottleID = b.bottleID
+              WHERE r.ratingID = :ratingID AND b.deleted = 0
+          ");
           $stmt->execute([':ratingID' => $ratingID]);
           $oldData = $stmt->fetch(PDO::FETCH_ASSOC);
 
           if (!$oldData) {
-              throw new Exception('Rating not found');
+              throw new Exception('Rating not found or bottle has been deleted');
           }
 
           // 7. Prepare UPDATE statement
@@ -148,10 +149,9 @@
       }
 
   } catch (Exception $e) {
-      // 13. Handle all errors
+      // 13. Handle all errors (WIN-217: sanitize error messages)
       $response['success'] = false;
-      $response['message'] = $e->getMessage();
-      error_log("Error in updateRating.php: " . $e->getMessage());
+      $response['message'] = safeErrorMessage($e, 'updateRating');
   }
 
   // 14. Return JSON response

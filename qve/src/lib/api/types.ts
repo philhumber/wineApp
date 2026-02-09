@@ -133,6 +133,7 @@ export interface WineFilters {
   producerDropdown?: string;
   yearDropdown?: string;
   bottleCount?: '0' | '1';  // '1' = has bottles (Our Wines), '0' = all
+  searchQuery?: string;     // WIN-24: Free text search (min 3 chars)
   wineID?: string | number;
 }
 
@@ -152,6 +153,49 @@ export interface WineListResponse {
 
 export interface BottleListResponse {
   bottleList: Bottle[];
+}
+
+// ─────────────────────────────────────────────────────────
+// HISTORY / PAGINATION TYPES (WIN-205)
+// ─────────────────────────────────────────────────────────
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface HistoryFilterOption {
+  value: string;
+  count: number;
+}
+
+export interface HistoryFilterOptions {
+  countries: HistoryFilterOption[];
+  types: HistoryFilterOption[];
+  regions: HistoryFilterOption[];
+  producers: HistoryFilterOption[];
+  years: HistoryFilterOption[];
+}
+
+export interface GetDrunkWinesParams {
+  page?: number;
+  limit?: number;
+  sortKey?: string;
+  sortDir?: string;
+  countryDropdown?: string;
+  typesDropdown?: string;
+  regionDropdown?: string;
+  producerDropdown?: string;
+  yearDropdown?: string;
+}
+
+export interface GetDrunkWinesResponse {
+  wineList: DrunkWine[];
+  pagination: PaginationMeta;
+  unfilteredTotal: number;
+  filterOptions: HistoryFilterOptions;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -192,6 +236,12 @@ export interface AddWinePayload {
   winePairing?: string;
   winePicture?: string;
 
+  // WIN-144: Enrichment data from agent
+  drinkWindowStart?: number;   // Year integer (e.g., 2025)
+  drinkWindowEnd?: number;     // Year integer (e.g., 2035)
+  grapes?: Array<{ grape: string; percentage: number | null }>;
+  criticScores?: Array<{ critic: string; score: number; scoreYear?: number }>;
+
   // Bottle details
   bottleType: string;
   storageLocation: string;
@@ -209,6 +259,13 @@ export interface AddBottlePayload {
   bottlePrice?: number;
   bottleCurrency?: string;
   purchaseDate?: string;
+  quantity?: number; // WIN-222: Batch insert for atomicity
+}
+
+// WIN-222: Response type for addBottle (single or batch)
+export interface AddBottleResponse {
+  bottleID?: number;      // Single bottle insert
+  bottleIDs?: number[];   // Batch insert (quantity > 1)
 }
 
 export interface UpdateWinePayload {
@@ -262,6 +319,38 @@ export interface UpdateRatingPayload {
   drinkabilityRating?: number;
   surpriseRating?: number;
   foodPairingRating?: number;
+}
+
+// ─────────────────────────────────────────────────────────
+// SOFT DELETE TYPES (WIN-80)
+// ─────────────────────────────────────────────────────────
+
+export type DeleteEntityType = 'wine' | 'bottle' | 'producer' | 'region';
+
+export interface DeleteImpact {
+  producers?: { count: number; names?: string[] };
+  wines?: { count: number; names?: string[] };
+  bottles?: { count: number; names?: string[] };
+  ratings?: { count: number };
+}
+
+export interface DeleteImpactResponse {
+  entity: {
+    type: DeleteEntityType;
+    id: number;
+    name: string;
+  };
+  impact: DeleteImpact;
+}
+
+export interface DeleteItemResponse {
+  deletedId: number;
+  deletedType: DeleteEntityType;
+  cascade?: {
+    wines?: number;
+    bottles?: number;
+    ratings?: number;
+  };
 }
 
 // ─────────────────────────────────────────────────────────
@@ -336,6 +425,16 @@ export interface CellarValue {
   bottlesWithPrice: number;
   bottlesWithoutPrice: number;
   hasIncompleteData: boolean;
+}
+
+/** Historical data point for cellar value graph (WIN-127 Phase 2) */
+export interface CellarValueHistoryPoint {
+  /** ISO date string, e.g. "2024-01-15" */
+  date: string;
+  /** Cumulative cellar value in EUR at this date */
+  totalValueEUR: number;
+  /** Total bottles in cellar at this date */
+  bottleCount: number;
 }
 
 // DUPLICATE CHECK TYPES
@@ -550,6 +649,7 @@ export type AgentErrorType =
   | 'server_error'
   | 'overloaded'
   | 'database_error'
+  | 'ssl_error'
   | 'quality_check_failed'
   | 'identification_error'
   | 'enrichment_error'

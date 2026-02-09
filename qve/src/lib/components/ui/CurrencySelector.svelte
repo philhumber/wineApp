@@ -49,7 +49,7 @@
 	}
 
 	.currency-select option {
-		background: var(--surface);
-		color: var(--text-primary);
+		color: #2D2926;
+		background-color: #FFFFFF;
 	}
 </style>

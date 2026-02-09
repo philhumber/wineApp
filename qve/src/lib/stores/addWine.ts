@@ -6,6 +6,7 @@
 import { writable, derived, get } from 'svelte/store';
 import { api } from '$lib/api/client';
 import { toasts } from './toast';
+import { validateRequired, validateLength, validatePriceCurrency, FIELD_MAX_LENGTHS } from '$lib/utils/validation';
 import type { Region, Producer, Wine, Country, WineType, AddWinePayload, DuplicateCheckType, DuplicateMatch, DuplicateCheckResult, AgentParsedWine } from '$lib/api/types';
 
 // ─────────────────────────────────────────────────────────
@@ -622,6 +623,55 @@ function createAddWineStore() {
 	// VALIDATION
 	// ─────────────────────────────────────────────────────
 
+	const validateFieldBlur = (section: 'region' | 'producer' | 'wine' | 'bottle', field: string, value: string): void => {
+		const state = get({ subscribe });
+		let error: string | null = null;
+
+		// Skip required checks if in search/select mode
+		const mode = state.mode[section as keyof typeof state.mode];
+		const isCreateMode = mode === 'create';
+
+		switch (field) {
+			case 'regionName':
+				if (isCreateMode) error = validateRequired(value, 'Region name') ?? validateLength(value, FIELD_MAX_LENGTHS.regionName);
+				break;
+			case 'producerName':
+				if (isCreateMode) error = validateRequired(value, 'Producer name') ?? validateLength(value, FIELD_MAX_LENGTHS.producerName);
+				break;
+			case 'wineName':
+				if (isCreateMode) error = validateRequired(value, 'Wine name') ?? validateLength(value, FIELD_MAX_LENGTHS.wineName);
+				break;
+			case 'storageLocation':
+				error = validateRequired(value, 'Storage location') ?? validateLength(value, FIELD_MAX_LENGTHS.storageLocation);
+				break;
+			case 'source':
+				error = validateRequired(value, 'Source') ?? validateLength(value, FIELD_MAX_LENGTHS.source);
+				break;
+			case 'price':
+			case 'currency': {
+				// Cross-field: validate both price and currency together
+				const pcErrors = validatePriceCurrency(state.bottle.price, state.bottle.currency);
+				update((s) => {
+					const bottleErrors = { ...(s.errors.bottle || {}) };
+					if (pcErrors.price) { bottleErrors.price = pcErrors.price; } else { delete bottleErrors.price; }
+					if (pcErrors.currency) { bottleErrors.currency = pcErrors.currency; } else { delete bottleErrors.currency; }
+					return { ...s, errors: { ...s.errors, bottle: bottleErrors } };
+				});
+				return; // early return — we update both fields directly above
+			}
+		}
+
+		update((s) => {
+			const sectionErrors = { ...(s.errors[section] || {}) };
+			if (error) {
+				sectionErrors[field] = error;
+			} else {
+				delete sectionErrors[field];
+			}
+			return { ...s, errors: { ...s.errors, [section]: sectionErrors } };
+		});
+	};
+
 	const validateStep = (step: WizardStep): boolean => {
 		const state = get({ subscribe });
 		const errors: Record<string, string> = {};
@@ -678,6 +728,11 @@ function createAddWineStore() {
 				}
 				if (!state.bottle.source.trim()) {
 					errors.source = 'Source is required';
+				}
+				{
+					const pcErrors = validatePriceCurrency(state.bottle.price, state.bottle.currency);
+					if (pcErrors.price) errors.price = pcErrors.price;
+					if (pcErrors.currency) errors.currency = pcErrors.currency;
 				}
 				update((s) => ({ ...s, errors: { ...s.errors, bottle: errors } }));
 				break;
@@ -896,6 +951,7 @@ function createAddWineStore() {
 		// Image
 		setImageFile,
 		// Validation
+		validateFieldBlur,
 		validateStep,
 		// Submit
 		submit,

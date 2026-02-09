@@ -48,7 +48,10 @@ const DEFAULT_RETRYABLE_ACTIONS = new Set([
   'reidentify',
 
   // Enrichment
+  'learn',
   'enrich_now',
+  'confirm_cache_match',
+  'force_refresh',
   'remember',
   'recommend',
 

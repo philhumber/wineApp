@@ -16,6 +16,7 @@ import type {
   ApiResponse,
   AddWinePayload,
   AddBottlePayload,
+  AddBottleResponse,
   UpdateWinePayload,
   UpdateBottlePayload,
   DrinkBottlePayload,
@@ -27,6 +28,7 @@ import type {
   UserSettings,
   UpdateSettingsPayload,
   CellarValue,
+  CellarValueHistoryPoint,
   DuplicateCheckParams,
   DuplicateCheckResult,
   AgentIdentificationResult,
@@ -37,15 +39,42 @@ import type {
   AgentErrorResponse,
   StreamEvent,
   StreamEventCallback,
-  StreamFieldCallback
+  StreamFieldCallback,
+  // WIN-80: Soft Delete types
+  DeleteEntityType,
+  DeleteImpactResponse,
+  DeleteItemResponse,
+  // WIN-205: History pagination types
+  GetDrunkWinesParams,
+  GetDrunkWinesResponse
 } from './types';
 import { AgentError } from './types';
+import { PUBLIC_API_KEY } from '$env/static/public';
+import { goto } from '$app/navigation';
+import { base } from '$app/paths';
 
 class WineApiClient {
   private baseURL: string;
 
+  // WIN-254: Prevent multiple concurrent 401 redirects
+  private static redirecting = false;
+
   constructor(baseURL = '/resources/php/') {
     this.baseURL = baseURL;
+  }
+
+  /**
+   * Handle 401 Unauthorized — redirect to login page once.
+   * Static flag prevents multiple concurrent API calls from each triggering a redirect.
+   */
+  private handle401(): never {
+    if (!WineApiClient.redirecting) {
+      WineApiClient.redirecting = true;
+      goto(`${base}/login`);
+      // Reset after a short delay to allow future redirects if needed
+      setTimeout(() => { WineApiClient.redirecting = false; }, 2000);
+    }
+    throw new Error('Session expired');
   }
 
   // ─────────────────────────────────────────────────────────
@@ -53,22 +82,36 @@ class WineApiClient {
   // ─────────────────────────────────────────────────────────
 
   /**
+   * Common headers included in every request.
+   * - X-API-Key: API key authentication (WIN-203)
+   * - X-Requested-With: CSRF protection custom header (WIN-215)
+   */
+  private get authHeaders(): Record<string, string> {
+    return {
+      'X-API-Key': PUBLIC_API_KEY,
+      'X-Requested-With': 'XMLHttpRequest'
+    };
+  }
+
+  /**
    * Generic fetch with JSON body and response.
    * Handles structured agent errors with user-friendly messages.
    */
   private async fetchJSON<T>(
     endpoint: string,
-    data?: Record<string, unknown>
+    data?: Record<string, unknown>,
+    signal?: AbortSignal
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
 
     const options: RequestInit = data
       ? {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
+          headers: { 'Content-Type': 'application/json', ...this.authHeaders },
+          body: JSON.stringify(data),
+          signal
         }
-      : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' };
+      : { method: 'POST', headers: { 'Content-Type': 'application/json', ...this.authHeaders }, body: '{}', signal };
 
     try {
       const response = await fetch(url, options);
@@ -77,6 +120,11 @@ class WineApiClient {
       // Check for structured agent error (works for both HTTP errors and 200 with success:false)
       if (!json.success && json.error?.type) {
         throw AgentError.fromResponse(json as AgentErrorResponse);
+      }
+
+      // WIN-254: 401 → redirect to login
+      if (response.status === 401) {
+        this.handle401();
       }
 
       // Generic HTTP error without structured info
@@ -98,10 +146,12 @@ class WineApiClient {
   /**
    * Parse and process Server-Sent Events from a streaming response.
    * Handles event: and data: lines, calling onEvent for each complete event.
+   * Supports cancellation via AbortSignal (WIN-187).
    */
   private async processSSEStream(
     response: Response,
-    onEvent: StreamEventCallback
+    onEvent: StreamEventCallback,
+    signal?: AbortSignal
   ): Promise<void> {
     const reader = response.body?.getReader();
     if (!reader) {
@@ -114,10 +164,22 @@ class WineApiClient {
 
     try {
       while (true) {
+        // WIN-187: Check abort signal before reading
+        if (signal?.aborted) {
+          reader.cancel();
+          throw new DOMException('Aborted', 'AbortError');
+        }
+
         const { done, value } = await reader.read();
 
         if (done) {
           break;
+        }
+
+        // WIN-187: Check abort signal after read returns
+        if (signal?.aborted) {
+          reader.cancel();
+          throw new DOMException('Aborted', 'AbortError');
         }
 
         const chunk = decoder.decode(value, { stream: true });
@@ -179,6 +241,7 @@ class WineApiClient {
     if (filters.producerDropdown) mapped.producerDropdown = filters.producerDropdown;
     if (filters.yearDropdown) mapped.yearDropdown = filters.yearDropdown;
     if (filters.bottleCount) mapped.bottleCount = filters.bottleCount;
+    if (filters.searchQuery?.trim()) mapped.searchQuery = filters.searchQuery.trim();
     if (filters.wineID) mapped.wineID = String(filters.wineID);
 
     return mapped;
@@ -192,7 +255,7 @@ class WineApiClient {
    * Get wines with optional filters
    * Default: returns wines with bottles (Our Wines view)
    */
-  async getWines(filters: WineFilters = {}): Promise<Wine[]> {
+  async getWines(filters: WineFilters = {}, signal?: AbortSignal): Promise<Wine[]> {
     // Default to showing wines with bottles if not specified
     const defaultedFilters = {
       bottleCount: '1' as const,
@@ -201,7 +264,8 @@ class WineApiClient {
 
     const response = await this.fetchJSON<{ wineList: Wine[] }>(
       'getWines.php',
-      this.mapFilters(defaultedFilters)
+      this.mapFilters(defaultedFilters),
+      signal
     );
 
     return response.data?.wineList ?? [];
@@ -394,12 +458,20 @@ class WineApiClient {
 
   /**
    * Get drunk wines with ratings (history view)
+   * WIN-205: Now supports server-side pagination, sorting, and filtering
    */
-  async getDrunkWines(): Promise<DrunkWine[]> {
-    const response = await this.fetchJSON<{ wineList: DrunkWine[] }>(
-      'getDrunkWines.php'
+  async getDrunkWines(params: GetDrunkWinesParams = {}, signal?: AbortSignal): Promise<GetDrunkWinesResponse> {
+    const response = await this.fetchJSON<GetDrunkWinesResponse>(
+      'getDrunkWines.php',
+      params as Record<string, unknown>,
+      signal
     );
-    return response.data?.wineList ?? [];
+    return response.data ?? {
+      wineList: [],
+      pagination: { page: 1, limit: 50, total: 0, totalPages: 0 },
+      unfilteredTotal: 0,
+      filterOptions: { countries: [], types: [], regions: [], producers: [], years: [] }
+    };
   }
 
   /**
@@ -433,10 +505,11 @@ class WineApiClient {
   }
 
   /**
-   * Add bottle to existing wine
+   * Add bottle(s) to existing wine
    * Maps TypeScript field names to PHP backend expected names
+   * WIN-222: Supports quantity for atomic batch insert
    */
-  async addBottle(data: AddBottlePayload): Promise<{ bottleID: number }> {
+  async addBottle(data: AddBottlePayload): Promise<AddBottleResponse> {
     // Map TypeScript fields to PHP expected field names
     const payload: Record<string, unknown> = {
       wineID: data.wineID,
@@ -445,10 +518,11 @@ class WineApiClient {
       bottleSource: data.bottleSource,
       bottlePrice: data.bottlePrice,
       bottleCurrency: data.bottleCurrency,
-      purchaseDate: data.purchaseDate
+      purchaseDate: data.purchaseDate,
+      quantity: data.quantity ?? 1           // WIN-222: Default to 1 for backwards compat
     };
 
-    const response = await this.fetchJSON<{ bottleID: number }>(
+    const response = await this.fetchJSON<AddBottleResponse>(
       'addBottle.php',
       payload
     );
@@ -517,6 +591,50 @@ class WineApiClient {
   }
 
   // ─────────────────────────────────────────────────────────
+  // SOFT DELETE (WIN-80)
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Get impact preview for deleting an entity
+   * Shows what will be affected by cascade deletion
+   */
+  async getDeleteImpact(
+    type: DeleteEntityType,
+    id: number
+  ): Promise<DeleteImpactResponse> {
+    const response = await this.fetchJSON<DeleteImpactResponse>(
+      'getDeleteImpact.php',
+      { type, id }
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to get delete impact');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Soft delete an entity (sets deleted=1, deletedAt=NOW())
+   * Cascades down: region→producers→wines→bottles
+   */
+  async deleteItem(
+    type: DeleteEntityType,
+    id: number
+  ): Promise<DeleteItemResponse> {
+    const response = await this.fetchJSON<DeleteItemResponse>(
+      'deleteItem.php',
+      { type, id }
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to delete item');
+    }
+
+    return response.data;
+  }
+
+  // ─────────────────────────────────────────────────────────
   // FILE UPLOAD
   // ─────────────────────────────────────────────────────────
 
@@ -530,8 +648,12 @@ class WineApiClient {
 
     const response = await fetch(`${this.baseURL}upload.php`, {
       method: 'POST',
+      headers: { ...this.authHeaders },
       body: formData
     });
+
+    // WIN-254: 401 → redirect to login
+    if (response.status === 401) this.handle401();
 
     const text = await response.text();
 
@@ -648,6 +770,17 @@ class WineApiClient {
     };
   }
 
+  /**
+   * Get cellar value history for charting (WIN-127 Phase 2)
+   * Returns daily running totals of cellar value in EUR
+   */
+  async getCellarValueHistory(): Promise<CellarValueHistoryPoint[]> {
+    const response = await this.fetchJSON<CellarValueHistoryPoint[]>(
+      'getCellarValueHistory.php'
+    );
+    return response.data ?? [];
+  }
+
   // ─────────────────────────────────────────────────────────
   // AI AGENT IDENTIFICATION
   // ─────────────────────────────────────────────────────────
@@ -745,21 +878,30 @@ class WineApiClient {
    * @param text Wine description text
    * @param onField Callback for each field as it streams in
    * @param onEvent Optional callback for all SSE events (field, result, escalating, error, done)
+   * @param signal Optional AbortSignal for cancellation (WIN-187)
    */
   async identifyTextStream(
     text: string,
     onField?: StreamFieldCallback,
-    onEvent?: StreamEventCallback
+    onEvent?: StreamEventCallback,
+    signal?: AbortSignal,
+    requestId?: string | null
   ): Promise<AgentIdentificationResultWithMeta> {
     const url = `${this.baseURL}agent/identifyTextStream.php`;
 
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...this.authHeaders };
+    if (requestId) headers['X-Request-Id'] = requestId;
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
+      headers,
+      body: JSON.stringify({ text }),
+      signal
     });
 
     if (!response.ok) {
+      // WIN-254: 401 → redirect to login
+      if (response.status === 401) this.handle401();
       // Try to parse error response
       try {
         const json = await response.json();
@@ -808,7 +950,7 @@ class WineApiClient {
           // Stream complete
           break;
       }
-    });
+    }, signal);
 
     if (streamError) {
       throw streamError;
@@ -831,13 +973,16 @@ class WineApiClient {
    * @param supplementaryText Optional user context
    * @param onField Callback for each field as it streams in
    * @param onEvent Optional callback for all SSE events
+   * @param signal Optional AbortSignal for cancellation (WIN-187)
    */
   async identifyImageStream(
     imageBase64: string,
     mimeType: string,
     supplementaryText?: string,
     onField?: StreamFieldCallback,
-    onEvent?: StreamEventCallback
+    onEvent?: StreamEventCallback,
+    signal?: AbortSignal,
+    requestId?: string | null
   ): Promise<AgentIdentificationResultWithMeta> {
     const url = `${this.baseURL}agent/identifyImageStream.php`;
 
@@ -846,13 +991,19 @@ class WineApiClient {
       body.supplementaryText = supplementaryText;
     }
 
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...this.authHeaders };
+    if (requestId) headers['X-Request-Id'] = requestId;
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      headers,
+      body: JSON.stringify(body),
+      signal
     });
 
     if (!response.ok) {
+      // WIN-254: 401 → redirect to login
+      if (response.status === 401) this.handle401();
       try {
         const json = await response.json();
         if (json.error?.type) {
@@ -889,7 +1040,7 @@ class WineApiClient {
           });
           break;
       }
-    });
+    }, signal);
 
     if (streamError) {
       throw streamError;
@@ -949,6 +1100,7 @@ class WineApiClient {
    * @param forceRefresh Skip cache, do fresh web search
    * @param onField Callback for each field as it streams in
    * @param onEvent Optional callback for all SSE events
+   * @param signal Optional AbortSignal for cancellation (WIN-187)
    */
   async enrichWineStream(
     producer: string,
@@ -959,17 +1111,25 @@ class WineApiClient {
     confirmMatch = false,
     forceRefresh = false,
     onField?: StreamFieldCallback,
-    onEvent?: StreamEventCallback
+    onEvent?: StreamEventCallback,
+    signal?: AbortSignal,
+    requestId?: string | null
   ): Promise<AgentEnrichmentResult> {
     const url = `${this.baseURL}agent/agentEnrichStream.php`;
 
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...this.authHeaders };
+    if (requestId) headers['X-Request-Id'] = requestId;
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ producer, wineName, vintage, wineType, region, confirmMatch, forceRefresh })
+      headers,
+      body: JSON.stringify({ producer, wineName, vintage, wineType, region, confirmMatch, forceRefresh }),
+      signal
     });
 
     if (!response.ok) {
+      // WIN-254: 401 → redirect to login
+      if (response.status === 401) this.handle401();
       try {
         const json = await response.json();
         if (json.error?.type) {
@@ -1025,7 +1185,7 @@ class WineApiClient {
           });
           break;
       }
-    });
+    }, signal);
 
     if (streamError) {
       throw streamError;
@@ -1060,6 +1220,28 @@ class WineApiClient {
       throw new Error(response.message || 'Failed to clarify match');
     }
     return response.data;
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // AI AGENT CANCELLATION (WIN-227)
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * Cancel an in-flight agent request server-side via cancel token.
+   * Creates a token file that PHP checkpoints poll for.
+   */
+  async cancelAgentRequest(requestId: string): Promise<void> {
+    const url = `${this.baseURL}agent/cancelRequest.php`;
+    try {
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...this.authHeaders },
+        body: JSON.stringify({ requestId }),
+      });
+    } catch {
+      // Best-effort — if this fails, the client-side abort still works
+      console.warn('[API] Failed to send server-side cancel for', requestId);
+    }
   }
 
   // ─────────────────────────────────────────────────────────
@@ -1100,13 +1282,89 @@ class WineApiClient {
       throw new Error(`Unsupported image format: ${extension}. Please use JPEG, PNG, or WebP.`);
     }
 
+    const MAX_SIZE = 800;
+
+    // Prefer off-main-thread: createImageBitmap + OffscreenCanvas in Worker
+    if (typeof createImageBitmap === 'function' && typeof OffscreenCanvas === 'function') {
+      try {
+        return await this.compressImageInWorker(file, MAX_SIZE);
+      } catch {
+        // Fall through to main-thread fallback
+      }
+    }
+
+    return this.compressImageOnMainThread(file, MAX_SIZE);
+  }
+
+  /**
+   * Off-main-thread image compression using createImageBitmap + OffscreenCanvas in a Web Worker.
+   * Avoids blocking the UI thread during image decode, resize, and JPEG encode.
+   */
+  private async compressImageInWorker(
+    file: File,
+    maxSize: number
+  ): Promise<{ imageData: string; mimeType: string }> {
+    // createImageBitmap decodes off the main thread
+    const bitmap = await createImageBitmap(file);
+    let { width, height } = bitmap;
+
+    if (width > maxSize || height > maxSize) {
+      const ratio = Math.min(maxSize / width, maxSize / height);
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+    }
+
+    // Inline worker: resize with OffscreenCanvas + encode to JPEG
+    const workerCode = `
+      self.onmessage = async (e) => {
+        const { bitmap, width, height } = e.data;
+        const canvas = new OffscreenCanvas(width, height);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(bitmap, 0, 0, width, height);
+        bitmap.close();
+        const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.85 });
+        const buffer = await blob.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        self.postMessage({ imageData: btoa(binary), mimeType: 'image/jpeg' });
+      };
+    `;
+
+    const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+    const workerUrl = URL.createObjectURL(workerBlob);
+    const worker = new Worker(workerUrl);
+
+    try {
+      return await new Promise<{ imageData: string; mimeType: string }>((resolve, reject) => {
+        worker.onmessage = (e) => resolve(e.data);
+        worker.onerror = (e) => reject(new Error(e.message || 'Image compression worker error'));
+        // Transfer ImageBitmap (zero-copy)
+        worker.postMessage({ bitmap, width, height }, [bitmap]);
+      });
+    } finally {
+      worker.terminate();
+      URL.revokeObjectURL(workerUrl);
+    }
+  }
+
+  /**
+   * Main-thread fallback for image compression (used when OffscreenCanvas/Worker unavailable).
+   */
+  private compressImageOnMainThread(
+    file: File,
+    maxSize: number
+  ): Promise<{ imageData: string; mimeType: string }> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       const img = new Image();
 
       reader.onload = (e) => {
         img.onload = () => {
-          // Create canvas for compression
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
 
@@ -1115,26 +1373,20 @@ class WineApiClient {
             return;
           }
 
-          // Max dimensions for upload
-          const MAX_WIDTH = 1200;
-          const MAX_HEIGHT = 1200;
-
           let { width, height } = img;
 
-          // Scale down if needed
-          if (width > MAX_WIDTH || height > MAX_HEIGHT) {
-            const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+          if (width > maxSize || height > maxSize) {
+            const ratio = Math.min(maxSize / width, maxSize / height);
             width = Math.round(width * ratio);
             height = Math.round(height * ratio);
           }
 
           canvas.width = width;
           canvas.height = height;
-
-          // Draw image
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, width, height);
           ctx.drawImage(img, 0, 0, width, height);
 
-          // Convert to JPEG with quality
           const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
           const base64Data = dataUrl.split(',')[1];
 

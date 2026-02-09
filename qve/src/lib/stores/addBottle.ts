@@ -6,6 +6,7 @@
 import { writable, derived, get } from 'svelte/store';
 import { api } from '$api';
 import { toasts } from './toast';
+import { validateRequired, validateLength, validatePriceCurrency, FIELD_MAX_LENGTHS } from '$lib/utils/validation';
 
 // ─────────────────────────────────────────────────────────
 // TYPES
@@ -106,6 +107,27 @@ function createAddBottleStore() {
 		},
 
 		/**
+		 * Validate field on blur
+		 */
+		validateFieldBlur(field: string, value: string): void {
+			let error: string | null = null;
+			switch (field) {
+				case 'storageLocation':
+					error = validateRequired(value, 'Storage location') ?? validateLength(value, FIELD_MAX_LENGTHS.storageLocation);
+					break;
+				case 'source':
+					error = validateRequired(value, 'Source') ?? validateLength(value, FIELD_MAX_LENGTHS.source);
+					break;
+			}
+			update((state) => {
+				const newErrors = { ...state.errors };
+				if (error) { newErrors[field] = error; }
+				else { delete newErrors[field]; }
+				return { ...state, errors: newErrors };
+			});
+		},
+
+		/**
 		 * Validate required fields
 		 */
 		validate(): boolean {
@@ -121,9 +143,9 @@ function createAddBottleStore() {
 			if (!state.source.trim()) {
 				errors.source = 'Source is required';
 			}
-			if (!state.currency) {
-				errors.currency = 'Currency is required';
-			}
+			const priceCurrencyErrors = validatePriceCurrency(state.price, state.currency);
+			if (priceCurrencyErrors.price) errors.price = priceCurrencyErrors.price;
+			if (priceCurrencyErrors.currency) errors.currency = priceCurrencyErrors.currency;
 			if (state.quantity < 1 || state.quantity > 24) {
 				errors.quantity = 'Quantity must be between 1 and 24';
 			}
@@ -134,6 +156,7 @@ function createAddBottleStore() {
 
 		/**
 		 * Submit the form - adds bottle(s) to the wine
+		 * WIN-222: Single atomic request with quantity (no loop)
 		 */
 		async submit(): Promise<{ success: boolean; wineID: number | null; count: number }> {
 			const state = get({ subscribe });
@@ -152,18 +175,18 @@ function createAddBottleStore() {
 			try {
 				const quantity = state.quantity || 1;
 
-				// Add each bottle (loop for quantity)
-				for (let i = 0; i < quantity; i++) {
-					await api.addBottle({
-						wineID: state.wineID,
-						bottleSize: state.bottleSize,
-						bottleLocation: state.storageLocation,
-						bottleSource: state.source.trim(),
-						bottlePrice: state.price ? parseFloat(state.price) : undefined,
-						bottleCurrency: state.currency || undefined,
-						purchaseDate: state.purchaseDate || undefined
-					});
-				}
+				// WIN-222: Single atomic API call with quantity
+				// Backend handles batch insert in a single transaction
+				await api.addBottle({
+					wineID: state.wineID,
+					bottleSize: state.bottleSize,
+					bottleLocation: state.storageLocation,
+					bottleSource: state.source.trim(),
+					bottlePrice: state.price ? parseFloat(state.price) : undefined,
+					bottleCurrency: state.currency || undefined,
+					purchaseDate: state.purchaseDate || undefined,
+					quantity
+				});
 
 				// Show success toast
 				if (quantity > 1) {
@@ -219,7 +242,7 @@ export const canSubmitAddBottle = derived(addBottle, ($state) => {
 		$state.bottleSize !== '' &&
 		$state.storageLocation !== '' &&
 		$state.source.trim() !== '' &&
-		$state.currency !== '' &&
+		(!$state.price || $state.price.trim() === '' || $state.currency !== '') &&
 		$state.quantity >= 1 &&
 		$state.quantity <= 24 &&
 		!$state.isSubmitting

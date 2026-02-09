@@ -13,6 +13,7 @@
 
 import { writable, derived, get } from 'svelte/store';
 import { persistState } from './agentPersistence';
+import { validateRequired, validateLength, validatePriceCurrency, FIELD_MAX_LENGTHS } from '$lib/utils/validation';
 import type {
   WineIdentificationResult,
   BottleFormData,
@@ -66,6 +67,12 @@ export interface AddWineFlowState {
   isSubmitting: boolean;
   error: AgentErrorInfo | null;
   addedWineId: number | null;
+
+  // Validation errors
+  errors: {
+    bottle: Record<string, string>;
+    manual: Record<string, string>;
+  };
 }
 
 // ===========================================
@@ -153,6 +160,7 @@ export function startAddFlow(wineResult: WineIdentificationResult): void {
       isSubmitting: false,
       error: null,
       addedWineId: null,
+      errors: { bottle: {}, manual: {} },
     },
   });
 
@@ -463,6 +471,71 @@ export function getSelectedEntities(): SelectedEntities | null {
 export function getBottleFormData(): BottleFormData {
   return get(store).flow?.bottleFormData ?? {};
 }
+
+// ===========================================
+// Validation
+// ===========================================
+
+export function validateFieldBlur(form: 'bottle' | 'manual', field: string, value: string): void {
+  let error: string | null = null;
+  if (form === 'bottle') {
+    switch (field) {
+      case 'storageLocation':
+        error = validateRequired(value, 'Storage location') ?? validateLength(value, FIELD_MAX_LENGTHS.storageLocation);
+        break;
+      case 'source':
+        error = validateRequired(value, 'Source') ?? validateLength(value, FIELD_MAX_LENGTHS.source);
+        break;
+    }
+  } else {
+    switch (field) {
+      case 'wineName':
+        error = validateRequired(value, 'Wine name') ?? validateLength(value, FIELD_MAX_LENGTHS.wineName);
+        break;
+      case 'producer':
+        error = validateRequired(value, 'Producer') ?? validateLength(value, FIELD_MAX_LENGTHS.producerName);
+        break;
+      case 'region':
+        error = validateRequired(value, 'Region') ?? validateLength(value, FIELD_MAX_LENGTHS.regionName);
+        break;
+    }
+  }
+  store.update((state) => {
+    if (!state.flow) return state;
+    const formErrors = { ...state.flow.errors[form] };
+    if (error) { formErrors[field] = error; } else { delete formErrors[field]; }
+    return { ...state, flow: { ...state.flow, errors: { ...state.flow.errors, [form]: formErrors } } };
+  });
+}
+
+export function validateBottleForm(): boolean {
+  const state = get(store);
+  if (!state.flow) return false;
+  const errors: Record<string, string> = {};
+  const data = state.flow.bottleFormData;
+  if (!data.storageLocation?.trim()) errors.storageLocation = 'Storage location is required';
+  if (!data.source?.trim()) errors.source = 'Source is required';
+  const priceStr = data.price !== undefined ? String(data.price) : '';
+  const priceCurrencyErrors = validatePriceCurrency(priceStr, data.currency);
+  if (priceCurrencyErrors.price) errors.price = priceCurrencyErrors.price;
+  if (priceCurrencyErrors.currency) errors.currency = priceCurrencyErrors.currency;
+  store.update((s) => {
+    if (!s.flow) return s;
+    return { ...s, flow: { ...s.flow, errors: { ...s.flow.errors, bottle: errors } } };
+  });
+  return Object.keys(errors).length === 0;
+}
+
+export function clearError(form: 'bottle' | 'manual', field: string): void {
+  store.update((state) => {
+    if (!state.flow) return state;
+    const formErrors = { ...state.flow.errors[form] };
+    delete formErrors[field];
+    return { ...state, flow: { ...state.flow, errors: { ...state.flow.errors, [form]: formErrors } } };
+  });
+}
+
+export const addWineErrors = derived(store, ($s) => $s.flow?.errors ?? { bottle: {}, manual: {} });
 
 // ===========================================
 // Debug

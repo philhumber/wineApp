@@ -1,28 +1,31 @@
 <?php
 	// 1. Include dependencies at the top
+    require_once 'securityHeaders.php';
     require_once 'databaseConnection.php';
     require_once 'audit_log.php';
     require_once 'validators.php';
-
+    require_once 'errorHandler.php';
+    
+    // Start session if not already started
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
     // 2. Initialize response
     $response = ['success' => false, 'message' => '', 'data' => null];
 
     try {
         // 3. Get database connection
         $pdo = getDBConnection();
-        
+
         // 4. Get and validate input
         $data = json_decode(file_get_contents('php://input'), true);
 
         // 6. Validate and sanitize all fields
-        $wineID = (int)trim($data['wineID']);
+        $wineID = (int)trim($data['wineID']) ?? 0;
         if ($wineID <= 0) {
             throw new Exception('Invalid wine ID');
         }
-        $wineName = trim($data['wineName'] ?? '');
-        if (empty($wineName)) {
-            throw new Exception('Wine name is required');
-        }
+        $wineName = validateStringField($data['wineName'] ?? '', 'Wine name', true, 50);
         $wineType = trim($data['wineType'] ?? '');
         if (empty($wineType)) {
             throw new Exception('Wine type is required');
@@ -38,22 +41,11 @@
             $isNonVintage = $yearResult['isNonVintage'];
         }
 
-        $description = trim($data['wineDescription'] ?? '');
-        if (empty($description)) {
-            throw new Exception('Wine description is required');
-        }
-        $tastingNotes = trim($data['wineTasting'] ?? '');
-        if (empty($tastingNotes)) {
-            throw new Exception('Tasting Notes is required');
-        }
-        $pairing = trim($data['winePairing'] ?? '');
-        if (empty($pairing)) {
-            throw new Exception('Pairing notes is required');
-        }
-        $pictureURL = trim($data['winePicture'] ?? '');
-        if (empty($pictureURL)) {
-            throw new Exception('Picture URL is required');
-        }
+        // WIN-221: Validate text fields with mb_strlen() limits
+        $description = validateStringField($data['wineDescription'] ?? null, 'Wine description', true, 5000);
+        $tastingNotes = validateStringField($data['wineTasting'] ?? null, 'Tasting notes', true, 5000);
+        $pairing = validateStringField($data['winePairing'] ?? null, 'Pairing notes', true, 5000);
+        $pictureURL = validateStringField($data['winePicture'] ?? null, 'Picture URL', true, 500);
 
 
         $userID = $_SESSION['userID'] ?? null;
@@ -84,22 +76,20 @@
         try {
             $stmt = $pdo->prepare("SELECT wineTypeID FROM winetype WHERE wineType = ?");
             $stmt->execute([$wineType]);
-            $wineTypeID = $stmt->fetch(PDO::FETCH_ASSOC);            
+            $wineTypeID = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$wineTypeID) {
-                throw new Exception("Wine type '{$wineType}' not found");
-            }            
+                throw new Exception("Wine type not found");
+            }
             $params[':wineTypeID'] = $wineTypeID['wineTypeID'];
             
-            // 8. Get OLD data before update (for audit log)
-            $stmt = $pdo->prepare("SELECT * FROM wine WHERE wineID = ?");
+            // 8. Get OLD data before update (for audit log) - exclude soft-deleted
+            $stmt = $pdo->prepare("SELECT * FROM wine WHERE wineID = ? AND deleted = 0");
             $stmt->execute([$wineID]);
-            $oldData = $stmt->fetch(PDO::FETCH_ASSOC);            
+            $oldData = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$oldData) {
-                throw new Exception('Wine not found');
+                throw new Exception('Wine not found or has been deleted');
             }
-            error_log('SQL: ' . $sql);
-            error_log('Params: ' . print_r($params, true));
-            
+
             // 8. Perform database operation
             $stmt = $pdo->prepare($sqlQuery);
             $stmt->execute($params);
@@ -120,15 +110,15 @@
             ];
 
             logUpdate($pdo, 'wine', $wineID, $oldData, $newData, $userID);
-            
+
             // 11. Commit transaction
             $pdo->commit();
-            
+
             // 12. Set success response
             $response['success'] = true;
             $response['message'] = 'Wine updated successfully!';
             $response['data'] = ['wineID' => $wineID];
-        
+
         } catch (Exception $e) {
             // 13. Rollback on error
             $pdo->rollBack();
@@ -136,10 +126,9 @@
         }
 
     } catch (Exception $e) {
-        // 14. Handle all errors
+        // 14. Handle all errors (WIN-217: sanitize error messages)
         $response['success'] = false;
-        $response['message'] = $e->getMessage();
-        error_log("Error in updateWine.php: " . $e->getMessage());
+        $response['message'] = safeErrorMessage($e, 'updateWine');
     }
 
     // 15. Return JSON response

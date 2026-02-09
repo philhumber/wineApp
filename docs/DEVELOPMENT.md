@@ -196,8 +196,7 @@ wineapp/
 │   │       ├── add/              # Add Wine wizard
 │   │       ├── history/          # Drink history
 │   │       ├── edit/[id]/        # Edit Wine/Bottle
-│   │       ├── drink/[id]/       # Drink/Rate flow
-│   │       └── agent-test/       # Agent testing page (dev only)
+│   │       └── drink/[id]/       # Drink/Rate flow
 │   ├── eslint.config.js          # ESLint flat config
 │   ├── .prettierrc               # Prettier config
 │   ├── vitest.config.ts          # Vitest test config

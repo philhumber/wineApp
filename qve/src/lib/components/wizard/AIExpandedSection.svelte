@@ -71,6 +71,6 @@
 	}
 
 	.ai-content {
-		/* Children components handle their own spacing */
+		display: contents; /* Children components handle their own spacing */
 	}
 </style>

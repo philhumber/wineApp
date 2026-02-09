@@ -1,7 +1,9 @@
 <?php
 	// 1. Include dependencies at the top
+    require_once 'securityHeaders.php';
     require_once 'databaseConnection.php';
     require_once 'audit_log.php';
+    require_once 'errorHandler.php';
 
     // 2. Initialize response
     $response = ['success' => false, 'message' => '', 'data' => null];
@@ -27,9 +29,10 @@
 						region.regionName,
 						COUNT(bottles.bottleID) AS bottleCount
 					FROM region
-					LEFT JOIN producers ON producers.regionID = region.regionID
-					LEFT JOIN wine ON wine.producerID = producers.producerID
-					LEFT JOIN bottles ON wine.wineID = bottles.wineID AND bottles.bottleDrunk = 0";
+					LEFT JOIN producers ON producers.regionID = region.regionID AND producers.deleted = 0
+					LEFT JOIN wine ON wine.producerID = producers.producerID AND wine.deleted = 0
+					LEFT JOIN bottles ON wine.wineID = bottles.wineID AND bottles.bottleDrunk = 0 AND bottles.deleted = 0
+				WHERE region.deleted = 0";
 
 		// Add JOINs for context-aware filtering
 		if ($countryName) {
@@ -58,7 +61,7 @@
 		}
 
 		if (!empty($where)) {
-			$sqlQuery .= " WHERE " . implode(' AND ', $where);
+			$sqlQuery .= " AND " . implode(' AND ', $where);
 		}
 
 		$sqlQuery .= " GROUP BY region.regionName";
@@ -87,16 +90,15 @@
             $response['success'] = true;
             $response['message'] = 'Regions retrieved sucessfully!';
             $response['data'] = ['wineList' =>  $regionList];
-        
-		} catch (Exception $e) {                
+
+		} catch (Exception $e) {
 			throw $e;
 		}
 
 	} catch (Exception $e) {
-		// 14. Handle all errors
+		// 14. Handle all errors (WIN-217: sanitize error messages)
 		$response['success'] = false;
-		$response['message'] = $e->getMessage();
-		error_log("Error in getRegions.php: " . $e->getMessage());
+		$response['message'] = safeErrorMessage($e, 'getRegions');
 	}
 	// 15. Return JSON response
 	header('Content-Type: application/json');

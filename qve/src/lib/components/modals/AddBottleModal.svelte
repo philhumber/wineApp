@@ -19,6 +19,7 @@
     modal
   } from '$lib/stores';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import FormInput from '$lib/components/forms/FormInput.svelte';
 
   export let wineID: number;
   export let wineName: string;
@@ -175,23 +176,17 @@
       </div>
 
       <!-- Row 2: Source -->
-      <div class="form-group">
-        <label class="form-label" for="source">
-          Source <span class="required">*</span>
-        </label>
-        <input
-          type="text"
-          id="source"
-          class="form-input"
-          class:has-error={state.errors.source}
-          placeholder="e.g., Waitrose, Majestic, Gift..."
-          value={state.source}
-          on:input={(e) => addBottle.setField('source', e.currentTarget.value)}
-        />
-        {#if state.errors.source}
-          <span class="form-error">{state.errors.source}</span>
-        {/if}
-      </div>
+      <FormInput
+        label="Source"
+        name="source"
+        value={state.source}
+        placeholder="e.g., Waitrose, Majestic, Gift..."
+        required
+        maxlength={50}
+        error={state.errors.source}
+        on:input={(e) => addBottle.setField('source', e.detail)}
+        on:blur={() => addBottle.validateFieldBlur('source', state.source)}
+      />
 
       <!-- Row 3: Price, Currency -->
       <div class="form-row">
@@ -505,8 +500,12 @@
     box-shadow: 0 0 0 3px rgba(166, 155, 138, 0.1);
   }
 
-  .form-select.has-error,
-  .form-input.has-error {
+  .form-select option {
+    color: #2D2926;
+    background-color: #FFFFFF;
+  }
+
+  .form-select.has-error {
     border-color: var(--error, #b87a7a);
   }
 

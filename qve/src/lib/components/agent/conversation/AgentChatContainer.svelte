@@ -18,6 +18,7 @@
 	import { agentMessages, agentPhase } from '$lib/stores/agentConversation';
 	import { isIdentifying, streamingFields } from '$lib/stores/agentIdentification';
 	import { isEnriching, enrichmentStreamingFields } from '$lib/stores/agentEnrichment';
+	import { isScrollLocked } from '$lib/agent/requestLifecycle';
 
 	export let messages: AgentMessage[] = [];
 
@@ -63,6 +64,7 @@
 	 */
 	function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
 		if (!scrollContainer) return;
+		if (isScrollLocked()) return;
 
 		requestAnimationFrame(() => {
 			requestAnimationFrame(() => {
@@ -78,27 +80,16 @@
 
 	/**
 	 * Scroll to show the latest message.
-	 * Always scrolls, even if user had scrolled up - new messages take priority.
 	 */
 	async function scrollToNewMessage() {
 		if (!scrollContainer) return;
+		if (isScrollLocked()) return;
 
 		// Reset user scroll state - new message takes priority
 		userScrolledUp = false;
 
 		await tick();
-		requestAnimationFrame(() => {
-			// Find all message elements and scroll to the last one
-			// Uses [data-message-id] which is set on each message wrapper in MessageList
-			const messageElements = scrollContainer.querySelectorAll('[data-message-id]');
-			const lastMessage = messageElements[messageElements.length - 1];
-			if (lastMessage) {
-				lastMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
-			} else {
-				// Fallback: scroll to bottom
-				scrollToBottom();
-			}
-		});
+		scrollToBottom();
 	}
 
 	/**
@@ -106,6 +97,7 @@
 	 */
 	async function scrollToStreamingWineCard() {
 		if (!scrollContainer) return;
+		if (isScrollLocked()) return;
 
 		await tick();
 		// Use double RAF with small delay to ensure text wrapping/layout is complete
@@ -135,6 +127,7 @@
 	 */
 	async function scrollToEnrichmentCardTop() {
 		if (!scrollContainer) return;
+		if (isScrollLocked()) return;
 
 		await tick();
 		requestAnimationFrame(() => {

@@ -3,6 +3,9 @@
  * Pure helper functions used across the application
  */
 
+// UUID
+export { generateUUID } from './uuid';
+
 // Command Detection
 export {
 	detectCommand,

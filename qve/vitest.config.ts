@@ -9,7 +9,7 @@ export default defineConfig({
 		conditions: ['browser', 'import', 'module', 'default'],
 	},
 	test: {
-		include: ['src/**/*.{test,spec}.{js,ts}'],
+		include: ['src/**/*.{test,spec}.{js,ts}', 'tests/**/*.{test,spec}.{js,ts}'],
 		globals: true,
 		environment: 'jsdom',
 		setupFiles: ['./src/test-setup.ts'],
@@ -21,6 +21,7 @@ export default defineConfig({
 			$styles: path.resolve(__dirname, './src/lib/styles'),
 			$components: path.resolve(__dirname, './src/lib/components'),
 			$utils: path.resolve(__dirname, './src/lib/utils'),
+			'$env/static/public': path.resolve(__dirname, './src/app-mocks/env-static-public.ts'),
 		},
 	},
 });

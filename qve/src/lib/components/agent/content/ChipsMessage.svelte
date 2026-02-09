@@ -3,6 +3,7 @@
   import { fly } from 'svelte/transition';
   import type { AgentMessage, AgentAction } from '$lib/agent/types';
   import { updateMessage, agentMessages, clearNewFlag } from '$lib/stores/agentConversation';
+  import { isScrollLocked } from '$lib/agent/requestLifecycle';
 
   export let message: AgentMessage;
 
@@ -20,12 +21,16 @@
 
   let chipsElement: HTMLElement;
 
+  // WIN-228: Local processing flag to block double-clicks before store updates
+  let isProcessing = false;
+
   /**
    * Handle intro animation complete - scroll into view and clear isNew flag.
    * Clearing the flag signals to following messages that this one is ready.
    */
   function handleIntroEnd() {
-    if (chipsElement) {
+    // Check scroll lock before scrolling (prevents chaos during enrichment streaming)
+    if (chipsElement && !isScrollLocked()) {
       chipsElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
     // Signal completion so following messages can appear
@@ -35,8 +40,12 @@
   }
 
   function handleChipClick(chip: { id: string; action: string; payload?: unknown }) {
-    if (isDisabled) return;
+    // WIN-228: Block if already processing (handles rapid double-clicks)
+    if (isProcessing || isDisabled) return;
     if (message.data.category !== 'chips') return;
+
+    // Set immediately to block any subsequent clicks
+    isProcessing = true;
 
     // Record which chip was selected before dispatching
     updateMessage(message.id, {
@@ -48,9 +57,10 @@
     });
 
     dispatch('action', {
-      type: 'chip_tap',
-      payload: { action: chip.action, messageId: message.id, data: chip.payload }
-    });
+      type: chip.action as AgentAction['type'],
+      messageId: message.id,
+      payload: chip.payload,
+    } as AgentAction);
   }
 </script>
 
@@ -66,7 +76,7 @@
         class="chip"
         class:primary={chip.variant === 'primary'}
         class:selected={isDisabled && selectedChipId === chip.id}
-        disabled={isDisabled}
+        disabled={isDisabled || isProcessing}
         on:click={() => handleChipClick(chip)}
       >
         {#if isDisabled && selectedChipId === chip.id}

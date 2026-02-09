@@ -1,8 +1,11 @@
 <?php
   // 1. Include dependencies at the top
+  require_once 'securityHeaders.php';
   require_once 'databaseConnection.php';
   require_once 'audit_log.php';
-  
+  require_once 'validators.php';
+  require_once 'errorHandler.php';
+
   // Start session if not already started
   if (session_status() === PHP_SESSION_NONE) {
       session_start();
@@ -15,7 +18,7 @@
   try {
       // 3. Get database connection
       $pdo = getDBConnection();
-      
+
       // 4. Get and validate input
       $inputData = json_decode(file_get_contents('php://input'), true);
 
@@ -23,21 +26,19 @@
       // Get all input data with validation
       $wineID = $inputData['wineID'] ?? null;
       $bottleID = $inputData['bottleID'] ?? null;
-      $overallRating = $inputData['overallRating'] ?? null;
-      $valueRating = $inputData['valueRating'] ?? null;
       $drinkDate = $inputData['drinkDate'] ?? '';  // FIX: Actually get drinkDate from input!
       $buyAgain = $inputData['buyAgain'] ?? 0;
-      $notes = $inputData['notes'] ?? '';
+      $notes = validateStringField($inputData['notes'] ?? null, 'Notes', false, 2000);
 
-      // Optional ratings (0-5 scale, nullable)
-      $complexityRating = isset($inputData['complexityRating']) && $inputData['complexityRating'] > 0
-          ? (int)$inputData['complexityRating'] : null;
-      $drinkabilityRating = isset($inputData['drinkabilityRating']) && $inputData['drinkabilityRating'] > 0
-          ? (int)$inputData['drinkabilityRating'] : null;
-      $surpriseRating = isset($inputData['surpriseRating']) && $inputData['surpriseRating'] > 0
-          ? (int)$inputData['surpriseRating'] : null;
-      $foodPairingRating = isset($inputData['foodPairingRating']) && $inputData['foodPairingRating'] > 0
-          ? (int)$inputData['foodPairingRating'] : null;
+      // Required ratings (1-10)
+      $overallRating = validateRating($inputData['overallRating'] ?? null, 'Overall rating', true, 1, 10);
+      $valueRating = validateRating($inputData['valueRating'] ?? null, 'Value rating', true, 1, 10);
+
+      // Optional sub-ratings (1-5, NULL = not rated)
+      $complexityRating = validateRating($inputData['complexityRating'] ?? null, 'Complexity rating', false, 1, 5);
+      $drinkabilityRating = validateRating($inputData['drinkabilityRating'] ?? null, 'Drinkability rating', false, 1, 5);
+      $surpriseRating = validateRating($inputData['surpriseRating'] ?? null, 'Surprise rating', false, 1, 5);
+      $foodPairingRating = validateRating($inputData['foodPairingRating'] ?? null, 'Food pairing rating', false, 1, 5);
 
       // Validate required fields
       if (empty($wineID)) {
@@ -112,7 +113,7 @@
 
           // Get the new bottle ID
           $ratingID = $pdo->lastInsertId();
-          
+
           // Log the insert
           logInsert($pdo, 'ratings', $ratingID, [
             'wineID' => $wineID,
@@ -129,30 +130,30 @@
           ], $userID);
 
 
-          // 8. Get OLD data before update (for audit log)
-          $stmt = $pdo->prepare("SELECT bottleDrunk FROM bottles WHERE bottleID = :bottleID");
+          // 8. Get OLD data before update (for audit log) - exclude soft-deleted
+          $stmt = $pdo->prepare("SELECT bottleDrunk FROM bottles WHERE bottleID = :bottleID AND deleted = 0");
           $stmt->execute([':bottleID' => $bottleID]);
-          $oldData = $stmt->fetch(PDO::FETCH_ASSOC);            
+          $oldData = $stmt->fetch(PDO::FETCH_ASSOC);
           if (!$oldData) {
-              throw new Exception('Bottle not found');
+              throw new Exception('Bottle not found or has been deleted');
           }
 
           $newData = [
               'bottleDrunk' => 1
           ];
 
-          logUpdate($pdo, 'bottles', $wineID, $oldData, $newData, $userID);
+          logUpdate($pdo, 'bottles', $bottleID, $oldData, $newData, $userID);
 
 
           $stmt = $pdo->prepare("UPDATE bottles SET bottleDrunk = 1 WHERE bottleID = :bottleID");
           $stmt->execute([':bottleID' => $bottleID]);
 
-            // 8. Get OLD data before update (for audit log)
-          $stmt = $pdo->prepare("SELECT bottlesDrunk FROM wine WHERE wineID = :wineID");
+            // 8. Get OLD data before update (for audit log) - exclude soft-deleted
+          $stmt = $pdo->prepare("SELECT bottlesDrunk FROM wine WHERE wineID = :wineID AND deleted = 0");
           $stmt->execute([':wineID' => $wineID]);
-          $oldData = $stmt->fetch(PDO::FETCH_ASSOC);            
+          $oldData = $stmt->fetch(PDO::FETCH_ASSOC);
           if (!$oldData) {
-              throw new Exception('Wine not found');
+              throw new Exception('Wine not found or has been deleted');
           }
 
           $newData = [
@@ -166,12 +167,12 @@
 
           // 11. Commit transaction
           $pdo->commit();
-          
+
           // 12. Set success response
           $response['success'] = true;
           $response['message'] = 'Wine drunk successfully!';
           $response['data'] = ['bottleID' => $bottleID];
-      
+
       } catch (Exception $e) {
           // 13. Rollback on error
           $pdo->rollBack();
@@ -179,10 +180,9 @@
       }
 
   } catch (Exception $e) {
-      // 14. Handle all errors
+      // 14. Handle all errors (WIN-217: sanitize error messages)
       $response['success'] = false;
-      $response['message'] = $e->getMessage();
-      error_log("Error in drinkBottle.php: " . $e->getMessage());
+      $response['message'] = safeErrorMessage($e, 'drinkBottle');
   }
 
   // 15. Return JSON response

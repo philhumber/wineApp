@@ -183,8 +183,10 @@
 			value={state.region.regionName}
 			placeholder="e.g., Barossa Valley"
 			required
+			maxlength={50}
 			error={regionErrors.regionName}
 			on:input={(e) => addWineStore.updateRegion('regionName', e.detail)}
+			on:blur={() => addWineStore.validateFieldBlur('region', 'regionName', state.region.regionName)}
 		/>
 
 		<FormRow>

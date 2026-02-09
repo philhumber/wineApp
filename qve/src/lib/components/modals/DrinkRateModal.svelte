@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
-  import { drinkWine, isDirty, canSubmit, modal, updateWineInList, scrollToWine, collapseWine } from '$lib/stores';
+  import { drinkWine, isDirty, canSubmit, modal, updateWineInList, scrollToWine, collapseWine, deleteStore } from '$lib/stores';
   import { viewMode } from '$lib/stores/view';
   import { api } from '$lib/api';
   import { RatingDots, MiniRatingDots, ToggleSwitch } from '$lib/components/forms';
@@ -18,7 +18,12 @@
   export let drunkWine: DrunkWine | undefined = undefined;
   export let isEdit: boolean = false;
 
-  const dispatch = createEventDispatcher<{ close: void; confirm: void; rated: { isEdit: boolean } }>();
+  const dispatch = createEventDispatcher<{
+    close: void;
+    confirm: void;
+    rated: { isEdit: boolean };
+    delete: { bottleId: number; wineName: string };
+  }>();
 
   onMount(async () => {
     if (isEdit && drunkWine) {
@@ -49,6 +54,36 @@
 
   function handleClose() {
     modal.requestClose();
+  }
+
+  function handleDelete(event: MouseEvent) {
+    event.stopPropagation();
+    // Show delete confirmation directly
+    if (drunkWine && drunkWine.bottleID != null) {
+      const bottleId = drunkWine.bottleID;
+      const wineName = drunkWine.wineName || displayName;
+      const snapshot = drunkWine;
+
+      // Clear the dirty check hook so confirmation doesn't trigger "discard changes?"
+      modal.clearBeforeCloseHook();
+
+      // Show confirmation modal (replaces this modal)
+      modal.confirm({
+        title: 'Delete this rating?',
+        message: `Remove this rating and history for "${wineName}"?`,
+        confirmLabel: 'Delete',
+        cancelLabel: 'Cancel',
+        variant: 'danger',
+        onConfirm: () => {
+          modal.close();
+          // Start pending delete with undo timer (handles optimistic UI update)
+          deleteStore.startDelete('bottle', bottleId, wineName, { drunkWine: snapshot });
+        },
+        onCancel: () => {
+          modal.close();
+        }
+      });
+    }
   }
 
   async function handleSubmit() {
@@ -144,9 +179,22 @@
     <!-- Header -->
     <div class="modal-header">
       <h2 id="modal-title" class="modal-title">{$drinkWine.isEditMode ? 'Edit Rating' : 'Rate that wine!'}</h2>
-      <button type="button" class="modal-close" aria-label="Close" on:click={handleClose}>
-        <Icon name="close" size={16} />
-      </button>
+      <div class="modal-header-actions">
+        {#if $drinkWine.isEditMode}
+          <button
+            type="button"
+            class="modal-action modal-action-delete"
+            aria-label="Delete rating"
+            title="Delete rating"
+            on:click={(e) => handleDelete(e)}
+          >
+            <Icon name="trash" size={16} />
+          </button>
+        {/if}
+        <button type="button" class="modal-close" aria-label="Close" on:click={handleClose}>
+          <Icon name="close" size={16} />
+        </button>
+      </div>
     </div>
 
     <!-- Body -->
@@ -273,7 +321,7 @@
           />
         </div>
         <div class="form-group">
-          <label class="form-label">Buy Again?</label>
+          <span class="form-label">Buy Again?</span>
           <ToggleSwitch
             checked={state.buyAgain}
             label={state.buyAgain ? 'Yes' : 'No'}
@@ -394,6 +442,13 @@
     margin: 0;
   }
 
+  .modal-header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 0.5rem);
+  }
+
+  .modal-action,
   .modal-close {
     width: 36px;
     height: 36px;
@@ -411,6 +466,17 @@
   .modal-close:hover {
     background: var(--divider, #e8e4de);
     color: var(--text-primary, #2d2926);
+  }
+
+  .modal-action-delete:hover {
+    background: rgba(184, 122, 122, 0.12);
+    color: var(--error, #b87a7a);
+  }
+
+  .modal-action:focus-visible,
+  .modal-close:focus-visible {
+    outline: 2px solid var(--accent, #a69b8a);
+    outline-offset: 2px;
   }
 
   /* Body */
@@ -509,6 +575,11 @@
     background-repeat: no-repeat;
     background-position: right var(--space-4, 1rem) center;
     padding-right: var(--space-10, 4rem);
+  }
+
+  .form-select option {
+    color: #2D2926;
+    background-color: #FFFFFF;
   }
 
   .form-select:focus,

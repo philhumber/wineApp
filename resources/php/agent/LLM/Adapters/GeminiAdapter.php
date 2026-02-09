@@ -5,6 +5,9 @@
  * Adapter for Google's Gemini API.
  * Implements the LLMProviderInterface for unified access.
  *
+ * WIN-253: Uses x-goog-api-key header for authentication instead of URL query parameter
+ * to prevent API key from appearing in server access logs.
+ *
  * @package Agent\LLM\Adapters
  */
 
@@ -13,6 +16,7 @@ namespace Agent\LLM\Adapters;
 use Agent\LLM\Interfaces\LLMProviderInterface;
 use Agent\LLM\LLMResponse;
 use Agent\LLM\LLMStreamingResponse;
+use Agent\LLM\SSLConfig;
 use Agent\LLM\Streaming\SSEParser;
 use Agent\LLM\Streaming\StreamingFieldDetector;
 
@@ -113,7 +117,8 @@ class GeminiAdapter implements LLMProviderInterface
         // Debug: Log context chain before LLM call
         $this->logContextChain('text', $model, $payload, $options);
 
-        $url = "{$this->baseUrl}/models/{$model}:generateContent?key={$this->apiKey}";
+        // WIN-253: API key sent via header, not URL query parameter
+        $url = "{$this->baseUrl}/models/{$model}:generateContent";
 
         $timeout = $options['timeout'] ?? $this->config['timeout'] ?? 30;
         $response = $this->makeRequest($url, $payload, $timeout);
@@ -200,7 +205,8 @@ class GeminiAdapter implements LLMProviderInterface
         // Debug: Log context chain before LLM call
         $this->logContextChain('vision', $model, $payload, $options);
 
-        $url = "{$this->baseUrl}/models/{$model}:generateContent?key={$this->apiKey}";
+        // WIN-253: API key sent via header, not URL query parameter
+        $url = "{$this->baseUrl}/models/{$model}:generateContent";
 
         $response = $this->makeRequest($url, $payload, $this->config['timeout'] ?? 60);
         $latencyMs = (int)((\microtime(true) - $startTime) * 1000);
@@ -255,8 +261,9 @@ class GeminiAdapter implements LLMProviderInterface
 
         $payload = $this->buildStreamingPayload($prompt, null, null, $options);
 
+        // WIN-253: API key sent via header, not URL query parameter
         // Streaming URL: streamGenerateContent?alt=sse
-        $url = "{$this->baseUrl}/models/{$model}:streamGenerateContent?alt=sse&key={$this->apiKey}";
+        $url = "{$this->baseUrl}/models/{$model}:streamGenerateContent?alt=sse";
 
         return $this->executeStreaming($url, $payload, $options, $onChunk, $startTime, $model);
     }
@@ -278,8 +285,9 @@ class GeminiAdapter implements LLMProviderInterface
 
         $payload = $this->buildStreamingPayload($prompt, $imageBase64, $mimeType, $options);
 
+        // WIN-253: API key sent via header, not URL query parameter
         // Streaming URL: streamGenerateContent?alt=sse
-        $url = "{$this->baseUrl}/models/{$model}:streamGenerateContent?alt=sse&key={$this->apiKey}";
+        $url = "{$this->baseUrl}/models/{$model}:streamGenerateContent?alt=sse";
 
         return $this->executeStreaming($url, $payload, $options, $onChunk, $startTime, $model);
     }
@@ -365,10 +373,14 @@ class GeminiAdapter implements LLMProviderInterface
 
         $ch = \curl_init($url);
 
+        // WIN-253: API key sent via x-goog-api-key header instead of URL query parameter
         $curlOptions = [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => \json_encode($payload),
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'x-goog-api-key: ' . $this->apiKey,
+            ],
             CURLOPT_TIMEOUT => $options['timeout'] ?? 30,
             CURLOPT_WRITEFUNCTION => function ($ch, $data) use (
                 $parser,
@@ -380,6 +392,14 @@ class GeminiAdapter implements LLMProviderInterface
                 &$accumulatedText,
                 $startTime
             ) {
+                // WIN-227: Abort if client cancelled (token file or connection_aborted)
+                echo ": \n\n";
+                @\flush();
+                if (\connection_aborted() || isRequestCancelled()) {
+                    \error_log('[Agent] LLM cancelled: provider=gemini (streaming WRITEFUNCTION)');
+                    return 0;
+                }
+
                 // Track TTFB on first data
                 if ($ttfb === null) {
                     $ttfb = (int)((\microtime(true) - $startTime) * 1000);
@@ -413,16 +433,8 @@ class GeminiAdapter implements LLMProviderInterface
             },
         ];
 
-        // SSL configuration
-        $certPath = $this->getCertPath();
-        if ($certPath) {
-            $curlOptions[CURLOPT_SSL_VERIFYPEER] = true;
-            $curlOptions[CURLOPT_SSL_VERIFYHOST] = 2;
-            $curlOptions[CURLOPT_CAINFO] = $certPath;
-        } else {
-            $curlOptions[CURLOPT_SSL_VERIFYPEER] = false;
-            $curlOptions[CURLOPT_SSL_VERIFYHOST] = 0;
-        }
+        // WIN-143: SSL configuration via shared SSLConfig (cross-platform cert resolution)
+        $curlOptions += SSLConfig::getCurlOptions();
 
         \curl_setopt_array($ch, $curlOptions);
 
@@ -506,47 +518,27 @@ class GeminiAdapter implements LLMProviderInterface
      */
     private function logContextChain(string $type, string $model, array $payload, array $options): void
     {
-        \error_log("╔══════════════════════════════════════════════════════════════════");
-        \error_log("║ 🍷 GEMINI CONTEXT CHAIN [{$type}]");
-        \error_log("╠══════════════════════════════════════════════════════════════════");
-        \error_log("║ Provider: gemini");
-        \error_log("║ Model: {$model}");
-        \error_log("║ Temperature: " . ($payload['generationConfig']['temperature'] ?? 'default'));
-        \error_log("║ Max Tokens: " . ($payload['generationConfig']['maxOutputTokens'] ?? 'default'));
+        $thinking = isset($payload['generationConfig']['thinkingConfig'])
+            ? ' thinking=' . ($payload['generationConfig']['thinkingConfig']['thinkingLevel'] ?? '?')
+            : '';
+        $maxTokens = $payload['generationConfig']['maxOutputTokens'] ?? '?';
+        $temp = $payload['generationConfig']['temperature'] ?? '?';
 
-        if (isset($payload['generationConfig']['thinkingConfig'])) {
-            $thinkingLevel = $payload['generationConfig']['thinkingConfig']['thinkingLevel'] ?? 'unknown';
-            \error_log("║ Thinking Level: {$thinkingLevel}");
-        }
-
-        if (isset($payload['generationConfig']['responseMimeType'])) {
-            \error_log("║ Response Format: " . $payload['generationConfig']['responseMimeType']);
-        }
-
-        \error_log("╠──────────────────────────────────────────────────────────────────");
-        \error_log("║ CONTENTS:");
-
-        foreach ($payload['contents'] as $contentIdx => $content) {
-            \error_log("║   [Content {$contentIdx}]");
-            foreach ($content['parts'] as $partIdx => $part) {
+        // Summarise input size
+        $promptLen = 0;
+        $hasImage = false;
+        foreach ($payload['contents'] as $content) {
+            foreach ($content['parts'] as $part) {
                 if (isset($part['text'])) {
-                    $text = \substr($part['text'], 0, 800);
-                    \error_log("║     Part {$partIdx} (text):");
-                    foreach (\explode("\n", $text) as $line) {
-                        \error_log("║       " . $line);
-                    }
-                    if (\strlen($part['text']) > 800) {
-                        \error_log("║       ... [truncated, total " . \strlen($part['text']) . " chars]");
-                    }
+                    $promptLen += \strlen($part['text']);
                 } elseif (isset($part['inline_data'])) {
-                    $mimeType = $part['inline_data']['mime_type'] ?? 'unknown';
-                    $dataLen = \strlen($part['inline_data']['data'] ?? '');
-                    \error_log("║     Part {$partIdx} (image): {$mimeType}, {$dataLen} chars base64");
+                    $hasImage = true;
                 }
             }
         }
+        $inputDesc = $hasImage ? "image+{$promptLen}ch" : "{$promptLen}ch";
 
-        \error_log("╚══════════════════════════════════════════════════════════════════");
+        \error_log("[Agent] LLM request: provider=gemini model={$model} type={$type}{$thinking} maxTokens={$maxTokens} temp={$temp} input={$inputDesc}");
     }
 
     /**
@@ -560,33 +552,62 @@ class GeminiAdapter implements LLMProviderInterface
     private function makeRequest(string $url, array $payload, int $timeout = 30): array
     {
         $ch = \curl_init($url);
+        // WIN-253: API key sent via x-goog-api-key header instead of URL query parameter
         $options = [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => \json_encode($payload),
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'x-goog-api-key: ' . $this->apiKey,
+            ],
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => $timeout,
         ];
 
-        // SSL configuration for Windows compatibility
-        $certPath = $this->getCertPath();
-        if ($certPath) {
-            $options[CURLOPT_SSL_VERIFYPEER] = true;
-            $options[CURLOPT_SSL_VERIFYHOST] = 2;
-            $options[CURLOPT_CAINFO] = $certPath;
-        } else {
-            // Dev fallback: disable SSL verification if no cert found
-            // TODO: Remove in production - configure curl.cainfo in php.ini instead
-            $options[CURLOPT_SSL_VERIFYPEER] = false;
-            $options[CURLOPT_SSL_VERIFYHOST] = 0;
-        }
+        // WIN-143: SSL configuration via shared SSLConfig (cross-platform cert resolution)
+        $options += SSLConfig::getCurlOptions();
 
         \curl_setopt_array($ch, $options);
 
-        $response = \curl_exec($ch);
+        // WIN-227: Use curl_multi for periodic abort detection during blocking requests.
+        // PROGRESSFUNCTION doesn't reliably fire during the "waiting for response" phase,
+        // so curl_multi gives PHP control back every second to probe the connection.
+        $mh = \curl_multi_init();
+        \curl_multi_add_handle($mh, $ch);
+
+        do {
+            $status = \curl_multi_exec($mh, $active);
+
+            if ($active) {
+                // WIN-227: Abort if client cancelled (token file or connection_aborted)
+                if (\headers_sent()) {
+                    echo ": \n\n";
+                    @\flush();
+                }
+                if (\connection_aborted() || isRequestCancelled()) {
+                    \error_log('[Agent] LLM cancelled: provider=gemini (curl_multi loop)');
+                    \curl_multi_remove_handle($mh, $ch);
+                    \curl_close($ch);
+                    \curl_multi_close($mh);
+                    return [
+                        'data' => null,
+                        'httpCode' => 0,
+                        'error' => 'Client disconnected',
+                    ];
+                }
+
+                // Wait up to 1 second for cURL activity
+                \curl_multi_select($mh, 1.0);
+            }
+        } while ($active && $status === CURLM_OK);
+
+        $response = \curl_multi_getcontent($ch);
         $httpCode = \curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = \curl_error($ch);
+
+        \curl_multi_remove_handle($mh, $ch);
         \curl_close($ch);
+        \curl_multi_close($mh);
 
         return [
             'data' => $response ? \json_decode($response, true) : null,
@@ -617,17 +638,8 @@ class GeminiAdapter implements LLMProviderInterface
         $content = null;
         $thinkingContent = null;
 
-        // Debug: log number of parts and finish reason
-        $finishReason = $data['candidates'][0]['finishReason'] ?? 'unknown';
-        $safetyRatings = $data['candidates'][0]['safetyRatings'] ?? [];
-        \error_log("GeminiAdapter: Response has " . count($parts) . " part(s), finishReason: {$finishReason}");
-        if (!empty($safetyRatings)) {
-            \error_log("GeminiAdapter: Safety ratings: " . \json_encode($safetyRatings));
-        }
-
         foreach ($parts as $index => $part) {
             $text = $part['text'] ?? null;
-            \error_log("GeminiAdapter: Part {$index} text (first 200 chars): " . \substr($text ?? 'null', 0, 200));
 
             if ($text !== null && $text !== '') {
                 // Check if this looks like JSON (starts with { or [)
@@ -635,11 +647,9 @@ class GeminiAdapter implements LLMProviderInterface
                 if (\str_starts_with($trimmed, '{') || \str_starts_with($trimmed, '[')) {
                     // This is likely the JSON response
                     $content = $text;
-                    \error_log("GeminiAdapter: Part {$index} identified as JSON content");
                 } elseif ($content === null) {
                     // Keep track of non-JSON content (thinking or fallback)
                     $thinkingContent = $text;
-                    \error_log("GeminiAdapter: Part {$index} stored as thinking/fallback content");
                 }
             }
         }
@@ -666,6 +676,8 @@ class GeminiAdapter implements LLMProviderInterface
         $costConfig = $this->getCostConfig($model);
         $costUSD = ($inputTokens * $costConfig['input'] / 1000000) +
                    ($outputTokens * $costConfig['output'] / 1000000);
+
+        \error_log("[Agent] LLM response: provider=gemini model={$model} tokens={$inputTokens}+{$outputTokens} latency={$latencyMs}ms cost=\${$costUSD}");
 
         return new LLMResponse([
             'success' => true,
@@ -759,7 +771,7 @@ class GeminiAdapter implements LLMProviderInterface
      */
     private function getFallbackModel(string $model): ?string
     {
-        // Gemini 3 fallback chain: pro → flash. No fallback to Gemini 2.
+        // Gemini 3 fallback chain: pro -> flash. No fallback to Gemini 2.
         $fallbacks = [
             'gemini-3-pro-preview' => 'gemini-3-flash-preview',
         ];
@@ -837,31 +849,6 @@ class GeminiAdapter implements LLMProviderInterface
     public function setModel(string $model): void
     {
         $this->model = $model;
-    }
-
-    /**
-     * Get SSL certificate path for curl
-     *
-     * @return string|null Path to CA certificate bundle
-     */
-    private function getCertPath(): ?string
-    {
-        // Try common locations for cacert.pem
-        $paths = [
-            __DIR__ . '/../../../../../wineapp-config/cacert.pem',
-            'C:/php/extras/ssl/cacert.pem',
-            'C:/Program Files/php/extras/ssl/cacert.pem',
-            \ini_get('curl.cainfo'),
-            \ini_get('openssl.cafile'),
-        ];
-
-        foreach ($paths as $path) {
-            if ($path && \file_exists($path)) {
-                return $path;
-            }
-        }
-
-        return null;
     }
 
     /**

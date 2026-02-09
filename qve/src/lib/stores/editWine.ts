@@ -6,6 +6,7 @@
 import { writable, derived, get } from 'svelte/store';
 import { api } from '$api';
 import { toasts } from './toast';
+import { validateRequired, validateLength, validatePriceCurrency, FIELD_MAX_LENGTHS } from '$lib/utils/validation';
 import type { Wine, Bottle, WineType } from '$lib/api/types';
 
 // Storage options from addBottle store (hardcoded, user-specific)
@@ -256,6 +257,49 @@ function createEditWineStore() {
 		},
 
 		/**
+		 * Remove a bottle from the local state (after soft delete)
+		 * Stays on page so user can delete additional bottles
+		 */
+		removeBottle(bottleID: number): void {
+			update((s) => {
+				// Remove from bottles list
+				const newBottles = s.bottles.filter((b) => b.bottleID !== bottleID);
+
+				// Determine new selected bottle and tab
+				let newSelectedBottleID = s.selectedBottleID;
+				let newBottleForm = s.bottle;
+				let newOriginalBottle = s.originalBottle;
+				let newActiveTab = s.activeTab;
+
+				if (s.selectedBottleID === bottleID) {
+					// The deleted bottle was selected
+					if (newBottles.length > 0) {
+						// Select the first remaining bottle
+						const firstBottle = newBottles[0];
+						newSelectedBottleID = firstBottle.bottleID;
+						newBottleForm = mapBottleToForm(firstBottle);
+						newOriginalBottle = { ...newBottleForm };
+					} else {
+						// No bottles left - switch to wine tab
+						newSelectedBottleID = null;
+						newBottleForm = { ...initialBottleForm };
+						newOriginalBottle = null;
+						newActiveTab = 'wine';
+					}
+				}
+
+				return {
+					...s,
+					bottles: newBottles,
+					selectedBottleID: newSelectedBottleID,
+					bottle: newBottleForm,
+					originalBottle: newOriginalBottle,
+					activeTab: newActiveTab
+				};
+			});
+		},
+
+		/**
 		 * Set a bottle form field
 		 */
 		setBottleField<K extends keyof EditBottleFormData>(field: K, value: EditBottleFormData[K]): void {
@@ -265,6 +309,57 @@ function createEditWineStore() {
 				const newErrors = { ...state.errors };
 				delete newErrors[`bottle.${field}`];
 				return { ...state, bottle: newBottle, errors: newErrors };
+			});
+		},
+
+		/**
+		 * Validate wine field on blur
+		 */
+		validateWineFieldBlur(field: string, value: string): void {
+			let error: string | null = null;
+			switch (field) {
+				case 'wineName':
+					error = validateRequired(value, 'Wine name') ?? validateLength(value, FIELD_MAX_LENGTHS.wineName);
+					break;
+			}
+			update((s) => {
+				const newErrors = { ...s.errors };
+				if (error) { newErrors[`wine.${field}`] = error; }
+				else { delete newErrors[`wine.${field}`]; }
+				return { ...s, errors: newErrors };
+			});
+		},
+
+		/**
+		 * Validate bottle field on blur
+		 */
+		validateBottleFieldBlur(field: string, value: string): void {
+			let error: string | null = null;
+			switch (field) {
+				case 'location':
+					error = validateRequired(value, 'Storage location') ?? validateLength(value, FIELD_MAX_LENGTHS.storageLocation);
+					break;
+				case 'source':
+					error = validateRequired(value, 'Source') ?? validateLength(value, FIELD_MAX_LENGTHS.source);
+					break;
+				case 'price':
+				case 'currency': {
+					const state = get({ subscribe });
+					const pcErrors = validatePriceCurrency(state.bottle.price, state.bottle.currency);
+					update((s) => {
+						const newErrors = { ...s.errors };
+						if (pcErrors.price) { newErrors['bottle.price'] = pcErrors.price; } else { delete newErrors['bottle.price']; }
+						if (pcErrors.currency) { newErrors['bottle.currency'] = pcErrors.currency; } else { delete newErrors['bottle.currency']; }
+						return { ...s, errors: newErrors };
+					});
+					return;
+				}
+			}
+			update((s) => {
+				const newErrors = { ...s.errors };
+				if (error) { newErrors[`bottle.${field}`] = error; }
+				else { delete newErrors[`bottle.${field}`]; }
+				return { ...s, errors: newErrors };
 			});
 		},
 
@@ -320,6 +415,11 @@ function createEditWineStore() {
 			}
 			if (!state.bottle.source.trim()) {
 				errors['bottle.source'] = 'Source is required';
+			}
+			{
+				const pcErrors = validatePriceCurrency(state.bottle.price, state.bottle.currency);
+				if (pcErrors.price) errors['bottle.price'] = pcErrors.price;
+				if (pcErrors.currency) errors['bottle.currency'] = pcErrors.currency;
 			}
 
 			update((s) => ({ ...s, errors: { ...s.errors, ...errors } }));

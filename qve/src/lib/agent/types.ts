@@ -1,3 +1,5 @@
+import { generateUUID } from '$lib/utils';
+
 // ===========================================
 // Message Categories (reduced from 18 types)
 // ===========================================
@@ -160,6 +162,7 @@ export type NavigationAction =
   | { type: 'start_over' }
   | { type: 'go_back' }
   | { type: 'cancel' }
+  | { type: 'cancel_request' }  // WIN-187: Abort in-flight LLM request
   | { type: 'retry' }
   | { type: 'try_again' };
 
@@ -286,8 +289,8 @@ export interface AgentErrorInfo {
 }
 
 export interface BottleFormData {
-  size?: string;
-  location?: string;
+  bottleSize?: string;
+  storageLocation?: string;
   source?: string;
   price?: number;
   currency?: string;
@@ -312,7 +315,7 @@ export function createMessage<T extends MessageCategory>(
   options?: Partial<Omit<AgentMessage, 'id' | 'timestamp' | 'category' | 'data'>>
 ): AgentMessage {
   return {
-    id: crypto.randomUUID(),
+    id: generateUUID(),
     category,
     role: 'agent',
     timestamp: Date.now(),

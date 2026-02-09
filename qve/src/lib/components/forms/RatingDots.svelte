@@ -61,6 +61,7 @@
   <div
     class="rating-row"
     role="radiogroup"
+    tabindex="-1"
     aria-label="{label} rating"
     on:mouseleave={handleMouseLeave}
   >
@@ -81,7 +82,7 @@
         on:click={() => handleClick(rating)}
         on:mouseenter={() => handleMouseEnter(rating)}
         on:keydown={(e) => handleKeyDown(e, rating)}
-      />
+      ></button>
     {/each}
   </div>
 </div>

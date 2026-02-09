@@ -5,7 +5,7 @@
  * POST /resources/php/agent/identifyText.php
  *
  * Request:
- *   {"text": "2019 Château Margaux"}
+ *   {"text": "2019 Chateau Margaux"}
  *
  * Response:
  *   {
@@ -42,8 +42,8 @@ if (empty($input['text']) || !is_string($input['text'])) {
 }
 
 try {
-    // Get user ID (default to 1 for now)
-    $userId = $input['userId'] ?? 1;
+    // WIN-254: Server-authoritative userId — ignore client-supplied value
+    $userId = getAgentUserId();
 
     // Run identification
     $service = getAgentIdentificationService($userId);

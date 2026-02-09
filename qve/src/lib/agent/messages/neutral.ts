@@ -302,7 +302,9 @@ export const neutralMessages: PersonalityMessages = {
     `Here's what I found about ${ctx.wineName || 'this wine'}. What next?`,
 
   [MessageKey.ENRICH_CACHE_CONFIRM]: (ctx: MessageContext) =>
-    `I found cached data for ${ctx.wineName || 'a similar wine'}. Is this the right wine?`,
+    ctx.searchedForName
+      ? `Found cached data for ${ctx.wineName || 'a similar wine'}, but you searched for ${String(ctx.searchedForName)}. Use what's available?`
+      : `I found cached data for ${ctx.wineName || 'a similar wine'}. Is this the right wine?`,
 
   [MessageKey.ENRICH_USING_CACHE]:
     'Using cached data...',

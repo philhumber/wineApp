@@ -13,6 +13,7 @@
   const dispatch = createEventDispatcher<{
     addBottle: { wine: DrunkWine };
     editRating: { wine: DrunkWine };
+    deleteRating: { wine: DrunkWine };
   }>();
 
   function handleExpand(event: CustomEvent<{ key: string }>) {
@@ -32,6 +33,11 @@
   // Forward editRating event from HistoryCard
   function handleEditRating(event: CustomEvent<{ wine: DrunkWine }>) {
     dispatch('editRating', event.detail);
+  }
+
+  // Forward deleteRating event from HistoryCard
+  function handleDeleteRating(event: CustomEvent<{ wine: DrunkWine }>) {
+    dispatch('deleteRating', event.detail);
   }
 
   // Calculate stagger delay (max 350ms for smoother UX)
@@ -55,6 +61,7 @@
       on:collapse={handleCollapse}
       on:addBottle={handleAddBottle}
       on:editRating={handleEditRating}
+      on:deleteRating={handleDeleteRating}
       --animation-delay={getStaggerDelay(index)}
     />
   {/each}
@@ -85,7 +92,7 @@
    * ───────────────────────────────────────────────────────── */
   .history-grid.view-compact {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, calc((100% - var(--space-4)) / 2));
     gap: var(--space-4);
   }
 
@@ -96,28 +103,31 @@
 
   /* ─────────────────────────────────────────────────────────
    * RESPONSIVE COLUMN COUNTS
+   * Uses calc() instead of 1fr so all columns resolve to the
+   * identical sub-pixel width — prevents aspect-ratio images
+   * from rounding to different pixel heights across columns.
    * ───────────────────────────────────────────────────────── */
   @media (min-width: 560px) {
     .history-grid.view-compact {
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(3, calc((100% - 2 * var(--space-4)) / 3));
     }
   }
 
   @media (min-width: 768px) {
     .history-grid.view-compact {
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(4, calc((100% - 3 * var(--space-4)) / 4));
     }
   }
 
   @media (min-width: 992px) {
     .history-grid.view-compact {
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(5, calc((100% - 4 * var(--space-4)) / 5));
     }
   }
 
   @media (min-width: 1200px) {
     .history-grid.view-compact {
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(6, calc((100% - 5 * var(--space-4)) / 6));
     }
   }
 

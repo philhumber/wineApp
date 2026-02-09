@@ -1,7 +1,9 @@
 <?php
 	// 1. Include dependencies at the top
+    require_once 'securityHeaders.php';
     require_once 'databaseConnection.php';
     require_once 'audit_log.php';
+    require_once 'errorHandler.php';
 
     // 2. Initialize response
     $response = ['success' => false, 'message' => '', 'data' => null];
@@ -9,14 +11,14 @@
     try {
         // 3. Get database connection
         $pdo = getDBConnection();
-        
+
         // 4. Get and validate input
         $data = json_decode(file_get_contents('php://input'), true);
-		
+
 		$params = [];
 		$having = [];
 
-		
+
 		//No validation as it should return all bottles if no count specified.
 		$bottleCount = $data['bottleCount'] ?? '0';
 		$wineCount = $data['wineCount'] ?? '0';
@@ -35,10 +37,10 @@
 						COUNT(bottles.bottleID) AS bottleCount,
 						LOWER(country.code) AS code
 					FROM country
-					LEFT JOIN region ON region.countryID = country.countryID
-					LEFT JOIN producers ON producers.regionID = region.regionID
-					LEFT JOIN wine ON wine.producerID = producers.producerID
-					LEFT JOIN bottles ON wine.wineID = bottles.wineID AND bottles.bottleDrunk = 0";
+					LEFT JOIN region ON region.countryID = country.countryID AND region.deleted = 0
+					LEFT JOIN producers ON producers.regionID = region.regionID AND producers.deleted = 0
+					LEFT JOIN wine ON wine.producerID = producers.producerID AND wine.deleted = 0
+					LEFT JOIN bottles ON wine.wineID = bottles.wineID AND bottles.bottleDrunk = 0 AND bottles.deleted = 0";
 
 		// Add winetype JOIN if filtering by type
 		if ($typeName) {
@@ -103,18 +105,17 @@
             $response['success'] = true;
             $response['message'] = 'Countries retrieved sucessfully!';
             $response['data'] = ['wineList' =>  $countryList];
-        
-		} catch (Exception $e) {                
+
+		} catch (Exception $e) {
 			throw $e;
 		}
 
 	} catch (Exception $e) {
-		// 14. Handle all errors
+		// 14. Handle all errors (WIN-217: sanitize error messages)
 		$response['success'] = false;
-		$response['message'] = $e->getMessage();
-		error_log("Error in getBottles.php: " . $e->getMessage());
+		$response['message'] = safeErrorMessage($e, 'getCountries');
 	}
-	
+
 	// 15. Return JSON response
 	header('Content-Type: application/json');
 	echo json_encode($response);

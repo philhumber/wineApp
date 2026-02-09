@@ -2,8 +2,7 @@
   import { onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { base } from '$app/paths';
-  import { theme, viewDensity, viewMode, wines, winesLoading, winesError, filters, clearAllFilters, toasts, targetWineID, modal, cellarSortKey, cellarSortDir, sortWines } from '$stores';
-  import { api } from '$api';
+  import { theme, viewDensity, viewMode, wines, winesLoading, winesError, filters, clearAllFilters, hasActiveFilters, hasSearchQuery, searchQuery, activeFilterCount, toasts, targetWineID, modal, cellarSortKey, cellarSortDir, sortWines, deleteStore, fetchWines } from '$stores';
   import type { Wine, WineFilters } from '$lib/api/types';
 
   // Import components
@@ -18,32 +17,17 @@
   // Sort wines using cellar sort settings
   $: sortedWines = sortWines($wines, $cellarSortKey, $cellarSortDir);
 
-  // Fetch wines with current filters
-  async function fetchWines(filterValues: WineFilters = {}) {
-    winesLoading.set(true);
-    winesError.set(null);
-    try {
-      // Include bottleCount filter based on viewMode
-      // 'ourWines' = only wines with bottles (bottleCount: '1')
-      // 'allWines' = all wines including those with 0 bottles (bottleCount: '0')
-      const currentViewMode = $viewMode;
-      const bottleCountFilter: '0' | '1' = currentViewMode === 'ourWines' ? '1' : '0';
-      const apiFilters = { ...filterValues, bottleCount: bottleCountFilter };
-      const wineList = await api.getWines(apiFilters);
-      wines.set(wineList);
-    } catch (e) {
-      winesError.set(e instanceof Error ? e.message : 'Failed to connect to API');
-      console.error('API Error:', e);
-    } finally {
-      winesLoading.set(false);
-    }
+  // Build filter params including bottleCount from viewMode
+  function filtersWithViewMode(filterValues: WineFilters = {}): WineFilters {
+    const bottleCountFilter: '0' | '1' = $viewMode === 'ourWines' ? '1' : '0';
+    return { ...filterValues, bottleCount: bottleCountFilter };
   }
 
   // Track previous viewMode to detect changes
   let previousViewMode = $viewMode;
 
   onMount(() => {
-    fetchWines($filters);
+    fetchWines(filtersWithViewMode($filters), true);
   });
 
   // Track previous filter state to detect changes
@@ -52,19 +36,17 @@
   // Refetch when viewMode changes (not on initial load) and clear filters
   $: if ($viewMode !== previousViewMode) {
     previousViewMode = $viewMode;
-    // Clear filters when switching between views
     clearAllFilters();
-    // Update previousFilters to prevent double-fetch from filter change reactive
     previousFilters = JSON.stringify({});
-    fetchWines({});
+    fetchWines(filtersWithViewMode({}), true);
   }
 
-  // Refetch when filters change (handles both individual changes and Clear All)
+  // Refetch when filters change — debounced (WIN-206)
   $: {
     const currentFilters = JSON.stringify($filters);
     if (currentFilters !== previousFilters) {
       previousFilters = currentFilters;
-      fetchWines($filters);
+      fetchWines(filtersWithViewMode($filters));
     }
   }
 
@@ -150,6 +132,12 @@
     const { wine } = event.detail;
     goto(`${base}/edit/${wine.wineID}`);
   }
+
+  async function handleDelete(event: CustomEvent<{ wine: Wine }>) {
+    const { wine } = event.detail;
+    // Open delete confirmation modal with cascade impact
+    modal.openDeleteConfirm('wine', wine.wineID, wine.wineName);
+  }
 </script>
 
 <svelte:head>
@@ -177,8 +165,17 @@
       </div>
     {:else if $wines.length === 0}
       <div class="empty-state">
-        <p>No wines in your collection yet.</p>
-        <a href="{base}/add" class="btn-primary">Add Wine</a>
+        {#if $hasActiveFilters}
+          {#if $hasSearchQuery}
+            <p>No wines match "{$searchQuery}"{#if $activeFilterCount > 1} with current filters{/if}</p>
+          {:else}
+            <p>No wines match current filters</p>
+          {/if}
+          <button class="clear-btn" on:click={clearAllFilters}>Clear All</button>
+        {:else}
+          <p>No wines in your collection yet.</p>
+          <a href="{base}/add" class="btn-primary">Add Wine</a>
+        {/if}
       </div>
     {:else}
       <WineGrid
@@ -186,12 +183,13 @@
         on:drink={handleDrink}
         on:add={handleAdd}
         on:edit={handleEdit}
+        on:delete={handleDelete}
       />
     {/if}
   </section>
 
   <!-- Phase Status (collapsed) -->
-  <details class="status-details">
+  <!-- <details class="status-details">
     <summary>Phase 2 Wave 3 Status</summary>
 
     <div class="status-grid">
@@ -267,7 +265,7 @@
       <a href="{base}/edit/1">/edit/[id]</a>
       <a href="{base}/drink/1">/drink/[id]</a>
     </nav>
-  </details>
+  </details> -->
 </main>
 
 <style>
@@ -319,7 +317,8 @@
   }
 
   .error-state button,
-  .empty-state .btn-primary {
+  .empty-state .btn-primary,
+  .empty-state .clear-btn {
     margin-top: var(--space-4);
     padding: var(--space-2) var(--space-5);
     font-family: var(--font-sans);
@@ -333,158 +332,9 @@
   }
 
   .error-state button:hover,
-  .empty-state .btn-primary:hover {
+  .empty-state .btn-primary:hover,
+  .empty-state .clear-btn:hover {
     opacity: 0.9;
   }
 
-  /* ─────────────────────────────────────────────────────────
-   * STATUS DETAILS (Collapsed)
-   * ───────────────────────────────────────────────────────── */
-  .status-details {
-    margin-top: var(--space-8);
-    padding: var(--space-4);
-    background: var(--bg-subtle);
-    border-radius: 8px;
-  }
-
-  .status-details summary {
-    cursor: pointer;
-    font-family: var(--font-sans);
-    font-size: 0.75rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-tertiary);
-    padding: var(--space-2);
-  }
-
-  .status-details[open] summary {
-    margin-bottom: var(--space-4);
-    border-bottom: 1px solid var(--divider);
-    padding-bottom: var(--space-3);
-  }
-
-  .status-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: var(--space-3);
-    margin-bottom: var(--space-4);
-  }
-
-  @media (max-width: 600px) {
-    .status-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
-  }
-
-  .status-card {
-    background: var(--surface);
-    border: 1px solid var(--divider);
-    border-radius: 6px;
-    padding: var(--space-3);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  .status-label {
-    font-size: 0.625rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-tertiary);
-  }
-
-  .status-value {
-    font-size: 0.8125rem;
-    color: var(--text-secondary);
-  }
-
-  .status-value.error {
-    color: var(--error);
-    font-size: 0.75rem;
-  }
-
-  .component-showcase {
-    margin-bottom: var(--space-4);
-  }
-
-  .component-showcase h3 {
-    font-size: 0.6875rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-tertiary);
-    margin-bottom: var(--space-3);
-  }
-
-  .icon-showcase {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-    color: var(--text-secondary);
-    margin-bottom: var(--space-3);
-  }
-
-  .rating-showcase {
-    display: flex;
-    gap: var(--space-5);
-  }
-
-  .route-list h3 {
-    font-size: 0.6875rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-tertiary);
-    margin-bottom: var(--space-2);
-  }
-
-  .route-list a {
-    display: inline-block;
-    margin-right: var(--space-3);
-    font-family: monospace;
-    font-size: 0.75rem;
-    color: var(--accent);
-  }
-
-  .route-list a:hover {
-    text-decoration: underline;
-  }
-
-  .toast-test {
-    margin-bottom: var(--space-4);
-  }
-
-  .toast-test h3 {
-    font-size: 0.6875rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-tertiary);
-    margin-bottom: var(--space-3);
-  }
-
-  .toast-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
-  .toast-buttons button {
-    padding: var(--space-2) var(--space-3);
-    font-family: var(--font-sans);
-    font-size: 0.75rem;
-    background: var(--surface);
-    border: 1px solid var(--divider);
-    border-radius: 6px;
-    cursor: pointer;
-    color: var(--text-secondary);
-    transition: all 0.2s var(--ease-out);
-  }
-
-  .toast-buttons button:hover {
-    border-color: var(--accent);
-    color: var(--text-primary);
-  }
 </style>

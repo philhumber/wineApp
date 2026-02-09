@@ -190,6 +190,19 @@ export function clearEnrichmentError(): void {
 }
 
 /**
+ * Clear enriching state (WIN-187: for cancellation).
+ * Stops the loading indicator without clearing data.
+ */
+export function clearEnriching(): void {
+  store.update((state) => ({
+    ...state,
+    isEnriching: false,
+    streamingFields: new Map(),
+    pendingResult: null,
+  }));
+}
+
+/**
  * Update a streaming field for enrichment.
  */
 export function updateEnrichmentStreamingField(

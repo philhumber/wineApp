@@ -14,6 +14,7 @@
     drink: { wine: Wine };
     add: { wine: Wine };
     edit: { wine: Wine };
+    delete: { wine: Wine };
   }>();
 
   function handleToggleExpand(event: CustomEvent<{ wineID: number }>) {
@@ -31,6 +32,10 @@
 
   function handleEdit(event: CustomEvent<{ wine: Wine }>) {
     dispatch('edit', event.detail);
+  }
+
+  function handleDelete(event: CustomEvent<{ wine: Wine }>) {
+    dispatch('delete', event.detail);
   }
 
   // Calculate stagger delay (max 350ms for smoother UX)
@@ -55,6 +60,7 @@
       on:drink={handleDrink}
       on:add={handleAdd}
       on:edit={handleEdit}
+      on:delete={handleDelete}
       --animation-delay={getStaggerDelay(index)}
     />
   {/each}
@@ -83,7 +89,7 @@
    * ───────────────────────────────────────────────────────── */
   .wine-grid.view-compact {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, calc((100% - var(--space-4)) / 2));
     gap: var(--space-4);
   }
 
@@ -94,28 +100,31 @@
 
   /* ─────────────────────────────────────────────────────────
    * RESPONSIVE COLUMN COUNTS (mobile-first)
+   * Uses calc() instead of 1fr so all columns resolve to the
+   * identical sub-pixel width — prevents aspect-ratio images
+   * from rounding to different pixel heights across columns.
    * ───────────────────────────────────────────────────────── */
   @media (min-width: 560px) {
     .wine-grid.view-compact {
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(3, calc((100% - 2 * var(--space-4)) / 3));
     }
   }
 
   @media (min-width: 768px) {
     .wine-grid.view-compact {
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(4, calc((100% - 3 * var(--space-4)) / 4));
     }
   }
 
   @media (min-width: 992px) {
     .wine-grid.view-compact {
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(5, calc((100% - 4 * var(--space-4)) / 5));
     }
   }
 
   @media (min-width: 1200px) {
     .wine-grid.view-compact {
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(6, calc((100% - 5 * var(--space-4)) / 6));
     }
   }
 

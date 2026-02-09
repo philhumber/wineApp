@@ -23,7 +23,7 @@
 	export let state: 'skeleton' | 'streaming' | 'static' = 'static';
 
 	/** Static state: Complete data object */
-	export let data: Record<string, any> | null = null;
+	export let data: Record<string, unknown> | null = null;
 
 	/** Streaming state: Map of field states */
 	export let streamingFields: Map<string, StreamingField> = new Map();
@@ -41,7 +41,7 @@
 	// FIELD ACCESSORS (exposed via slot props)
 	// ─────────────────────────────────────────────────────
 
-	export function getFieldValue(field: string): any {
+	export function getFieldValue(field: string): unknown {
 		if (state === 'static') {
 			return data?.[field] ?? null;
 		} else if (state === 'streaming') {

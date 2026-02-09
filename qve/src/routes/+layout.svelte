@@ -1,13 +1,44 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { beforeNavigate, afterNavigate } from '$app/navigation';
+  import { beforeNavigate, afterNavigate, goto } from '$app/navigation';
+  import { page } from '$app/stores';
+  import { base } from '$app/paths';
   import { get } from 'svelte/store';
-  import { theme, menuOpen, closeMenu, saveScrollPosition, getScrollPosition, modal, isModalOpen, viewMode, collectionName } from '$stores';
+  import { theme, menuOpen, closeMenu, saveScrollPosition, getScrollPosition, modal, isModalOpen, viewMode, collectionName, auth, isAuthenticated, isAuthChecking } from '$stores';
+  import { agentPanelOpen } from '$lib/stores/agentPanel';
   import { displayCurrency } from '$lib/stores/currency';
   import { ToastContainer, SideMenu } from '$lib/components';
   import { ModalContainer } from '$lib/components/modals';
-  import { AgentBubble, AgentPanel } from '$lib/components/agent';
+  import { AgentBubble } from '$lib/components/agent';
   import '$lib/styles/index.css';
+
+  // WIN-236: Lazy-load AgentPanel on first bubble click
+  let AgentPanelComponent: typeof import('$lib/components/agent/AgentPanel.svelte').default | null = null;
+  let agentPanelLoadTriggered = false;
+
+  $: if ($agentPanelOpen && !agentPanelLoadTriggered) {
+    agentPanelLoadTriggered = true;
+    import('$lib/components/agent/AgentPanel.svelte').then(mod => {
+      AgentPanelComponent = mod.default;
+    });
+  }
+
+  // WIN-254: Auth gate — redirect unauthenticated users to login
+  $: if (!$isAuthChecking) {
+    const pathname = $page.url.pathname;
+    const isLoginPage = pathname === `${base}/login` || pathname === `${base}/login/`;
+    if (!$isAuthenticated && !isLoginPage) {
+      goto(`${base}/login?redirect=${encodeURIComponent(pathname)}`);
+    } else if ($isAuthenticated && isLoginPage) {
+      goto(`${base}/`);
+    }
+  }
+
+  // Initialize app-level stores only when authenticated
+  $: if ($isAuthenticated) {
+    displayCurrency.initialize();
+    collectionName.initialize();
+  }
 
   // Guard against concurrent popstate handling during async hook execution
   let isHandlingPopstate = false;
@@ -93,9 +124,11 @@
   }
 
   onMount(() => {
+    // Theme always initializes (needed for login page too)
     theme.initialize();
-    displayCurrency.initialize();
-    collectionName.initialize();
+
+    // Auth check on mount
+    auth.initialize();
 
     // Listen for popstate to handle modal back button
     // Use capture phase to handle before SvelteKit's router
@@ -134,17 +167,26 @@
   <title>Qvé</title>
 </svelte:head>
 
-<!-- Side navigation menu -->
-<SideMenu open={$menuOpen} on:close={handleMenuClose} />
+{#if $isAuthChecking}
+  <!-- Blank during auth check — prevents flash of login or content -->
+{:else if !$isAuthenticated}
+  <!-- Unauthenticated: render slot only (login page) — no app shell -->
+  <slot />
+{:else}
+  <!-- Authenticated: full app shell -->
+  <SideMenu open={$menuOpen} on:close={handleMenuClose} />
 
-<slot />
+  <slot />
 
-<!-- Global toast notifications -->
-<ToastContainer position="bottom-right" />
+  <!-- Global toast notifications -->
+  <ToastContainer position="bottom-right" />
 
-<!-- Global modal container -->
-<ModalContainer />
+  <!-- Global modal container -->
+  <ModalContainer />
 
-<!-- AI Wine Assistant -->
-<AgentBubble />
-<AgentPanel />
+  <!-- AI Wine Assistant -->
+  <AgentBubble />
+  {#if AgentPanelComponent}
+    <svelte:component this={AgentPanelComponent} />
+  {/if}
+{/if}

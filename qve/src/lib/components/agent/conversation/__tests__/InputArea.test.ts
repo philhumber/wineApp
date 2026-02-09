@@ -200,14 +200,19 @@ describe('InputArea', () => {
 			expect(fileInput).toHaveAttribute('capture', 'environment');
 		});
 
-		it('should click file input when camera button clicked', async () => {
+		it('should click file input when Take Photo menu item clicked', async () => {
 			render(InputArea, { props: { phase: 'greeting' } });
 
-			const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+			const fileInput = document.querySelector('input[type="file"][capture]') as HTMLInputElement;
 			const clickSpy = vi.spyOn(fileInput, 'click');
 
+			// Step 1: Click camera button to open the image menu
 			const cameraBtn = screen.getByLabelText('Take photo or upload image');
 			await fireEvent.click(cameraBtn);
+
+			// Step 2: Click "Take Photo" menu item
+			const takePhotoBtn = screen.getByText('Take Photo');
+			await fireEvent.click(takePhotoBtn);
 
 			expect(clickSpy).toHaveBeenCalled();
 		});

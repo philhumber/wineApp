@@ -1,0 +1,17 @@
+{
+    "name": "qve/backend-tests",
+    "description": "PHPUnit tests for Qve Wine App PHP backend",
+    "type": "project",
+    "require-dev": {
+        "phpunit/phpunit": "^10.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Tests\\": "."
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test:soft-delete": "phpunit SoftDeleteTest.php"
+    }
+}

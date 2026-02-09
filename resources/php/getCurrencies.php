@@ -1,6 +1,8 @@
 <?php
 	// 1. Include dependencies at the top
+    require_once 'securityHeaders.php';
     require_once 'databaseConnection.php';
+    require_once 'errorHandler.php';
 
     // 2. Initialize response
     $response = ['success' => false, 'message' => '', 'data' => null];
@@ -43,10 +45,9 @@
 		];
 
 	} catch (Exception $e) {
-		// 7. Handle errors
+		// 7. Handle errors (WIN-217: sanitize error messages)
 		$response['success'] = false;
-		$response['message'] = $e->getMessage();
-		error_log("Error in getCurrencies.php: " . $e->getMessage());
+		$response['message'] = safeErrorMessage($e, 'getCurrencies');
 	}
 
 	// 8. Return JSON response with cache headers

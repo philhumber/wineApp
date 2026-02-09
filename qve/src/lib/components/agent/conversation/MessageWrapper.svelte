@@ -4,6 +4,7 @@
   import MessageContent from './MessageContent.svelte';
   import type { AgentMessage, AgentAction, TextMessageData } from '$lib/agent/types';
   import { agentMessages } from '$lib/stores/agentConversation';
+  import { isScrollLocked } from '$lib/agent/requestLifecycle';
 
   export let message: AgentMessage;
 
@@ -34,7 +35,8 @@
    * Scroll message into view after fly-in animation completes.
    */
   function handleIntroEnd() {
-    if (wrapperElement && role === 'agent' && !isDivider) {
+    // Check scroll lock before scrolling (prevents chaos during enrichment streaming)
+    if (wrapperElement && role === 'agent' && !isDivider && !isScrollLocked()) {
       wrapperElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
   }
@@ -82,7 +84,7 @@
   }
 
   .message-wrapper.streaming {
-    /* Streaming messages might have special styling */
+    opacity: 1; /* Streaming messages - reserved for animation */
   }
 
   @keyframes messageHighlight {

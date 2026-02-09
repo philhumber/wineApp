@@ -106,6 +106,11 @@
 		cursor: not-allowed;
 	}
 
+	.form-select option {
+		color: #2D2926;
+		background-color: #FFFFFF;
+	}
+
 	.form-select.invalid {
 		border-color: var(--error);
 		background-color: rgba(184, 122, 122, 0.05);

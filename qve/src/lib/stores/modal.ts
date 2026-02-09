@@ -19,6 +19,8 @@ export type ModalType =
   | 'aiLoading'      // AI generation loading overlay
   | 'settings'       // Settings modal (theme, view density)
   | 'imageLightbox'  // Fullscreen image viewer
+  | 'deleteConfirm'  // Delete confirmation with cascade impact
+  | 'cellarValue'    // Cellar value history graph (WIN-127 Phase 2)
   | null;
 
 /**
@@ -343,6 +345,37 @@ function createModalStore() {
     openImageLightbox: (src: string, alt?: string): void => {
       const pushed = pushHistoryForModal('imageLightbox');
       set({ type: 'imageLightbox', data: { src, alt: alt || 'Wine image' }, pushedHistory: pushed, beforeCloseHook: undefined });
+    },
+
+    /**
+     * Open delete confirmation modal with cascade impact
+     */
+    openDeleteConfirm: (
+      entityType: 'wine' | 'bottle' | 'producer' | 'region',
+      entityId: number,
+      entityName: string
+    ): void => {
+      const pushed = pushHistoryForModal('deleteConfirm');
+      set({
+        type: 'deleteConfirm',
+        data: { entityType, entityId, entityName },
+        pushedHistory: pushed,
+        beforeCloseHook: undefined
+      });
+    },
+
+    /**
+     * Open cellar value history modal (WIN-127 Phase 2)
+     * Modal self-fetches data on mount
+     */
+    openCellarValue: (): void => {
+      const pushed = pushHistoryForModal('cellarValue');
+      set({
+        type: 'cellarValue',
+        data: {},
+        pushedHistory: pushed,
+        beforeCloseHook: undefined
+      });
     }
   };
 

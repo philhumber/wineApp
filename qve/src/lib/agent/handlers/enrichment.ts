@@ -27,6 +27,7 @@ import {
   generateEnrichmentErrorChips,
   generateCacheMatchChips,
 } from '../services';
+import { createAbortController, wasCancelled, lockScroll, unlockScroll, getRequestId } from '../requestLifecycle';
 
 // ===========================================
 // Action Types
@@ -154,9 +155,17 @@ function handleCacheConfirmationRequired(enrichmentResult: {
     ? [matchedTo.producer, matchedTo.wineName, matchedTo.vintage].filter(Boolean).join(' ')
     : 'a similar wine';
 
+  const searchedFor = enrichmentResult.searchedFor;
+  const searchedForName = searchedFor
+    ? [searchedFor.producer, searchedFor.wineName, searchedFor.vintage].filter(Boolean).join(' ')
+    : undefined;
+
+  // Unlock scroll so cache confirmation messages scroll into view
+  unlockScroll();
+
   conversation.addMessage(
     conversation.createTextMessage(
-      getMessageByKey(MessageKey.ENRICH_CACHE_CONFIRM, { wineName: matchedName })
+      getMessageByKey(MessageKey.ENRICH_CACHE_CONFIRM, { wineName: matchedName, searchedForName })
     )
   );
 
@@ -173,6 +182,7 @@ function handleCacheConfirmationRequired(enrichmentResult: {
 
 /**
  * Execute the enrichment API call with streaming.
+ * WIN-187: Uses AbortController for cancellation support.
  */
 async function executeEnrichment(
   producer: string,
@@ -183,6 +193,9 @@ async function executeEnrichment(
   confirmMatch: boolean,
   forceRefresh: boolean
 ): Promise<void> {
+  // WIN-187: Create abort controller for this request
+  const abortController = createAbortController();
+
   try {
     const enrichmentResult = await api.enrichWineStream(
       producer,
@@ -194,8 +207,16 @@ async function executeEnrichment(
       forceRefresh,
       (field, value) => {
         enrichment.updateEnrichmentStreamingField(field, String(value), true);
-      }
+      },
+      undefined, // onEvent
+      abortController.signal,
+      getRequestId()
     );
+
+    // WIN-187: Skip processing if cancelled during the await
+    if (wasCancelled()) {
+      return;
+    }
 
     conversation.removeTypingMessage();
 
@@ -239,6 +260,10 @@ async function executeEnrichment(
     conversation.setPhase('confirming');
 
   } catch (error) {
+    // WIN-187: Don't show error for intentional cancellation
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return;
+    }
     conversation.removeTypingMessage();
     handleEnrichmentError(error);
   }
@@ -283,6 +308,10 @@ async function handleLearnMore(messageId: string): Promise<void> {
   conversation.setPhase('enriching');
 
   conversation.addTypingMessage(getMessageByKey(MessageKey.ENRICH_LOADING));
+
+  // Lock scroll after typing message - prevents scroll chaos during streaming
+  // Will be unlocked when user takes any action (chip tap, start over, etc)
+  lockScroll();
 
   await executeEnrichment(
     result.producer,
@@ -372,6 +401,9 @@ async function handleConfirmCacheMatch(messageId: string): Promise<void> {
 
   conversation.addTypingMessage(getMessageByKey(MessageKey.ENRICH_USING_CACHE));
 
+  // Lock scroll during streaming (same pattern as handleLearnMore)
+  lockScroll();
+
   await executeEnrichment(
     lastRequest.producer,
     lastRequest.wineName,
@@ -421,6 +453,9 @@ async function handleForceRefresh(messageId: string): Promise<void> {
   conversation.setPhase('enriching');
 
   conversation.addTypingMessage(getMessageByKey(MessageKey.ENRICH_REFRESHING));
+
+  // Lock scroll during streaming (same pattern as handleLearnMore)
+  lockScroll();
 
   await executeEnrichment(
     lastRequest.producer,

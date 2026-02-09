@@ -38,6 +38,7 @@ import {
   handleCameraAction,
   getHandlerCategory,
 } from './handlers';
+import { unlockScroll } from './requestLifecycle';
 
 // ===========================================
 // Action Aliases
@@ -62,7 +63,7 @@ function normalizeAction(action: AgentAction): AgentAction {
   const normalizedType = ACTION_ALIASES[action.type] || action.type;
 
   if (normalizedType !== action.type) {
-    console.log(`[Router] Alias resolved: ${action.type} → ${normalizedType}`);
+    if (import.meta.env.DEV) console.debug(`[Router] Alias resolved: ${action.type} → ${normalizedType}`);
     return { ...action, type: normalizedType } as AgentAction;
   }
 
@@ -99,7 +100,7 @@ async function routeAction(action: AgentAction): Promise<void> {
   // Normalize aliases first
   action = normalizeAction(action);
 
-  console.log('[Router] Routing action:', action.type);
+  if (import.meta.env.DEV) console.debug('[Router] Routing action:', action.type);
 
   // Safety net: Handle generic chip_tap (unwrap and re-route)
   if (action.type === 'chip_tap') {
@@ -116,7 +117,11 @@ async function routeAction(action: AgentAction): Promise<void> {
       payload: payload.data,
     } as AgentAction;
 
-    await routeAction(unwrapped);
+    // Route through dispatchAction (not routeAction) so the unwrapped action
+    // goes through the full middleware chain — including retry tracking.
+    // Without this, chip-tapped actions bypass the retry tracker and
+    // "Try Again" can't replay them after cancellation/error.
+    await dispatchAction(unwrapped);
     return;
   }
 
@@ -126,7 +131,7 @@ async function routeAction(action: AgentAction): Promise<void> {
 
     // If retry returned an action, re-dispatch it
     if (retryAction) {
-      console.log('[Router] Re-dispatching retry action:', retryAction.type);
+      if (import.meta.env.DEV) console.debug('[Router] Re-dispatching retry action:', retryAction.type);
       await routeAction(retryAction);
     }
     return;
@@ -134,35 +139,30 @@ async function routeAction(action: AgentAction): Promise<void> {
 
   // Check for identification actions
   if (isIdentificationAction(action.type)) {
-    console.log('[Router] Handling identification action:', action.type);
     await handleIdentificationAction(action);
     return;
   }
 
   // Check for enrichment actions
   if (isEnrichmentAction(action.type)) {
-    console.log('[Router] Handling enrichment action:', action.type);
     await handleEnrichmentAction(action);
     return;
   }
 
   // Check for add wine actions
   if (isAddWineAction(action.type)) {
-    console.log('[Router] Handling add wine action:', action.type);
     await handleAddWineAction(action);
     return;
   }
 
   // Check for form actions
   if (isFormAction(action.type)) {
-    console.log('[Router] Handling form action:', action.type);
     await handleFormAction(action);
     return;
   }
 
   // Check for camera actions
   if (isCameraAction(action.type)) {
-    console.log('[Router] Handling camera action:', action.type);
     handleCameraAction(action);
     return;
   }
@@ -222,6 +222,8 @@ const wrappedRouter: ActionHandler = middlewareChain(routeAction);
  * await dispatchAction({ type: 'submit_text', payload: 'Chateau Margaux 2015' });
  */
 export async function dispatchAction(action: AgentAction): Promise<void> {
+  // Clear scroll lock on any user action (chip tap, start over, etc)
+  unlockScroll();
   await wrappedRouter(action);
 }
 

@@ -359,6 +359,11 @@
     box-shadow: 0 0 0 2px var(--accent-subtle, rgba(166, 155, 138, 0.2));
   }
 
+  .sort-select option {
+    color: #2D2926;
+    background-color: #FFFFFF;
+  }
+
   .select-wrapper :global(svg) {
     position: absolute;
     right: 8px;

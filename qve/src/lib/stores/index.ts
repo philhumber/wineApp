@@ -22,14 +22,15 @@ export {
   collapseAllWines,
   totalBottles,
   wineCount,
-  winesByCountry,
-  winesByType,
   getWineById,
   updateWineInList,
   removeWineFromList,
   decrementBottleCount,
   incrementBottleCount,
-  scrollToWine
+  scrollToWine,
+  // WIN-206: Debounced fetch with abort
+  fetchWines,
+  cancelFetchWines
 } from './wines';
 
 // Filters
@@ -38,6 +39,8 @@ export {
   hasActiveFilters,
   activeFilterCount,
   activeFilterList,
+  hasSearchQuery,
+  searchQuery,
   setFilter,
   setFilters,
   clearFilter,
@@ -111,7 +114,14 @@ export {
   toggleHistorySortDir,
   setHistoryFilter,
   clearHistoryFilters,
-  getDrunkWineKey
+  getDrunkWineKey,
+  // WIN-205: Server-side pagination
+  historyPagination,
+  historyFilterOptions,
+  unfilteredDrunkWineCount,
+  fetchHistory,
+  // WIN-206: Cancel helper
+  cancelFetchHistory
 } from './history';
 export type { HistorySortKey, HistorySortDir, HistoryFilters } from './history';
 
@@ -166,75 +176,28 @@ export type { CurrencyCode } from './currency';
 // Settings (Collection Name, Cellar Value)
 export { collectionName, cellarValue } from './settings';
 
-// Agent (AI Wine Identification)
+// ─────────────────────────────────────────────
+// AGENT STORES
+// ─────────────────────────────────────────────
+
+// Agent Panel
 export {
-  agent,
-  agentParsed,
-  agentAction,
-  agentCandidates,
-  agentConfidence,
-  agentLoading,
-  agentIdentifying,
-  agentEnriching,
-  agentError,
-  agentErrorMessage,
-  agentErrorRetryable,
-  agentErrorSupportRef,
   agentPanelOpen,
-  agentInputType,
-  agentImageQuality,
-  agentHasResult,
-  // Conversation stores
-  agentPhase,
-  agentMessages,
-  agentIsTyping,
-  agentHasAugmentationContext,
-  agentAugmentationContext,
-  agentHasStarted,
-  agentPendingNewSearch,
-  // Add wine flow
-  agentAddState,
-  // Streaming (WIN-181)
-  agentIsStreaming,
-  agentStreamingFields,
-  agentStreamingChips,
-  agentEnrichmentStreamingChips,
-  agentPendingEnrichmentResult
-} from './agent';
-export type {
-  AgentState,
-  AgentPhase,
-  AgentMessageType,
-  AgentChip,
-  AgentMessage,
-  AgentAugmentationContext,
-  PendingNewSearch,
-  // Add wine flow types
-  AgentAddState,
-  AgentAddSelectionMode,
-  AgentAddRegionData,
-  AgentAddProducerData,
-  AgentAddWineData,
-  AgentAddBottleData,
-  // Streaming types (WIN-181)
-  StreamingFieldState
-} from './agent';
+  openPanel,
+  closePanel,
+  togglePanel
+} from './agentPanel';
 
-// ─────────────────────────────────────────────
-// NEW ARCHITECTURE STORES (Phase 4)
-// ─────────────────────────────────────────────
-
-// Agent Conversation (new)
+// Agent Conversation
 export {
-  agentMessages as agentMessages2,
-  agentPhase as agentPhase2,
+  agentMessages,
+  agentPhase,
   addWineStep,
   isConversationInitialized,
   hasMessages,
   lastMessage,
   lastAgentMessage,
   lastUserMessage,
-  isInAddWineFlow as isInAddWineFlow2,
   isInEnrichmentFlow,
   isInLoadingPhase,
   hasAnimatingMessages,
@@ -263,7 +226,7 @@ export {
 } from './agentConversation';
 export type { OriginState, OriginViewMode } from './agentConversation';
 
-// Agent Identification (new)
+// Agent Identification
 export {
   isIdentifying,
   identificationResult,
@@ -271,14 +234,14 @@ export {
   identificationConfidence,
   streamingFields,
   augmentationContext,
-  hasAugmentationContext as hasAugmentationContext2,
-  pendingNewSearch as pendingNewSearch2,
+  hasAugmentationContext,
+  pendingNewSearch,
   lastImageData,
   inputType,
   isEscalating,
   escalationTier,
   hasResult,
-  isStreaming as isStreaming2,
+  isStreaming,
   isLowConfidence,
   startIdentification,
   setResult,
@@ -302,10 +265,10 @@ export {
   getAugmentationContext,
 } from './agentIdentification';
 
-// Agent Enrichment (new)
+// Agent Enrichment
 export {
   isEnriching,
-  enrichmentData as enrichmentData2,
+  enrichmentData,
   enrichmentError,
   enrichmentSource,
   enrichmentStreamingFields,
@@ -335,7 +298,7 @@ export {
   getForWine,
 } from './agentEnrichment';
 
-// Agent Add Wine (new)
+// Agent Add Wine
 export {
   addWineFlow,
   isInAddWineFlow,
@@ -374,7 +337,7 @@ export {
   getBottleFormData,
 } from './agentAddWine';
 
-// Agent Persistence (new)
+// Agent Persistence
 export {
   persistState,
   loadState,
@@ -395,6 +358,31 @@ export type {
   RestoreCallbacks,
 } from './agentPersistence';
 
-// Agent Settings (new - Sprint 4)
+// Agent Settings
 export { agentSettings, getPersonality } from './agentSettings';
 export type { AgentSettings } from './agentSettings';
+
+// ─────────────────────────────────────────────
+// AUTHENTICATION (WIN-254)
+// ─────────────────────────────────────────────
+
+export { auth, isAuthenticated, isAuthChecking, isAuthLoggingOut, authError } from './auth';
+
+// ─────────────────────────────────────────────
+// SOFT DELETE (WIN-80)
+// ─────────────────────────────────────────────
+
+export {
+  deleteStore,
+  hasPendingDeletes,
+  pendingDeleteCount,
+  deleteLoading,
+  deleteError,
+  UNDO_DURATION_MS
+} from './delete';
+export type {
+  DeleteEntityType,
+  DeleteImpact,
+  DeleteImpactResponse,
+  PendingDelete
+} from './delete';

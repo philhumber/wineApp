@@ -104,6 +104,8 @@
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('No canvas context');
 
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
     ctx.drawImage(bitmap, 0, 0);
     bitmap.close();
 
@@ -137,6 +139,8 @@
 
           canvas.width = width;
           canvas.height = height;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, width, height);
           ctx.drawImage(img, 0, 0, width, height);
 
           const dataUrl = canvas.toDataURL('image/jpeg', quality);

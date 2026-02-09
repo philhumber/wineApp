@@ -270,7 +270,10 @@ class CanonicalNameResolver
             $combinedScore = ($producerScore * 0.4) + ($wineScore * 0.6);
 
             // Require minimum per-field similarity to avoid false positives
-            if ($producerScore < 0.5 || $wineScore < 0.5) {
+            // Wine name threshold is higher (0.7) because same-producer wines
+            // sharing a suffix (e.g. "Rose Imperial" vs "Nectar Imperial") can
+            // score ~0.6 via Levenshtein — these are different wines, not typos.
+            if ($producerScore < 0.5 || $wineScore < 0.7) {
                 continue;
             }
 

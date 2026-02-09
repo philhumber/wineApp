@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { get } from 'svelte/store';
 import {
 	agentMessages,
@@ -11,6 +11,7 @@ import {
 	isInAddWineFlow,
 	isInEnrichmentFlow,
 	isInLoadingPhase,
+	hasActiveChips,
 	agentOrigin,
 	addMessage,
 	addMessages,
@@ -32,6 +33,7 @@ import {
 	setOrigin,
 	clearOrigin,
 	getOrigin,
+	addMessageWithDelay,
 	type OriginState,
 } from '../agentConversation';
 import { clearState } from '../agentPersistence';
@@ -547,6 +549,29 @@ describe('agentConversation', () => {
 			const lastMsg = messages[messages.length - 1];
 			expect(getTextContent(lastMsg)).toBe('Custom greeting message');
 		});
+
+		it('should disable existing chip messages (WIN-268)', () => {
+			// Add a chip message that would normally lock input
+			addMessage(createTextMessage('Choose an option:'));
+			addMessage(createChipsMessage([
+				{ id: '1', label: 'Yes', action: 'confirm' },
+				{ id: '2', label: 'No', action: 'reject' },
+			]));
+
+			// Chips are active, hasActiveChips should be true
+			expect(get(hasActiveChips)).toBe(true);
+
+			// Reset conversation (e.g., user clicks "Start Over")
+			resetConversation();
+
+			// Chips should now be disabled, hasActiveChips should be false
+			expect(get(hasActiveChips)).toBe(false);
+
+			// Verify the chip message is actually disabled
+			const messages = get(agentMessages);
+			const chipMessage = messages.find((m) => m.category === 'chips');
+			expect(chipMessage?.disabled).toBe(true);
+		});
 	});
 
 	describe('startSession', () => {
@@ -709,6 +734,62 @@ describe('agentConversation', () => {
 				expect(get(isInLoadingPhase)).toBe(false);
 			});
 		});
+
+		describe('hasActiveChips', () => {
+			it('should be false when no messages exist', () => {
+				fullReset();
+				expect(get(hasActiveChips)).toBe(false);
+			});
+
+			it('should be false when only text messages exist', () => {
+				addMessage(createTextMessage('Hello'));
+				addMessage(createTextMessage('World'));
+				expect(get(hasActiveChips)).toBe(false);
+			});
+
+			it('should be true when an active chip message exists', () => {
+				addMessage(createTextMessage('Here are your options:'));
+				addMessage(createChipsMessage([
+					{ id: '1', label: 'Yes', action: 'confirm' },
+					{ id: '2', label: 'No', action: 'reject' },
+				]));
+				expect(get(hasActiveChips)).toBe(true);
+			});
+
+			it('should be false when chip message is disabled', () => {
+				addMessage(createTextMessage('Prompt'));
+				const chipMsg = addMessage(createChipsMessage([
+					{ id: '1', label: 'OK', action: 'ok' },
+				]));
+				expect(get(hasActiveChips)).toBe(true);
+
+				disableMessage(chipMsg.id);
+				expect(get(hasActiveChips)).toBe(false);
+			});
+
+			it('should become false when new message auto-disables chips', () => {
+				addMessage(createChipsMessage([{ id: '1', label: 'A', action: 'a' }]));
+				expect(get(hasActiveChips)).toBe(true);
+
+				// Adding a new message auto-disables previous chips
+				addMessage(createTextMessage('User selected something'));
+				expect(get(hasActiveChips)).toBe(false);
+			});
+
+			it('should track only non-disabled chips when multiple chip messages exist', () => {
+				// First chip message
+				addMessage(createChipsMessage([{ id: '1', label: 'A', action: 'a' }]));
+				// Second chip message (auto-disables first)
+				addMessage(createChipsMessage([{ id: '2', label: 'B', action: 'b' }]));
+
+				// First is disabled, second is active
+				expect(get(hasActiveChips)).toBe(true);
+
+				// Disable all chips
+				disableAllChips();
+				expect(get(hasActiveChips)).toBe(false);
+			});
+		});
 	});
 
 	describe('initializeConversation', () => {
@@ -838,6 +919,145 @@ describe('agentConversation', () => {
 
 				expect(get(agentOrigin)).toBeNull();
 			});
+		});
+	});
+
+	describe('addMessageWithDelay', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should add message without delay if no previous message', async () => {
+			const promise = addMessageWithDelay(createTextMessage('First'));
+			await vi.runAllTimersAsync();
+			const msg = await promise;
+
+			expect(msg.id).toBeDefined();
+			expect(getTextContent(msg)).toBe('First');
+		});
+
+		it('should add delay before agent message following another agent message', async () => {
+			// Add first agent message
+			addMessage(createTextMessage('Agent 1'));
+
+			// Start adding second agent message - should delay
+			const promise = addMessageWithDelay(createTextMessage('Agent 2'));
+
+			// Before timer advances, should only have 1 message
+			expect(get(agentMessages)).toHaveLength(1);
+
+			// Advance timers
+			await vi.advanceTimersByTimeAsync(500);
+			await promise;
+
+			expect(get(agentMessages)).toHaveLength(2);
+		});
+
+		it('should NOT delay chips messages (they follow text immediately)', async () => {
+			addMessage(createTextMessage('Agent text'));
+
+			const promise = addMessageWithDelay(
+				createChipsMessage([{ id: '1', label: 'Test', action: 'test' }])
+			);
+
+			// Chips should be added immediately without delay
+			await vi.runAllTimersAsync();
+			await promise;
+
+			expect(get(agentMessages)).toHaveLength(2);
+			expect(get(agentMessages)[1].category).toBe('chips');
+		});
+
+		it('should skip delay with skipDelay option', async () => {
+			addMessage(createTextMessage('Agent 1'));
+
+			const promise = addMessageWithDelay(createTextMessage('Agent 2'), { skipDelay: true });
+			await vi.runAllTimersAsync();
+			await promise;
+
+			expect(get(agentMessages)).toHaveLength(2);
+		});
+
+		it('should maintain FIFO ordering when called concurrently (race condition fix)', async () => {
+			// This test verifies the race condition fix:
+			// When multiple addMessageWithDelay calls are made concurrently,
+			// they should appear in FIFO order, not based on when delays complete.
+
+			// Start with an agent message to trigger delays
+			addMessage(createTextMessage('Initial'));
+
+			// Call addMessageWithDelay three times concurrently
+			const promise1 = addMessageWithDelay(createTextMessage('First'));
+			const promise2 = addMessageWithDelay(createTextMessage('Second'));
+			const promise3 = addMessageWithDelay(createTextMessage('Third'));
+
+			// Run all timers and wait for all promises
+			await vi.runAllTimersAsync();
+			await Promise.all([promise1, promise2, promise3]);
+
+			const messages = get(agentMessages);
+
+			// Should have 4 messages total (Initial + 3 delayed)
+			expect(messages).toHaveLength(4);
+
+			// Messages should appear in FIFO order
+			expect(getTextContent(messages[0])).toBe('Initial');
+			expect(getTextContent(messages[1])).toBe('First');
+			expect(getTextContent(messages[2])).toBe('Second');
+			expect(getTextContent(messages[3])).toBe('Third');
+		});
+
+		it('should calculate delays based on actual state, not stale snapshot', async () => {
+			// This tests that each queued message checks state AFTER previous message is added,
+			// not before (which would be stale).
+
+			// First message: text from agent
+			addMessage(createTextMessage('Text 1'));
+
+			// Queue: text, then chips, then text
+			// The second text should see chips as last message (not Text 1)
+			const promise1 = addMessageWithDelay(createTextMessage('Text 2'));
+			const promise2 = addMessageWithDelay(
+				createChipsMessage([{ id: '1', label: 'Chip', action: 'test' }])
+			);
+			const promise3 = addMessageWithDelay(createTextMessage('Text 3'));
+
+			await vi.runAllTimersAsync();
+			await Promise.all([promise1, promise2, promise3]);
+
+			const messages = get(agentMessages);
+			expect(messages).toHaveLength(4);
+
+			// Verify order is correct
+			expect(getTextContent(messages[0])).toBe('Text 1');
+			expect(getTextContent(messages[1])).toBe('Text 2');
+			expect(messages[2].category).toBe('chips');
+			expect(getTextContent(messages[3])).toBe('Text 3');
+		});
+
+		it('should warn in dev mode when addMessage is called while queue is pending', async () => {
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			// Start a delayed message (goes into queue)
+			addMessage(createTextMessage('Initial'));
+			const promise = addMessageWithDelay(createTextMessage('Delayed'));
+
+			// Call addMessage while queue is pending - should trigger warning
+			addMessage(createTextMessage('Immediate'));
+
+			// Clean up
+			await vi.runAllTimersAsync();
+			await promise;
+
+			expect(warnSpy).toHaveBeenCalledWith(
+				expect.stringContaining('addMessage() called while addMessageWithDelay queue has pending operations')
+			);
+
+			warnSpy.mockRestore();
 		});
 	});
 });

@@ -1,11 +1,12 @@
 /**
  * History Store
  * Manages the drunk wines history state
+ * WIN-205: Server-driven pagination, filtering, and sorting
  */
 
-import { writable, derived } from 'svelte/store';
-import type { DrunkWine } from '$api/types';
-import { availableCurrencies, getCurrencyByCode, convertToEUR } from './currency';
+import { writable, derived, get } from 'svelte/store';
+import type { DrunkWine, PaginationMeta, HistoryFilterOptions } from '$api/types';
+import { api } from '$api';
 
 // ─────────────────────────────────────────────────────────
 // TYPES
@@ -38,7 +39,7 @@ export interface HistoryFilters {
 // MAIN STORES
 // ─────────────────────────────────────────────────────────
 
-/** Drunk wines array */
+/** Drunk wines array (current page from server) */
 export const drunkWines = writable<DrunkWine[]>([]);
 
 /** Loading state */
@@ -57,6 +58,26 @@ export const historyFilters = writable<HistoryFilters>({});
 /** Currently expanded history card key (wineID-bottleID) */
 export const expandedHistoryKey = writable<string | null>(null);
 
+/** WIN-205: Pagination metadata from server */
+export const historyPagination = writable<PaginationMeta>({
+  page: 1,
+  limit: 50,
+  total: 0,
+  totalPages: 0
+});
+
+/** WIN-205: Server-provided cascading filter options */
+export const historyFilterOptions = writable<HistoryFilterOptions>({
+  countries: [],
+  types: [],
+  regions: [],
+  producers: [],
+  years: []
+});
+
+/** WIN-205: Unfiltered total (for empty state detection) */
+export const unfilteredDrunkWineCount = writable<number>(0);
+
 // ─────────────────────────────────────────────────────────
 // DERIVED STORES
 // ─────────────────────────────────────────────────────────
@@ -71,108 +92,14 @@ export const activeHistoryFilterCount = derived(historyFilters, ($filters) =>
   Object.values($filters).filter((v) => v !== undefined && v !== '').length
 );
 
-/** Filtered and sorted drunk wines */
-export const sortedDrunkWines = derived(
-  [drunkWines, historySortKey, historySortDir, historyFilters, availableCurrencies],
-  ([$drunkWines, $sortKey, $sortDir, $filters, $currencies]) => {
-    // Filter first
-    let filtered = $drunkWines.filter((wine) => {
-      if ($filters.countryDropdown && wine.countryName !== $filters.countryDropdown) return false;
-      if ($filters.typesDropdown && wine.wineType !== $filters.typesDropdown) return false;
-      if ($filters.regionDropdown && wine.regionName !== $filters.regionDropdown) return false;
-      if ($filters.producerDropdown && wine.producerName !== $filters.producerDropdown) return false;
-      if ($filters.yearDropdown && wine.year !== $filters.yearDropdown) return false;
-      return true;
-    });
+/** WIN-205: Server already sorts/filters — pass through */
+export const sortedDrunkWines = derived(drunkWines, ($wines) => $wines);
 
-    // Then sort
-    return [...filtered].sort((a, b) => {
-      const direction = $sortDir === 'asc' ? 1 : -1;
-      switch ($sortKey) {
-        case 'drinkDate':
-          // Handle null dates - put them at the end
-          if (!a.drinkDate && !b.drinkDate) return 0;
-          if (!a.drinkDate) return 1;
-          if (!b.drinkDate) return -1;
-          return direction * (new Date(a.drinkDate).getTime() - new Date(b.drinkDate).getTime());
-        case 'rating': {
-          // Combined rating: (overall + value) / 2
-          const ratingA = (a.overallRating != null && a.valueRating != null)
-            ? (a.overallRating + a.valueRating) / 2
-            : a.overallRating ?? a.valueRating ?? -1;
-          const ratingB = (b.overallRating != null && b.valueRating != null)
-            ? (b.overallRating + b.valueRating) / 2
-            : b.overallRating ?? b.valueRating ?? -1;
-          if (ratingA === -1 && ratingB === -1) return 0;
-          if (ratingA === -1) return 1;
-          if (ratingB === -1) return -1;
-          return direction * (ratingA - ratingB);
-        }
-        case 'overallRating': {
-          const ratingA = a.overallRating ?? -1;
-          const ratingB = b.overallRating ?? -1;
-          if (ratingA === -1 && ratingB === -1) return 0;
-          if (ratingA === -1) return 1;
-          if (ratingB === -1) return -1;
-          return direction * (ratingA - ratingB);
-        }
-        case 'valueRating': {
-          const ratingA = a.valueRating ?? -1;
-          const ratingB = b.valueRating ?? -1;
-          if (ratingA === -1 && ratingB === -1) return 0;
-          if (ratingA === -1) return 1;
-          if (ratingB === -1) return -1;
-          return direction * (ratingA - ratingB);
-        }
-        case 'wineName':
-          return direction * a.wineName.localeCompare(b.wineName);
-        case 'wineType':
-          return direction * a.wineType.localeCompare(b.wineType);
-        case 'country':
-          return direction * a.countryName.localeCompare(b.countryName);
-        case 'producer':
-          return direction * a.producerName.localeCompare(b.producerName);
-        case 'region':
-          return direction * a.regionName.localeCompare(b.regionName);
-        case 'year': {
-          const yearA = a.year || '';
-          const yearB = b.year || '';
-          if (!yearA && !yearB) return 0;
-          if (!yearA) return 1;
-          if (!yearB) return -1;
-          return direction * yearA.localeCompare(yearB);
-        }
-        case 'price': {
-          const rawPriceA = parseFloat(String(a.bottlePrice || '0')) || 0;
-          const rawPriceB = parseFloat(String(b.bottlePrice || '0')) || 0;
+/** Total count of drunk wines (unfiltered) */
+export const drunkWineCount = derived(unfilteredDrunkWineCount, ($c) => $c);
 
-          // Convert to EUR for fair comparison - default to EUR if currency null
-          const currencyA = getCurrencyByCode(a.bottleCurrency || 'EUR', $currencies);
-          const currencyB = getCurrencyByCode(b.bottleCurrency || 'EUR', $currencies);
-
-          // If currency not in list (store not loaded), fall back to raw comparison
-          const priceA = currencyA ? convertToEUR(rawPriceA, currencyA) : rawPriceA;
-          const priceB = currencyB ? convertToEUR(rawPriceB, currencyB) : rawPriceB;
-
-          if (priceA === 0 && priceB === 0) return 0;
-          if (priceA === 0) return 1;
-          if (priceB === 0) return -1;
-          return direction * (priceA - priceB);
-        }
-        case 'buyAgain':
-          return direction * ((a.buyAgain ?? 0) - (b.buyAgain ?? 0));
-        default:
-          return 0;
-      }
-    });
-  }
-);
-
-/** Total count of drunk wines (all bottles) */
-export const drunkWineCount = derived(drunkWines, ($wines) => $wines.length);
-
-/** Count of filtered wines */
-export const filteredDrunkWineCount = derived(sortedDrunkWines, ($wines) => $wines.length);
+/** Count of filtered wines (from pagination total) */
+export const filteredDrunkWineCount = derived(historyPagination, ($p) => $p.total);
 
 // ─────────────────────────────────────────────────────────
 // ACTIONS
@@ -212,4 +139,108 @@ export function clearHistoryFilters(): void {
  */
 export function getDrunkWineKey(wine: DrunkWine): string {
   return `${wine.wineID}-${wine.bottleID}`;
+}
+
+// ─────────────────────────────────────────────────────────
+// FETCH ACTION (WIN-205, WIN-206: debounce + abort)
+// ─────────────────────────────────────────────────────────
+
+/** Race condition guard */
+let fetchCounter = 0;
+
+/** AbortController for in-flight request */
+let activeHistoryController: AbortController | null = null;
+
+/** Debounce timer */
+let historyDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Debounce delay in ms */
+const HISTORY_DEBOUNCE_MS = 300;
+
+/**
+ * Fetch history from server with current filters, sort, and pagination.
+ * Debounces rapid calls (300ms), aborts in-flight requests, and guards against stale responses.
+ * @param page Page number (omit to stay on current page)
+ * @param immediate Skip debounce (used for initial load)
+ */
+export function fetchHistory(page?: number, immediate = false): void {
+  // Clear any pending debounce
+  if (historyDebounceTimer !== null) {
+    clearTimeout(historyDebounceTimer);
+    historyDebounceTimer = null;
+  }
+
+  const doFetch = () => {
+    // Abort any in-flight request
+    if (activeHistoryController) {
+      activeHistoryController.abort();
+    }
+
+    const controller = new AbortController();
+    activeHistoryController = controller;
+    const thisRequest = ++fetchCounter;
+
+    const $filters = get(historyFilters);
+    const $sortKey = get(historySortKey);
+    const $sortDir = get(historySortDir);
+    const $pagination = get(historyPagination);
+
+    historyLoading.set(true);
+    historyError.set(null);
+
+    api
+      .getDrunkWines(
+        {
+          page: page ?? $pagination.page,
+          limit: $pagination.limit,
+          sortKey: $sortKey,
+          sortDir: $sortDir,
+          ...($filters.countryDropdown && { countryDropdown: $filters.countryDropdown }),
+          ...($filters.typesDropdown && { typesDropdown: $filters.typesDropdown }),
+          ...($filters.regionDropdown && { regionDropdown: $filters.regionDropdown }),
+          ...($filters.producerDropdown && { producerDropdown: $filters.producerDropdown }),
+          ...($filters.yearDropdown && { yearDropdown: $filters.yearDropdown })
+        },
+        controller.signal
+      )
+      .then((result) => {
+        if (thisRequest !== fetchCounter) return;
+        drunkWines.set(result.wineList);
+        historyPagination.set(result.pagination);
+        historyFilterOptions.set(result.filterOptions);
+        unfilteredDrunkWineCount.set(result.unfilteredTotal);
+      })
+      .catch((e) => {
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+        if (thisRequest !== fetchCounter) return;
+        historyError.set(e instanceof Error ? e.message : 'Failed to load history');
+        console.error('History API Error:', e);
+      })
+      .finally(() => {
+        if (thisRequest === fetchCounter) {
+          historyLoading.set(false);
+          if (activeHistoryController === controller) {
+            activeHistoryController = null;
+          }
+        }
+      });
+  };
+
+  if (immediate) {
+    doFetch();
+  } else {
+    historyDebounceTimer = setTimeout(doFetch, HISTORY_DEBOUNCE_MS);
+  }
+}
+
+/** Exposed for testing: cancel pending debounce and abort in-flight request */
+export function cancelFetchHistory(): void {
+  if (historyDebounceTimer !== null) {
+    clearTimeout(historyDebounceTimer);
+    historyDebounceTimer = null;
+  }
+  if (activeHistoryController) {
+    activeHistoryController.abort();
+    activeHistoryController = null;
+  }
 }

@@ -115,6 +115,9 @@
 
 	// Handle form submission
 	async function handleSubmit() {
+		// WIN-228: Prevent double-click before isSubmitting propagates from store
+		if ($isSubmitting) return;
+
 		const result = await addWineStore.submit();
 		if (result.success && result.wineID) {
 			// Set target wine for scroll-to effect

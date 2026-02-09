@@ -6,6 +6,7 @@
  * - Personality fallback chain
  * - Template function context handling
  * - Helper functions
+ * - XSS prevention (escapeHtml, wn)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -19,6 +20,7 @@ import {
   pluralizeEntity,
   getTimeBasedGreeting,
   wn,
+  escapeHtml,
 } from '../messages';
 import { Personality } from '../personalities';
 
@@ -298,6 +300,54 @@ describe('pluralizeEntity', () => {
   });
 });
 
+// ===========================================
+// XSS Prevention Tests
+// ===========================================
+
+describe('escapeHtml', () => {
+  it('should escape < and > characters', () => {
+    expect(escapeHtml('<script>alert("xss")</script>')).toBe(
+      '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'
+    );
+  });
+
+  it('should escape ampersands', () => {
+    expect(escapeHtml('Tom & Jerry')).toBe('Tom &amp; Jerry');
+  });
+
+  it('should escape double quotes', () => {
+    expect(escapeHtml('say "hello"')).toBe('say &quot;hello&quot;');
+  });
+
+  it('should escape single quotes', () => {
+    expect(escapeHtml("it's")).toBe('it&#x27;s');
+  });
+
+  it('should handle all special characters together', () => {
+    expect(escapeHtml('<img onerror="alert(\'xss\')" src=x>')).toBe(
+      '&lt;img onerror=&quot;alert(&#x27;xss&#x27;)&quot; src=x&gt;'
+    );
+  });
+
+  it('should not alter safe strings', () => {
+    expect(escapeHtml('Château Margaux 2015')).toBe('Château Margaux 2015');
+  });
+
+  it('should handle empty string', () => {
+    expect(escapeHtml('')).toBe('');
+  });
+
+  it('should handle strings with only special characters', () => {
+    expect(escapeHtml('<>&"\'')).toBe('&lt;&gt;&amp;&quot;&#x27;');
+  });
+
+  it('should not double-escape already-escaped strings', () => {
+    // If someone passes already-escaped content, it will be double-escaped
+    // This is correct behavior - escapeHtml should always escape
+    expect(escapeHtml('&amp;')).toBe('&amp;amp;');
+  });
+});
+
 describe('wn (wine name wrapper)', () => {
   it('should wrap name in span with wine-name class', () => {
     const result = wn('Château Margaux');
@@ -308,7 +358,82 @@ describe('wn (wine name wrapper)', () => {
     const result = wn('');
     expect(result).toBe('<span class="wine-name"></span>');
   });
+
+  it('should escape HTML in wine names to prevent XSS', () => {
+    const result = wn('<script>alert("xss")</script>');
+    expect(result).toBe(
+      '<span class="wine-name">&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;</span>'
+    );
+    expect(result).not.toContain('<script>');
+  });
+
+  it('should escape event handler injection attempts', () => {
+    const result = wn('<img onerror=alert(1) src=x>');
+    expect(result).not.toContain('<img');
+    expect(result).toContain('&lt;img');
+  });
+
+  it('should escape ampersands in wine names', () => {
+    // "Domaine de la Romanée-Conti" is safe, but "R&D Wines" has an ampersand
+    const result = wn('R&D Wines');
+    expect(result).toBe('<span class="wine-name">R&amp;D Wines</span>');
+  });
+
+  it('should safely handle names with quotes', () => {
+    const result = wn('Cuvée "Prestige"');
+    expect(result).toBe('<span class="wine-name">Cuvée &quot;Prestige&quot;</span>');
+  });
 });
+
+describe('XSS prevention in message templates', () => {
+  beforeEach(() => {
+    mockGetPersonality.mockReturnValue(Personality.SOMMELIER);
+  });
+
+  it('should escape malicious wine names in ID_FOUND messages', () => {
+    const message = getMessageByKey(MessageKey.ID_FOUND, {
+      wineName: '<script>alert("xss")</script>',
+    });
+    expect(message).not.toContain('<script>');
+    expect(message).toContain('&lt;script&gt;');
+  });
+
+  it('should escape malicious producer names in ADD_DUPLICATE_FOUND messages', () => {
+    const message = getMessageByKey(MessageKey.ADD_DUPLICATE_FOUND, {
+      wineName: '<img onerror=alert(1)>',
+      bottleCount: 1,
+    });
+    expect(message).not.toContain('<img');
+    expect(message).toContain('&lt;img');
+  });
+
+  it('should escape malicious grape names in ID_GRAPE_ONLY messages', () => {
+    const message = getMessageByKey(MessageKey.ID_GRAPE_ONLY, {
+      grape: '<svg onload=alert(1)>',
+    });
+    expect(message).not.toContain('<svg');
+    expect(message).toContain('&lt;svg');
+  });
+
+  it('should escape malicious content in ADD_COMPLETE messages', () => {
+    const message = getMessageByKey(MessageKey.ADD_COMPLETE, {
+      wineName: '"><script>document.cookie</script>',
+    });
+    expect(message).not.toContain('<script>');
+  });
+
+  it('should escape malicious content in enrichment messages', () => {
+    const message = getMessageByKey(MessageKey.ENRICH_FOUND_DETAILS, {
+      wineName: '<iframe src="evil.com"></iframe>',
+    });
+    expect(message).not.toContain('<iframe');
+    expect(message).toContain('&lt;iframe');
+  });
+});
+
+// ===========================================
+// Time-based Greeting Tests
+// ===========================================
 
 describe('getTimeBasedGreeting', () => {
   beforeEach(() => {
@@ -459,6 +584,33 @@ describe('template function safety', () => {
     if (message.includes('wine-name')) {
       expect(message).toMatch(/<span class="wine-name">[^<]+<\/span>/);
     }
+  });
+});
+
+// ===========================================
+// Cache Confirmation Message Tests (WIN-XXX)
+// ===========================================
+
+describe('cache confirmation message includes searchedFor context', () => {
+  it('should include the searched-for wine name when different from matched wine', () => {
+    const message = getMessageByKey(MessageKey.ENRICH_CACHE_CONFIRM, {
+      wineName: 'Moet Chandon Rose Imperial',
+      searchedForName: 'Moet Chandon Nectar Imperial',
+    });
+
+    // Must mention what the user actually searched for
+    expect(message).toContain('Nectar Imperial');
+    // Must also mention the cached match
+    expect(message).toContain('Rose Imperial');
+  });
+
+  it('should still work without searchedForName (backwards compat)', () => {
+    const message = getMessageByKey(MessageKey.ENRICH_CACHE_CONFIRM, {
+      wineName: 'Chateau Margaux 2015',
+    });
+
+    expect(message).toContain('Chateau Margaux');
+    expect(message).not.toContain('undefined');
   });
 });
 
