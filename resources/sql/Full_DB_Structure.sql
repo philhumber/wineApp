@@ -380,7 +380,12 @@ CREATE TABLE `country` (
   `full_name` varchar(255) NOT NULL COMMENT 'Full English country name',
   `iso3` char(3) NOT NULL COMMENT 'Three-letter country code (ISO 3166-1 alpha-3)',
   `number` char(3) NOT NULL COMMENT 'Three-digit country number (ISO 3166-1 numeric)',
-  `continent` char(2) NOT NULL COMMENT 'Two-letter continent code (ISO 3166-1 alpha-2)'
+  `continent` char(2) NOT NULL COMMENT 'Two-letter continent code (ISO 3166-1 alpha-2)',
+  `wineHistory` text DEFAULT NULL COMMENT 'Brief history of winemaking in this country',
+  `classificationSystem` text DEFAULT NULL COMMENT 'Wine classification system (AOC, DOC, AVA, etc.)',
+  `keyGrapes` json DEFAULT NULL COMMENT 'Primary grape varieties JSON array',
+  `totalVineyardHectares` int DEFAULT NULL COMMENT 'Total vineyard area (OIV data)',
+  `wineRankingWorld` tinyint DEFAULT NULL COMMENT 'Global production ranking'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
