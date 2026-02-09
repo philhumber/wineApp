@@ -260,8 +260,8 @@ describe('Add Wine Flow Integration', () => {
 			expect(get(identification.hasResult)).toBe(false);
 			expect(get(addWine.isInAddWineFlow)).toBe(false);
 			expect(get(enrichment.hasEnrichmentData)).toBe(false);
-			// start_over calls startSession() which sets phase to greeting
-			expect(get(conversation.agentPhase)).toBe('greeting');
+			// start_over calls resetConversation() which sets phase to awaiting_input
+			expect(get(conversation.agentPhase)).toBe('awaiting_input');
 		});
 
 		it('should handle go back during add flow', async () => {

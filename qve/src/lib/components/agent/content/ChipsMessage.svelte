@@ -57,9 +57,10 @@
     });
 
     dispatch('action', {
-      type: 'chip_tap',
-      payload: { action: chip.action, messageId: message.id, data: chip.payload }
-    });
+      type: chip.action as AgentAction['type'],
+      messageId: message.id,
+      payload: chip.payload,
+    } as AgentAction);
   }
 </script>
 

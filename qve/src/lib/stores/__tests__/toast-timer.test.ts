@@ -26,13 +26,12 @@ describe('toast store - timer functionality', () => {
 	});
 
 	describe('undo toast duration', () => {
-		it('should have default duration of 5000ms for undo type', () => {
-			// WIN-80: Changed default from 5000ms to 10000ms
+		it('should have default duration of 10000ms for undo type', () => {
 			const id = toasts.undo('Item deleted', () => {});
 			const allToasts = get(toasts);
 			const toast = allToasts.find((t) => t.id === id);
 
-			expect(toast?.duration).toBe(5000);
+			expect(toast?.duration).toBe(10000);
 		});
 
 		it('should allow custom duration override for undo toasts', () => {

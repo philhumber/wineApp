@@ -329,11 +329,6 @@
     color: var(--text-tertiary, #8a847d);
   }
 
-  .undo-notice {
-    font-size: 0.8125rem;
-    color: var(--text-tertiary, #8a847d);
-  }
-
   .modal-footer {
     display: flex;
     gap: var(--space-3, 0.75rem);

@@ -103,8 +103,8 @@ describe('router', () => {
 		it('should route start_over to conversation handler', async () => {
 			await dispatchAction({ type: 'start_over' });
 
+			// start_over calls resetConversation() (preserves history with divider + greeting)
 			expect(conversation.resetConversation).toHaveBeenCalled();
-			expect(conversation.startSession).toHaveBeenCalled();
 		});
 
 		it('should route go_back to conversation handler', async () => {

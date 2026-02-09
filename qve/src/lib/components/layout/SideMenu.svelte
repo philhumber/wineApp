@@ -83,7 +83,6 @@
   <nav
     class="side-menu"
     transition:fly={{ x: -300, duration: 300 }}
-    role="navigation"
     aria-label="Main navigation"
   >
     <div class="menu-header">

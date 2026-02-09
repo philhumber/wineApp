@@ -233,7 +233,6 @@
 		color: var(--error);
 	}
 
-	.form-input,
 	.form-select {
 		width: 100%;
 		padding: var(--space-3) var(--space-4);
@@ -247,15 +246,10 @@
 		transition: all 0.2s var(--ease-out);
 	}
 
-	.form-input:focus,
 	.form-select:focus {
 		border-color: var(--accent);
 		background: var(--surface);
 		box-shadow: 0 0 0 3px rgba(166, 155, 138, 0.1);
-	}
-
-	.form-input::placeholder {
-		color: var(--text-tertiary);
 	}
 
 	.form-select {
