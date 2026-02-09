@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Feb 07, 2026 at 01:19 PM
+-- Generation Time: Feb 09, 2026 at 04:13 PM
 -- Server version: 8.0.44-0ubuntu0.24.04.2
 -- PHP Version: 8.3.6
 
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `winelist_test`
+-- Database: `winelist`
 --
 
 -- --------------------------------------------------------
@@ -276,24 +276,6 @@ CREATE TABLE `bottle_sizes` (
 -- RELATIONSHIPS FOR TABLE `bottle_sizes`:
 --
 
---
--- Dumping data for table `bottle_sizes`
---
-
-INSERT INTO `bottle_sizes` (`sizeCode`, `sizeName`, `volumeLitres`, `isActive`, `sortOrder`) VALUES
-('Balthazar', 'Balthazar (12L)', 12.000, 1, 11),
-('Demi', 'Demi (375ml)', 0.375, 1, 3),
-('Jeroboam', 'Jeroboam (3L)', 3.000, 1, 7),
-('Litre', 'Litre (1L)', 1.000, 1, 5),
-('Magnum', 'Magnum (1.5L)', 1.500, 1, 6),
-('Methuselah', 'Methuselah (6L)', 6.000, 1, 9),
-('Nebuchadnezzar', 'Nebuchadnezzar (15L)', 15.000, 1, 12),
-('Piccolo', 'Piccolo (187.5ml)', 0.187, 1, 1),
-('Quarter', 'Quarter (200ml)', 0.187, 1, 2),
-('Rehoboam', 'Rehoboam (4.5L)', 4.500, 1, 8),
-('Salmanazar', 'Salmanazar (9L)', 9.000, 1, 10),
-('Standard', 'Standard (750ml)', 0.750, 1, 4);
-
 -- --------------------------------------------------------
 
 --
@@ -407,260 +389,6 @@ CREATE TABLE `country` (
 --       `worlds` -> `name`
 --
 
---
--- Dumping data for table `country`
---
-
-INSERT INTO `country` (`countryID`, `countryName`, `code`, `world_code`, `full_name`, `iso3`, `number`, `continent`) VALUES
-(2, 'Afghanistan', 'AF', 'Other World', 'Islamic Republic of Afghanistan', 'AFG', '004', 'AS'),
-(3, 'Åland Islands', 'AX', 'Other World', 'Åland Islands', 'ALA', '248', 'EU'),
-(4, 'Albania', 'AL', 'Other World', 'Republic of Albania', 'ALB', '008', 'EU'),
-(5, 'Algeria', 'DZ', 'Other World', 'People\'s Democratic Republic of Algeria', 'DZA', '012', 'AF'),
-(6, 'American Samoa', 'AS', 'Other World', 'American Samoa', 'ASM', '016', 'OC'),
-(7, 'Andorra', 'AD', 'Other World', 'Principality of Andorra', 'AND', '020', 'EU'),
-(8, 'Angola', 'AO', 'Other World', 'Republic of Angola', 'AGO', '024', 'AF'),
-(9, 'Anguilla', 'AI', 'Other World', 'Anguilla', 'AIA', '660', 'NA'),
-(10, 'Antarctica', 'AQ', 'Other World', 'Antarctica (the territory South of 60 deg S)', 'ATA', '010', 'AN'),
-(11, 'Antigua and Barbuda', 'AG', 'Other World', 'Antigua and Barbuda', 'ATG', '028', 'NA'),
-(12, 'Argentina', 'AR', 'New World', 'Argentine Republic', 'ARG', '032', 'SA'),
-(13, 'Armenia', 'AM', 'Other World', 'Republic of Armenia', 'ARM', '051', 'AS'),
-(14, 'Aruba', 'AW', 'Other World', 'Aruba', 'ABW', '533', 'NA'),
-(15, 'Australia', 'AU', 'New World', 'Commonwealth of Australia', 'AUS', '036', 'OC'),
-(16, 'Austria', 'AT', 'Old World', 'Republic of Austria', 'AUT', '040', 'EU'),
-(17, 'Azerbaijan', 'AZ', 'Other World', 'Republic of Azerbaijan', 'AZE', '031', 'AS'),
-(18, 'Bahamas', 'BS', 'Other World', 'Commonwealth of the Bahamas', 'BHS', '044', 'NA'),
-(19, 'Bahrain', 'BH', 'Other World', 'Kingdom of Bahrain', 'BHR', '048', 'AS'),
-(20, 'Bangladesh', 'BD', 'Other World', 'People\'s Republic of Bangladesh', 'BGD', '050', 'AS'),
-(21, 'Barbados', 'BB', 'Other World', 'Barbados', 'BRB', '052', 'NA'),
-(22, 'Belarus', 'BY', 'Other World', 'Republic of Belarus', 'BLR', '112', 'EU'),
-(23, 'Belgium', 'BE', 'Other World', 'Kingdom of Belgium', 'BEL', '056', 'EU'),
-(24, 'Belize', 'BZ', 'Other World', 'Belize', 'BLZ', '084', 'NA'),
-(25, 'Benin', 'BJ', 'Other World', 'Republic of Benin', 'BEN', '204', 'AF'),
-(26, 'Bermuda', 'BM', 'Other World', 'Bermuda', 'BMU', '060', 'NA'),
-(27, 'Bhutan', 'BT', 'Other World', 'Kingdom of Bhutan', 'BTN', '064', 'AS'),
-(28, 'Bolivia', 'BO', 'Other World', 'Plurinational State of Bolivia', 'BOL', '068', 'SA'),
-(29, 'Bonaire, Sint Eustatius and Saba', 'BQ', 'Other World', 'Bonaire, Sint Eustatius and Saba', 'BES', '535', 'NA'),
-(30, 'Bosnia and Herzegovina', 'BA', 'Other World', 'Bosnia and Herzegovina', 'BIH', '070', 'EU'),
-(31, 'Botswana', 'BW', 'Other World', 'Republic of Botswana', 'BWA', '072', 'AF'),
-(32, 'Bouvet Island (Bouvet°ya)', 'BV', 'Other World', 'Bouvet Island (Bouvet°ya)', 'BVT', '074', 'AN'),
-(33, 'Brazil', 'BR', 'Other World', 'Federative Republic of Brazil', 'BRA', '076', 'SA'),
-(34, 'British Indian Ocean Territory (Chagos Archipelago)', 'IO', 'Other World', 'British Indian Ocean Territory (Chagos Archipelago)', 'IOT', '086', 'AS'),
-(35, 'British Virgin Islands', 'VG', 'Other World', 'British Virgin Islands', 'VGB', '092', 'NA'),
-(36, 'Brunei Darussalam', 'BN', 'Other World', 'Brunei Darussalam', 'BRN', '096', 'AS'),
-(37, 'Bulgaria', 'BG', 'Old World', 'Republic of Bulgaria', 'BGR', '100', 'EU'),
-(38, 'Burkina Faso', 'BF', 'Other World', 'Burkina Faso', 'BFA', '854', 'AF'),
-(39, 'Burundi', 'BI', 'Other World', 'Republic of Burundi', 'BDI', '108', 'AF'),
-(40, 'Cambodia', 'KH', 'Other World', 'Kingdom of Cambodia', 'KHM', '116', 'AS'),
-(41, 'Cameroon', 'CM', 'Other World', 'Republic of Cameroon', 'CMR', '120', 'AF'),
-(42, 'Canada', 'CA', 'New World', 'Canada', 'CAN', '124', 'NA'),
-(43, 'Cabo Verde', 'CV', 'Other World', 'Republic of Cabo Verde', 'CPV', '132', 'AF'),
-(44, 'Cayman Islands', 'KY', 'Other World', 'Cayman Islands', 'CYM', '136', 'NA'),
-(45, 'Central African Republic', 'CF', 'Other World', 'Central African Republic', 'CAF', '140', 'AF'),
-(46, 'Chad', 'TD', 'Other World', 'Republic of Chad', 'TCD', '148', 'AF'),
-(47, 'Chile', 'CL', 'New World', 'Republic of Chile', 'CHL', '152', 'SA'),
-(48, 'China', 'CN', 'Other World', 'People\'s Republic of China', 'CHN', '156', 'AS'),
-(49, 'Christmas Island', 'CX', 'Other World', 'Christmas Island', 'CXR', '162', 'AS'),
-(50, 'Cocos (Keeling) Islands', 'CC', 'Other World', 'Cocos (Keeling) Islands', 'CCK', '166', 'AS'),
-(51, 'Colombia', 'CO', 'Other World', 'Republic of Colombia', 'COL', '170', 'SA'),
-(52, 'Comoros', 'KM', 'Other World', 'Union of the Comoros', 'COM', '174', 'AF'),
-(53, 'Congo', 'CG', 'Other World', 'Republic of the Congo', 'COG', '178', 'AF'),
-(54, 'Cook Islands', 'CK', 'Other World', 'Cook Islands', 'COK', '184', 'OC'),
-(55, 'Costa Rica', 'CR', 'Other World', 'Republic of Costa Rica', 'CRI', '188', 'NA'),
-(56, 'Cote d\'Ivoire', 'CI', 'Other World', 'Republic of Cote d\'Ivoire', 'CIV', '384', 'AF'),
-(57, 'Croatia', 'HR', 'Old World', 'Republic of Croatia', 'HRV', '191', 'EU'),
-(58, 'Cuba', 'CU', 'Other World', 'Republic of Cuba', 'CUB', '192', 'NA'),
-(59, 'Curaçao', 'CW', 'Other World', 'Curaçao', 'CUW', '531', 'NA'),
-(60, 'Cyprus', 'CY', 'Old World', 'Republic of Cyprus', 'CYP', '196', 'AS'),
-(61, 'Czechia', 'CZ', 'Old World', 'Czech Republic', 'CZE', '203', 'EU'),
-(62, 'Denmark', 'DK', 'Other World', 'Kingdom of Denmark', 'DNK', '208', 'EU'),
-(63, 'Djibouti', 'DJ', 'Other World', 'Republic of Djibouti', 'DJI', '262', 'AF'),
-(64, 'Dominica', 'DM', 'Other World', 'Commonwealth of Dominica', 'DMA', '212', 'NA'),
-(65, 'Dominican Republic', 'DO', 'Other World', 'Dominican Republic', 'DOM', '214', 'NA'),
-(66, 'Ecuador', 'EC', 'Other World', 'Republic of Ecuador', 'ECU', '218', 'SA'),
-(67, 'Egypt', 'EG', 'Other World', 'Arab Republic of Egypt', 'EGY', '818', 'AF'),
-(68, 'El Salvador', 'SV', 'Other World', 'Republic of El Salvador', 'SLV', '222', 'NA'),
-(69, 'Equatorial Guinea', 'GQ', 'Other World', 'Republic of Equatorial Guinea', 'GNQ', '226', 'AF'),
-(70, 'Eritrea', 'ER', 'Other World', 'State of Eritrea', 'ERI', '232', 'AF'),
-(71, 'Estonia', 'EE', 'Other World', 'Republic of Estonia', 'EST', '233', 'EU'),
-(72, 'Ethiopia', 'ET', 'Other World', 'Federal Democratic Republic of Ethiopia', 'ETH', '231', 'AF'),
-(73, 'Faroe Islands', 'FO', 'Other World', 'Faroe Islands', 'FRO', '234', 'EU'),
-(74, 'Falkland Islands (Malvinas)', 'FK', 'Other World', 'Falkland Islands (Malvinas)', 'FLK', '238', 'SA'),
-(75, 'Fiji', 'FJ', 'Other World', 'Republic of Fiji', 'FJI', '242', 'OC'),
-(76, 'Finland', 'FI', 'Other World', 'Republic of Finland', 'FIN', '246', 'EU'),
-(77, 'France', 'FR', 'Old World', 'French Republic', 'FRA', '250', 'EU'),
-(78, 'French Guiana', 'GF', 'Other World', 'French Guiana', 'GUF', '254', 'SA'),
-(79, 'French Polynesia', 'PF', 'Other World', 'French Polynesia', 'PYF', '258', 'OC'),
-(80, 'French Southern Territories', 'TF', 'Other World', 'French Southern Territories', 'ATF', '260', 'AN'),
-(81, 'Gabon', 'GA', 'Other World', 'Gabonese Republic', 'GAB', '266', 'AF'),
-(82, 'Gambia', 'GM', 'Other World', 'Republic of the Gambia', 'GMB', '270', 'AF'),
-(83, 'Georgia', 'GE', 'Other World', 'Georgia', 'GEO', '268', 'AS'),
-(84, 'Germany', 'DE', 'Old World', 'Federal Republic of Germany', 'DEU', '276', 'EU'),
-(85, 'Ghana', 'GH', 'Other World', 'Republic of Ghana', 'GHA', '288', 'AF'),
-(86, 'Gibraltar', 'GI', 'Other World', 'Gibraltar', 'GIB', '292', 'EU'),
-(87, 'Greece', 'GR', 'Old World', 'Hellenic Republic of Greece', 'GRC', '300', 'EU'),
-(88, 'Greenland', 'GL', 'Other World', 'Greenland', 'GRL', '304', 'NA'),
-(89, 'Grenada', 'GD', 'Other World', 'Grenada', 'GRD', '308', 'NA'),
-(90, 'Guadeloupe', 'GP', 'Other World', 'Guadeloupe', 'GLP', '312', 'NA'),
-(91, 'Guam', 'GU', 'Other World', 'Guam', 'GUM', '316', 'OC'),
-(92, 'Guatemala', 'GT', 'Other World', 'Republic of Guatemala', 'GTM', '320', 'NA'),
-(93, 'Guernsey', 'GG', 'Other World', 'Bailiwick of Guernsey', 'GGY', '831', 'EU'),
-(94, 'Guinea', 'GN', 'Other World', 'Republic of Guinea', 'GIN', '324', 'AF'),
-(95, 'Guinea-Bissau', 'GW', 'Other World', 'Republic of Guinea-Bissau', 'GNB', '624', 'AF'),
-(96, 'Guyana', 'GY', 'Other World', 'Co-operative Republic of Guyana', 'GUY', '328', 'SA'),
-(97, 'Haiti', 'HT', 'Other World', 'Republic of Haiti', 'HTI', '332', 'NA'),
-(98, 'Heard Island and McDonald Islands', 'HM', 'Other World', 'Heard Island and McDonald Islands', 'HMD', '334', 'AN'),
-(99, 'Holy See (Vatican City State)', 'VA', 'Other World', 'Holy See (Vatican City State)', 'VAT', '336', 'EU'),
-(100, 'Honduras', 'HN', 'Other World', 'Republic of Honduras', 'HND', '340', 'NA'),
-(101, 'Hong Kong', 'HK', 'Other World', 'Hong Kong Special Administrative Region of China', 'HKG', '344', 'AS'),
-(102, 'Hungary', 'HU', 'Old World', 'Hungary', 'HUN', '348', 'EU'),
-(103, 'Iceland', 'IS', 'Other World', 'Iceland', 'ISL', '352', 'EU'),
-(104, 'India', 'IN', 'Other World', 'Republic of India', 'IND', '356', 'AS'),
-(105, 'Indonesia', 'ID', 'Other World', 'Republic of Indonesia', 'IDN', '360', 'AS'),
-(106, 'Iran', 'IR', 'Other World', 'Islamic Republic of Iran', 'IRN', '364', 'AS'),
-(107, 'Iraq', 'IQ', 'Other World', 'Republic of Iraq', 'IRQ', '368', 'AS'),
-(108, 'Ireland', 'IE', 'Other World', 'Ireland', 'IRL', '372', 'EU'),
-(109, 'Isle of Man', 'IM', 'Other World', 'Isle of Man', 'IMN', '833', 'EU'),
-(110, 'Israel', 'IL', 'Other World', 'State of Israel', 'ISR', '376', 'AS'),
-(111, 'Italy', 'IT', 'Old World', 'Republic of Italy', 'ITA', '380', 'EU'),
-(112, 'Jamaica', 'JM', 'Other World', 'Jamaica', 'JAM', '388', 'NA'),
-(113, 'Japan', 'JP', 'Other World', 'Japan', 'JPN', '392', 'AS'),
-(114, 'Jersey', 'JE', 'Other World', 'Bailiwick of Jersey', 'JEY', '832', 'EU'),
-(115, 'Jordan', 'JO', 'Other World', 'Hashemite Kingdom of Jordan', 'JOR', '400', 'AS'),
-(116, 'Kazakhstan', 'KZ', 'Other World', 'Republic of Kazakhstan', 'KAZ', '398', 'AS'),
-(117, 'Kenya', 'KE', 'Other World', 'Republic of Kenya', 'KEN', '404', 'AF'),
-(118, 'Kiribati', 'KI', 'Other World', 'Republic of Kiribati', 'KIR', '296', 'OC'),
-(119, 'North Korea', 'KP', 'Other World', 'Democratic People\'s Republic of Korea', 'PRK', '408', 'AS'),
-(120, 'South Korea', 'KR', 'Other World', 'Republic of Korea', 'KOR', '410', 'AS'),
-(121, 'Kuwait', 'KW', 'Other World', 'State of Kuwait', 'KWT', '414', 'AS'),
-(122, 'Kyrgyz Republic', 'KG', 'Other World', 'Kyrgyz Republic', 'KGZ', '417', 'AS'),
-(123, 'Lao People\'s Democratic Republic', 'LA', 'Other World', 'Lao People\'s Democratic Republic', 'LAO', '418', 'AS'),
-(124, 'Latvia', 'LV', 'Other World', 'Republic of Latvia', 'LVA', '428', 'EU'),
-(125, 'Lebanon', 'LB', 'Other World', 'Lebanese Republic', 'LBN', '422', 'AS'),
-(126, 'Lesotho', 'LS', 'Other World', 'Kingdom of Lesotho', 'LSO', '426', 'AF'),
-(127, 'Liberia', 'LR', 'Other World', 'Republic of Liberia', 'LBR', '430', 'AF'),
-(128, 'Libya', 'LY', 'Other World', 'State of Libya', 'LBY', '434', 'AF'),
-(129, 'Liechtenstein', 'LI', 'Other World', 'Principality of Liechtenstein', 'LIE', '438', 'EU'),
-(130, 'Lithuania', 'LT', 'Other World', 'Republic of Lithuania', 'LTU', '440', 'EU'),
-(131, 'Luxembourg', 'LU', 'Other World', 'Grand Duchy of Luxembourg', 'LUX', '442', 'EU'),
-(132, 'Macao', 'MO', 'Other World', 'Macao Special Administrative Region of China', 'MAC', '446', 'AS'),
-(133, 'Madagascar', 'MG', 'Other World', 'Republic of Madagascar', 'MDG', '450', 'AF'),
-(134, 'Malawi', 'MW', 'Other World', 'Republic of Malawi', 'MWI', '454', 'AF'),
-(135, 'Malaysia', 'MY', 'Other World', 'Malaysia', 'MYS', '458', 'AS'),
-(136, 'Maldives', 'MV', 'Other World', 'Republic of Maldives', 'MDV', '462', 'AS'),
-(137, 'Mali', 'ML', 'Other World', 'Republic of Mali', 'MLI', '466', 'AF'),
-(138, 'Malta', 'MT', 'Old World', 'Republic of Malta', 'MLT', '470', 'EU'),
-(139, 'Marshall Islands', 'MH', 'Other World', 'Republic of the Marshall Islands', 'MHL', '584', 'OC'),
-(140, 'Martinique', 'MQ', 'Other World', 'Martinique', 'MTQ', '474', 'NA'),
-(141, 'Mauritania', 'MR', 'Other World', 'Islamic Republic of Mauritania', 'MRT', '478', 'AF'),
-(142, 'Mauritius', 'MU', 'Other World', 'Republic of Mauritius', 'MUS', '480', 'AF'),
-(143, 'Mayotte', 'YT', 'Other World', 'Mayotte', 'MYT', '175', 'AF'),
-(144, 'Mexico', 'MX', 'Other World', 'United Mexican States', 'MEX', '484', 'NA'),
-(145, 'Micronesia', 'FM', 'Other World', 'Federated States of Micronesia', 'FSM', '583', 'OC'),
-(146, 'Moldova', 'MD', 'Old World', 'Republic of Moldova', 'MDA', '498', 'EU'),
-(147, 'Monaco', 'MC', 'Other World', 'Principality of Monaco', 'MCO', '492', 'EU'),
-(148, 'Mongolia', 'MN', 'Other World', 'Mongolia', 'MNG', '496', 'AS'),
-(149, 'Montenegro', 'ME', 'Other World', 'Montenegro', 'MNE', '499', 'EU'),
-(150, 'Montserrat', 'MS', 'Other World', 'Montserrat', 'MSR', '500', 'NA'),
-(151, 'Morocco', 'MA', 'Other World', 'Kingdom of Morocco', 'MAR', '504', 'AF'),
-(152, 'Mozambique', 'MZ', 'Other World', 'Republic of Mozambique', 'MOZ', '508', 'AF'),
-(153, 'Myanmar', 'MM', 'Other World', 'Republic of the Union of Myanmar', 'MMR', '104', 'AS'),
-(154, 'Namibia', 'NA', 'Other World', 'Republic of Namibia', 'NAM', '516', 'AF'),
-(155, 'Nauru', 'NR', 'Other World', 'Republic of Nauru', 'NRU', '520', 'OC'),
-(156, 'Nepal', 'NP', 'Other World', 'Nepal', 'NPL', '524', 'AS'),
-(157, 'Netherlands', 'NL', 'Other World', 'Kingdom of the Netherlands', 'NLD', '528', 'EU'),
-(158, 'New Caledonia', 'NC', 'Other World', 'New Caledonia', 'NCL', '540', 'OC'),
-(159, 'New Zealand', 'NZ', 'New World', 'New Zealand', 'NZL', '554', 'OC'),
-(160, 'Nicaragua', 'NI', 'Other World', 'Republic of Nicaragua', 'NIC', '558', 'NA'),
-(161, 'Niger', 'NE', 'Other World', 'Republic of Niger', 'NER', '562', 'AF'),
-(162, 'Nigeria', 'NG', 'Other World', 'Federal Republic of Nigeria', 'NGA', '566', 'AF'),
-(163, 'Niue', 'NU', 'Other World', 'Niue', 'NIU', '570', 'OC'),
-(164, 'Norfolk Island', 'NF', 'Other World', 'Norfolk Island', 'NFK', '574', 'OC'),
-(165, 'North Macedonia', 'MK', 'Other World', 'Republic of North Macedonia', 'MKD', '807', 'EU'),
-(166, 'Northern Mariana Islands', 'MP', 'Other World', 'Commonwealth of the Northern Mariana Islands', 'MNP', '580', 'OC'),
-(167, 'Norway', 'NO', 'Other World', 'Kingdom of Norway', 'NOR', '578', 'EU'),
-(168, 'Oman', 'OM', 'Other World', 'Sultanate of Oman', 'OMN', '512', 'AS'),
-(169, 'Pakistan', 'PK', 'Other World', 'Islamic Republic of Pakistan', 'PAK', '586', 'AS'),
-(170, 'Palau', 'PW', 'Other World', 'Republic of Palau', 'PLW', '585', 'OC'),
-(171, 'Palestine', 'PS', 'Other World', 'State of Palestine', 'PSE', '275', 'AS'),
-(172, 'Panama', 'PA', 'Other World', 'Republic of Panama', 'PAN', '591', 'NA'),
-(173, 'Papua New Guinea', 'PG', 'Other World', 'Independent State of Papua New Guinea', 'PNG', '598', 'OC'),
-(174, 'Paraguay', 'PY', 'Other World', 'Republic of Paraguay', 'PRY', '600', 'SA'),
-(175, 'Peru', 'PE', 'Other World', 'Republic of Peru', 'PER', '604', 'SA'),
-(176, 'Philippines', 'PH', 'Other World', 'Republic of the Philippines', 'PHL', '608', 'AS'),
-(177, 'Pitcairn Islands', 'PN', 'Other World', 'Pitcairn Islands', 'PCN', '612', 'OC'),
-(178, 'Poland', 'PL', 'Other World', 'Republic of Poland', 'POL', '616', 'EU'),
-(179, 'Portugal', 'PT', 'Old World', 'Portuguese Republic', 'PRT', '620', 'EU'),
-(180, 'Puerto Rico', 'PR', 'Other World', 'Commonwealth of Puerto Rico', 'PRI', '630', 'NA'),
-(181, 'Qatar', 'QA', 'Other World', 'State of Qatar', 'QAT', '634', 'AS'),
-(182, 'Réunion', 'RE', 'Other World', 'Réunion', 'REU', '638', 'AF'),
-(183, 'Romania', 'RO', 'Old World', 'Romania', 'ROU', '642', 'EU'),
-(184, 'Russia', 'RU', 'Other World', 'Russian Federation', 'RUS', '643', 'EU'),
-(185, 'Rwanda', 'RW', 'Other World', 'Republic of Rwanda', 'RWA', '646', 'AF'),
-(186, 'Saint Barthélemy', 'BL', 'Other World', 'Saint Barthélemy', 'BLM', '652', 'NA'),
-(187, 'Saint Helena, Ascension and Tristan da Cunha', 'SH', 'Other World', 'Saint Helena, Ascension and Tristan da Cunha', 'SHN', '654', 'AF'),
-(188, 'Saint Kitts and Nevis', 'KN', 'Other World', 'Federation of Saint Kitts and Nevis', 'KNA', '659', 'NA'),
-(189, 'Saint Lucia', 'LC', 'Other World', 'Saint Lucia', 'LCA', '662', 'NA'),
-(190, 'Saint Martin', 'MF', 'Other World', 'Saint Martin (French part)', 'MAF', '663', 'NA'),
-(191, 'Saint Pierre and Miquelon', 'PM', 'Other World', 'Saint Pierre and Miquelon', 'SPM', '666', 'NA'),
-(192, 'Saint Vincent and the Grenadines', 'VC', 'Other World', 'Saint Vincent and the Grenadines', 'VCT', '670', 'NA'),
-(193, 'Samoa', 'WS', 'Other World', 'Independent State of Samoa', 'WSM', '882', 'OC'),
-(194, 'San Marino', 'SM', 'Other World', 'Republic of San Marino', 'SMR', '674', 'EU'),
-(195, 'Sao Tome and Principe', 'ST', 'Other World', 'Democratic Republic of Sao Tome and Principe', 'STP', '678', 'AF'),
-(196, 'Saudi Arabia', 'SA', 'Other World', 'Kingdom of Saudi Arabia', 'SAU', '682', 'AS'),
-(197, 'Senegal', 'SN', 'Other World', 'Republic of Senegal', 'SEN', '686', 'AF'),
-(198, 'Serbia', 'RS', 'Other World', 'Republic of Serbia', 'SRB', '688', 'EU'),
-(199, 'Seychelles', 'SC', 'Other World', 'Republic of Seychelles', 'SYC', '690', 'AF'),
-(200, 'Sierra Leone', 'SL', 'Other World', 'Republic of Sierra Leone', 'SLE', '694', 'AF'),
-(201, 'Singapore', 'SG', 'Other World', 'Republic of Singapore', 'SGP', '702', 'AS'),
-(202, 'Sint Maarten (Dutch part)', 'SX', 'Other World', 'Sint Maarten (Dutch part)', 'SXM', '534', 'NA'),
-(203, 'Slovakia (Slovak Republic)', 'SK', 'Old World', 'Slovakia (Slovak Republic)', 'SVK', '703', 'EU'),
-(204, 'Slovenia', 'SI', 'Old World', 'Republic of Slovenia', 'SVN', '705', 'EU'),
-(205, 'Solomon Islands', 'SB', 'Other World', 'Solomon Islands', 'SLB', '090', 'OC'),
-(206, 'Somalia', 'SO', 'Other World', 'Federal Republic of Somalia', 'SOM', '706', 'AF'),
-(207, 'South Africa', 'ZA', 'New World', 'Republic of South Africa', 'ZAF', '710', 'AF'),
-(208, 'South Georgia and the South Sandwich Islands', 'GS', 'Other World', 'South Georgia and the South Sandwich Islands', 'SGS', '239', 'AN'),
-(209, 'South Sudan', 'SS', 'Other World', 'Republic of South Sudan', 'SSD', '728', 'AF'),
-(210, 'Spain', 'ES', 'Old World', 'Kingdom of Spain', 'ESP', '724', 'EU'),
-(211, 'Sri Lanka', 'LK', 'Other World', 'Democratic Socialist Republic of Sri Lanka', 'LKA', '144', 'AS'),
-(212, 'Sudan', 'SD', 'Other World', 'Republic of Sudan', 'SDN', '729', 'AF'),
-(213, 'Suriname', 'SR', 'Other World', 'Republic of Suriname', 'SUR', '740', 'SA'),
-(214, 'Svalbard & Jan Mayen Islands', 'SJ', 'Other World', 'Svalbard & Jan Mayen Islands', 'SJM', '744', 'EU'),
-(215, 'Eswatini', 'SZ', 'Other World', 'Kingdom of Eswatini', 'SWZ', '748', 'AF'),
-(216, 'Sweden', 'SE', 'Other World', 'Kingdom of Sweden', 'SWE', '752', 'EU'),
-(217, 'Switzerland', 'CH', 'Old World', 'Swiss Confederation', 'CHE', '756', 'EU'),
-(218, 'Syrian Arab Republic', 'SY', 'Other World', 'Syrian Arab Republic', 'SYR', '760', 'AS'),
-(219, 'Taiwan', 'TW', 'Other World', 'Taiwan, Province of China', 'TWN', '158', 'AS'),
-(220, 'Tajikistan', 'TJ', 'Other World', 'Republic of Tajikistan', 'TJK', '762', 'AS'),
-(221, 'Tanzania', 'TZ', 'Other World', 'United Republic of Tanzania', 'TZA', '834', 'AF'),
-(222, 'Thailand', 'TH', 'Other World', 'Kingdom of Thailand', 'THA', '764', 'AS'),
-(223, 'Timor-Leste', 'TL', 'Other World', 'Democratic Republic of Timor-Leste', 'TLS', '626', 'AS'),
-(224, 'Togo', 'TG', 'Other World', 'Togolese Republic', 'TGO', '768', 'AF'),
-(225, 'Tokelau', 'TK', 'Other World', 'Tokelau', 'TKL', '772', 'OC'),
-(226, 'Tonga', 'TO', 'Other World', 'Kingdom of Tonga', 'TON', '776', 'OC'),
-(227, 'Trinidad and Tobago', 'TT', 'Other World', 'Republic of Trinidad and Tobago', 'TTO', '780', 'NA'),
-(228, 'Tunisia', 'TN', 'Other World', 'Tunisian Republic', 'TUN', '788', 'AF'),
-(229, 'Turkey', 'TR', 'Other World', 'Republic of Türkiye', 'TUR', '792', 'AS'),
-(230, 'Turkmenistan', 'TM', 'Other World', 'Turkmenistan', 'TKM', '795', 'AS'),
-(231, 'Turks and Caicos Islands', 'TC', 'Other World', 'Turks and Caicos Islands', 'TCA', '796', 'NA'),
-(232, 'Tuvalu', 'TV', 'Other World', 'Tuvalu', 'TUV', '798', 'OC'),
-(233, 'Uganda', 'UG', 'Other World', 'Republic of Uganda', 'UGA', '800', 'AF'),
-(234, 'Ukraine', 'UA', 'Other World', 'Ukraine', 'UKR', '804', 'EU'),
-(235, 'United Arab Emirates', 'AE', 'Other World', 'United Arab Emirates', 'ARE', '784', 'AS'),
-(236, 'United Kingdom', 'GB', 'Other World', 'United Kingdom', 'GBR', '826', 'EU'),
-(237, 'United States of America', 'US', 'New World', 'United States of America', 'USA', '840', 'NA'),
-(238, 'United States Minor Outlying Islands', 'UM', 'Other World', 'United States Minor Outlying Islands', 'UMI', '581', 'OC'),
-(239, 'United States Virgin Islands', 'VI', 'Other World', 'United States Virgin Islands', 'VIR', '850', 'NA'),
-(240, 'Uruguay', 'UY', 'Other World', 'Eastern Republic of Uruguay', 'URY', '858', 'SA'),
-(241, 'Uzbekistan', 'UZ', 'Other World', 'Republic of Uzbekistan', 'UZB', '860', 'AS'),
-(242, 'Vanuatu', 'VU', 'Other World', 'Republic of Vanuatu', 'VUT', '548', 'OC'),
-(243, 'Venezuela', 'VE', 'Other World', 'Bolivarian Republic of Venezuela', 'VEN', '862', 'SA'),
-(244, 'Vietnam', 'VN', 'Other World', 'Socialist Republic of Vietnam', 'VNM', '704', 'AS'),
-(245, 'Wallis and Futuna', 'WF', 'Other World', 'Wallis and Futuna', 'WLF', '876', 'OC'),
-(246, 'Western Sahara', 'EH', 'Other World', 'Western Sahara', 'ESH', '732', 'AF'),
-(247, 'Yemen', 'YE', 'Other World', 'Yemen', 'YEM', '887', 'AS'),
-(248, 'Zambia', 'ZM', 'Other World', 'Republic of Zambia', 'ZMB', '894', 'AF'),
-(249, 'Zimbabwe', 'ZW', 'Other World', 'Republic of Zimbabwe', 'ZWE', '716', 'AF');
-
 -- --------------------------------------------------------
 
 --
@@ -703,23 +431,6 @@ CREATE TABLE `currencies` (
 -- RELATIONSHIPS FOR TABLE `currencies`:
 --
 
---
--- Dumping data for table `currencies`
---
-
-INSERT INTO `currencies` (`currencyCode`, `currencyName`, `symbol`, `rateToEUR`, `isActive`, `sortOrder`, `lastUpdated`) VALUES
-('AUD', 'Australian Dollar', 'A$', 1.650000, 1, 4, '2026-01-24 17:42:09'),
-('CHF', 'Swiss Franc', 'CHF ', 0.950000, 1, 6, '2026-01-24 17:42:09'),
-('DKK', 'Danish Krone', 'kr ', 7.450000, 1, 7, '2026-01-24 17:42:09'),
-('EUR', 'Euro', '€', 1.000000, 1, 2, '2026-01-24 17:42:09'),
-('GBP', 'British Pound', '£', 0.854700, 1, 1, '2026-01-24 17:42:09'),
-('HKD', 'Hong Kong Dollar', 'HK$', 8.500000, 1, 11, '2026-01-24 17:42:09'),
-('JPY', 'Japanese Yen', '¥', 160.000000, 1, 10, '2026-01-24 17:42:09'),
-('NOK', 'Norwegian Krone', 'kr ', 11.500000, 1, 8, '2026-01-24 17:42:09'),
-('NZD', 'New Zealand Dollar', 'NZ$', 1.750000, 1, 5, '2026-01-24 17:42:09'),
-('SEK', 'Swedish Krona', 'kr ', 11.494253, 1, 9, '2026-01-24 17:42:09'),
-('USD', 'US Dollar', '$', 1.086957, 1, 3, '2026-01-24 17:42:09');
-
 -- --------------------------------------------------------
 
 --
@@ -730,7 +441,7 @@ CREATE TABLE `grapemix` (
   `mixID` int NOT NULL,
   `wineID` int NOT NULL,
   `grapeID` int NOT NULL,
-  `mixPercent` decimal(10,0) NOT NULL
+  `mixPercent` decimal(10,0) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
@@ -767,9 +478,12 @@ CREATE TABLE `grapes` (
 CREATE TABLE `producers` (
   `producerID` int NOT NULL,
   `producerName` varchar(255) NOT NULL,
+  `deleted` tinyint(1) NOT NULL DEFAULT '0',
+  `deletedAt` timestamp NULL DEFAULT NULL,
+  `deletedBy` int DEFAULT NULL,
   `regionID` int NOT NULL,
   `town` varchar(255) NOT NULL,
-  `founded` text NOT NULL,
+  `founded` int NOT NULL,
   `ownership` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
   `description` text NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -819,7 +533,7 @@ CREATE TABLE `ratings` (
 CREATE TABLE `refAbbreviations` (
   `id` int NOT NULL,
   `abbreviation` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Abbreviated form, e.g., "Ch.", "Dom."',
-  `expansion` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Full form, e.g., "Ch├óteau", "Domaine"',
+  `expansion` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Full form, e.g., "Château", "Domaine"',
   `context` enum('producer','wine','both') COLLATE utf8mb4_unicode_ci DEFAULT 'both' COMMENT 'Where abbreviation typically appears',
   `priority` tinyint DEFAULT '1' COMMENT 'Higher = process first (for overlapping patterns)',
   `isActive` tinyint(1) DEFAULT '1',
@@ -829,35 +543,6 @@ CREATE TABLE `refAbbreviations` (
 --
 -- RELATIONSHIPS FOR TABLE `refAbbreviations`:
 --
-
---
--- Dumping data for table `refAbbreviations`
---
-
-INSERT INTO `refAbbreviations` (`id`, `abbreviation`, `expansion`, `context`, `priority`, `isActive`, `createdAt`) VALUES
-(1, 'Ch.', 'Ch├óteau', 'producer', 10, 1, '2026-02-02 13:14:40'),
-(2, 'Cht.', 'Ch├óteau', 'producer', 10, 1, '2026-02-02 13:14:40'),
-(3, 'Chateau', 'Ch├óteau', 'producer', 9, 1, '2026-02-02 13:14:40'),
-(4, 'Dom.', 'Domaine', 'producer', 10, 1, '2026-02-02 13:14:40'),
-(5, 'Wgt.', 'Weingut', 'producer', 10, 1, '2026-02-02 13:14:40'),
-(6, 'Bod.', 'Bodega', 'producer', 10, 1, '2026-02-02 13:14:40'),
-(7, 'Tnta.', 'Tenuta', 'producer', 10, 1, '2026-02-02 13:14:40'),
-(8, 'Cstl.', 'Castello', 'producer', 10, 1, '2026-02-02 13:14:40'),
-(9, 'Qt├á.', 'Quinta', 'producer', 10, 1, '2026-02-02 13:14:40'),
-(10, 'Qta.', 'Quinta', 'producer', 10, 1, '2026-02-02 13:14:40'),
-(11, 'Clos', 'Clos', 'producer', 5, 1, '2026-02-02 13:14:40'),
-(12, 'Marchesi', 'Marchesi', 'producer', 5, 1, '2026-02-02 13:14:40'),
-(13, 'GC', 'Grand Cru', 'wine', 5, 1, '2026-02-02 13:14:40'),
-(14, 'PC', 'Premier Cru', 'wine', 5, 1, '2026-02-02 13:14:40'),
-(15, '1er Cru', 'Premier Cru', 'wine', 5, 1, '2026-02-02 13:14:40'),
-(16, 'VV', 'Vieilles Vignes', 'wine', 5, 1, '2026-02-02 13:14:40'),
-(17, 'Res.', 'Reserva', 'wine', 5, 1, '2026-02-02 13:14:40'),
-(18, 'Rsv.', 'Riserva', 'wine', 5, 1, '2026-02-02 13:14:40'),
-(19, 'Gran Res.', 'Gran Reserva', 'wine', 5, 1, '2026-02-02 13:14:40'),
-(20, 'Ste.', 'Sainte', 'both', 8, 1, '2026-02-02 13:14:40'),
-(21, 'St.', 'Saint', 'both', 8, 1, '2026-02-02 13:14:40'),
-(22, 'Mt.', 'Mont', 'both', 7, 1, '2026-02-02 13:14:40'),
-(23, 'Mte.', 'Monte', 'both', 7, 1, '2026-02-02 13:14:40');
 
 -- --------------------------------------------------------
 
@@ -970,12 +655,12 @@ CREATE TABLE `refPairingRules` (
 CREATE TABLE `refWineStyles` (
   `id` int NOT NULL,
   `styleName` varchar(100) NOT NULL,
-  `wineType` enum('Red','White','Ros??','Sparkling','Dessert','Fortified') NOT NULL,
+  `wineType` enum('Red','White','Rosé','Sparkling','Dessert','Fortified') NOT NULL,
   `description` text,
   `characteristics` json DEFAULT NULL COMMENT '{"body": "light", "sweetness": "dry"}',
   `typicalGrapes` json DEFAULT NULL,
   `typicalRegions` json DEFAULT NULL,
-  `servingTemp` varchar(50) DEFAULT NULL COMMENT '"7-10??C" or "45-50??F"',
+  `servingTemp` varchar(50) DEFAULT NULL COMMENT '"7-10°C" or "45-50°F"',
   `createdAt` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -996,7 +681,10 @@ CREATE TABLE `region` (
   `description` text NOT NULL,
   `climate` text NOT NULL,
   `soil` text NOT NULL,
-  `map` text NOT NULL
+  `map` text NOT NULL,
+  `deleted` tinyint(1) NOT NULL DEFAULT '0',
+  `deletedAt` timestamp NULL DEFAULT NULL,
+  `deletedBy` int DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
@@ -1131,22 +819,6 @@ CREATE TABLE `winetype` (
 -- RELATIONSHIPS FOR TABLE `winetype`:
 --
 
---
--- Dumping data for table `winetype`
---
-
-INSERT INTO `winetype` (`wineTypeID`, `wineType`) VALUES
-(1, 'Red'),
-(2, 'White'),
-(3, 'Rosé'),
-(4, 'Orange'),
-(5, 'Sparkling'),
-(6, 'Dessert'),
-(7, 'Rice'),
-(8, 'Fruit'),
-(9, 'Honey'),
-(10, 'Cider');
-
 -- --------------------------------------------------------
 
 --
@@ -1161,69 +833,32 @@ CREATE TABLE `worlds` (
 -- RELATIONSHIPS FOR TABLE `worlds`:
 --
 
---
--- Dumping data for table `worlds`
---
-
-INSERT INTO `worlds` (`name`) VALUES
-('New World'),
-('Old World'),
-('Other World');
-
 -- --------------------------------------------------------
 
 --
--- Structure for view `vw_model_comparison` exported as a table
+-- Structure for view `vw_model_comparison`
 --
 DROP TABLE IF EXISTS `vw_model_comparison`;
-CREATE TABLE`vw_model_comparison`(
-    `tier` varchar(7) COLLATE cp850_general_ci NOT NULL DEFAULT '',
-    `model` varchar(50) COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
-    `times_used` bigint NOT NULL DEFAULT '0',
-    `avg_confidence` decimal(12,1) DEFAULT NULL,
-    `times_was_final` decimal(23,0) DEFAULT NULL,
-    `pct_resolved` decimal(28,1) DEFAULT NULL
-);
+
+CREATE OR REPLACE VIEW `vw_model_comparison`  AS SELECT 'tier1' AS `tier`, `agentIdentificationResults`.`tier1Model` AS `model`, count(0) AS `times_used`, round(avg(`agentIdentificationResults`.`tier1Confidence`),1) AS `avg_confidence`, sum((case when (`agentIdentificationResults`.`finalTier` = 'tier1') then 1 else 0 end)) AS `times_was_final`, round(((100.0 * sum((case when (`agentIdentificationResults`.`finalTier` = 'tier1') then 1 else 0 end))) / count(0)),1) AS `pct_resolved` FROM `agentIdentificationResults` WHERE (`agentIdentificationResults`.`tier1Confidence` is not null) GROUP BY `agentIdentificationResults`.`tier1Model`union all select 'tier1_5' AS `tier`,`agentIdentificationResults`.`tier1_5Model` AS `model`,count(0) AS `times_used`,round(avg(`agentIdentificationResults`.`tier1_5Confidence`),1) AS `avg_confidence`,sum((case when (`agentIdentificationResults`.`finalTier` = 'tier1_5') then 1 else 0 end)) AS `times_was_final`,round(((100.0 * sum((case when (`agentIdentificationResults`.`finalTier` = 'tier1_5') then 1 else 0 end))) / count(0)),1) AS `pct_resolved` from `agentIdentificationResults` where (`agentIdentificationResults`.`tier1_5Confidence` is not null) group by `agentIdentificationResults`.`tier1_5Model` union all select 'tier2' AS `tier`,`agentIdentificationResults`.`tier2Model` AS `model`,count(0) AS `times_used`,round(avg(`agentIdentificationResults`.`tier2Confidence`),1) AS `avg_confidence`,sum((case when (`agentIdentificationResults`.`finalTier` = 'tier2') then 1 else 0 end)) AS `times_was_final`,round(((100.0 * sum((case when (`agentIdentificationResults`.`finalTier` = 'tier2') then 1 else 0 end))) / count(0)),1) AS `pct_resolved` from `agentIdentificationResults` where (`agentIdentificationResults`.`tier2Confidence` is not null) group by `agentIdentificationResults`.`tier2Model` union all select 'tier3' AS `tier`,`agentIdentificationResults`.`tier3Model` AS `model`,count(0) AS `times_used`,round(avg(`agentIdentificationResults`.`tier3Confidence`),1) AS `avg_confidence`,sum((case when (`agentIdentificationResults`.`finalTier` = 'tier3') then 1 else 0 end)) AS `times_was_final`,round(((100.0 * sum((case when (`agentIdentificationResults`.`finalTier` = 'tier3') then 1 else 0 end))) / count(0)),1) AS `pct_resolved` from `agentIdentificationResults` where (`agentIdentificationResults`.`tier3Confidence` is not null) group by `agentIdentificationResults`.`tier3Model`  ;
 
 -- --------------------------------------------------------
 
 --
--- Structure for view `vw_model_confidence_stats` exported as a table
+-- Structure for view `vw_model_confidence_stats`
 --
 DROP TABLE IF EXISTS `vw_model_confidence_stats`;
-CREATE TABLE`vw_model_confidence_stats`(
-    `finalTier` varchar(20) COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT 'tier1, tier1_5, tier2, tier3, user_choice',
-    `inputType` enum('text','image') COLLATE utf8mb4_0900_ai_ci NOT NULL,
-    `total_identifications` bigint NOT NULL DEFAULT '0',
-    `avg_confidence` decimal(12,1) DEFAULT NULL,
-    `min_confidence` bigint DEFAULT NULL,
-    `max_confidence` bigint DEFAULT NULL,
-    `auto_populate_count` decimal(23,0) DEFAULT NULL,
-    `suggest_count` decimal(23,0) DEFAULT NULL,
-    `user_choice_count` decimal(23,0) DEFAULT NULL,
-    `avg_cost` decimal(11,6) DEFAULT NULL,
-    `avg_latency_ms` decimal(11,0) DEFAULT NULL
-);
+
+CREATE OR REPLACE VIEW `vw_model_confidence_stats`  AS SELECT `agentIdentificationResults`.`finalTier` AS `finalTier`, `agentIdentificationResults`.`inputType` AS `inputType`, count(0) AS `total_identifications`, round(avg(`agentIdentificationResults`.`finalConfidence`),1) AS `avg_confidence`, round(min(`agentIdentificationResults`.`finalConfidence`),0) AS `min_confidence`, round(max(`agentIdentificationResults`.`finalConfidence`),0) AS `max_confidence`, sum((case when (`agentIdentificationResults`.`finalAction` = 'auto_populate') then 1 else 0 end)) AS `auto_populate_count`, sum((case when (`agentIdentificationResults`.`finalAction` = 'suggest') then 1 else 0 end)) AS `suggest_count`, sum((case when (`agentIdentificationResults`.`finalAction` = 'user_choice') then 1 else 0 end)) AS `user_choice_count`, round(avg(`agentIdentificationResults`.`totalCostUSD`),6) AS `avg_cost`, round(avg(`agentIdentificationResults`.`totalLatencyMs`),0) AS `avg_latency_ms` FROM `agentIdentificationResults` GROUP BY `agentIdentificationResults`.`finalTier`, `agentIdentificationResults`.`inputType` ;
 
 -- --------------------------------------------------------
 
 --
--- Structure for view `vw_tier_escalation_analysis` exported as a table
+-- Structure for view `vw_tier_escalation_analysis`
 --
 DROP TABLE IF EXISTS `vw_tier_escalation_analysis`;
-CREATE TABLE`vw_tier_escalation_analysis`(
-    `date` date DEFAULT NULL,
-    `total` bigint NOT NULL DEFAULT '0',
-    `resolved_tier1` decimal(23,0) DEFAULT NULL,
-    `resolved_tier1_5` decimal(23,0) DEFAULT NULL,
-    `resolved_tier2` decimal(23,0) DEFAULT NULL,
-    `resolved_tier3` decimal(23,0) DEFAULT NULL,
-    `user_choice` decimal(23,0) DEFAULT NULL,
-    `pct_tier1` decimal(28,1) DEFAULT NULL,
-    `pct_auto_populate` decimal(28,1) DEFAULT NULL,
-    `avg_confidence` decimal(12,1) DEFAULT NULL,
-    `total_cost` decimal(31,4) DEFAULT NULL
-);
+
+CREATE OR REPLACE VIEW `vw_tier_escalation_analysis`  AS SELECT cast(`agentIdentificationResults`.`createdAt` as date) AS `date`, count(0) AS `total`, sum((case when (`agentIdentificationResults`.`finalTier` = 'tier1') then 1 else 0 end)) AS `resolved_tier1`, sum((case when (`agentIdentificationResults`.`finalTier` = 'tier1_5') then 1 else 0 end)) AS `resolved_tier1_5`, sum((case when (`agentIdentificationResults`.`finalTier` = 'tier2') then 1 else 0 end)) AS `resolved_tier2`, sum((case when (`agentIdentificationResults`.`finalTier` = 'tier3') then 1 else 0 end)) AS `resolved_tier3`, sum((case when (`agentIdentificationResults`.`finalTier` = 'user_choice') then 1 else 0 end)) AS `user_choice`, round(((100.0 * sum((case when (`agentIdentificationResults`.`finalTier` = 'tier1') then 1 else 0 end))) / count(0)),1) AS `pct_tier1`, round(((100.0 * sum((case when (`agentIdentificationResults`.`finalAction` = 'auto_populate') then 1 else 0 end))) / count(0)),1) AS `pct_auto_populate`, round(avg(`agentIdentificationResults`.`finalConfidence`),1) AS `avg_confidence`, round(sum(`agentIdentificationResults`.`totalCostUSD`),4) AS `total_cost` FROM `agentIdentificationResults` GROUP BY cast(`agentIdentificationResults`.`createdAt` as date) ORDER BY `date` DESC ;
 
 --
 -- Indexes for dumped tables
@@ -1303,7 +938,8 @@ ALTER TABLE `audit_log`
 ALTER TABLE `bottles`
   ADD PRIMARY KEY (`bottleID`),
   ADD KEY `fk_bottle_wineID` (`wineID`),
-  ADD KEY `idx_deleted` (`deleted`);
+  ADD KEY `idx_deleted` (`deleted`),
+  ADD KEY `idx_wine_deleted_drunk` (`wineID`,`deleted`,`bottleDrunk`);
 
 --
 -- Indexes for table `bottle_sizes`
@@ -1372,15 +1008,17 @@ ALTER TABLE `grapemix`
 -- Indexes for table `grapes`
 --
 ALTER TABLE `grapes`
-  ADD PRIMARY KEY (`grapeID`);
+  ADD PRIMARY KEY (`grapeID`),
+  ADD UNIQUE KEY `idx_grapeName` (`grapeName`);
 
 --
 -- Indexes for table `producers`
 --
 ALTER TABLE `producers`
   ADD PRIMARY KEY (`producerID`),
-  ADD UNIQUE KEY `producerName` (`producerName`),
-  ADD KEY `fk_producer_region` (`regionID`);
+  ADD UNIQUE KEY `uq_producer_active` (`producerName`,`deletedAt`),
+  ADD KEY `fk_producer_region` (`regionID`),
+  ADD KEY `idx_deleted` (`deleted`);
 
 --
 -- Indexes for table `ratings`
@@ -1388,7 +1026,8 @@ ALTER TABLE `producers`
 ALTER TABLE `ratings`
   ADD PRIMARY KEY (`ratingID`),
   ADD KEY `fk_rating_bottle` (`bottleID`),
-  ADD KEY `fk_rating_wine` (`wineID`);
+  ADD KEY `fk_rating_wine` (`wineID`),
+  ADD KEY `idx_ratings_wine_scores` (`wineID`,`overallRating`,`valueRating`,`buyAgain`);
 
 --
 -- Indexes for table `refAbbreviations`
@@ -1446,8 +1085,9 @@ ALTER TABLE `refWineStyles`
 --
 ALTER TABLE `region`
   ADD PRIMARY KEY (`regionID`),
-  ADD UNIQUE KEY `regionName` (`regionName`),
-  ADD KEY `fk_region_country` (`countryID`);
+  ADD UNIQUE KEY `uq_region_active` (`regionName`,`deletedAt`),
+  ADD KEY `fk_region_country` (`countryID`),
+  ADD KEY `idx_deleted` (`deleted`);
 
 --
 -- Indexes for table `user_settings`
@@ -1559,7 +1199,7 @@ ALTER TABLE `cacheWineEnrichment`
 -- AUTO_INCREMENT for table `country`
 --
 ALTER TABLE `country`
-  MODIFY `countryID` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=250;
+  MODIFY `countryID` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `critic_scores`
@@ -1595,7 +1235,7 @@ ALTER TABLE `ratings`
 -- AUTO_INCREMENT for table `refAbbreviations`
 --
 ALTER TABLE `refAbbreviations`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `refAppellations`
@@ -1649,7 +1289,7 @@ ALTER TABLE `wine`
 -- AUTO_INCREMENT for table `winetype`
 --
 ALTER TABLE `winetype`
-  MODIFY `wineTypeID` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `wineTypeID` int NOT NULL AUTO_INCREMENT;
 
 --
 -- Constraints for dumped tables
