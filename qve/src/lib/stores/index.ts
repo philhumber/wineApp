@@ -363,6 +363,12 @@ export { agentSettings, getPersonality } from './agentSettings';
 export type { AgentSettings } from './agentSettings';
 
 // ─────────────────────────────────────────────
+// AUTHENTICATION (WIN-254)
+// ─────────────────────────────────────────────
+
+export { auth, isAuthenticated, isAuthChecking, isAuthLoggingOut, authError } from './auth';
+
+// ─────────────────────────────────────────────
 // SOFT DELETE (WIN-80)
 // ─────────────────────────────────────────────
 

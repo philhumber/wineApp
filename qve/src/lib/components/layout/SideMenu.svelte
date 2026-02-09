@@ -9,7 +9,7 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { Icon } from '$lib/components';
-  import { viewMode, modal } from '$lib/stores';
+  import { viewMode, modal, auth } from '$lib/stores';
 
   export let open = false;
 
@@ -54,6 +54,12 @@
   function openSettings() {
     close();
     modal.openSettings();
+  }
+
+  async function handleLogout() {
+    close();
+    await auth.logout();
+    goto(`${base}/login`);
   }
 
   // Determine active state
@@ -150,7 +156,15 @@
           <span>Settings</span>
         </button>
       </li>
-      
+      <li>
+        <button
+          class="menu-item menu-item-logout"
+          on:click={handleLogout}
+        >
+          <Icon name="log-out" size={20} />
+          <span>Sign Out</span>
+        </button>
+      </li>
     </ul>
 
     <div class="menu-footer">
@@ -260,6 +274,13 @@
     color: var(--text-primary);
     border-left: 3px solid var(--accent);
     padding-left: calc(var(--space-6) - 3px);
+  }
+
+  .menu-item-logout {
+    margin-top: var(--space-2);
+    border-top: 1px solid var(--divider-subtle);
+    padding-top: calc(var(--space-4) + var(--space-2));
+    color: var(--text-tertiary);
   }
 
   /* Menu footer */
