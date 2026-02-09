@@ -2,6 +2,7 @@
 // WIN-227: Request lifecycle — abort controller & scroll lock
 // Extracted from stores/agent.ts
 // ─────────────────────────────────────────────────────────
+import { generateUUID } from '$lib/utils';
 
 /**
  * WIN-187: Module-level AbortController for cancelling in-flight requests.
@@ -36,7 +37,7 @@ export function createAbortController(): AbortController {
 	}
 	currentAbortController = new AbortController();
 	// WIN-227: Generate unique request ID for server-side cancel token
-	currentRequestId = crypto.randomUUID();
+	currentRequestId = generateUUID();
 	return currentAbortController;
 }
 

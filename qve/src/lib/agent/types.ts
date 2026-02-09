@@ -1,3 +1,5 @@
+import { generateUUID } from '$lib/utils';
+
 // ===========================================
 // Message Categories (reduced from 18 types)
 // ===========================================
@@ -313,7 +315,7 @@ export function createMessage<T extends MessageCategory>(
   options?: Partial<Omit<AgentMessage, 'id' | 'timestamp' | 'category' | 'data'>>
 ): AgentMessage {
   return {
-    id: crypto.randomUUID(),
+    id: generateUUID(),
     category,
     role: 'agent',
     timestamp: Date.now(),
