@@ -68,8 +68,8 @@
 		'streaming-card': state === 'streaming'
 	};
 
-	// Refining badge: shown when background escalation is in progress on a static card
-	$: header = $isEscalating && state === 'static'
+	// Refining badge: shown when background escalation is in progress
+	$: header = $isEscalating
 		? { title: '', badge: 'Refining...', badgeStreaming: true }
 		: null;
 </script>
