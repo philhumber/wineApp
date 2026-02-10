@@ -315,6 +315,31 @@ State survives mobile browser tab switches (e.g., switching to Camera app). See 
 - **Thresholds**: `LOW_CONFIDENCE_THRESHOLD = 0.7`, `ESCALATION_CONFIDENCE_THRESHOLD = 0.6`
 - **Always use** `identification.getConfidence()` as the authoritative source — `result.confidence` may be lost through serialization during field accumulation flows
 
+### Streaming Card vs Message Card (Gotcha)
+
+The agent panel renders wine/enrichment data via **two separate paths**:
+1. **Streaming card** — in `AgentPanel.svelte`, reads from `streamingFields` store, shows progressive field arrival during SSE
+2. **Message card** — in `MessageList` via `WineCardMessage.svelte`, reads from `message.data.result`, shows static data after completion
+
+**Never create message cards inside SSE `onEvent` callbacks.** Svelte's reactive rendering is batched — calling `setResult()` (clears streaming card) + `handleIdentificationResultFlow()` (adds message card) inside a synchronous callback causes blank rendering due to `isPrecedingReady` sequencing issues.
+
+**Correct pattern**: Use `onEvent` only for lightweight state updates (e.g., `startEscalation()`). Capture escalated results in a closure variable. Create the message card **after `await` resolves**:
+```typescript
+let escalatedResult = null;
+const result = await api.identifyTextStream(text, onField, (event) => {
+  if (event.type === 'refining') identification.startEscalation(2);
+  if (event.type === 'refined' && event.data.escalated) escalatedResult = event.data;
+  // Do NOT create message cards here!
+});
+// After await — safe to transition streaming card → message card
+identification.setResult(wineResult, confidence);
+handleIdentificationResultFlow(wineResult, confidence);
+```
+
+**TypeScript gotcha**: TS narrows callback-mutated variables to `never`. Use type assertion: `const esc = escalatedResult as Type | null;`
+
+See `PLAN.md` "Critical Lesson" section for full breakdown with broken vs working code examples.
+
 ### Agent Input & Command Detection
 
 Full phase table and command detection in `docs/AGENT_ARCHITECTURE.md`. Key behaviors:
