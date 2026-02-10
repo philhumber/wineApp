@@ -577,7 +577,7 @@
   @media (max-width: 480px) {
     .dropdown-container {
       min-width: 200px;
-      max-width: calc(100vw - var(--space-8));
+      max-width: calc(100% - var(--space-8));
     }
   }
 </style>

@@ -173,7 +173,7 @@
     }
 
     .lightbox-content {
-      max-width: 100vw;
+      max-width: 100%;
       max-height: 100vh;
       max-height: 100dvh;
     }
