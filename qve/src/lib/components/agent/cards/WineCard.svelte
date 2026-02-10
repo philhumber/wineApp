@@ -4,7 +4,7 @@
 	 * Unified wine card supporting skeleton, streaming, and static states.
 	 * Replaces both WineIdentificationCard and WineCardStreaming.
 	 */
-	import { streamingFields as identificationStreamingFields } from '$lib/stores/agentIdentification';
+	import { streamingFields as identificationStreamingFields, isEscalating } from '$lib/stores/agentIdentification';
 	import type { AgentParsedWine } from '$lib/api/types';
 	import DataCard from './DataCard.svelte';
 	import WineNameSection from '../wine/WineNameSection.svelte';
@@ -67,12 +67,18 @@
 	$: dataAttributes = {
 		'streaming-card': state === 'streaming'
 	};
+
+	// Refining badge: shown when background escalation is in progress on a static card
+	$: header = $isEscalating && state === 'static'
+		? { title: '', badge: 'Refining...', badgeStreaming: true }
+		: null;
 </script>
 
 <DataCard
 	{state}
 	data={staticData}
 	streamingFields={currentStreamingFields}
+	{header}
 	{cardClass}
 	{dataAttributes}
 	let:state={cardState}
@@ -114,6 +120,7 @@
 		{fieldsMap}
 		{getFieldValue}
 		{hasField}
+		isRefining={$isEscalating}
 	/>
 
 	<WineDetailsSection

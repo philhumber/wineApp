@@ -281,6 +281,76 @@ describe('Streaming Field Updates', () => {
 		});
 	});
 
+	describe('streaming edge cases', () => {
+		it('should handle empty field value from stream', async () => {
+			vi.mocked(api.identifyTextStream).mockImplementation(async (text, onField) => {
+				if (onField) {
+					onField('producer', '');
+				}
+				return {
+					intent: 'add' as const,
+					parsed: {
+						producer: '',
+						wineName: 'Test Wine',
+						vintage: null,
+						region: null,
+						appellation: null,
+						country: null,
+						wineType: null,
+						grapes: [],
+						confidence: 0.5,
+					},
+					confidence: 0.5,
+					action: 'auto_populate' as const,
+					candidates: [],
+					inputType: 'text' as const,
+				};
+			});
+
+			await handleAgentAction({ type: 'submit_text', payload: 'test wine' });
+
+			// The streaming field should have been set with empty string
+			// After result is set, streaming fields are cleared, so we verify result arrived
+			expect(get(identification.hasResult)).toBe(true);
+		});
+
+		it('should handle rapid sequential field updates', async () => {
+			vi.mocked(api.identifyTextStream).mockImplementation(async (text, onField) => {
+				if (onField) {
+					onField('producer', 'C');
+					onField('producer', 'Ch');
+					onField('producer', 'Châ');
+					onField('producer', 'Château');
+					onField('producer', 'Château Margaux');
+				}
+				return {
+					intent: 'add' as const,
+					parsed: {
+						producer: 'Château Margaux',
+						wineName: 'Grand Vin',
+						vintage: '2018',
+						region: 'Margaux',
+						appellation: null,
+						country: 'France',
+						wineType: 'Red' as const,
+						grapes: [],
+						confidence: 0.95,
+					},
+					confidence: 0.95,
+					action: 'auto_populate' as const,
+					candidates: [],
+					inputType: 'text' as const,
+				};
+			});
+
+			await handleAgentAction({ type: 'submit_text', payload: 'chateau margaux' });
+
+			// All 5 rapid updates should have been processed, final result should be set
+			expect(get(identification.hasResult)).toBe(true);
+			expect(identification.getResult()?.producer).toBe('Château Margaux');
+		});
+	});
+
 	describe('image identification streaming', () => {
 		it('should stream fields from image identification', async () => {
 			vi.mocked(api.identifyImageStream).mockResolvedValue({

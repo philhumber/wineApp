@@ -161,16 +161,17 @@ return [
     // Model Tiers (for smart escalation)
     // ===========================================
     // NOTE: Gemini 3 thinking mode consumes tokens from maxOutputTokens budget.
-    // Tier 1 uses LOW thinking for speed; Tier 1.5 uses HIGH thinking with
-    // larger token budget. If confidence < 60%, always offer premium model.
+    // Tier 1 uses pure structured output (no thinking) for fastest TTFB;
+    // Tier 1.5 uses HIGH thinking with larger token budget.
+    // If confidence < 60%, always offer premium model.
     'model_tiers' => [
         'fast' => [
             'provider' => 'gemini',
             'model' => 'gemini-3-flash-preview',
-            'thinking_level' => 'LOW', // Low thinking for quick responses
+            // No thinking_level — pure structured output for fastest TTFB
             'description' => 'Quick identification - Tier 1',
             'temperature' => 1.0,
-            'max_tokens' => 4000, // Higher to accommodate thinking tokens
+            'max_tokens' => 2000,
         ],
         'detailed' => [
             'provider' => 'gemini',

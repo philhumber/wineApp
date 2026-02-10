@@ -340,6 +340,12 @@ class GeminiAdapter implements LLMProviderInterface
             $payload['generationConfig']['responseMimeType'] = 'application/json';
         }
 
+        // Structured output schema (overrides json_response when present)
+        if (!empty($options['response_schema'])) {
+            $payload['generationConfig']['responseMimeType'] = 'application/json';
+            $payload['generationConfig']['responseSchema'] = $options['response_schema'];
+        }
+
         return $payload;
     }
 

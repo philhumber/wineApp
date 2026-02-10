@@ -747,12 +747,42 @@ export interface StreamConfirmationEvent {
 }
 
 /**
+ * Sent when backend begins background refinement after Tier 1 result.
+ */
+export interface StreamRefiningEvent {
+  type: 'refining';
+  message: string;
+  tier1Confidence: number;
+}
+
+/**
+ * Sent when background refinement completes with potentially improved result.
+ */
+export interface StreamRefinedEvent {
+  type: 'refined';
+  inputType: 'text' | 'image';
+  intent: string;
+  parsed: AgentParsedWine;
+  confidence: number;
+  action: string;
+  candidates: Array<Record<string, unknown>>;
+  usage: Record<string, unknown> | null;
+  quality?: Record<string, unknown> | null;
+  escalation: Record<string, unknown> | null;
+  inferences_applied: string[];
+  streamed: boolean;
+  escalated: boolean;
+}
+
+/**
  * Union type for all SSE stream events.
  * Discriminated union allows type-safe event handling.
  */
 export type StreamEvent =
   | { type: 'field'; data: StreamFieldEvent }
   | { type: 'result'; data: AgentIdentificationResultWithMeta }
+  | { type: 'refining'; data: StreamRefiningEvent }
+  | { type: 'refined'; data: StreamRefinedEvent }
   | { type: 'escalating'; data: { message: string } }
   | { type: 'confirmation_required'; data: StreamConfirmationEvent }
   | { type: 'error'; data: StreamErrorEvent }

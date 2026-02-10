@@ -933,6 +933,17 @@ class WineApiClient {
           finalResult = event.data as AgentIdentificationResultWithMeta;
           break;
 
+        case 'refining':
+          // Refining event — background escalation started (handler uses onEvent)
+          break;
+
+        case 'refined':
+          // Refined result replaces Tier 1 if improved
+          if (event.data.escalated && event.data.confidence > (finalResult?.confidence ?? 0)) {
+            finalResult = event.data as unknown as AgentIdentificationResultWithMeta;
+          }
+          break;
+
         case 'error':
           streamError = new AgentError({
             type: event.data.type,
@@ -1029,6 +1040,17 @@ class WineApiClient {
 
         case 'result':
           finalResult = event.data as AgentIdentificationResultWithMeta;
+          break;
+
+        case 'refining':
+          // Refining event — background escalation started (handler uses onEvent)
+          break;
+
+        case 'refined':
+          // Refined result replaces Tier 1 if improved
+          if (event.data.escalated && event.data.confidence > (finalResult?.confidence ?? 0)) {
+            finalResult = event.data as unknown as AgentIdentificationResultWithMeta;
+          }
           break;
 
         case 'error':

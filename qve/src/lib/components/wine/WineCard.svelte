@@ -268,7 +268,7 @@
       box-shadow 0.3s var(--ease-out),
       border-color 0.3s var(--ease-out),
       transform 0.3s var(--ease-out);
-    animation: fadeInUp 0.7s var(--ease-out) forwards;
+    animation: fadeInUp 0.7s var(--ease-out) both;
   }
 
   .wine-card:hover {

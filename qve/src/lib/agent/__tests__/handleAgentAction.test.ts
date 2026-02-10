@@ -131,7 +131,7 @@ describe('handleAgentAction', () => {
 				expect(api.identifyTextStream).toHaveBeenCalledWith(
 					'Test Wine Query',
 					expect.any(Function),
-					undefined,
+					expect.any(Function), // onEvent callback
 					expect.anything(), // AbortSignal (WIN-187)
 					expect.anything() // requestId (WIN-227)
 				);
@@ -637,7 +637,7 @@ describe('handleAgentAction', () => {
 				expect(mockIdentify).toHaveBeenCalledWith(
 					'rose imperial',
 					expect.any(Function),
-					undefined,
+					expect.any(Function), // onEvent callback
 					expect.anything(), // AbortSignal (WIN-187)
 					expect.anything() // requestId (WIN-227)
 				);
@@ -665,7 +665,7 @@ describe('handleAgentAction', () => {
 				expect(mockIdentify).toHaveBeenCalledWith(
 					'Rose Imperial',
 					expect.any(Function),
-					undefined,
+					expect.any(Function), // onEvent callback
 					expect.anything(), // AbortSignal (WIN-187)
 					expect.anything() // requestId (WIN-227)
 				);

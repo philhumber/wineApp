@@ -102,7 +102,8 @@ function convertParsedWineToResult(
  */
 function handleIdentificationResultFlow(
   wineResult: WineIdentificationResult,
-  confidence: number
+  confidence: number,
+  skipCard = false
 ): void {
   const wineName = [wineResult.producer, wineResult.wineName]
     .filter(Boolean)
@@ -112,7 +113,8 @@ function handleIdentificationResultFlow(
   const hasOnlyGrapes = !hasProducerOrWineName && !!(wineResult.grapes?.length);
 
   // Add wine result message (the card) - only if we have something to show
-  if (wineName || wineResult.grapes?.length) {
+  // skipCard=true when onEvent already created the card (non-blocking escalation)
+  if (!skipCard && (wineName || wineResult.grapes?.length)) {
     conversation.addMessage({
       category: 'wine_result',
       role: 'agent',
@@ -341,12 +343,54 @@ async function executeTextIdentification(
   const abortController = createAbortController();
 
   try {
+    let tier1MessageId: string | null = null;
+
     const result = await api.identifyTextStream(
       text,
       (field, value) => {
-        identification.updateStreamingField(field, String(value), true);
+        // Only update streaming fields before result is shown — after result,
+        // escalation field events should not re-create the streaming card
+        if (!tier1MessageId) {
+          identification.updateStreamingField(field, String(value), true);
+        }
       },
-      undefined, // onEvent
+      (event) => {
+        if (event.type === 'result' && !tier1MessageId) {
+          // Show Tier 1 result immediately
+          conversation.removeTypingMessage();
+          const converted = convertParsedWineToResult(event.data.parsed, event.data.confidence);
+          identification.setResult(converted, event.data.confidence);
+
+          const msg = conversation.addMessage({
+            category: 'wine_result',
+            role: 'agent',
+            data: {
+              category: 'wine_result',
+              result: converted,
+              confidence: event.data.confidence,
+            },
+          });
+          tier1MessageId = msg?.id ?? null;
+        } else if (event.type === 'refining') {
+          identification.startEscalation(2);
+        } else if (event.type === 'refined' && event.data.escalated && tier1MessageId) {
+          // Update the existing wine card in-place with improved result
+          const converted = convertParsedWineToResult(event.data.parsed, event.data.confidence);
+          identification.setResult(converted, event.data.confidence);
+          identification.completeEscalation();
+
+          conversation.updateMessage(tier1MessageId, {
+            data: {
+              category: 'wine_result',
+              result: converted,
+              confidence: event.data.confidence,
+            },
+          });
+        } else if (event.type === 'refined' && !event.data.escalated) {
+          // Escalation didn't improve — just clear the badge
+          identification.completeEscalation();
+        }
+      },
       abortController.signal,
       getRequestId()
     );
@@ -356,6 +400,18 @@ async function executeTextIdentification(
       return;
     }
 
+    // If onEvent already handled the result via streaming events, skip card but add chips
+    if (tier1MessageId) {
+      conversation.removeTypingMessage();
+      const wineResult = identification.getResult();
+      const confidence = identification.getConfidence() ?? result.confidence ?? 1;
+      if (wineResult) {
+        handleIdentificationResultFlow(wineResult, confidence, true);
+      }
+      return;
+    }
+
+    // Fallback: handle result normally (for non-streaming or missing events)
     conversation.removeTypingMessage();
     const wineResult = convertParsedWineToResult(result.parsed, result.confidence);
     identification.setResult(wineResult, result.confidence);
@@ -389,14 +445,55 @@ async function executeImageIdentification(
   const abortController = createAbortController();
 
   try {
+    let tier1MessageId: string | null = null;
+
     const result = await api.identifyImageStream(
       data,
       mimeType,
       supplementaryText,
       (field, value) => {
-        identification.updateStreamingField(field, String(value), true);
+        // Only update streaming fields before result is shown
+        if (!tier1MessageId) {
+          identification.updateStreamingField(field, String(value), true);
+        }
       },
-      undefined, // onEvent
+      (event) => {
+        if (event.type === 'result' && !tier1MessageId) {
+          // Show Tier 1 result immediately
+          conversation.removeTypingMessage();
+          const converted = convertParsedWineToResult(event.data.parsed, event.data.confidence);
+          identification.setResult(converted, event.data.confidence);
+
+          const msg = conversation.addMessage({
+            category: 'wine_result',
+            role: 'agent',
+            data: {
+              category: 'wine_result',
+              result: converted,
+              confidence: event.data.confidence,
+            },
+          });
+          tier1MessageId = msg?.id ?? null;
+        } else if (event.type === 'refining') {
+          identification.startEscalation(2);
+        } else if (event.type === 'refined' && event.data.escalated && tier1MessageId) {
+          // Update the existing wine card in-place with improved result
+          const converted = convertParsedWineToResult(event.data.parsed, event.data.confidence);
+          identification.setResult(converted, event.data.confidence);
+          identification.completeEscalation();
+
+          conversation.updateMessage(tier1MessageId, {
+            data: {
+              category: 'wine_result',
+              result: converted,
+              confidence: event.data.confidence,
+            },
+          });
+        } else if (event.type === 'refined' && !event.data.escalated) {
+          // Escalation didn't improve — just clear the badge
+          identification.completeEscalation();
+        }
+      },
       abortController.signal,
       getRequestId()
     );
@@ -406,6 +503,18 @@ async function executeImageIdentification(
       return;
     }
 
+    // If onEvent already handled the result via streaming events, skip card but add chips
+    if (tier1MessageId) {
+      conversation.removeTypingMessage();
+      const wineResult = identification.getResult();
+      const confidence = identification.getConfidence() ?? result.confidence ?? 1;
+      if (wineResult) {
+        handleIdentificationResultFlow(wineResult, confidence, true);
+      }
+      return;
+    }
+
+    // Fallback: handle result normally (for non-streaming or missing events)
     conversation.removeTypingMessage();
     const wineResult = convertParsedWineToResult(result.parsed, result.confidence);
     identification.setResult(wineResult, result.confidence);

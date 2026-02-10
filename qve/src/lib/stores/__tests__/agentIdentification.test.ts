@@ -365,4 +365,74 @@ describe('agentIdentification', () => {
 			expect(getAugmentationContext()).toEqual(context);
 		});
 	});
+
+	describe('edge cases (Phase 0 stabilization)', () => {
+		const mockResult = {
+			producer: 'Château Margaux',
+			wineName: 'Grand Vin',
+			vintage: 2018,
+			region: 'Margaux',
+			country: 'France',
+		};
+
+		it('should handle startIdentification called twice rapidly', () => {
+			startIdentification('text');
+			startIdentification('text');
+
+			expect(get(isIdentifying)).toBe(true);
+			expect(get(inputType)).toBe('text');
+			expect(get(streamingFields).size).toBe(0);
+			expect(get(identificationError)).toBeNull();
+		});
+
+		it('should handle setResult with zero confidence', () => {
+			setResult(mockResult, 0);
+
+			expect(get(identificationConfidence)).toBe(0);
+			expect(get(hasResult)).toBe(true);
+			expect(get(isLowConfidence)).toBe(true);
+		});
+
+		it('should handle setResult with confidence at 0.7 boundary', () => {
+			setResult(mockResult, 0.7);
+
+			expect(get(identificationConfidence)).toBe(0.7);
+			// Threshold is < 0.7, so exactly 0.7 is NOT low confidence
+			expect(get(isLowConfidence)).toBe(false);
+		});
+
+		it('should clear everything during active streaming', () => {
+			// Set up active streaming state
+			updateStreamingField('producer', 'Châte', true);
+			updateStreamingField('wineName', 'Grand', true);
+			startIdentification('text');
+
+			// Verify streaming fields are cleared by startIdentification
+			expect(get(streamingFields).size).toBe(0);
+
+			// Set up streaming again, then clear
+			updateStreamingField('producer', 'Testing', true);
+			updateStreamingField('wineName', 'Wine', true);
+			expect(get(isStreaming)).toBe(true);
+
+			clearIdentification(false);
+
+			expect(get(streamingFields).size).toBe(0);
+			expect(get(isStreaming)).toBe(false);
+			expect(get(isIdentifying)).toBe(false);
+			expect(get(hasResult)).toBe(false);
+			expect(get(identificationError)).toBeNull();
+		});
+
+		it('should clear isEscalating when setResult is called (safety net)', () => {
+			startEscalation(2);
+			expect(get(isEscalating)).toBe(true);
+
+			// setResult clears isEscalating as safety net (Phase 4 change)
+			setResult(mockResult, 50);
+
+			expect(get(isEscalating)).toBe(false);
+			expect(get(hasResult)).toBe(true);
+		});
+	});
 });
