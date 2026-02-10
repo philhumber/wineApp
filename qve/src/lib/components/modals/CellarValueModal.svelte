@@ -104,11 +104,11 @@
 
     const values = pts.map(p => p.displayValue);
     const high = Math.max(...values);
-    const low = Math.min(...values);
+    const low = Math.min(...values) < 0 ? 0: Math.min(...values);
     const first = values[0];
     const last = values[values.length - 1];
     const change = last - first;
-    const changePercent = first !== 0 ? (change / first) * 100 : 0;
+    const changePercent = first !== 0 ? Math.round((change / Math.abs(first)) * 100) : 0;
 
     return { high, low, change, changePercent };
   }
@@ -206,7 +206,7 @@
             </div>
             <div class="stat-row">
               <span>Change: <strong class:positive={summary.change >= 0} class:negative={summary.change < 0}>
-                {summary.change >= 0 ? '+' : ''}{formatDisplayValue(summary.change)} ({summary.change >= 0 ? '+' : ''}{summary.changePercent.toFixed(1)}%)
+                {summary.change >= 0 ? '' : ''}{formatDisplayValue(summary.change)} ({summary.change >= 0 ? '' : ''}{summary.changePercent.toLocaleString('en-GB', { maximumFractionDigits: 0 })}%)
               </strong></span>
             </div>
           </div>

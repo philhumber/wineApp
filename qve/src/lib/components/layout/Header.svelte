@@ -169,7 +169,6 @@
     transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out);
     border-bottom: 1px solid transparent;
     overflow-x: hidden;
-    max-width: 100vw;
   }
 
   .header.scrolled {

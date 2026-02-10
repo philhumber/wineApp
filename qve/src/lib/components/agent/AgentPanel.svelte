@@ -343,7 +343,7 @@
 		right: 16px;
 		bottom: 16px;
 		width: 400px;
-		max-width: calc(100vw - 32px);
+		max-width: calc(100% - 32px);
 		background: var(--surface);
 		border: 1px solid var(--divider-subtle);
 		box-shadow: var(--shadow-xl);
