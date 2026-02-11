@@ -15,7 +15,7 @@
 | 3 | Add responseSchema | Done |
 | 4 | Non-blocking escalation | Done |
 | 5 | Manual testing & performance | Pending |
-| — | Enrichment card (same pattern) | Deferred |
+| 6 | Enrichment streaming optimization | Done |
 
 ---
 
@@ -608,3 +608,46 @@ Phase 6 comes after Phase 4 because:
 - The `buildStreamingPayload()` changes from Phase 3 benefit enrichment
 - It can reuse test patterns established in Phase 0
 - Phase 5 (verification) runs last to validate everything together
+
+---
+
+## Phase 6 Implementation Summary
+
+**Status**: Complete
+
+### What Was Done
+
+Converted enrichment from fake-streaming (blocking LLM call, then emitting fields with delays) to true LLM streaming with in-place card updates and token-level text streaming.
+
+### Backend Changes
+
+| File | Change |
+|------|--------|
+| `WebSearchEnricher.php` | Added `enrichStreaming()` with `response_schema` + `googleSearch` grounding on `gemini-3-flash-preview` + `thinkingLevel: MEDIUM`. Added `getEnrichmentSchema()` (lowercase types, `propertyOrdering`, `nullable: true`), `buildStreamingPrompt()`, `parseStreamingResponse()`. Citation marker cleanup in `cleanAndParseJSON()`. |
+| `EnrichmentService.php` | Added `getEnricher()`, `checkCache()` (extracted cache-only lookup), `processEnrichmentResult()` (extracted post-LLM processing: sanitize, validate, cache, merge). |
+| `agentEnrichStream.php` | Rewritten: Step 1 cache fast path → Step 2 `enricher->enrichStreaming()` with real-time `onField` callback → Step 3 `processEnrichmentResult()`. WIN-227 cancellation preserved. |
+| `GeminiAdapter.php` | `buildStreamingPayload()` now supports `web_search` (→ `googleSearch` camelCase), `response_schema`, `target_fields`, `thinking_level`. All `google_search` references changed to `googleSearch` across complete/streaming/formatTools. |
+| `IdentificationService.php` | `getIdentificationSchema()` updated: lowercase types + `propertyOrdering` for consistent REST API format. |
+| `geminiAPI.php` | `google_search` → `googleSearch` for legacy endpoint. |
+
+### Frontend Changes
+
+| File | Change |
+|------|--------|
+| `enrichment.ts` | Single message card updated in-place via `conversation.updateMessage()`. 7-second delay before card appears (LLM only). `text_delta` events update narrative fields with typewriter effect. Complex field values serialized with `JSON.stringify` (not `String()`). |
+| `EnrichmentCard.svelte` | Unified card supporting skeleton and static states, updated reactively during streaming. |
+| `DataCard.svelte` | Slot props use `$: getFieldValue = (field) => { ... }` reactive assignment (not `export function`) for in-place update reactivity. |
+
+### Key Gemini REST API Learnings
+
+- `googleSearch` (camelCase) — snake case `google_search` silently fails
+- Schema types must be lowercase (`object`, `string`, not `OBJECT`, `STRING`) — uppercase causes looping output
+- `nullable: true` (not `["type", "null"]`) — REST protobuf rejects type arrays
+- `propertyOrdering` — controls field output order, critical for streaming field detection
+- `response_schema` + `googleSearch` + streaming works on `gemini-3-flash-preview` with `thinkingLevel: MEDIUM` (not reliable on pro-preview)
+- Grounding metadata is empty with `responseSchema` — use fixed confidence (0.7)
+- Citation markers `[[1](url)]` injected by Google Search grounding — strip with regex before JSON parsing
+
+### Tests Added
+
+- `resources/php/tests/EnrichmentStreamingTest.php` — 64 assertions covering StreamingFieldDetector with enrichment fields, schema structure (lowercase types, propertyOrdering, nullable), prompt generation

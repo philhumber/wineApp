@@ -634,7 +634,15 @@ const result = await api.enrichWineStream(
 
 **Returns**: `AgentEnrichmentResult` (after stream completes)
 **PHP**: `agent/agentEnrichStream.php`
-**SSE Events**: `field`, `result`, `confirmation_required`, `error`, `done`
+**SSE Events**:
+- `field` — Structured field complete: `{ field: "grapeVarieties", value: [...] }`. Emitted for style fields (body, tannin, etc.), structured data (grapeVarieties, criticScores, drinkWindow), and narrative fields.
+- `text_delta` — Token-level text streaming: `{ field: "overview", delta: "Château " }`. Emitted for narrative fields (overview, tastingNotes, pairingNotes) as the LLM generates them, enabling typewriter-style display.
+- `result` — Complete enrichment result after all fields emitted.
+- `confirmation_required` — Non-exact cache match needs user confirmation (includes `matchType`, `searchedFor`, `matchedTo`, `confidence`).
+- `error` — Enrichment failed (includes `type`, `message`, `retryable`).
+- `done` — Stream complete.
+
+**Streaming behavior**: Cache hits emit `field` events with 50ms delays (no LLM call). Cache misses stream from Gemini using `response_schema` + `googleSearch` grounding. Text fields arrive token-by-token via `text_delta`; structured fields arrive complete via `field`.
 
 ---
 
