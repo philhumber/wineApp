@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qve - Memory Detail View Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #FAF9F7; --bg-subtle: #F5F3F0; --surface: #FFFFFF; --surface-raised: #FFFFFF;
+  --text-primary: #2D2926; --text-secondary: #5C5652; --text-tertiary: #8A847D;
+  --accent: #A69B8A; --accent-subtle: #C4BAA9; --accent-muted: #D9D2C6;
+  --divider: #E8E4DE; --divider-subtle: #F0EDE8; --bg-elevated: #FFFFFF;
+  --success: #6B8E6B; --error: #B87A7A; --warning: #C4A35A; --info: #7A8B9B;
+  --rating-wine: #8B4A5C;
+  --shadow-sm: 0 1px 2px rgba(45,41,38,0.03);
+  --shadow-md: 0 2px 8px rgba(45,41,38,0.04), 0 1px 2px rgba(45,41,38,0.03);
+  --shadow-lg: 0 8px 24px rgba(45,41,38,0.06), 0 2px 4px rgba(45,41,38,0.03);
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Outfit', system-ui, sans-serif;
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
+  --space-5: 1.5rem; --space-6: 2rem; --space-8: 3rem;
+  --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px; --radius-pill: 100px;
+  --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+}
+[data-theme="dark"] {
+  --bg: #0C0B0A; --bg-subtle: #141312; --surface: #1A1918; --surface-raised: #222120;
+  --text-primary: #F0EDE6; --text-secondary: #A8A29A; --text-tertiary: #6B665F;
+  --accent: #B8AFA0; --accent-subtle: #7A756C; --accent-muted: #4A4640;
+  --divider: #2A2826; --divider-subtle: #1F1E1C; --bg-elevated: #2A2826;
+  --success: #8BA88B; --error: #C99999; --warning: #D4B86A; --info: #9AABB8;
+  --rating-wine: #C98A9C;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.3), 0 0 1px rgba(255,255,255,0.03);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.05);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:16px;-webkit-font-smoothing:antialiased;}
+body{font-family:var(--font-sans);color:var(--text-primary);background:var(--bg);line-height:1.5;min-height:100vh;transition:background 0.5s,color 0.3s;}
+img{max-width:100%;height:auto;display:block;}
+button{font-family:inherit;font-size:inherit;background:none;border:none;cursor:pointer;color:inherit;}
+
+/* Theme toggle */
+.theme-bar{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:var(--surface);border-bottom:1px solid var(--divider);
+  display:flex;align-items:center;justify-content:flex-end;
+  padding:var(--space-2) var(--space-4);
+}
+.theme-toggle{
+  width:36px;height:36px;border-radius:50%;border:1px solid var(--divider);
+  display:flex;align-items:center;justify-content:center;font-size:1rem;
+}
+body{padding-top:44px;}
+
+/* Container */
+.detail-page{max-width:600px;margin:0 auto;}
+
+/* ═══════════════════════════════════════════════════════
+   HERO IMAGE
+   ═══════════════════════════════════════════════════════ */
+.hero-image{
+  width:100%;aspect-ratio:4/3;
+  background:linear-gradient(135deg, var(--accent-muted) 0%, var(--divider) 30%, var(--accent-muted) 60%, var(--divider) 100%);
+  position:relative;display:flex;align-items:center;justify-content:center;
+  font-size:4rem;color:var(--text-tertiary);
+}
+
+.hero-overlay{
+  position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(transparent 0%, rgba(12,11,10,0.7) 100%);
+  padding:var(--space-8) var(--space-5) var(--space-5);
+}
+
+[data-theme="light"] .hero-overlay {
+  background:linear-gradient(transparent 0%, rgba(250,249,247,0.85) 100%);
+}
+
+.hero-nav{
+  position:absolute;top:var(--space-4);left:var(--space-4);right:var(--space-4);
+  display:flex;justify-content:space-between;
+}
+
+.hero-btn{
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(0,0,0,0.3);backdrop-filter:blur(10px);
+  color:white;display:flex;align-items:center;justify-content:center;
+  font-size:1rem;border:1px solid rgba(255,255,255,0.1);
+}
+
+.hero-actions{display:flex;gap:var(--space-2);}
+
+/* Photo gallery dots */
+.gallery-dots{
+  position:absolute;bottom:var(--space-3);left:50%;transform:translateX(-50%);
+  display:flex;gap:6px;z-index:10;
+}
+.gallery-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:rgba(255,255,255,0.4);
+}
+.gallery-dot.active{background:white;}
+
+/* ═══════════════════════════════════════════════════════
+   CONTENT SECTIONS
+   ═══════════════════════════════════════════════════════ */
+.detail-content{padding:var(--space-5);}
+
+/* Wine name & meta */
+.detail-type-badge{
+  display:inline-block;padding:2px 10px;border-radius:var(--radius-pill);
+  font-size:0.625rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:0.06em;margin-bottom:var(--space-3);
+}
+.badge-tasted{background:rgba(139,74,92,0.12);color:var(--rating-wine);}
+
+.detail-wine-name{
+  font-family:var(--font-serif);font-size:1.75rem;font-weight:500;
+  color:var(--text-primary);line-height:1.2;margin-bottom:var(--space-1);
+}
+
+.detail-wine-year{
+  font-family:var(--font-sans);font-size:0.875rem;color:var(--text-secondary);
+  margin-bottom:var(--space-2);
+}
+
+.detail-wine-meta{
+  font-family:var(--font-sans);font-size:0.8125rem;color:var(--text-tertiary);
+  margin-bottom:var(--space-4);
+  display:flex;align-items:center;gap:var(--space-2);
+}
+
+.detail-divider{width:48px;height:1px;background:var(--accent);margin:var(--space-4) 0;}
+
+/* Rating */
+.detail-rating{
+  display:flex;align-items:center;gap:var(--space-3);
+  margin-bottom:var(--space-5);
+}
+.detail-rating-value{
+  font-family:var(--font-serif);font-size:2.5rem;font-weight:600;
+  color:var(--rating-wine);line-height:1;
+}
+.detail-rating-max{font-size:1rem;color:var(--text-tertiary);}
+.detail-rating-dots{display:flex;gap:4px;margin-left:var(--space-2);}
+.rating-dot{
+  width:10px;height:10px;border-radius:50%;background:var(--divider);
+}
+.rating-dot.filled{background:var(--rating-wine);}
+
+/* Notes section */
+.detail-section{margin-bottom:var(--space-5);}
+.detail-section-label{
+  font-size:0.625rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:0.12em;color:var(--text-tertiary);
+  margin-bottom:var(--space-2);
+}
+.detail-notes{
+  font-family:var(--font-serif);font-size:1.0625rem;font-style:italic;
+  color:var(--text-secondary);line-height:1.7;
+  border-left:2px solid var(--accent-muted);padding-left:var(--space-4);
+}
+
+/* Tags */
+.detail-tags{display:flex;flex-wrap:wrap;gap:var(--space-2);}
+.detail-tag{
+  padding:var(--space-1) var(--space-3);border-radius:var(--radius-pill);
+  font-size:0.75rem;color:var(--accent);border:1px solid var(--accent-muted);
+}
+
+/* Context card */
+.context-card{
+  background:var(--surface);border:1px solid var(--divider-subtle);
+  border-radius:var(--radius-lg);overflow:hidden;
+  margin-bottom:var(--space-5);
+}
+.context-card-header{
+  padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--divider-subtle);
+  font-size:0.625rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:0.1em;color:var(--text-tertiary);
+}
+.context-item{
+  display:flex;align-items:center;gap:var(--space-3);
+  padding:var(--space-3) var(--space-4);
+  border-bottom:1px solid var(--divider-subtle);
+}
+.context-item:last-child{border-bottom:none;}
+.context-icon{font-size:1rem;flex-shrink:0;width:24px;text-align:center;}
+.context-label{font-size:0.6875rem;color:var(--text-tertiary);min-width:60px;}
+.context-value{font-size:0.8125rem;color:var(--text-primary);flex:1;}
+
+/* Linked wine card */
+.linked-wine{
+  display:flex;gap:var(--space-4);align-items:center;
+  padding:var(--space-4);background:var(--surface);
+  border:1px solid var(--divider-subtle);border-radius:var(--radius-lg);
+  margin-bottom:var(--space-5);cursor:pointer;transition:all 0.2s;
+}
+.linked-wine:hover{border-color:var(--accent);box-shadow:var(--shadow-md);}
+.linked-wine-image{
+  width:48px;height:64px;border-radius:var(--radius-md);
+  background:var(--bg-subtle);display:flex;align-items:center;
+  justify-content:center;font-size:1.25rem;flex-shrink:0;
+}
+.linked-wine-info{flex:1;min-width:0;}
+.linked-wine-name{
+  font-family:var(--font-serif);font-size:0.9375rem;font-weight:500;
+  color:var(--text-primary);
+}
+.linked-wine-detail{font-size:0.6875rem;color:var(--text-tertiary);}
+.linked-wine-badge{
+  padding:2px 8px;border-radius:var(--radius-pill);font-size:0.5625rem;
+  font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+  background:rgba(107,142,107,0.12);color:var(--success);
+}
+.linked-wine-arrow{color:var(--text-tertiary);font-size:1rem;}
+
+/* AI Enrichment suggestions */
+.enrichment-suggestion{
+  padding:var(--space-4);background:var(--surface-raised);
+  border:1px solid var(--accent);border-radius:var(--radius-lg);
+  margin-bottom:var(--space-5);
+}
+.enrichment-header{
+  display:flex;align-items:center;gap:var(--space-2);
+  margin-bottom:var(--space-3);
+}
+.enrichment-badge{
+  padding:2px 10px;border-radius:var(--radius-pill);font-size:0.625rem;
+  font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+  background:rgba(184,175,160,0.15);color:var(--accent);
+}
+.enrichment-title{
+  font-size:0.75rem;font-weight:600;color:var(--text-primary);
+}
+.enrichment-items{display:flex;flex-direction:column;gap:var(--space-2);}
+.enrichment-item{
+  display:flex;align-items:center;gap:var(--space-3);
+  padding:var(--space-2) var(--space-3);background:var(--bg-subtle);
+  border-radius:var(--radius-md);font-size:0.8125rem;color:var(--text-secondary);
+  cursor:pointer;transition:all 0.2s;
+}
+.enrichment-item:hover{background:var(--divider-subtle);}
+.enrichment-item-icon{font-size:0.875rem;}
+.enrichment-item-action{
+  margin-left:auto;font-size:0.6875rem;color:var(--accent);font-weight:500;
+}
+
+/* Related memories */
+.related-section{margin-bottom:var(--space-5);}
+.related-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3);
+}
+.related-card{
+  border-radius:var(--radius-md);overflow:hidden;
+  background:var(--surface);border:1px solid var(--divider-subtle);
+  cursor:pointer;transition:all 0.2s;
+}
+.related-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);}
+.related-card-image{
+  width:100%;aspect-ratio:1;background:var(--bg-subtle);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.25rem;color:var(--text-tertiary);
+}
+.related-card-body{padding:var(--space-2);}
+.related-card-name{
+  font-family:var(--font-serif);font-size:0.6875rem;font-weight:500;
+  color:var(--text-primary);line-height:1.3;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.related-card-date{font-size:0.5625rem;color:var(--text-tertiary);margin-top:2px;}
+
+/* Action bar */
+.action-bar{
+  display:flex;gap:var(--space-2);padding:var(--space-4) 0;
+  border-top:1px solid var(--divider-subtle);margin-top:var(--space-4);
+}
+.action-btn{
+  flex:1;padding:var(--space-3);border-radius:var(--radius-md);
+  font-size:0.8125rem;font-weight:500;text-align:center;
+  border:1px solid var(--divider);color:var(--text-secondary);
+  transition:all 0.2s;display:flex;align-items:center;
+  justify-content:center;gap:var(--space-2);
+}
+.action-btn:hover{border-color:var(--accent);color:var(--text-primary);}
+.action-btn.danger:hover{border-color:var(--error);color:var(--error);}
+</style>
+</head>
+<body>
+
+<div class="theme-bar">
+  <button class="theme-toggle" onclick="toggleTheme()"><span id="theme-icon">&#9789;</span></button>
+</div>
+
+<div class="detail-page">
+
+  <!-- Hero Image -->
+  <div class="hero-image">
+    &#127863;
+    <div class="hero-nav">
+      <button class="hero-btn">&#8592;</button>
+      <div class="hero-actions">
+        <button class="hero-btn">&#9998;</button>
+        <button class="hero-btn">&#8943;</button>
+      </div>
+    </div>
+    <div class="gallery-dots">
+      <span class="gallery-dot active"></span>
+      <span class="gallery-dot"></span>
+      <span class="gallery-dot"></span>
+    </div>
+    <div class="hero-overlay"></div>
+  </div>
+
+  <div class="detail-content">
+
+    <!-- Type badge & wine info -->
+    <span class="detail-type-badge badge-tasted">&#127863; Tasted</span>
+    <h1 class="detail-wine-name">Chateau Margaux</h1>
+    <div class="detail-wine-year">2015</div>
+    <div class="detail-wine-meta">
+      <span>Margaux, Bordeaux</span>
+      <span>&middot;</span>
+      <span>France &#127467;&#127479;</span>
+      <span>&middot;</span>
+      <span>Red</span>
+    </div>
+
+    <div class="detail-divider"></div>
+
+    <!-- Rating -->
+    <div class="detail-rating">
+      <span class="detail-rating-value">9</span>
+      <span class="detail-rating-max">/10</span>
+      <div class="detail-rating-dots">
+        <span class="rating-dot filled"></span>
+        <span class="rating-dot filled"></span>
+        <span class="rating-dot filled"></span>
+        <span class="rating-dot filled"></span>
+        <span class="rating-dot filled"></span>
+        <span class="rating-dot filled"></span>
+        <span class="rating-dot filled"></span>
+        <span class="rating-dot filled"></span>
+        <span class="rating-dot filled"></span>
+        <span class="rating-dot"></span>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="detail-section">
+      <div class="detail-section-label">Notes</div>
+      <div class="detail-notes">
+        Incredible depth. Dark cassis and violet on the nose, with this silky tannin structure that just kept unfolding. The kind of wine that makes you sit in silence for a moment. Shared with Sarah at our anniversary dinner. The sommelier suggested decanting for two hours and he was absolutely right - it opened up beautifully over the course of the evening.
+      </div>
+    </div>
+
+    <!-- Tags -->
+    <div class="detail-section">
+      <div class="detail-section-label">Tags</div>
+      <div class="detail-tags">
+        <span class="detail-tag">#anniversary</span>
+        <span class="detail-tag">#bordeaux</span>
+        <span class="detail-tag">#special-occasion</span>
+        <span class="detail-tag">#first-growth</span>
+      </div>
+    </div>
+
+    <!-- Context -->
+    <div class="context-card">
+      <div class="context-card-header">Context</div>
+      <div class="context-item">
+        <span class="context-icon">&#128205;</span>
+        <span class="context-label">Location</span>
+        <span class="context-value">Le Cinq, Paris</span>
+      </div>
+      <div class="context-item">
+        <span class="context-icon">&#127878;</span>
+        <span class="context-label">Occasion</span>
+        <span class="context-value">Anniversary Dinner</span>
+      </div>
+      <div class="context-item">
+        <span class="context-icon">&#128100;</span>
+        <span class="context-label">With</span>
+        <span class="context-value">Sarah</span>
+      </div>
+      <div class="context-item">
+        <span class="context-icon">&#127860;</span>
+        <span class="context-label">Paired</span>
+        <span class="context-value">Wagyu Beef Tenderloin</span>
+      </div>
+      <div class="context-item">
+        <span class="context-icon">&#127864;</span>
+        <span class="context-label">Decanted</span>
+        <span class="context-value">2 hours</span>
+      </div>
+      <div class="context-item">
+        <span class="context-icon">&#128176;</span>
+        <span class="context-label">Price</span>
+        <span class="context-value">EUR 650 (restaurant)</span>
+      </div>
+      <div class="context-item">
+        <span class="context-icon">&#128197;</span>
+        <span class="context-label">Date</span>
+        <span class="context-value">12 February 2026, 7:42 PM</span>
+      </div>
+    </div>
+
+    <!-- Linked Wine -->
+    <div class="detail-section">
+      <div class="detail-section-label">Linked Wine</div>
+      <div class="linked-wine">
+        <div class="linked-wine-image">&#127863;</div>
+        <div class="linked-wine-info">
+          <div class="linked-wine-name">Chateau Margaux 2015</div>
+          <div class="linked-wine-detail">2 bottles in cellar &middot; Avg 9.0 rating</div>
+        </div>
+        <span class="linked-wine-badge">In Cellar</span>
+        <span class="linked-wine-arrow">&#8250;</span>
+      </div>
+    </div>
+
+    <!-- AI Enrichment Suggestions -->
+    <div class="enrichment-suggestion">
+      <div class="enrichment-header">
+        <span class="enrichment-badge">&#10024; Agent</span>
+        <span class="enrichment-title">Enrich this memory</span>
+      </div>
+      <div class="enrichment-items">
+        <div class="enrichment-item">
+          <span class="enrichment-item-icon">&#127815;</span>
+          <span>Add grape composition data</span>
+          <span class="enrichment-item-action">Add &#8594;</span>
+        </div>
+        <div class="enrichment-item">
+          <span class="enrichment-item-icon">&#128214;</span>
+          <span>Get critic scores for 2015 vintage</span>
+          <span class="enrichment-item-action">Add &#8594;</span>
+        </div>
+        <div class="enrichment-item">
+          <span class="enrichment-item-icon">&#128336;</span>
+          <span>Optimal drink window suggestion</span>
+          <span class="enrichment-item-action">Add &#8594;</span>
+        </div>
+        <div class="enrichment-item">
+          <span class="enrichment-item-icon">&#127860;</span>
+          <span>Similar food pairings to try</span>
+          <span class="enrichment-item-action">Add &#8594;</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Related Memories -->
+    <div class="related-section">
+      <div class="detail-section-label">Related Memories</div>
+      <div class="related-grid">
+        <div class="related-card">
+          <div class="related-card-image">&#127863;</div>
+          <div class="related-card-body">
+            <div class="related-card-name">Chateau Lafite Rothschild 2016</div>
+            <div class="related-card-date">Jan 2026 &middot; Paris</div>
+          </div>
+        </div>
+        <div class="related-card">
+          <div class="related-card-image">&#127863;</div>
+          <div class="related-card-body">
+            <div class="related-card-name">Chateau Mouton Rothschild 2015</div>
+            <div class="related-card-date">Dec 2025 &middot; London</div>
+          </div>
+        </div>
+        <div class="related-card">
+          <div class="related-card-image">&#127863;</div>
+          <div class="related-card-body">
+            <div class="related-card-name">Chateau Margaux 2010</div>
+            <div class="related-card-date">Oct 2025 &middot; Home</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action bar -->
+    <div class="action-bar">
+      <button class="action-btn">&#9998; Edit</button>
+      <button class="action-btn">&#128203; Add to Cellar</button>
+      <button class="action-btn danger">&#128465; Delete</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('theme-icon').innerHTML = isDark ? '&#9789;' : '&#9788;';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qve - Agent Integration Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #FAF9F7; --bg-subtle: #F5F3F0; --surface: #FFFFFF; --surface-raised: #FFFFFF;
+  --text-primary: #2D2926; --text-secondary: #5C5652; --text-tertiary: #8A847D;
+  --accent: #A69B8A; --accent-subtle: #C4BAA9; --accent-muted: #D9D2C6;
+  --divider: #E8E4DE; --divider-subtle: #F0EDE8; --bg-elevated: #FFFFFF;
+  --success: #6B8E6B; --error: #B87A7A; --warning: #C4A35A; --info: #7A8B9B;
+  --rating-wine: #8B4A5C;
+  --shadow-sm: 0 1px 2px rgba(45,41,38,0.03);
+  --shadow-md: 0 2px 8px rgba(45,41,38,0.04), 0 1px 2px rgba(45,41,38,0.03);
+  --shadow-lg: 0 8px 24px rgba(45,41,38,0.06), 0 2px 4px rgba(45,41,38,0.03);
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Outfit', system-ui, sans-serif;
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
+  --space-5: 1.5rem; --space-6: 2rem; --space-8: 3rem;
+  --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px; --radius-pill: 100px;
+  --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+}
+[data-theme="dark"] {
+  --bg: #0C0B0A; --bg-subtle: #141312; --surface: #1A1918; --surface-raised: #222120;
+  --text-primary: #F0EDE6; --text-secondary: #A8A29A; --text-tertiary: #6B665F;
+  --accent: #B8AFA0; --accent-subtle: #7A756C; --accent-muted: #4A4640;
+  --divider: #2A2826; --divider-subtle: #1F1E1C; --bg-elevated: #2A2826;
+  --success: #8BA88B; --error: #C99999; --warning: #D4B86A; --info: #9AABB8;
+  --rating-wine: #C98A9C;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.3), 0 0 1px rgba(255,255,255,0.03);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.05);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:16px;-webkit-font-smoothing:antialiased;}
+body{font-family:var(--font-sans);color:var(--text-primary);background:var(--bg);line-height:1.5;min-height:100vh;transition:background 0.5s,color 0.3s;}
+button{font-family:inherit;font-size:inherit;background:none;border:none;cursor:pointer;color:inherit;}
+
+/* Switcher */
+.switcher{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--divider);display:flex;align-items:center;justify-content:center;gap:var(--space-2);padding:var(--space-3) var(--space-4);}
+.switcher-label{font-size:0.6875rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-tertiary);margin-right:var(--space-2);}
+.switcher button{padding:var(--space-2) var(--space-4);border-radius:var(--radius-pill);font-size:0.75rem;font-weight:500;color:var(--text-secondary);border:1px solid var(--divider);transition:all 0.2s;}
+.switcher button.active{background:var(--accent);color:var(--bg);border-color:var(--accent);}
+.switcher button:hover:not(.active){border-color:var(--accent-subtle);}
+.theme-toggle{margin-left:auto;width:36px;height:36px;border-radius:50%;border:1px solid var(--divider);display:flex;align-items:center;justify-content:center;font-size:1rem;}
+body{padding-top:52px;}
+
+.variation{display:none;max-width:420px;margin:0 auto;padding:var(--space-4);}
+.variation.active{display:block;}
+
+/* ═══════════════════════════════════════════════════════
+   AGENT CHAT PANEL (simplified)
+   ═══════════════════════════════════════════════════════ */
+.chat-panel{
+  background:var(--bg);
+  border-radius:var(--radius-xl) var(--radius-xl) 0 0;
+  overflow:hidden;
+}
+
+.chat-header{
+  display:flex;align-items:center;gap:var(--space-3);
+  padding:var(--space-4) var(--space-5);
+  border-bottom:1px solid var(--divider);
+}
+.chat-avatar{
+  width:32px;height:32px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent-muted),var(--accent));
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.875rem;color:var(--bg);
+}
+.chat-title{
+  font-family:var(--font-serif);font-size:1rem;font-weight:500;
+  color:var(--text-primary);
+}
+.chat-subtitle{font-size:0.6875rem;color:var(--text-tertiary);}
+
+/* Messages */
+.chat-messages{
+  padding:var(--space-4) var(--space-5);
+  display:flex;flex-direction:column;gap:var(--space-4);
+}
+
+.msg{max-width:88%;}
+.msg-agent{align-self:flex-start;}
+.msg-user{align-self:flex-end;}
+
+.msg-bubble{
+  padding:var(--space-3) var(--space-4);
+  border-radius:var(--radius-lg);
+  font-size:0.875rem;line-height:1.5;
+}
+
+.msg-agent .msg-bubble{
+  background:var(--surface);
+  border:1px solid var(--divider-subtle);
+  color:var(--text-secondary);
+}
+
+.msg-user .msg-bubble{
+  background:var(--accent);
+  color:var(--bg);
+  border-radius:var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg);
+}
+
+.msg-time{
+  font-size:0.5625rem;color:var(--text-tertiary);
+  margin-top:var(--space-1);
+}
+.msg-agent .msg-time{text-align:left;}
+.msg-user .msg-time{text-align:right;}
+
+/* Chips */
+.chip-row{
+  display:flex;flex-wrap:wrap;gap:var(--space-2);
+  margin-top:var(--space-3);
+}
+.chip{
+  padding:var(--space-2) var(--space-3);border-radius:var(--radius-pill);
+  font-size:0.75rem;font-weight:500;color:var(--text-secondary);
+  border:1px solid var(--divider);cursor:pointer;transition:all 0.2s;
+}
+.chip:hover{border-color:var(--accent);color:var(--text-primary);}
+.chip.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);}
+
+/* Memory card in chat */
+.chat-memory-card{
+  background:var(--surface);border:1px solid var(--divider-subtle);
+  border-radius:var(--radius-lg);overflow:hidden;
+  margin-top:var(--space-2);max-width:100%;
+}
+.chat-memory-image{
+  width:100%;aspect-ratio:16/9;
+  background:linear-gradient(135deg,var(--accent-muted),var(--divider),var(--accent-muted));
+  display:flex;align-items:center;justify-content:center;
+  font-size:2rem;color:var(--text-tertiary);
+  position:relative;
+}
+.chat-memory-type{
+  position:absolute;top:var(--space-2);left:var(--space-2);
+  padding:2px 8px;border-radius:var(--radius-pill);
+  font-size:0.5625rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:0.06em;
+  background:rgba(0,0,0,0.4);color:white;backdrop-filter:blur(4px);
+}
+.chat-memory-body{padding:var(--space-3);}
+.chat-memory-name{
+  font-family:var(--font-serif);font-size:0.9375rem;font-weight:500;
+  color:var(--text-primary);margin-bottom:2px;
+}
+.chat-memory-detail{font-size:0.6875rem;color:var(--text-tertiary);margin-bottom:var(--space-2);}
+.chat-memory-note{
+  font-family:var(--font-serif);font-size:0.8125rem;font-style:italic;
+  color:var(--text-secondary);line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.chat-memory-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:var(--space-2) var(--space-3);
+  border-top:1px solid var(--divider-subtle);
+  font-size:0.625rem;color:var(--text-tertiary);
+}
+.chat-memory-rating{display:flex;gap:2px;align-items:center;}
+.chat-memory-dot{width:6px;height:6px;border-radius:50%;background:var(--divider);}
+.chat-memory-dot.filled{background:var(--rating-wine);}
+
+/* Memory search results */
+.memory-results{
+  display:flex;flex-direction:column;gap:var(--space-2);
+  margin-top:var(--space-2);
+}
+.memory-result-item{
+  display:flex;gap:var(--space-3);align-items:center;
+  padding:var(--space-3);background:var(--surface);
+  border:1px solid var(--divider-subtle);border-radius:var(--radius-md);
+  cursor:pointer;transition:all 0.2s;
+}
+.memory-result-item:hover{border-color:var(--accent);box-shadow:var(--shadow-sm);}
+.memory-result-thumb{
+  width:40px;height:40px;border-radius:var(--radius-sm);
+  background:var(--bg-subtle);display:flex;align-items:center;
+  justify-content:center;font-size:1rem;flex-shrink:0;
+}
+.memory-result-info{flex:1;min-width:0;}
+.memory-result-name{
+  font-family:var(--font-serif);font-size:0.8125rem;font-weight:500;
+  color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.memory-result-meta{font-size:0.625rem;color:var(--text-tertiary);}
+.memory-result-badge{
+  font-size:0.5625rem;padding:2px 6px;border-radius:var(--radius-pill);
+  white-space:nowrap;
+}
+
+/* Input area */
+.chat-input{
+  display:flex;align-items:center;gap:var(--space-2);
+  padding:var(--space-3) var(--space-4);
+  border-top:1px solid var(--divider);
+  background:var(--surface);
+}
+.chat-input input{
+  flex:1;padding:var(--space-2) var(--space-3);
+  border:1px solid var(--divider);border-radius:var(--radius-pill);
+  background:var(--bg);color:var(--text-primary);font-size:0.8125rem;
+}
+.chat-input input::placeholder{color:var(--text-tertiary);}
+.chat-input input:focus{outline:none;border-color:var(--accent);}
+.chat-send{
+  width:32px;height:32px;border-radius:50%;
+  background:var(--accent);color:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.875rem;
+}
+
+/* Save-to-memory prompt */
+.save-memory-prompt{
+  padding:var(--space-4);background:var(--surface-raised);
+  border:1px solid var(--accent);border-radius:var(--radius-lg);
+  margin-top:var(--space-2);
+}
+.save-memory-header{
+  display:flex;align-items:center;gap:var(--space-2);
+  margin-bottom:var(--space-3);
+}
+.save-memory-icon{
+  font-size:1.25rem;
+}
+.save-memory-title{
+  font-size:0.8125rem;font-weight:600;color:var(--text-primary);
+}
+.save-memory-desc{
+  font-size:0.75rem;color:var(--text-secondary);margin-bottom:var(--space-3);line-height:1.5;
+}
+.save-memory-preview{
+  display:flex;gap:var(--space-3);align-items:center;
+  padding:var(--space-3);background:var(--bg-subtle);border-radius:var(--radius-md);
+  margin-bottom:var(--space-3);
+}
+.save-preview-icon{
+  width:40px;height:40px;border-radius:var(--radius-md);
+  background:var(--surface);display:flex;align-items:center;
+  justify-content:center;font-size:1.25rem;flex-shrink:0;
+}
+.save-preview-info{flex:1;}
+.save-preview-name{
+  font-family:var(--font-serif);font-size:0.875rem;font-weight:500;color:var(--text-primary);
+}
+.save-preview-detail{font-size:0.625rem;color:var(--text-tertiary);}
+
+/* Section label for scenarios */
+.scenario-label{
+  text-align:center;padding:var(--space-5) 0 var(--space-3);
+  font-size:0.625rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:0.12em;color:var(--text-tertiary);
+}
+.scenario-divider{
+  width:40px;height:1px;background:var(--accent);
+  margin:0 auto var(--space-5);
+}
+</style>
+</head>
+<body>
+
+<div class="switcher">
+  <span class="switcher-label">Scenario</span>
+  <button class="active" onclick="switchVariation('save')">Save After ID</button>
+  <button onclick="switchVariation('recall')">Recall</button>
+  <button onclick="switchVariation('search')">Search</button>
+  <button class="theme-toggle" onclick="toggleTheme()"><span id="theme-icon">&#9789;</span></button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCENARIO 1: Save to Memories after Identification
+     Agent identifies wine, offers to save as memory
+     ═══════════════════════════════════════════════════════ -->
+<div id="variation-save" class="variation active">
+
+  <div class="scenario-label">After Wine Identification</div>
+  <div class="scenario-divider"></div>
+
+  <div class="chat-panel">
+    <div class="chat-header">
+      <div class="chat-avatar">Q</div>
+      <div>
+        <div class="chat-title">Qve Sommelier</div>
+        <div class="chat-subtitle">Your wine companion</div>
+      </div>
+    </div>
+
+    <div class="chat-messages">
+
+      <!-- User sends photo -->
+      <div class="msg msg-user">
+        <div class="msg-bubble">
+          <div style="width:100%;aspect-ratio:4/3;border-radius:var(--radius-md);background:linear-gradient(135deg,var(--accent-muted),var(--divider));display:flex;align-items:center;justify-content:center;font-size:2rem;margin-bottom:var(--space-2);">&#127863;</div>
+          What's this wine?
+        </div>
+        <div class="msg-time">7:42 PM</div>
+      </div>
+
+      <!-- Agent identifies -->
+      <div class="msg msg-agent">
+        <div class="msg-bubble">
+          I've identified this as <strong>Chateau Margaux 2015</strong> from Margaux, Bordeaux. A truly exceptional First Growth - one of the finest vintages in recent memory.
+          <div style="margin-top:var(--space-2);padding:var(--space-2) var(--space-3);background:var(--bg-subtle);border-radius:var(--radius-md);font-size:0.75rem;">
+            <span style="color:var(--success);">92% confidence</span> &middot; Red &middot; Cabernet Sauvignon blend
+          </div>
+        </div>
+        <div class="chip-row">
+          <button class="chip primary">Add to Cellar</button>
+          <button class="chip">Enrich</button>
+          <button class="chip">Not Right</button>
+        </div>
+        <div class="msg-time">7:42 PM</div>
+      </div>
+
+      <!-- User says "just tasting" -->
+      <div class="msg msg-user">
+        <div class="msg-bubble">I'm just tasting this at a restaurant, not buying. Can I save it to memories?</div>
+        <div class="msg-time">7:43 PM</div>
+      </div>
+
+      <!-- Agent offers memory save -->
+      <div class="msg msg-agent">
+        <div class="msg-bubble">
+          Of course! I can save this as a wine memory for you. Here's what I'll capture:
+        </div>
+
+        <!-- Save to memory prompt card -->
+        <div class="save-memory-prompt">
+          <div class="save-memory-header">
+            <span class="save-memory-icon">&#128221;</span>
+            <span class="save-memory-title">Save to Memories</span>
+          </div>
+          <div class="save-memory-preview">
+            <div class="save-preview-icon">&#127863;</div>
+            <div class="save-preview-info">
+              <div class="save-preview-name">Chateau Margaux 2015</div>
+              <div class="save-preview-detail">Margaux, Bordeaux &middot; France &middot; Red</div>
+            </div>
+          </div>
+          <div class="save-memory-desc">
+            Your photo will be saved along with the wine identification. You can add notes, rating, location, and tags.
+          </div>
+          <div class="chip-row">
+            <button class="chip primary">Save with Photo</button>
+            <button class="chip">Add Notes First</button>
+            <button class="chip">Skip</button>
+          </div>
+        </div>
+        <div class="msg-time">7:43 PM</div>
+      </div>
+
+      <!-- User adds note -->
+      <div class="msg msg-user">
+        <div class="msg-bubble">Add notes first - this is my anniversary dinner at Le Cinq. Amazing wine, 9/10.</div>
+        <div class="msg-time">7:44 PM</div>
+      </div>
+
+      <!-- Agent confirms save -->
+      <div class="msg msg-agent">
+        <div class="msg-bubble">
+          Saved to your memories! Here's what I captured:
+        </div>
+        <!-- Memory card preview -->
+        <div class="chat-memory-card">
+          <div class="chat-memory-image">
+            &#127863;
+            <span class="chat-memory-type">Tasted</span>
+          </div>
+          <div class="chat-memory-body">
+            <div class="chat-memory-name">Chateau Margaux 2015</div>
+            <div class="chat-memory-detail">Today &middot; Le Cinq, Paris</div>
+            <div class="chat-memory-note">Anniversary dinner at Le Cinq. Amazing wine.</div>
+          </div>
+          <div class="chat-memory-footer">
+            <span class="chat-memory-rating">
+              <span class="chat-memory-dot filled"></span>
+              <span class="chat-memory-dot filled"></span>
+              <span class="chat-memory-dot filled"></span>
+              <span class="chat-memory-dot filled"></span>
+              <span class="chat-memory-dot filled"></span>
+              <span class="chat-memory-dot filled"></span>
+              <span class="chat-memory-dot filled"></span>
+              <span class="chat-memory-dot filled"></span>
+              <span class="chat-memory-dot filled"></span>
+              <span class="chat-memory-dot"></span>
+              <span style="margin-left:4px;">9/10</span>
+            </span>
+            <span>View Memory &#8250;</span>
+          </div>
+        </div>
+        <div class="chip-row">
+          <button class="chip">Add Tags</button>
+          <button class="chip">Edit Memory</button>
+          <button class="chip">Done</button>
+        </div>
+        <div class="msg-time">7:44 PM</div>
+      </div>
+
+    </div>
+
+    <div class="chat-input">
+      <input type="text" placeholder="Type a message...">
+      <button class="chat-send">&#8593;</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCENARIO 2: "Remember when..." Recall Prompts
+     Agent proactively surfaces past memories
+     ═══════════════════════════════════════════════════════ -->
+<div id="variation-recall" class="variation">
+
+  <div class="scenario-label">Proactive Memory Recall</div>
+  <div class="scenario-divider"></div>
+
+  <div class="chat-panel">
+    <div class="chat-header">
+      <div class="chat-avatar">Q</div>
+      <div>
+        <div class="chat-title">Qve Sommelier</div>
+        <div class="chat-subtitle">Your wine companion</div>
+      </div>
+    </div>
+
+    <div class="chat-messages">
+
+      <!-- User asks about a wine -->
+      <div class="msg msg-user">
+        <div class="msg-bubble">I'm looking at a Sassicaia 2018 for EUR280. Good deal?</div>
+        <div class="msg-time">3:15 PM</div>
+      </div>
+
+      <!-- Agent recalls memory -->
+      <div class="msg msg-agent">
+        <div class="msg-bubble">
+          <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2);">
+            <span style="font-size:0.75rem;padding:2px 8px;border-radius:var(--radius-pill);background:rgba(212,184,106,0.15);color:var(--warning);font-weight:600;">&#128161; Memory</span>
+          </div>
+          You spotted this exact wine just last week! You noted it was EUR295 at the Hotel du Cap-Eden-Roc.
+        </div>
+
+        <!-- Recalled memory card -->
+        <div class="chat-memory-card">
+          <div class="chat-memory-body">
+            <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2);">
+              <span style="font-size:0.625rem;padding:2px 6px;border-radius:var(--radius-pill);background:rgba(122,139,155,0.12);color:var(--info);">Spotted</span>
+              <span style="font-size:0.625rem;color:var(--text-tertiary);">5 days ago</span>
+            </div>
+            <div class="chat-memory-name">Sassicaia 2018</div>
+            <div class="chat-memory-detail">Bolgheri, Tuscany &middot; Italy</div>
+            <div class="chat-memory-note">EUR295 at the hotel shop. Check cellar stock before buying.</div>
+          </div>
+          <div class="chat-memory-footer">
+            <span style="display:flex;align-items:center;gap:4px;">&#128176; EUR 295</span>
+            <span>View Memory &#8250;</span>
+          </div>
+        </div>
+
+        <div class="msg-bubble" style="margin-top:var(--space-2);">
+          At EUR280, that's EUR15 less than what you saw. The 2018 Sassicaia is drinking beautifully right now and scored 97 from Wine Advocate. I'd say it's a strong buy.
+          <div style="margin-top:var(--space-2);font-size:0.75rem;color:var(--text-tertiary);">
+            You don't have any Sassicaia in your cellar currently.
+          </div>
+        </div>
+        <div class="chip-row">
+          <button class="chip primary">Save Memory (Purchased)</button>
+          <button class="chip">Add to Cellar</button>
+          <button class="chip">More Info</button>
+        </div>
+        <div class="msg-time">3:15 PM</div>
+      </div>
+
+      <div style="border-top:1px solid var(--divider);margin:var(--space-5) 0;"></div>
+
+      <!-- Second recall scenario: similar wine -->
+      <div class="msg msg-user">
+        <div class="msg-bubble">What should I drink tonight? Something Burgundy.</div>
+        <div class="msg-time">6:30 PM</div>
+      </div>
+
+      <div class="msg msg-agent">
+        <div class="msg-bubble">
+          <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2);">
+            <span style="font-size:0.75rem;padding:2px 8px;border-radius:var(--radius-pill);background:rgba(212,184,106,0.15);color:var(--warning);font-weight:600;">&#128161; Memory</span>
+          </div>
+          Remember when James recommended the DRC Echezeaux? He said to look for the 2019 or 2020. You don't have that in your cellar, but you do have a <strong>Gevrey-Chambertin 2019</strong> that's ready to drink.
+        </div>
+
+        <!-- Two recalled memories -->
+        <div class="memory-results">
+          <div class="memory-result-item">
+            <div class="memory-result-thumb">&#128172;</div>
+            <div class="memory-result-info">
+              <div class="memory-result-name">DRC Echezeaux 2019</div>
+              <div class="memory-result-meta">Recommended by James M. &middot; 6 days ago</div>
+            </div>
+            <span class="memory-result-badge" style="background:rgba(107,142,107,0.12);color:var(--success);">Rec'd</span>
+          </div>
+          <div class="memory-result-item">
+            <div class="memory-result-thumb">&#127863;</div>
+            <div class="memory-result-info">
+              <div class="memory-result-name">Gevrey-Chambertin 1er Cru 2019</div>
+              <div class="memory-result-meta">In cellar &middot; 3 bottles &middot; Ready to drink</div>
+            </div>
+            <span class="memory-result-badge" style="background:rgba(107,142,107,0.12);color:var(--success);">Cellar</span>
+          </div>
+        </div>
+
+        <div class="chip-row">
+          <button class="chip primary">Drink the Gevrey</button>
+          <button class="chip">More Suggestions</button>
+        </div>
+        <div class="msg-time">6:30 PM</div>
+      </div>
+
+    </div>
+
+    <div class="chat-input">
+      <input type="text" placeholder="Type a message...">
+      <button class="chat-send">&#8593;</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCENARIO 3: Memory Search in Chat
+     User searches through past memories
+     ═══════════════════════════════════════════════════════ -->
+<div id="variation-search" class="variation">
+
+  <div class="scenario-label">Memory Search in Chat</div>
+  <div class="scenario-divider"></div>
+
+  <div class="chat-panel">
+    <div class="chat-header">
+      <div class="chat-avatar">Q</div>
+      <div>
+        <div class="chat-title">Qve Sommelier</div>
+        <div class="chat-subtitle">Your wine companion</div>
+      </div>
+    </div>
+
+    <div class="chat-messages">
+
+      <!-- User searches memories -->
+      <div class="msg msg-user">
+        <div class="msg-bubble">What wines have I saved from Paris?</div>
+        <div class="msg-time">4:20 PM</div>
+      </div>
+
+      <!-- Agent returns search results -->
+      <div class="msg msg-agent">
+        <div class="msg-bubble">
+          I found <strong>4 memories</strong> from Paris:
+        </div>
+
+        <div class="memory-results">
+          <div class="memory-result-item">
+            <div class="memory-result-thumb">&#127863;</div>
+            <div class="memory-result-info">
+              <div class="memory-result-name">Chateau Margaux 2015</div>
+              <div class="memory-result-meta">Tasted &middot; Le Cinq &middot; Today &middot; 9/10</div>
+            </div>
+            <span class="memory-result-badge" style="background:rgba(139,74,92,0.12);color:var(--rating-wine);">&#9829;</span>
+          </div>
+          <div class="memory-result-item">
+            <div class="memory-result-thumb">&#127863;</div>
+            <div class="memory-result-info">
+              <div class="memory-result-name">Chateau Lafite Rothschild 2016</div>
+              <div class="memory-result-meta">Tasted &middot; L'Ambroisie &middot; Jan 2026 &middot; 8/10</div>
+            </div>
+          </div>
+          <div class="memory-result-item">
+            <div class="memory-result-thumb">&#128065;</div>
+            <div class="memory-result-info">
+              <div class="memory-result-name">Salon Le Mesnil 2008</div>
+              <div class="memory-result-meta">Spotted &middot; Lavinia Paris &middot; Dec 2025 &middot; EUR380</div>
+            </div>
+          </div>
+          <div class="memory-result-item">
+            <div class="memory-result-thumb">&#127878;</div>
+            <div class="memory-result-info">
+              <div class="memory-result-name">Krug Grande Cuvee 171th</div>
+              <div class="memory-result-meta">Event &middot; Berry Bros Tasting &middot; Yesterday &middot; 8/10</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chip-row">
+          <button class="chip">Show on Map</button>
+          <button class="chip">Filter by Rating</button>
+          <button class="chip">See All Memories</button>
+        </div>
+        <div class="msg-time">4:20 PM</div>
+      </div>
+
+      <!-- User asks follow-up -->
+      <div class="msg msg-user">
+        <div class="msg-bubble">Which one did I rate highest?</div>
+        <div class="msg-time">4:21 PM</div>
+      </div>
+
+      <div class="msg msg-agent">
+        <div class="msg-bubble">
+          The <strong>Chateau Margaux 2015</strong> at Le Cinq today - you gave it a 9/10. That's your highest-rated memory from Paris.
+        </div>
+
+        <div class="chat-memory-card">
+          <div class="chat-memory-image">
+            &#127863;
+            <span class="chat-memory-type">Tasted</span>
+          </div>
+          <div class="chat-memory-body">
+            <div class="chat-memory-name">Chateau Margaux 2015</div>
+            <div class="chat-memory-detail">Today &middot; Le Cinq, Paris</div>
+            <div class="chat-memory-note">Anniversary dinner at Le Cinq. Amazing wine, silky tannins, incredible depth.</div>
+          </div>
+          <div class="chat-memory-footer">
+            <span class="chat-memory-rating">
+              <span class="chat-memory-dot filled"></span>
+              <span class="chat-memory-dot filled"></span>
+              <span class="chat-memory-dot filled"></span>
+              <span class="chat-memory-dot filled"></span>
+              <span class="chat-memory-dot filled"></span>
+              <span class="chat-memory-dot filled"></span>
+              <span class="chat-memory-dot filled"></span>
+              <span class="chat-memory-dot filled"></span>
+              <span class="chat-memory-dot filled"></span>
+              <span class="chat-memory-dot"></span>
+              <span style="margin-left:4px;">9/10</span>
+            </span>
+            <span>View Memory &#8250;</span>
+          </div>
+        </div>
+
+        <div class="msg-bubble" style="margin-top:var(--space-2);">
+          Would you like me to find similar wines in your cellar, or save a note about wanting more Bordeaux for your next Paris trip?
+        </div>
+        <div class="chip-row">
+          <button class="chip">Find Similar in Cellar</button>
+          <button class="chip">Save Note</button>
+          <button class="chip">Compare Paris Wines</button>
+        </div>
+        <div class="msg-time">4:21 PM</div>
+      </div>
+
+      <!-- Separator for "what I tried in December" -->
+      <div style="border-top:1px solid var(--divider);margin:var(--space-5) 0;"></div>
+
+      <div class="msg msg-user">
+        <div class="msg-bubble">Show me everything I tried in December tagged with #travel</div>
+        <div class="msg-time">4:25 PM</div>
+      </div>
+
+      <div class="msg msg-agent">
+        <div class="msg-bubble">
+          Here are your <strong>3 travel memories</strong> from December:
+        </div>
+
+        <div class="memory-results">
+          <div class="memory-result-item">
+            <div class="memory-result-thumb">&#9992;</div>
+            <div class="memory-result-info">
+              <div class="memory-result-name">Antinori Tignanello 2019</div>
+              <div class="memory-result-meta">Florence &middot; 15 Dec &middot; 8/10</div>
+            </div>
+            <span class="memory-result-badge" style="background:rgba(196,163,90,0.12);color:var(--warning);">Travel</span>
+          </div>
+          <div class="memory-result-item">
+            <div class="memory-result-thumb">&#9992;</div>
+            <div class="memory-result-info">
+              <div class="memory-result-name">Brunello di Montalcino Riserva 2016</div>
+              <div class="memory-result-meta">Siena &middot; 17 Dec &middot; 9/10</div>
+            </div>
+            <span class="memory-result-badge" style="background:rgba(196,163,90,0.12);color:var(--warning);">Travel</span>
+          </div>
+          <div class="memory-result-item">
+            <div class="memory-result-thumb">&#9992;</div>
+            <div class="memory-result-info">
+              <div class="memory-result-name">Barolo Sperss 2017</div>
+              <div class="memory-result-meta">Alba &middot; 20 Dec &middot; 8/10</div>
+            </div>
+            <span class="memory-result-badge" style="background:rgba(196,163,90,0.12);color:var(--warning);">Travel</span>
+          </div>
+        </div>
+
+        <div class="msg-bubble" style="margin-top:var(--space-2);">
+          Looks like an incredible Italian trip! The Brunello Riserva was your favourite with 9/10. Want me to find any of these for your cellar?
+        </div>
+        <div class="chip-row">
+          <button class="chip">View on Map</button>
+          <button class="chip">Find in Shops</button>
+          <button class="chip">Export Trip List</button>
+        </div>
+        <div class="msg-time">4:25 PM</div>
+      </div>
+
+    </div>
+
+    <div class="chat-input">
+      <input type="text" placeholder="Search your wine memories...">
+      <button class="chat-send">&#8593;</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchVariation(id) {
+  document.querySelectorAll('.variation').forEach(v => v.classList.remove('active'));
+  document.getElementById('variation-' + id).classList.add('active');
+  document.querySelectorAll('.switcher button:not(.theme-toggle)').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('theme-icon').innerHTML = isDark ? '&#9789;' : '&#9788;';
+}
+</script>
+</body>
+</html>

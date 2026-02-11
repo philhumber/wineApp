@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qve - Add Memory Flow Mockups</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════
+   QVE DESIGN TOKENS
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --bg: #FAF9F7; --bg-subtle: #F5F3F0; --surface: #FFFFFF; --surface-raised: #FFFFFF;
+  --text-primary: #2D2926; --text-secondary: #5C5652; --text-tertiary: #8A847D;
+  --accent: #A69B8A; --accent-subtle: #C4BAA9; --accent-muted: #D9D2C6;
+  --divider: #E8E4DE; --divider-subtle: #F0EDE8; --bg-elevated: #FFFFFF;
+  --success: #6B8E6B; --error: #B87A7A; --warning: #C4A35A; --info: #7A8B9B;
+  --rating-wine: #8B4A5C;
+  --shadow-sm: 0 1px 2px rgba(45,41,38,0.03);
+  --shadow-md: 0 2px 8px rgba(45,41,38,0.04), 0 1px 2px rgba(45,41,38,0.03);
+  --shadow-lg: 0 8px 24px rgba(45,41,38,0.06), 0 2px 4px rgba(45,41,38,0.03);
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Outfit', system-ui, sans-serif;
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
+  --space-5: 1.5rem; --space-6: 2rem; --space-8: 3rem;
+  --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px; --radius-pill: 100px;
+  --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+}
+[data-theme="dark"] {
+  --bg: #0C0B0A; --bg-subtle: #141312; --surface: #1A1918; --surface-raised: #222120;
+  --text-primary: #F0EDE6; --text-secondary: #A8A29A; --text-tertiary: #6B665F;
+  --accent: #B8AFA0; --accent-subtle: #7A756C; --accent-muted: #4A4640;
+  --divider: #2A2826; --divider-subtle: #1F1E1C; --bg-elevated: #2A2826;
+  --success: #8BA88B; --error: #C99999; --warning: #D4B86A; --info: #9AABB8;
+  --rating-wine: #C98A9C;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.3), 0 0 1px rgba(255,255,255,0.03);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.05);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:16px;-webkit-font-smoothing:antialiased;}
+body{font-family:var(--font-sans);color:var(--text-primary);background:var(--bg);line-height:1.5;min-height:100vh;transition:background 0.5s var(--ease-out),color 0.3s var(--ease-out);}
+img{max-width:100%;height:auto;display:block;}
+button{font-family:inherit;font-size:inherit;background:none;border:none;cursor:pointer;color:inherit;}
+input,textarea,select{font-family:inherit;font-size:inherit;}
+
+/* ═══════════════════════════════════════════════════════
+   SWITCHER
+   ═══════════════════════════════════════════════════════ */
+.switcher{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--divider);display:flex;align-items:center;justify-content:center;gap:var(--space-2);padding:var(--space-3) var(--space-4);}
+.switcher-label{font-size:0.6875rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-tertiary);margin-right:var(--space-2);}
+.switcher button{padding:var(--space-2) var(--space-4);border-radius:var(--radius-pill);font-size:0.8125rem;font-weight:500;color:var(--text-secondary);border:1px solid var(--divider);transition:all 0.2s var(--ease-out);}
+.switcher button.active{background:var(--accent);color:var(--bg);border-color:var(--accent);}
+.switcher button:hover:not(.active){border-color:var(--accent-subtle);color:var(--text-primary);}
+.theme-toggle{margin-left:auto;width:36px;height:36px;border-radius:50%;border:1px solid var(--divider);display:flex;align-items:center;justify-content:center;font-size:1rem;}
+body{padding-top:52px;}
+
+/* ═══════════════════════════════════════════════════════
+   LAYOUT
+   ═══════════════════════════════════════════════════════ */
+.variation{display:none;max-width:420px;margin:0 auto;padding:var(--space-4);}
+.variation.active{display:block;}
+
+/* ═══════════════════════════════════════════════════════
+   SHARED FORM STYLES
+   ═══════════════════════════════════════════════════════ */
+.form-header{
+  position:sticky;top:52px;z-index:50;
+  background:var(--bg);
+  padding:var(--space-4) 0;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--divider-subtle);
+  margin-bottom:var(--space-5);
+}
+.form-header .back-btn{
+  display:flex;align-items:center;gap:var(--space-2);
+  font-size:0.875rem;color:var(--text-secondary);
+}
+.form-header h1{
+  font-family:var(--font-serif);font-size:1.25rem;font-weight:400;
+}
+.form-header .save-btn{
+  padding:var(--space-2) var(--space-4);border-radius:var(--radius-pill);
+  background:var(--accent);color:var(--bg);font-size:0.8125rem;font-weight:500;
+  transition:all 0.2s;
+}
+.form-header .save-btn:hover{opacity:0.9;}
+.form-header .save-btn:disabled{opacity:0.4;cursor:default;}
+
+/* Photo capture area */
+.photo-capture{
+  width:100%;aspect-ratio:4/3;border-radius:var(--radius-lg);
+  border:2px dashed var(--divider);background:var(--bg-subtle);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:var(--space-3);cursor:pointer;transition:all 0.2s;
+  margin-bottom:var(--space-5);
+}
+.photo-capture:hover{border-color:var(--accent-subtle);background:var(--surface);}
+.photo-capture-icon{font-size:2.5rem;color:var(--text-tertiary);}
+.photo-capture-text{font-size:0.8125rem;color:var(--text-tertiary);}
+.photo-capture-hint{font-size:0.6875rem;color:var(--text-tertiary);opacity:0.7;}
+
+/* Photo captured state */
+.photo-captured{
+  width:100%;aspect-ratio:4/3;border-radius:var(--radius-lg);
+  background:linear-gradient(135deg, var(--accent-muted) 0%, var(--divider) 50%, var(--accent-muted) 100%);
+  display:flex;align-items:center;justify-content:center;
+  font-size:3rem;color:var(--text-tertiary);
+  margin-bottom:var(--space-5);position:relative;overflow:hidden;
+}
+.photo-captured .remove-photo{
+  position:absolute;top:var(--space-3);right:var(--space-3);
+  width:28px;height:28px;border-radius:50%;
+  background:rgba(0,0,0,0.5);color:white;
+  display:flex;align-items:center;justify-content:center;font-size:0.875rem;
+}
+
+/* Form groups */
+.form-group{margin-bottom:var(--space-5);}
+.form-label{
+  display:block;font-size:0.625rem;font-weight:600;
+  text-transform:uppercase;letter-spacing:0.1em;
+  color:var(--text-tertiary);margin-bottom:var(--space-2);
+}
+.form-input{
+  width:100%;padding:var(--space-3) var(--space-4);
+  background:var(--surface);border:1px solid var(--divider);
+  border-radius:var(--radius-md);color:var(--text-primary);
+  transition:border-color 0.2s;
+}
+.form-input:focus{outline:none;border-color:var(--accent);}
+.form-input::placeholder{color:var(--text-tertiary);}
+
+.form-textarea{
+  width:100%;padding:var(--space-3) var(--space-4);
+  background:var(--surface);border:1px solid var(--divider);
+  border-radius:var(--radius-md);color:var(--text-primary);
+  resize:vertical;min-height:100px;
+  font-family:var(--font-serif);font-size:0.9375rem;
+  transition:border-color 0.2s;line-height:1.6;
+}
+.form-textarea:focus{outline:none;border-color:var(--accent);}
+.form-textarea::placeholder{color:var(--text-tertiary);font-style:italic;}
+
+/* Memory type selector */
+.type-selector{
+  display:grid;grid-template-columns:repeat(3, 1fr);
+  gap:var(--space-2);margin-bottom:var(--space-5);
+}
+.type-option{
+  display:flex;flex-direction:column;align-items:center;
+  gap:var(--space-2);padding:var(--space-4) var(--space-2);
+  border-radius:var(--radius-lg);border:1px solid var(--divider);
+  background:var(--surface);transition:all 0.2s;
+}
+.type-option:hover{border-color:var(--accent-subtle);transform:translateY(-1px);}
+.type-option.selected{border-color:var(--accent);background:var(--bg-subtle);box-shadow:0 0 0 1px var(--accent);}
+.type-option-icon{font-size:1.5rem;}
+.type-option-label{font-size:0.6875rem;font-weight:500;color:var(--text-secondary);text-align:center;}
+
+/* Tag input */
+.tag-input-area{
+  display:flex;flex-wrap:wrap;gap:var(--space-2);
+  padding:var(--space-3);background:var(--surface);
+  border:1px solid var(--divider);border-radius:var(--radius-md);
+  min-height:44px;align-items:center;
+}
+.tag-pill{
+  display:flex;align-items:center;gap:var(--space-1);
+  padding:2px 10px;border-radius:var(--radius-pill);
+  background:var(--bg-subtle);font-size:0.75rem;color:var(--text-secondary);
+}
+.tag-remove{font-size:0.6875rem;color:var(--text-tertiary);cursor:pointer;}
+.tag-input{
+  flex:1;min-width:80px;border:none;background:transparent;
+  color:var(--text-primary);font-size:0.8125rem;outline:none;
+}
+.tag-input::placeholder{color:var(--text-tertiary);}
+
+/* Context fields */
+.context-row{
+  display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);
+  margin-bottom:var(--space-3);
+}
+
+/* Wine link section */
+.wine-link-section{
+  padding:var(--space-4);background:var(--surface);
+  border:1px solid var(--divider);border-radius:var(--radius-lg);
+  margin-bottom:var(--space-5);
+}
+.wine-link-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:var(--space-3);
+}
+.wine-link-header h3{
+  font-family:var(--font-sans);font-size:0.75rem;font-weight:600;
+  text-transform:uppercase;letter-spacing:0.08em;color:var(--text-tertiary);
+}
+.wine-link-btn{
+  padding:var(--space-1) var(--space-3);border-radius:var(--radius-pill);
+  font-size:0.6875rem;color:var(--accent);border:1px solid var(--accent-muted);
+}
+
+.wine-link-result{
+  display:flex;gap:var(--space-3);align-items:center;
+  padding:var(--space-3);background:var(--bg-subtle);border-radius:var(--radius-md);
+}
+.wine-link-icon{
+  width:40px;height:40px;border-radius:var(--radius-md);
+  background:var(--surface);display:flex;align-items:center;
+  justify-content:center;font-size:1.25rem;flex-shrink:0;
+}
+.wine-link-info{flex:1;}
+.wine-link-name{
+  font-family:var(--font-serif);font-size:0.9375rem;font-weight:500;
+  color:var(--text-primary);
+}
+.wine-link-detail{font-size:0.6875rem;color:var(--text-tertiary);}
+.wine-link-badge{
+  padding:2px 8px;border-radius:var(--radius-pill);font-size:0.5625rem;
+  font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+  background:rgba(107,142,107,0.12);color:var(--success);
+}
+
+/* Quick capture flow */
+.quick-capture-steps{
+  display:flex;align-items:center;justify-content:center;
+  gap:var(--space-3);padding:var(--space-4) 0;margin-bottom:var(--space-5);
+}
+.step-indicator{
+  display:flex;align-items:center;gap:var(--space-2);
+}
+.step-dot{
+  width:28px;height:28px;border-radius:50%;border:2px solid var(--divider);
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.6875rem;font-weight:600;color:var(--text-tertiary);
+  transition:all 0.3s;
+}
+.step-dot.active{border-color:var(--accent);background:var(--accent);color:var(--bg);}
+.step-dot.done{border-color:var(--success);background:var(--success);color:var(--bg);}
+.step-line{width:24px;height:2px;background:var(--divider);border-radius:1px;}
+.step-line.done{background:var(--success);}
+.step-label{font-size:0.5625rem;color:var(--text-tertiary);text-align:center;margin-top:4px;}
+
+/* AI identification result */
+.ai-result{
+  padding:var(--space-5);background:var(--surface);
+  border:1px solid var(--accent);border-radius:var(--radius-lg);
+  margin-bottom:var(--space-5);
+}
+.ai-result-header{
+  display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-3);
+}
+.ai-badge{
+  padding:2px 10px;border-radius:var(--radius-pill);font-size:0.625rem;
+  font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+  background:rgba(184,175,160,0.15);color:var(--accent);
+}
+.ai-confidence{
+  font-size:0.6875rem;color:var(--text-tertiary);margin-left:auto;
+}
+.ai-result-name{
+  font-family:var(--font-serif);font-size:1.375rem;font-weight:500;
+  color:var(--text-primary);margin-bottom:var(--space-1);
+}
+.ai-result-detail{font-size:0.8125rem;color:var(--text-secondary);margin-bottom:var(--space-3);}
+.ai-result-actions{display:flex;gap:var(--space-2);}
+.ai-action-btn{
+  flex:1;padding:var(--space-3);border-radius:var(--radius-md);
+  font-size:0.8125rem;font-weight:500;text-align:center;
+  border:1px solid var(--divider);color:var(--text-secondary);
+  transition:all 0.2s;
+}
+.ai-action-btn:hover{border-color:var(--accent);color:var(--text-primary);}
+.ai-action-btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);}
+
+/* Divider */
+.section-divider{
+  display:flex;align-items:center;gap:var(--space-3);
+  padding:var(--space-4) 0;
+}
+.section-divider span{
+  font-size:0.625rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:0.1em;color:var(--text-tertiary);white-space:nowrap;
+}
+.section-divider::before,.section-divider::after{
+  content:'';flex:1;height:1px;background:var(--divider);
+}
+
+/* Rating in form */
+.form-rating{
+  display:flex;align-items:center;gap:var(--space-2);
+  margin-bottom:var(--space-3);
+}
+.form-rating-dots{display:flex;gap:4px;}
+.form-rating-dot{
+  width:24px;height:24px;border-radius:50%;border:2px solid var(--divider);
+  cursor:pointer;transition:all 0.15s;
+}
+.form-rating-dot.filled{background:var(--rating-wine);border-color:var(--rating-wine);}
+.form-rating-dot:hover{border-color:var(--rating-wine);transform:scale(1.1);}
+.form-rating-value{
+  font-family:var(--font-serif);font-size:1.25rem;font-weight:600;
+  color:var(--rating-wine);margin-left:var(--space-2);
+}
+</style>
+</head>
+<body>
+
+<div class="switcher">
+  <span class="switcher-label">Flow</span>
+  <button class="active" onclick="switchVariation('quick')">Quick Capture</button>
+  <button onclick="switchVariation('full')">Full Entry</button>
+  <button onclick="switchVariation('types')">Memory Types</button>
+  <button class="theme-toggle" onclick="toggleTheme()">
+    <span id="theme-icon">&#9789;</span>
+  </button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     QUICK CAPTURE: Photo > Auto-identify > Done
+     ═══════════════════════════════════════════════════════ -->
+<div id="variation-quick" class="variation active">
+
+  <div class="form-header">
+    <button class="back-btn">&#8592; Back</button>
+    <h1>Quick Capture</h1>
+    <button class="save-btn" disabled>Save</button>
+  </div>
+
+  <!-- Step indicators -->
+  <div class="quick-capture-steps">
+    <div style="text-align:center;">
+      <div class="step-dot done">&#10003;</div>
+      <div class="step-label">Photo</div>
+    </div>
+    <div class="step-line done"></div>
+    <div style="text-align:center;">
+      <div class="step-dot active">2</div>
+      <div class="step-label">Identify</div>
+    </div>
+    <div class="step-line"></div>
+    <div style="text-align:center;">
+      <div class="step-dot">3</div>
+      <div class="step-label">Save</div>
+    </div>
+  </div>
+
+  <!-- Photo taken -->
+  <div class="photo-captured">
+    &#127863;
+    <button class="remove-photo">&times;</button>
+  </div>
+
+  <!-- AI Identification result -->
+  <div class="ai-result">
+    <div class="ai-result-header">
+      <span class="ai-badge">&#10024; AI Identified</span>
+      <span class="ai-confidence">92% confidence</span>
+    </div>
+    <div class="ai-result-name">Chateau Margaux 2015</div>
+    <div class="ai-result-detail">Margaux, Bordeaux &middot; France &middot; Red</div>
+    <div class="ai-result-actions">
+      <button class="ai-action-btn">Not Right</button>
+      <button class="ai-action-btn primary">Correct &#10003;</button>
+    </div>
+  </div>
+
+  <!-- Quick note (optional) -->
+  <div class="form-group">
+    <label class="form-label">Quick Note (Optional)</label>
+    <textarea class="form-textarea" placeholder="What made this moment special?" rows="3" style="min-height:80px;">Anniversary dinner at Le Cinq. Absolutely stunning.</textarea>
+  </div>
+
+  <!-- Quick rating -->
+  <div class="form-group">
+    <label class="form-label">Quick Rating (Optional)</label>
+    <div class="form-rating">
+      <div class="form-rating-dots">
+        <div class="form-rating-dot filled"></div>
+        <div class="form-rating-dot filled"></div>
+        <div class="form-rating-dot filled"></div>
+        <div class="form-rating-dot filled"></div>
+        <div class="form-rating-dot filled"></div>
+        <div class="form-rating-dot filled"></div>
+        <div class="form-rating-dot filled"></div>
+        <div class="form-rating-dot filled"></div>
+        <div class="form-rating-dot filled"></div>
+        <div class="form-rating-dot"></div>
+      </div>
+      <span class="form-rating-value">9</span>
+    </div>
+  </div>
+
+  <div class="section-divider"><span>or add more detail</span></div>
+
+  <div style="text-align:center;padding:var(--space-4) 0;">
+    <button class="ai-action-btn" style="display:inline-block;width:auto;padding:var(--space-3) var(--space-6);">
+      Add Tags, Context & More &#8594;
+    </button>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     FULL ENTRY: All fields visible
+     ═══════════════════════════════════════════════════════ -->
+<div id="variation-full" class="variation">
+
+  <div class="form-header">
+    <button class="back-btn">&#8592; Back</button>
+    <h1>New Memory</h1>
+    <button class="save-btn">Save</button>
+  </div>
+
+  <!-- Memory type -->
+  <div class="form-group">
+    <label class="form-label">Memory Type</label>
+    <div class="type-selector">
+      <button class="type-option selected">
+        <span class="type-option-icon">&#127863;</span>
+        <span class="type-option-label">Tasted</span>
+      </button>
+      <button class="type-option">
+        <span class="type-option-icon">&#128065;</span>
+        <span class="type-option-label">Spotted</span>
+      </button>
+      <button class="type-option">
+        <span class="type-option-icon">&#128172;</span>
+        <span class="type-option-label">Rec'd</span>
+      </button>
+      <button class="type-option">
+        <span class="type-option-icon">&#9992;</span>
+        <span class="type-option-label">Travel</span>
+      </button>
+      <button class="type-option">
+        <span class="type-option-icon">&#127878;</span>
+        <span class="type-option-label">Event</span>
+      </button>
+      <button class="type-option">
+        <span class="type-option-icon">&#128279;</span>
+        <span class="type-option-label">Saw Online</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Photo -->
+  <div class="photo-capture">
+    <span class="photo-capture-icon">&#128247;</span>
+    <span class="photo-capture-text">Tap to add photo</span>
+    <span class="photo-capture-hint">Camera, Gallery, or Screenshot</span>
+  </div>
+
+  <!-- Wine link -->
+  <div class="wine-link-section">
+    <div class="wine-link-header">
+      <h3>Link Wine</h3>
+      <button class="wine-link-btn">Search Cellar</button>
+    </div>
+    <div class="wine-link-result">
+      <div class="wine-link-icon">&#127863;</div>
+      <div class="wine-link-info">
+        <div class="wine-link-name">Chateau Margaux 2015</div>
+        <div class="wine-link-detail">Bordeaux, France &middot; 2 bottles in cellar</div>
+      </div>
+      <span class="wine-link-badge">Linked</span>
+    </div>
+  </div>
+
+  <!-- Notes -->
+  <div class="form-group">
+    <label class="form-label">Notes</label>
+    <textarea class="form-textarea" placeholder="What made this moment special? What did you notice about the wine? Who were you with?"></textarea>
+  </div>
+
+  <!-- Rating -->
+  <div class="form-group">
+    <label class="form-label">Rating</label>
+    <div class="form-rating">
+      <div class="form-rating-dots">
+        <div class="form-rating-dot filled"></div>
+        <div class="form-rating-dot filled"></div>
+        <div class="form-rating-dot filled"></div>
+        <div class="form-rating-dot filled"></div>
+        <div class="form-rating-dot filled"></div>
+        <div class="form-rating-dot filled"></div>
+        <div class="form-rating-dot filled"></div>
+        <div class="form-rating-dot"></div>
+        <div class="form-rating-dot"></div>
+        <div class="form-rating-dot"></div>
+      </div>
+      <span class="form-rating-value">7</span>
+    </div>
+  </div>
+
+  <!-- Tags -->
+  <div class="form-group">
+    <label class="form-label">Tags</label>
+    <div class="tag-input-area">
+      <span class="tag-pill">#bordeaux <span class="tag-remove">&times;</span></span>
+      <span class="tag-pill">#anniversary <span class="tag-remove">&times;</span></span>
+      <input type="text" class="tag-input" placeholder="Add tag...">
+    </div>
+  </div>
+
+  <!-- Context: Location & Occasion -->
+  <div class="section-divider"><span>Context</span></div>
+
+  <div class="context-row">
+    <div class="form-group">
+      <label class="form-label">Location</label>
+      <input type="text" class="form-input" placeholder="Restaurant, bar, home..." value="Le Cinq, Paris">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Occasion</label>
+      <input type="text" class="form-input" placeholder="Dinner, tasting..." value="Anniversary">
+    </div>
+  </div>
+
+  <div class="context-row">
+    <div class="form-group">
+      <label class="form-label">Price</label>
+      <input type="text" class="form-input" placeholder="e.g. EUR 450">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Paired With</label>
+      <input type="text" class="form-input" placeholder="Food pairing...">
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Who Were You With?</label>
+    <input type="text" class="form-input" placeholder="Names or groups..." value="Sarah">
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Recommended By</label>
+    <input type="text" class="form-input" placeholder="Who told you about this wine?">
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MEMORY TYPES: Different capture forms per type
+     ═══════════════════════════════════════════════════════ -->
+<div id="variation-types" class="variation">
+
+  <div class="form-header">
+    <button class="back-btn">&#8592; Back</button>
+    <h1>What Kind of Memory?</h1>
+    <div></div>
+  </div>
+
+  <p style="font-family:var(--font-serif);font-size:0.9375rem;color:var(--text-secondary);text-align:center;margin-bottom:var(--space-6);line-height:1.6;font-style:italic;">
+    Every wine has a story. What's yours?
+  </p>
+
+  <!-- Type cards - larger, more descriptive -->
+  <div style="display:flex;flex-direction:column;gap:var(--space-3);">
+
+    <div class="type-card" style="display:flex;gap:var(--space-4);padding:var(--space-5);background:var(--surface);border:1px solid var(--divider-subtle);border-radius:var(--radius-lg);cursor:pointer;transition:all 0.2s;">
+      <div style="font-size:2rem;flex-shrink:0;">&#127863;</div>
+      <div>
+        <div style="font-family:var(--font-serif);font-size:1.125rem;font-weight:500;color:var(--text-primary);margin-bottom:var(--space-1);">I Tasted a Wine</div>
+        <div style="font-size:0.75rem;color:var(--text-tertiary);line-height:1.5;">You just had a glass (or a bottle). Record your impressions, snap a photo, rate it.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:var(--space-1);margin-top:var(--space-2);">
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">Photo</span>
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">Rating</span>
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">Notes</span>
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">Location</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="type-card" style="display:flex;gap:var(--space-4);padding:var(--space-5);background:var(--surface);border:1px solid var(--divider-subtle);border-radius:var(--radius-lg);cursor:pointer;transition:all 0.2s;">
+      <div style="font-size:2rem;flex-shrink:0;">&#128065;</div>
+      <div>
+        <div style="font-family:var(--font-serif);font-size:1.125rem;font-weight:500;color:var(--text-primary);margin-bottom:var(--space-1);">I Spotted a Wine</div>
+        <div style="font-size:0.75rem;color:var(--text-tertiary);line-height:1.5;">Saw something interesting in a shop, on a menu, or at a friend's. Save it for later.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:var(--space-1);margin-top:var(--space-2);">
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">Photo</span>
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">Price</span>
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">Where</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="type-card" style="display:flex;gap:var(--space-4);padding:var(--space-5);background:var(--surface);border:1px solid var(--divider-subtle);border-radius:var(--radius-lg);cursor:pointer;transition:all 0.2s;">
+      <div style="font-size:2rem;flex-shrink:0;">&#128172;</div>
+      <div>
+        <div style="font-family:var(--font-serif);font-size:1.125rem;font-weight:500;color:var(--text-primary);margin-bottom:var(--space-1);">Someone Recommended</div>
+        <div style="font-size:0.75rem;color:var(--text-tertiary);line-height:1.5;">A friend, sommelier, or expert suggested a wine. Capture their recommendation.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:var(--space-1);margin-top:var(--space-2);">
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">Who</span>
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">Why</span>
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">Notes</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="type-card" style="display:flex;gap:var(--space-4);padding:var(--space-5);background:var(--surface);border:1px solid var(--divider-subtle);border-radius:var(--radius-lg);cursor:pointer;transition:all 0.2s;">
+      <div style="font-size:2rem;flex-shrink:0;">&#9992;</div>
+      <div>
+        <div style="font-family:var(--font-serif);font-size:1.125rem;font-weight:500;color:var(--text-primary);margin-bottom:var(--space-1);">Travel Discovery</div>
+        <div style="font-size:0.75rem;color:var(--text-tertiary);line-height:1.5;">Found a gem while travelling. Pin it to your wine map and remember the experience.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:var(--space-1);margin-top:var(--space-2);">
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">Photo</span>
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">Location</span>
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">Trip</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="type-card" style="display:flex;gap:var(--space-4);padding:var(--space-5);background:var(--surface);border:1px solid var(--divider-subtle);border-radius:var(--radius-lg);cursor:pointer;transition:all 0.2s;">
+      <div style="font-size:2rem;flex-shrink:0;">&#127878;</div>
+      <div>
+        <div style="font-family:var(--font-serif);font-size:1.125rem;font-weight:500;color:var(--text-primary);margin-bottom:var(--space-1);">Event / Tasting</div>
+        <div style="font-size:0.75rem;color:var(--text-tertiary);line-height:1.5;">Wine tasting, dinner party, or festival. Group multiple wines under one event.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:var(--space-1);margin-top:var(--space-2);">
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">Multiple Wines</span>
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">Photos</span>
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">Venue</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="type-card" style="display:flex;gap:var(--space-4);padding:var(--space-5);background:var(--surface);border:1px solid var(--divider-subtle);border-radius:var(--radius-lg);cursor:pointer;transition:all 0.2s;">
+      <div style="font-size:2rem;flex-shrink:0;">&#128279;</div>
+      <div>
+        <div style="font-family:var(--font-serif);font-size:1.125rem;font-weight:500;color:var(--text-primary);margin-bottom:var(--space-1);">Saw Online</div>
+        <div style="font-size:0.75rem;color:var(--text-tertiary);line-height:1.5;">A review, article, or social post caught your eye. Clip it for reference.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:var(--space-1);margin-top:var(--space-2);">
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">URL</span>
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">Screenshot</span>
+          <span style="font-size:0.5625rem;padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-subtle);color:var(--text-tertiary);">Notes</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function switchVariation(id) {
+  document.querySelectorAll('.variation').forEach(v => v.classList.remove('active'));
+  document.getElementById('variation-' + id).classList.add('active');
+  document.querySelectorAll('.switcher button:not(.theme-toggle)').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('theme-icon').innerHTML = isDark ? '&#9789;' : '&#9788;';
+}
+</script>
+</body>
+</html>

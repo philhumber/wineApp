@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qve - Memory Timeline Mockups</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════
+   QVE DESIGN TOKENS
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --bg: #FAF9F7;
+  --bg-subtle: #F5F3F0;
+  --surface: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --text-primary: #2D2926;
+  --text-secondary: #5C5652;
+  --text-tertiary: #8A847D;
+  --accent: #A69B8A;
+  --accent-subtle: #C4BAA9;
+  --accent-muted: #D9D2C6;
+  --divider: #E8E4DE;
+  --divider-subtle: #F0EDE8;
+  --bg-elevated: #FFFFFF;
+  --success: #6B8E6B;
+  --error: #B87A7A;
+  --warning: #C4A35A;
+  --info: #7A8B9B;
+  --rating-wine: #8B4A5C;
+  --shadow-sm: 0 1px 2px rgba(45, 41, 38, 0.03);
+  --shadow-md: 0 2px 8px rgba(45, 41, 38, 0.04), 0 1px 2px rgba(45, 41, 38, 0.03);
+  --shadow-lg: 0 8px 24px rgba(45, 41, 38, 0.06), 0 2px 4px rgba(45, 41, 38, 0.03);
+  --font-serif: 'Cormorant Garamond', 'Didot', Georgia, serif;
+  --font-sans: 'Outfit', 'Avenir Next', system-ui, sans-serif;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-8: 3rem;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 100px;
+  --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+[data-theme="dark"] {
+  --bg: #0C0B0A;
+  --bg-subtle: #141312;
+  --surface: #1A1918;
+  --surface-raised: #222120;
+  --text-primary: #F0EDE6;
+  --text-secondary: #A8A29A;
+  --text-tertiary: #6B665F;
+  --accent: #B8AFA0;
+  --accent-subtle: #7A756C;
+  --accent-muted: #4A4640;
+  --divider: #2A2826;
+  --divider-subtle: #1F1E1C;
+  --bg-elevated: #2A2826;
+  --success: #8BA88B;
+  --error: #C99999;
+  --warning: #D4B86A;
+  --info: #9AABB8;
+  --rating-wine: #C98A9C;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 1px rgba(255, 255, 255, 0.03);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* ═══════════════════════════════════════════════════════
+   RESET & BASE
+   ═══════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--bg);
+  line-height: 1.5;
+  min-height: 100vh;
+  transition: background 0.5s var(--ease-out), color 0.3s var(--ease-out);
+}
+img { max-width: 100%; height: auto; display: block; }
+button { font-family: inherit; font-size: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+
+/* ═══════════════════════════════════════════════════════
+   VARIATION SWITCHER
+   ═══════════════════════════════════════════════════════ */
+.switcher {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 200;
+  background: var(--surface);
+  border-bottom: 1px solid var(--divider);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  backdrop-filter: blur(20px);
+}
+
+.switcher-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+  margin-right: var(--space-2);
+}
+
+.switcher button {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border: 1px solid var(--divider);
+  transition: all 0.2s var(--ease-out);
+}
+
+.switcher button.active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+.switcher button:hover:not(.active) {
+  border-color: var(--accent-subtle);
+  color: var(--text-primary);
+}
+
+.theme-toggle {
+  margin-left: auto;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--divider);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+body { padding-top: 52px; }
+
+/* ═══════════════════════════════════════════════════════
+   SHARED HEADER (for mockup pages)
+   ═══════════════════════════════════════════════════════ */
+.page-header {
+  position: sticky;
+  top: 52px;
+  z-index: 100;
+  background: var(--bg);
+  border-bottom: 1px solid transparent;
+  padding: var(--space-4) var(--space-5);
+  max-width: 600px;
+  margin: 0 auto;
+  transition: border-color 0.2s;
+}
+
+.page-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.page-header .logo {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.page-header .page-title {
+  font-family: var(--font-serif);
+  font-size: 1.125rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  margin-left: var(--space-3);
+}
+
+.header-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.header-icon-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--divider);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.header-icon-btn:hover {
+  border-color: var(--accent-subtle);
+  color: var(--text-secondary);
+}
+
+/* Filter pills row */
+.filter-row {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) 0 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.filter-row::-webkit-scrollbar { display: none; }
+
+.filter-pill {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--divider);
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.filter-pill.active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+/* Stats row */
+.stats-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+}
+
+.stat {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.stat strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════════════
+   VARIATION CONTAINERS
+   ═══════════════════════════════════════════════════════ */
+.variation { display: none; max-width: 600px; margin: 0 auto; padding: 0 var(--space-4) var(--space-8); }
+.variation.active { display: block; }
+
+/* ═══════════════════════════════════════════════════════
+   VARIATION A: JOURNAL / DIARY
+   ═══════════════════════════════════════════════════════ */
+
+/* Date header group */
+.journal-date-header {
+  padding: var(--space-5) 0 var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.journal-date-header .date-text {
+  font-family: var(--font-serif);
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.journal-date-header .date-line {
+  flex: 1;
+  height: 1px;
+  background: var(--divider);
+}
+
+/* Journal entry */
+.journal-entry {
+  position: relative;
+  padding: var(--space-5);
+  padding-left: calc(var(--space-5) + 3px + var(--space-4));
+  margin-bottom: var(--space-4);
+}
+
+/* Timeline line */
+.journal-entry::before {
+  content: '';
+  position: absolute;
+  left: var(--space-5);
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--divider);
+}
+
+/* Timeline dot */
+.journal-entry::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--space-5) - 3px);
+  top: var(--space-6);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.journal-entry:last-child::before {
+  bottom: 50%;
+}
+
+.journal-time {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--space-2);
+}
+
+.journal-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 0.625rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-left: var(--space-2);
+}
+
+.badge-tasted { background: rgba(139, 74, 92, 0.12); color: var(--rating-wine); }
+.badge-spotted { background: rgba(122, 139, 155, 0.12); color: var(--info); }
+.badge-recommended { background: rgba(107, 142, 107, 0.12); color: var(--success); }
+.badge-travel { background: rgba(196, 163, 90, 0.12); color: var(--warning); }
+.badge-event { background: rgba(184, 175, 160, 0.12); color: var(--accent); }
+
+.journal-wine-name {
+  font-family: var(--font-serif);
+  font-size: 1.375rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin-bottom: var(--space-1);
+}
+
+.journal-wine-detail {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-3);
+}
+
+.journal-photo {
+  width: 100%;
+  aspect-ratio: 4/3;
+  border-radius: var(--radius-lg);
+  background: var(--bg-subtle);
+  margin-bottom: var(--space-3);
+  overflow: hidden;
+  position: relative;
+}
+
+.journal-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Placeholder gradient for photo area */
+.photo-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--accent-muted) 0%, var(--divider) 50%, var(--accent-muted) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: 2rem;
+}
+
+.journal-notes {
+  font-family: var(--font-serif);
+  font-size: 0.9375rem;
+  font-style: italic;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: var(--space-3);
+  border-left: 2px solid var(--accent-muted);
+  padding-left: var(--space-4);
+}
+
+.journal-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.journal-tag {
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.6875rem;
+  color: var(--text-tertiary);
+  border: 1px solid var(--divider);
+}
+
+.journal-context {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.journal-context-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* Rating dots */
+.rating-dots {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.rating-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--divider);
+}
+
+.rating-dot.filled {
+  background: var(--rating-wine);
+}
+
+.rating-label {
+  font-size: 0.6875rem;
+  color: var(--text-tertiary);
+  margin-left: var(--space-1);
+}
+
+/* ═══════════════════════════════════════════════════════
+   VARIATION B: SCRAPBOOK / PINTEREST
+   ═══════════════════════════════════════════════════════ */
+
+.scrapbook-month-header {
+  text-align: center;
+  padding: var(--space-6) 0 var(--space-4);
+}
+
+.scrapbook-month-header h2 {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--text-primary);
+}
+
+.scrapbook-month-header .month-count {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
+
+.masonry-grid {
+  columns: 2;
+  column-gap: var(--space-3);
+}
+
+@media (min-width: 560px) {
+  .masonry-grid { columns: 3; }
+}
+
+.scrapbook-card {
+  break-inside: avoid;
+  margin-bottom: var(--space-3);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--divider-subtle);
+  transition: box-shadow 0.3s var(--ease-out), transform 0.2s var(--ease-out);
+}
+
+.scrapbook-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.scrapbook-card-image {
+  width: 100%;
+  background: var(--bg-subtle);
+  position: relative;
+}
+
+/* Different aspect ratios for visual variety */
+.scrapbook-card:nth-child(3n+1) .scrapbook-card-image { aspect-ratio: 3/4; }
+.scrapbook-card:nth-child(3n+2) .scrapbook-card-image { aspect-ratio: 1/1; }
+.scrapbook-card:nth-child(3n+3) .scrapbook-card-image { aspect-ratio: 4/5; }
+
+.scrapbook-type-dot {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.dot-tasted { background: var(--rating-wine); }
+.dot-spotted { background: var(--info); }
+.dot-recommended { background: var(--success); }
+.dot-travel { background: var(--warning); }
+.dot-event { background: var(--accent); }
+
+.scrapbook-card-body {
+  padding: var(--space-3);
+}
+
+.scrapbook-card-name {
+  font-family: var(--font-serif);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin-bottom: var(--space-1);
+}
+
+.scrapbook-card-year {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-2);
+}
+
+.scrapbook-card-note {
+  font-family: var(--font-serif);
+  font-size: 0.8125rem;
+  font-style: italic;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.scrapbook-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: var(--space-2);
+}
+
+.scrapbook-tag {
+  font-size: 0.5625rem;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  color: var(--text-tertiary);
+  border: 1px solid var(--divider);
+}
+
+.scrapbook-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--divider-subtle);
+  font-size: 0.625rem;
+  color: var(--text-tertiary);
+}
+
+/* Text-only scrapbook card (no image) */
+.scrapbook-card.text-only .scrapbook-card-body {
+  padding: var(--space-4);
+  background: linear-gradient(135deg, var(--surface) 0%, var(--bg-subtle) 100%);
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.scrapbook-card.text-only .scrapbook-card-note {
+  font-size: 0.9375rem;
+  -webkit-line-clamp: 5;
+}
+
+/* ═══════════════════════════════════════════════════════
+   VARIATION C: SOCIAL FEED
+   ═══════════════════════════════════════════════════════ */
+
+.feed-entry {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--divider-subtle);
+  margin-bottom: var(--space-4);
+  overflow: hidden;
+  transition: box-shadow 0.3s var(--ease-out);
+}
+
+.feed-entry:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.feed-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.feed-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-muted), var(--accent));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-serif);
+  font-size: 0.875rem;
+  color: var(--bg);
+  flex-shrink: 0;
+}
+
+.feed-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.feed-action-text {
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+}
+
+.feed-action-text strong {
+  font-weight: 600;
+}
+
+.feed-action-text .action-verb {
+  color: var(--text-secondary);
+}
+
+.feed-timestamp {
+  font-size: 0.6875rem;
+  color: var(--text-tertiary);
+}
+
+.feed-more-btn {
+  color: var(--text-tertiary);
+  font-size: 1.25rem;
+  padding: var(--space-2);
+}
+
+/* Feed image */
+.feed-image {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: var(--bg-subtle);
+  position: relative;
+}
+
+/* Wine info bar */
+.feed-wine-info {
+  padding: var(--space-4);
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.feed-wine-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.25rem;
+}
+
+.feed-wine-details { flex: 1; min-width: 0; }
+
+.feed-wine-name {
+  font-family: var(--font-serif);
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.feed-wine-subtitle {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.feed-wine-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--divider);
+  font-size: 0.6875rem;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.feed-wine-link:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+/* Feed notes */
+.feed-notes {
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.feed-notes p {
+  font-family: var(--font-serif);
+  font-size: 0.9375rem;
+  font-style: italic;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Feed tags */
+.feed-tags {
+  padding: 0 var(--space-4);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.feed-tag {
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.6875rem;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent-muted);
+}
+
+/* Feed actions */
+.feed-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--divider-subtle);
+  margin-top: var(--space-3);
+}
+
+.feed-action-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  transition: all 0.2s;
+}
+
+.feed-action-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+}
+
+.feed-action-btn.liked {
+  color: var(--rating-wine);
+}
+
+/* Context card (location, event, etc.) */
+.feed-context {
+  margin: 0 var(--space-4) var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.feed-context-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.feed-context-text {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.feed-context-text strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Rating in feed */
+.feed-rating {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-2);
+}
+
+.feed-rating-value {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--rating-wine);
+}
+
+.feed-rating-max {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+/* ═══════════════════════════════════════════════════════
+   EMPTY STATES & FAB
+   ═══════════════════════════════════════════════════════ */
+.fab {
+  position: fixed;
+  bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+  right: var(--space-5);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  box-shadow: var(--shadow-lg);
+  z-index: 50;
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s;
+}
+
+.fab:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-lg), 0 0 20px rgba(166, 155, 138, 0.2);
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     VARIATION SWITCHER
+     ═══════════════════════════════════════════════════════ -->
+<div class="switcher">
+  <span class="switcher-label">View</span>
+  <button class="active" onclick="switchVariation('a')">A: Journal</button>
+  <button onclick="switchVariation('b')">B: Scrapbook</button>
+  <button onclick="switchVariation('c')">C: Social Feed</button>
+  <button class="theme-toggle" onclick="toggleTheme()">
+    <span id="theme-icon">&#9789;</span>
+  </button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     VARIATION A: JOURNAL / DIARY TIMELINE
+     Intimate, text-heavy chronological entries
+     ═══════════════════════════════════════════════════════ -->
+<div id="variation-a" class="variation active">
+
+  <div class="page-header">
+    <div class="page-header-top">
+      <div style="display:flex;align-items:center;">
+        <span class="logo">Qve</span>
+        <span class="page-title">Memories</span>
+      </div>
+      <div class="header-actions">
+        <button class="header-icon-btn" title="Search">&#128269;</button>
+        <button class="header-icon-btn" title="Calendar">&#128197;</button>
+      </div>
+    </div>
+    <div class="stats-row">
+      <span class="stat"><strong>47</strong> memories</span>
+      <span class="stat"><strong>12</strong> wines linked</span>
+      <span class="stat">Since <strong>Oct 2025</strong></span>
+    </div>
+    <div class="filter-row">
+      <button class="filter-pill active">All</button>
+      <button class="filter-pill badge-tasted">Tasted</button>
+      <button class="filter-pill badge-spotted">Spotted</button>
+      <button class="filter-pill badge-recommended">Recommended</button>
+      <button class="filter-pill badge-travel">Travel</button>
+      <button class="filter-pill badge-event">Event</button>
+    </div>
+  </div>
+
+  <!-- Date group: Today -->
+  <div class="journal-date-header">
+    <span class="date-text">Today</span>
+    <div class="date-line"></div>
+  </div>
+
+  <div class="journal-entry">
+    <div class="journal-time">7:42 PM <span class="journal-type-badge badge-tasted">Tasted</span></div>
+    <div class="journal-wine-name">Chateau Margaux</div>
+    <div class="journal-wine-detail">2015 &middot; Margaux, Bordeaux &middot; France &#127467;&#127479;</div>
+    <div class="journal-photo">
+      <div class="photo-placeholder">&#127863;</div>
+    </div>
+    <div class="journal-notes">
+      Incredible depth. Dark cassis and violet on the nose, with this silky tannin structure that just kept unfolding. The kind of wine that makes you sit in silence for a moment. Shared with Sarah at our anniversary dinner.
+    </div>
+    <div class="journal-tags">
+      <span class="journal-tag">#anniversary</span>
+      <span class="journal-tag">#bordeaux</span>
+      <span class="journal-tag">#special-occasion</span>
+    </div>
+    <div class="journal-context">
+      <span class="journal-context-item">&#127860; Le Cinq, Paris</span>
+      <span class="journal-context-item">&#127864; Decanted 2hrs</span>
+      <span class="journal-context-item">
+        <span class="rating-dots">
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot"></span>
+        </span>
+        <span class="rating-label">9/10</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="journal-entry">
+    <div class="journal-time">2:15 PM <span class="journal-type-badge badge-spotted">Spotted</span></div>
+    <div class="journal-wine-name">Sassicaia</div>
+    <div class="journal-wine-detail">2018 &middot; Bolgheri, Tuscany &middot; Italy &#127470;&#127481;</div>
+    <div class="journal-notes">
+      Spotted at the hotel wine shop. EUR295 which is actually decent for this vintage. Need to check cellar stock before pulling the trigger.
+    </div>
+    <div class="journal-tags">
+      <span class="journal-tag">#wishlist</span>
+      <span class="journal-tag">#super-tuscan</span>
+    </div>
+    <div class="journal-context">
+      <span class="journal-context-item">&#128176; EUR295</span>
+      <span class="journal-context-item">&#128205; Hotel du Cap-Eden-Roc</span>
+    </div>
+  </div>
+
+  <!-- Date group: Yesterday -->
+  <div class="journal-date-header">
+    <span class="date-text">Yesterday</span>
+    <div class="date-line"></div>
+  </div>
+
+  <div class="journal-entry">
+    <div class="journal-time">9:30 PM <span class="journal-type-badge badge-recommended">Rec'd</span></div>
+    <div class="journal-wine-name">Domaine de la Romanee-Conti</div>
+    <div class="journal-wine-detail">2019 &middot; Vosne-Romanee, Burgundy &middot; France &#127467;&#127479;</div>
+    <div class="journal-notes">
+      James at the tasting recommended this as the "gateway DRC" - the Echezeaux apparently shows the house style without requiring a mortgage. Says to look for 2019 or 2020.
+    </div>
+    <div class="journal-tags">
+      <span class="journal-tag">#recommendation</span>
+      <span class="journal-tag">#burgundy</span>
+      <span class="journal-tag">#bucket-list</span>
+    </div>
+    <div class="journal-context">
+      <span class="journal-context-item">&#128100; Recommended by James M.</span>
+    </div>
+  </div>
+
+  <div class="journal-entry">
+    <div class="journal-time">6:00 PM <span class="journal-type-badge badge-event">Event</span></div>
+    <div class="journal-wine-name">Krug Grande Cuvee 171th Edition</div>
+    <div class="journal-wine-detail">NV &middot; Reims, Champagne &middot; France &#127467;&#127479;</div>
+    <div class="journal-photo">
+      <div class="photo-placeholder">&#127870;</div>
+    </div>
+    <div class="journal-notes">
+      Berry Bros tasting event. The Krug was the star of the evening - toasted brioche, citrus, and this incredible mousse. Stood out above the Dom and Salon.
+    </div>
+    <div class="journal-tags">
+      <span class="journal-tag">#tasting-event</span>
+      <span class="journal-tag">#champagne</span>
+      <span class="journal-tag">#berry-bros</span>
+    </div>
+    <div class="journal-context">
+      <span class="journal-context-item">&#127878; Berry Bros & Rudd Tasting</span>
+      <span class="journal-context-item">
+        <span class="rating-dots">
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot"></span>
+          <span class="rating-dot"></span>
+        </span>
+        <span class="rating-label">8/10</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- Date group: Last week -->
+  <div class="journal-date-header">
+    <span class="date-text">5 February</span>
+    <div class="date-line"></div>
+  </div>
+
+  <div class="journal-entry">
+    <div class="journal-time">8:15 PM <span class="journal-type-badge badge-travel">Travel</span></div>
+    <div class="journal-wine-name">Penfolds Grange</div>
+    <div class="journal-wine-detail">2017 &middot; South Australia &middot; Australia &#127462;&#127482;</div>
+    <div class="journal-notes">
+      Found this on the wine list at Quay in Sydney. Couldn't resist. Full-bodied, dark fruit, chocolate, spice. Paired perfectly with the wagyu. A memorable end to the business trip.
+    </div>
+    <div class="journal-tags">
+      <span class="journal-tag">#travel</span>
+      <span class="journal-tag">#australia</span>
+      <span class="journal-tag">#shiraz</span>
+    </div>
+    <div class="journal-context">
+      <span class="journal-context-item">&#128205; Quay Restaurant, Sydney</span>
+      <span class="journal-context-item">&#127860; Wagyu pairing</span>
+      <span class="journal-context-item">
+        <span class="rating-dots">
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot"></span>
+        </span>
+        <span class="rating-label">9/10</span>
+      </span>
+    </div>
+  </div>
+
+  <button class="fab" title="Add Memory">+</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     VARIATION B: SCRAPBOOK / PINTEREST
+     Visual cards, masonry layout, mood board feel
+     ═══════════════════════════════════════════════════════ -->
+<div id="variation-b" class="variation">
+
+  <div class="page-header">
+    <div class="page-header-top">
+      <div style="display:flex;align-items:center;">
+        <span class="logo">Qve</span>
+        <span class="page-title">Memories</span>
+      </div>
+      <div class="header-actions">
+        <button class="header-icon-btn" title="Search">&#128269;</button>
+        <button class="header-icon-btn" title="Grid">&#9638;</button>
+      </div>
+    </div>
+    <div class="filter-row">
+      <button class="filter-pill active">All</button>
+      <button class="filter-pill">&#127863; Tasted</button>
+      <button class="filter-pill">&#128065; Spotted</button>
+      <button class="filter-pill">&#128172; Rec'd</button>
+      <button class="filter-pill">&#9992; Travel</button>
+      <button class="filter-pill">&#127878; Events</button>
+    </div>
+  </div>
+
+  <div class="scrapbook-month-header">
+    <h2>February 2026</h2>
+    <div class="month-count">8 memories this month</div>
+  </div>
+
+  <div class="masonry-grid">
+
+    <!-- Card 1: Photo card with wine -->
+    <div class="scrapbook-card">
+      <div class="scrapbook-card-image">
+        <div class="photo-placeholder" style="aspect-ratio:3/4;">&#127863;</div>
+        <span class="scrapbook-type-dot dot-tasted"></span>
+      </div>
+      <div class="scrapbook-card-body">
+        <div class="scrapbook-card-name">Chateau Margaux</div>
+        <div class="scrapbook-card-year">2015 &middot; Bordeaux</div>
+        <div class="scrapbook-card-note">Anniversary dinner at Le Cinq. Silky tannins, incredible depth...</div>
+        <div class="scrapbook-card-tags">
+          <span class="scrapbook-tag">#anniversary</span>
+          <span class="scrapbook-tag">#bordeaux</span>
+        </div>
+      </div>
+      <div class="scrapbook-card-footer">
+        <span>Today</span>
+        <span class="rating-dots">
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot"></span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Card 2: Text-only note -->
+    <div class="scrapbook-card text-only">
+      <div class="scrapbook-card-body">
+        <div class="scrapbook-card-name" style="font-size:0.8125rem;color:var(--text-tertiary);font-family:var(--font-sans);text-transform:uppercase;letter-spacing:0.08em;font-weight:600;margin-bottom:var(--space-2);">Spotted</div>
+        <div class="scrapbook-card-name">Sassicaia 2018</div>
+        <div class="scrapbook-card-note">EUR295 at the hotel shop. Check cellar stock before buying.</div>
+        <div class="scrapbook-card-tags" style="margin-top:var(--space-3);">
+          <span class="scrapbook-tag">#wishlist</span>
+        </div>
+      </div>
+      <div class="scrapbook-card-footer">
+        <span>Today</span>
+        <span>&#128176;</span>
+      </div>
+    </div>
+
+    <!-- Card 3: Event photo -->
+    <div class="scrapbook-card">
+      <div class="scrapbook-card-image">
+        <div class="photo-placeholder" style="aspect-ratio:1/1;">&#127870;</div>
+        <span class="scrapbook-type-dot dot-event"></span>
+      </div>
+      <div class="scrapbook-card-body">
+        <div class="scrapbook-card-name">Krug Grande Cuvee</div>
+        <div class="scrapbook-card-year">NV &middot; Champagne</div>
+        <div class="scrapbook-card-note">Berry Bros tasting. Star of the evening.</div>
+      </div>
+      <div class="scrapbook-card-footer">
+        <span>Yesterday</span>
+        <span>&#127878;</span>
+      </div>
+    </div>
+
+    <!-- Card 4: Recommendation card -->
+    <div class="scrapbook-card text-only">
+      <div class="scrapbook-card-body" style="border-left:3px solid var(--success);">
+        <div class="scrapbook-card-name" style="font-size:0.8125rem;color:var(--success);font-family:var(--font-sans);text-transform:uppercase;letter-spacing:0.08em;font-weight:600;margin-bottom:var(--space-2);">&#128172; Rec'd</div>
+        <div class="scrapbook-card-name">DRC Echezeaux 2019</div>
+        <div class="scrapbook-card-note">"The gateway DRC" - shows the house style without requiring a mortgage. Look for 2019 or 2020.</div>
+        <div style="margin-top:var(--space-3);font-size:0.6875rem;color:var(--text-tertiary);">From James M.</div>
+      </div>
+    </div>
+
+    <!-- Card 5: Travel photo -->
+    <div class="scrapbook-card">
+      <div class="scrapbook-card-image">
+        <div class="photo-placeholder" style="aspect-ratio:4/5;">&#127757;</div>
+        <span class="scrapbook-type-dot dot-travel"></span>
+      </div>
+      <div class="scrapbook-card-body">
+        <div class="scrapbook-card-name">Penfolds Grange</div>
+        <div class="scrapbook-card-year">2017 &middot; South Australia</div>
+        <div class="scrapbook-card-note">Quay Restaurant, Sydney. Perfect wagyu pairing.</div>
+        <div class="scrapbook-card-tags">
+          <span class="scrapbook-tag">#travel</span>
+          <span class="scrapbook-tag">#sydney</span>
+        </div>
+      </div>
+      <div class="scrapbook-card-footer">
+        <span>5 Feb</span>
+        <span class="rating-dots">
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot"></span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Card 6: Another tasted -->
+    <div class="scrapbook-card">
+      <div class="scrapbook-card-image">
+        <div class="photo-placeholder" style="aspect-ratio:3/4;">&#127862;</div>
+        <span class="scrapbook-type-dot dot-tasted"></span>
+      </div>
+      <div class="scrapbook-card-body">
+        <div class="scrapbook-card-name">Cloudy Bay Sauvignon Blanc</div>
+        <div class="scrapbook-card-year">2024 &middot; Marlborough</div>
+        <div class="scrapbook-card-note">Casual Tuesday night. Crisp and refreshing. Nothing flashy but just what we needed.</div>
+      </div>
+      <div class="scrapbook-card-footer">
+        <span>3 Feb</span>
+        <span class="rating-dots">
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot"></span>
+          <span class="rating-dot"></span>
+          <span class="rating-dot"></span>
+        </span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="scrapbook-month-header">
+    <h2>January 2026</h2>
+    <div class="month-count">14 memories</div>
+  </div>
+
+  <div class="masonry-grid">
+    <div class="scrapbook-card">
+      <div class="scrapbook-card-image">
+        <div class="photo-placeholder" style="aspect-ratio:3/4;">&#127863;</div>
+        <span class="scrapbook-type-dot dot-tasted"></span>
+      </div>
+      <div class="scrapbook-card-body">
+        <div class="scrapbook-card-name">Opus One</div>
+        <div class="scrapbook-card-year">2019 &middot; Napa Valley</div>
+        <div class="scrapbook-card-note">New Year's Eve. Worth every penny.</div>
+      </div>
+      <div class="scrapbook-card-footer">
+        <span>1 Jan</span>
+        <span class="rating-dots">
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+          <span class="rating-dot filled"></span>
+        </span>
+      </div>
+    </div>
+
+    <div class="scrapbook-card text-only">
+      <div class="scrapbook-card-body">
+        <div class="scrapbook-card-name" style="font-size:0.8125rem;color:var(--warning);font-family:var(--font-sans);text-transform:uppercase;letter-spacing:0.08em;font-weight:600;margin-bottom:var(--space-2);">&#9992; Travel</div>
+        <div class="scrapbook-card-name">Antinori Tignanello</div>
+        <div class="scrapbook-card-note">Found at Enoteca Pinchiorri in Florence. Stunning with the bistecca.</div>
+        <div class="scrapbook-card-tags" style="margin-top:var(--space-3);">
+          <span class="scrapbook-tag">#florence</span>
+          <span class="scrapbook-tag">#tuscany</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="fab" title="Add Memory">+</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     VARIATION C: SOCIAL FEED
+     Rich media timeline with interaction patterns
+     ═══════════════════════════════════════════════════════ -->
+<div id="variation-c" class="variation">
+
+  <div class="page-header">
+    <div class="page-header-top">
+      <div style="display:flex;align-items:center;">
+        <span class="logo">Qve</span>
+        <span class="page-title">Memories</span>
+      </div>
+      <div class="header-actions">
+        <button class="header-icon-btn" title="Search">&#128269;</button>
+      </div>
+    </div>
+    <div class="filter-row">
+      <button class="filter-pill active">All</button>
+      <button class="filter-pill">Tasted</button>
+      <button class="filter-pill">Spotted</button>
+      <button class="filter-pill">Recommended</button>
+      <button class="filter-pill">Travel</button>
+      <button class="filter-pill">Events</button>
+    </div>
+  </div>
+
+  <!-- Feed Entry 1: Tasted with photo & rating -->
+  <div class="feed-entry">
+    <div class="feed-header">
+      <div class="feed-avatar">P</div>
+      <div class="feed-meta">
+        <div class="feed-action-text"><strong>You</strong> <span class="action-verb">tasted a wine</span></div>
+        <div class="feed-timestamp">Today at 7:42 PM</div>
+      </div>
+      <button class="feed-more-btn">&#8943;</button>
+    </div>
+    <div class="feed-image">
+      <div class="photo-placeholder" style="width:100%;height:100%;">&#127863;</div>
+    </div>
+    <div class="feed-wine-info">
+      <div class="feed-wine-icon">&#127863;</div>
+      <div class="feed-wine-details">
+        <div class="feed-wine-name">Chateau Margaux 2015</div>
+        <div class="feed-wine-subtitle">Margaux, Bordeaux &middot; France &#127467;&#127479;</div>
+        <a class="feed-wine-link" href="#">&#128279; View in Cellar</a>
+      </div>
+    </div>
+    <div class="feed-rating">
+      <span class="feed-rating-value">9</span>
+      <span class="feed-rating-max">/10</span>
+      <span class="rating-dots" style="margin-left:var(--space-2);">
+        <span class="rating-dot filled"></span>
+        <span class="rating-dot filled"></span>
+        <span class="rating-dot filled"></span>
+        <span class="rating-dot filled"></span>
+        <span class="rating-dot filled"></span>
+        <span class="rating-dot filled"></span>
+        <span class="rating-dot filled"></span>
+        <span class="rating-dot filled"></span>
+        <span class="rating-dot filled"></span>
+        <span class="rating-dot"></span>
+      </span>
+    </div>
+    <div class="feed-notes">
+      <p>Incredible depth. Dark cassis and violet on the nose, with this silky tannin structure that just kept unfolding. The kind of wine that makes you sit in silence for a moment.</p>
+    </div>
+    <div class="feed-context">
+      <span class="feed-context-icon">&#128205;</span>
+      <span class="feed-context-text"><strong>Le Cinq</strong>, Paris &middot; Anniversary dinner</span>
+    </div>
+    <div class="feed-tags">
+      <span class="feed-tag">#anniversary</span>
+      <span class="feed-tag">#bordeaux</span>
+      <span class="feed-tag">#special-occasion</span>
+    </div>
+    <div class="feed-actions">
+      <button class="feed-action-btn liked">&#9829; Favourite</button>
+      <button class="feed-action-btn">&#128203; Add to Cellar</button>
+      <button class="feed-action-btn">&#9998; Edit</button>
+    </div>
+  </div>
+
+  <!-- Feed Entry 2: Spotted (no photo) -->
+  <div class="feed-entry">
+    <div class="feed-header">
+      <div class="feed-avatar">P</div>
+      <div class="feed-meta">
+        <div class="feed-action-text"><strong>You</strong> <span class="action-verb">spotted a wine</span></div>
+        <div class="feed-timestamp">Today at 2:15 PM</div>
+      </div>
+      <button class="feed-more-btn">&#8943;</button>
+    </div>
+    <div class="feed-wine-info">
+      <div class="feed-wine-icon">&#128065;</div>
+      <div class="feed-wine-details">
+        <div class="feed-wine-name">Sassicaia 2018</div>
+        <div class="feed-wine-subtitle">Bolgheri, Tuscany &middot; Italy &#127470;&#127481;</div>
+      </div>
+    </div>
+    <div class="feed-notes">
+      <p>Spotted at the hotel wine shop. EUR295 which is actually decent for this vintage. Need to check cellar stock before pulling the trigger.</p>
+    </div>
+    <div class="feed-context">
+      <span class="feed-context-icon">&#128176;</span>
+      <span class="feed-context-text"><strong>EUR 295</strong> &middot; Hotel du Cap-Eden-Roc</span>
+    </div>
+    <div class="feed-tags">
+      <span class="feed-tag">#wishlist</span>
+      <span class="feed-tag">#super-tuscan</span>
+    </div>
+    <div class="feed-actions">
+      <button class="feed-action-btn">&#9829; Favourite</button>
+      <button class="feed-action-btn">&#128722; Buy</button>
+      <button class="feed-action-btn">&#9998; Edit</button>
+    </div>
+  </div>
+
+  <!-- Feed Entry 3: Recommendation -->
+  <div class="feed-entry">
+    <div class="feed-header">
+      <div class="feed-avatar" style="background:linear-gradient(135deg, var(--success), #4a6a4a);">J</div>
+      <div class="feed-meta">
+        <div class="feed-action-text"><strong>James M.</strong> <span class="action-verb">recommended a wine</span></div>
+        <div class="feed-timestamp">Yesterday at 9:30 PM</div>
+      </div>
+      <button class="feed-more-btn">&#8943;</button>
+    </div>
+    <div class="feed-wine-info">
+      <div class="feed-wine-icon">&#128172;</div>
+      <div class="feed-wine-details">
+        <div class="feed-wine-name">Domaine de la Romanee-Conti Echezeaux 2019</div>
+        <div class="feed-wine-subtitle">Vosne-Romanee, Burgundy &middot; France &#127467;&#127479;</div>
+      </div>
+    </div>
+    <div class="feed-notes">
+      <p>"The gateway DRC" - shows the house style without requiring a mortgage. Look for the 2019 or 2020 vintages.</p>
+    </div>
+    <div class="feed-tags">
+      <span class="feed-tag">#recommendation</span>
+      <span class="feed-tag">#burgundy</span>
+      <span class="feed-tag">#bucket-list</span>
+    </div>
+    <div class="feed-actions">
+      <button class="feed-action-btn liked">&#9829; Saved</button>
+      <button class="feed-action-btn">&#128269; Find</button>
+      <button class="feed-action-btn">&#9998; Edit</button>
+    </div>
+  </div>
+
+  <!-- Feed Entry 4: Event with photo -->
+  <div class="feed-entry">
+    <div class="feed-header">
+      <div class="feed-avatar">P</div>
+      <div class="feed-meta">
+        <div class="feed-action-text"><strong>You</strong> <span class="action-verb">attended an event</span></div>
+        <div class="feed-timestamp">Yesterday at 6:00 PM</div>
+      </div>
+      <button class="feed-more-btn">&#8943;</button>
+    </div>
+    <div class="feed-image">
+      <div class="photo-placeholder" style="width:100%;height:100%;">&#127870;</div>
+    </div>
+    <div class="feed-wine-info">
+      <div class="feed-wine-icon">&#127878;</div>
+      <div class="feed-wine-details">
+        <div class="feed-wine-name">Krug Grande Cuvee 171th Edition</div>
+        <div class="feed-wine-subtitle">Reims, Champagne &middot; France &#127467;&#127479;</div>
+      </div>
+    </div>
+    <div class="feed-rating">
+      <span class="feed-rating-value">8</span>
+      <span class="feed-rating-max">/10</span>
+    </div>
+    <div class="feed-notes">
+      <p>Berry Bros tasting event. The Krug was the star of the evening - toasted brioche, citrus, and this incredible mousse. Stood out above the Dom and Salon.</p>
+    </div>
+    <div class="feed-context">
+      <span class="feed-context-icon">&#127878;</span>
+      <span class="feed-context-text"><strong>Berry Bros & Rudd</strong> Champagne Tasting</span>
+    </div>
+    <div class="feed-actions">
+      <button class="feed-action-btn">&#9829; Favourite</button>
+      <button class="feed-action-btn">&#128203; Add to Cellar</button>
+      <button class="feed-action-btn">&#9998; Edit</button>
+    </div>
+  </div>
+
+  <!-- Feed Entry 5: Travel -->
+  <div class="feed-entry">
+    <div class="feed-header">
+      <div class="feed-avatar">P</div>
+      <div class="feed-meta">
+        <div class="feed-action-text"><strong>You</strong> <span class="action-verb">discovered a wine while travelling</span></div>
+        <div class="feed-timestamp">5 Feb at 8:15 PM</div>
+      </div>
+      <button class="feed-more-btn">&#8943;</button>
+    </div>
+    <div class="feed-wine-info">
+      <div class="feed-wine-icon">&#9992;</div>
+      <div class="feed-wine-details">
+        <div class="feed-wine-name">Penfolds Grange 2017</div>
+        <div class="feed-wine-subtitle">South Australia &middot; Australia &#127462;&#127482;</div>
+        <a class="feed-wine-link" href="#">&#128279; View in Cellar</a>
+      </div>
+    </div>
+    <div class="feed-rating">
+      <span class="feed-rating-value">9</span>
+      <span class="feed-rating-max">/10</span>
+    </div>
+    <div class="feed-notes">
+      <p>Found this on the wine list at Quay in Sydney. Full-bodied, dark fruit, chocolate, spice. Paired perfectly with the wagyu. A memorable end to the business trip.</p>
+    </div>
+    <div class="feed-context">
+      <span class="feed-context-icon">&#128205;</span>
+      <span class="feed-context-text"><strong>Quay Restaurant</strong>, Sydney, Australia</span>
+    </div>
+    <div class="feed-tags">
+      <span class="feed-tag">#travel</span>
+      <span class="feed-tag">#australia</span>
+      <span class="feed-tag">#shiraz</span>
+    </div>
+    <div class="feed-actions">
+      <button class="feed-action-btn liked">&#9829; Favourite</button>
+      <button class="feed-action-btn">&#9998; Edit</button>
+    </div>
+  </div>
+
+  <button class="fab" title="Add Memory">+</button>
+</div>
+
+<script>
+function switchVariation(id) {
+  document.querySelectorAll('.variation').forEach(v => v.classList.remove('active'));
+  document.getElementById('variation-' + id).classList.add('active');
+  document.querySelectorAll('.switcher button:not(.theme-toggle)').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('theme-icon').innerHTML = isDark ? '&#9789;' : '&#9788;';
+}
+</script>
+</body>
+</html>
