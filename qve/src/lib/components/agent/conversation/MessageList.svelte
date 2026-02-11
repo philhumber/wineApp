@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { flip } from 'svelte/animate';
   import { createEventDispatcher } from 'svelte';
   import MessageWrapper from './MessageWrapper.svelte';
   import type { AgentMessage, AgentAction } from '$lib/agent/types';
@@ -18,7 +17,6 @@
     <div
       class="message-item"
       data-message-id={message.id}
-      animate:flip={{ duration: 200 }}
     >
       <MessageWrapper {message} on:action={handleAction} />
     </div>
