@@ -568,7 +568,7 @@ export interface AgentUsage {
 
 export interface GrapeVariety {
   grape: string;
-  percentage: string | null;
+  percentage: string | number | null;
   source?: string;
 }
 
@@ -780,6 +780,7 @@ export interface StreamRefinedEvent {
  */
 export type StreamEvent =
   | { type: 'field'; data: StreamFieldEvent }
+  | { type: 'text_delta'; data: { field: string; text: string } }
   | { type: 'result'; data: AgentIdentificationResultWithMeta }
   | { type: 'refining'; data: StreamRefiningEvent }
   | { type: 'refined'; data: StreamRefinedEvent }

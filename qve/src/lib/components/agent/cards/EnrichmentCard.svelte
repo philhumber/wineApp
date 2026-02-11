@@ -4,7 +4,7 @@
 	 * Unified enrichment card supporting skeleton, streaming, and static states.
 	 * Replaces both EnrichmentCard and EnrichmentCardStreaming.
 	 */
-	import { enrichmentStreamingFields, isEnriching } from '$lib/stores/agentEnrichment';
+	import { isEnriching } from '$lib/stores/agentEnrichment';
 	import type { AgentEnrichmentData } from '$lib/api/types';
 	import DataCard from './DataCard.svelte';
 	import OverviewSection from '../enrichment/OverviewSection.svelte';
@@ -28,13 +28,19 @@
 	/** Static state: Data source indicator */
 	export let source: 'cache' | 'web_search' | 'inference' | undefined = undefined;
 
+	/** Fields with active text streaming cursors */
+	export let streamingTextFields: string[] = [];
+
 	// ─────────────────────────────────────────────────────
 	// STREAMING STATE
 	// ─────────────────────────────────────────────────────
 
-	// Subscribe to streaming state for reactive updates
-	$: currentStreamingFields = $enrichmentStreamingFields;
 	$: enriching = $isEnriching;
+
+	// Per-section text streaming booleans
+	$: isOverviewStreaming = streamingTextFields.includes('overview');
+	$: isTastingNotesStreaming = streamingTextFields.includes('tastingNotes');
+	$: isPairingNotesStreaming = streamingTextFields.includes('pairingNotes');
 
 	// ─────────────────────────────────────────────────────
 	// STATIC STATE TRANSFORMATION
@@ -47,6 +53,7 @@
 				body: data.body,
 				tannin: data.tannin,
 				acidity: data.acidity,
+				sweetness: data.sweetness,
 				grapeVarieties: data.grapeVarieties,
 				tastingNotes: data.tastingNotes,
 				pairingNotes: data.pairingNotes,
@@ -81,88 +88,93 @@
 
 	</script>
 
-<DataCard
-	{state}
-	data={staticData}
-	streamingFields={currentStreamingFields}
-	{header}
-	cardClass="enrichment-card"
-	{dataAttributes}
-	let:state={cardState}
-	let:fieldsMap
-	let:getFieldValue
-	let:hasField
-	let:isFieldTyping
-	let:handleFieldComplete
->
-	<OverviewSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-		{isFieldTyping}
-		{handleFieldComplete}
-	/>
+<div class="enrichment-card-wrapper">
+	<DataCard
+		{state}
+		data={staticData}
+		streamingFields={new Map()}
+		{header}
+		cardClass="enrichment-card"
+		{dataAttributes}
+		let:state={cardState}
+		let:fieldsMap
+		let:getFieldValue
+		let:hasField
+		let:isFieldTyping
+		let:handleFieldComplete
+	>
+		<OverviewSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+			{isFieldTyping}
+			{handleFieldComplete}
+			isTextStreaming={isOverviewStreaming}
+		/>
 
-	<StyleProfileSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-	/>
+		<StyleProfileSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+		/>
 
-	<GrapeCompositionSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-	/>
+		<GrapeCompositionSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+		/>
 
-	<TastingNotesSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-		{isFieldTyping}
-		{handleFieldComplete}
-	/>
+		<TastingNotesSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+			{isFieldTyping}
+			{handleFieldComplete}
+			isTextStreaming={isTastingNotesStreaming}
+		/>
 
-	<FoodPairingsSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-		{isFieldTyping}
-		{handleFieldComplete}
-	/>
+		<FoodPairingsSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+			{isFieldTyping}
+			{handleFieldComplete}
+			isTextStreaming={isPairingNotesStreaming}
+		/>
 
-	<DrinkWindowSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-	/>
+		<DrinkWindowSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+		/>
 
-	<CriticScoresSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-	/>
-</DataCard>
+		<CriticScoresSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+		/>
+	</DataCard>
+</div>
 
 <style>
-	:global(.data-card.enrichment-card) {
+	.enrichment-card-wrapper :global(.data-card.enrichment-card) {
 		background: var(--surface-raised);
 		margin-top: var(--space-3);
 	}
 
-	:global(.data-card.enrichment-card.skeleton) {
+	.enrichment-card-wrapper :global(.data-card.enrichment-card.skeleton) {
 		border: 1px solid var(--divider-subtle);
 	}
 
 	/* When streaming is complete, show accent border */
-	:global(.data-card.enrichment-card:not(.skeleton)) {
+	.enrichment-card-wrapper :global(.data-card.enrichment-card:not(.skeleton)) {
 		border: 1px solid var(--accent);
 	}
 </style>

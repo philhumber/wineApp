@@ -40,31 +40,34 @@
 	// ─────────────────────────────────────────────────────
 	// FIELD ACCESSORS (exposed via slot props)
 	// ─────────────────────────────────────────────────────
+	// These must be reactive ($:) so that sections re-evaluate when
+	// data/state/streamingFields change. Using stable `export function`
+	// would create closures that Svelte cannot track as dependencies.
 
-	export function getFieldValue(field: string): unknown {
+	$: getFieldValue = (field: string): unknown => {
 		if (state === 'static') {
 			return data?.[field] ?? null;
 		} else if (state === 'streaming') {
 			return streamingFields.get(field)?.value ?? null;
 		}
 		return null;
-	}
+	};
 
-	export function hasField(field: string): boolean {
+	$: hasField = (field: string): boolean => {
 		if (state === 'skeleton') return false;
 		if (state === 'static') {
 			const value = data?.[field];
 			return value !== null && value !== undefined;
 		}
 		return streamingFields.has(field);
-	}
+	};
 
-	export function isFieldTyping(field: string): boolean {
+	$: isFieldTyping = (field: string): boolean => {
 		if (state !== 'streaming') return false;
 		return streamingFields.get(field)?.isTyping ?? false;
-	}
+	};
 
-	export function handleFieldComplete(field: string) {
+	function handleFieldComplete(field: string) {
 		dispatch('fieldComplete', { field });
 	}
 

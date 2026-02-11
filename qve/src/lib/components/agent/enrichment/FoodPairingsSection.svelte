@@ -4,24 +4,21 @@
 	 * Displays food pairing recommendations
 	 */
 	import type { StreamingField } from '$lib/agent/types';
-	import FieldTypewriter from '../FieldTypewriter.svelte';
 
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
 	export let fieldsMap: Map<string, StreamingField> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
-	export let isFieldTyping: (field: string) => boolean; // Passed by DataCard slot
+	export let isFieldTyping: (field: string) => boolean;
 	export let handleFieldComplete: (field: string) => void;
+	export let isTextStreaming = false;
 	void isFieldTyping;
-
-	// For streaming mode, directly access fieldsMap to ensure proper Svelte reactivity
-	$: pairingField = state === 'streaming' ? (fieldsMap.get('pairingNotes') || fieldsMap.get('pairings')) : null;
+	void handleFieldComplete;
 
 	// Handle field name variations (pairingNotes or pairings)
-	$: pairingNotes = state === 'streaming' ? pairingField?.value : (getFieldValue('pairingNotes') || getFieldValue('pairings'));
-	$: hasPairingNotes = state === 'streaming' ? !!pairingField : (hasField('pairingNotes') || hasField('pairings'));
-	$: isTyping = state === 'streaming' ? (pairingField?.isTyping ?? false) : false;
+	$: pairingNotes = getFieldValue('pairingNotes') || getFieldValue('pairings');
+	$: hasPairingNotes = hasField('pairingNotes') || hasField('pairings');
 </script>
 
 <section class="section">
@@ -33,15 +30,7 @@
 		</div>
 	{:else}
 		<p class="narrative-text">
-			{#if state === 'streaming'}
-				<FieldTypewriter
-					value={pairingNotes}
-					{isTyping}
-					on:complete={() => handleFieldComplete('pairingNotes')}
-				/>
-			{:else}
-				{pairingNotes}
-			{/if}
+			{pairingNotes}{#if isTextStreaming}<span class="streaming-cursor">&#9611;</span>{/if}
 		</p>
 	{/if}
 </section>
@@ -69,6 +58,17 @@
 		font-size: 0.9375rem;
 		line-height: 1.6;
 		color: var(--text-primary);
+	}
+
+	.streaming-cursor {
+		animation: blink 0.7s step-end infinite;
+		color: var(--accent);
+		font-weight: 300;
+		margin-left: 2px;
+	}
+
+	@keyframes blink {
+		50% { opacity: 0; }
 	}
 
 	.shimmer-container {
@@ -104,6 +104,9 @@
 		.shimmer-bar {
 			animation: none;
 			background: var(--bg-subtle);
+		}
+		.streaming-cursor {
+			animation: none;
 		}
 	}
 </style>

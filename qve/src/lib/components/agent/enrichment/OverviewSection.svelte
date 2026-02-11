@@ -4,24 +4,21 @@
 	 * Displays wine overview/description with skeleton/streaming/static states
 	 */
 	import type { StreamingField } from '$lib/agent/types';
-	import FieldTypewriter from '../FieldTypewriter.svelte';
 
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
 	export let fieldsMap: Map<string, StreamingField> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
-	export let isFieldTyping: (field: string) => boolean; // Passed by DataCard slot
+	export let isFieldTyping: (field: string) => boolean;
 	export let handleFieldComplete: (field: string) => void;
+	export let isTextStreaming = false;
 	void isFieldTyping;
-
-	// For streaming mode, directly access fieldsMap to ensure proper Svelte reactivity
-	$: overviewField = state === 'streaming' ? (fieldsMap.get('overview') || fieldsMap.get('description')) : null;
+	void handleFieldComplete;
 
 	// Handle field name variations (overview or description)
-	$: overview = state === 'streaming' ? overviewField?.value : (getFieldValue('overview') || getFieldValue('description'));
-	$: hasOverview = state === 'streaming' ? !!overviewField : (hasField('overview') || hasField('description'));
-	$: isTyping = state === 'streaming' ? (overviewField?.isTyping ?? false) : false;
+	$: overview = getFieldValue('overview') || getFieldValue('description');
+	$: hasOverview = hasField('overview') || hasField('description');
 </script>
 
 <section class="section">
@@ -34,15 +31,7 @@
 		</div>
 	{:else}
 		<p class="narrative-text">
-			{#if state === 'streaming'}
-				<FieldTypewriter
-					value={overview}
-					{isTyping}
-					on:complete={() => handleFieldComplete('overview')}
-				/>
-			{:else}
-				{overview}
-			{/if}
+			{overview}{#if isTextStreaming}<span class="streaming-cursor">&#9611;</span>{/if}
 		</p>
 	{/if}
 </section>
@@ -70,6 +59,17 @@
 		font-size: 0.9375rem;
 		line-height: 1.6;
 		color: var(--text-primary);
+	}
+
+	.streaming-cursor {
+		animation: blink 0.7s step-end infinite;
+		color: var(--accent);
+		font-weight: 300;
+		margin-left: 2px;
+	}
+
+	@keyframes blink {
+		50% { opacity: 0; }
 	}
 
 	.shimmer-container {
@@ -105,6 +105,9 @@
 		.shimmer-bar {
 			animation: none;
 			background: var(--bg-subtle);
+		}
+		.streaming-cursor {
+			animation: none;
 		}
 	}
 </style>

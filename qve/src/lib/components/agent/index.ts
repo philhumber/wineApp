@@ -20,7 +20,6 @@ export { WineCard, DataCard, UnifiedEnrichmentCard } from './cards';
 export { MatchSelectionList, BottleDetailsForm, ManualEntryForm } from './forms';
 
 // Enrichment components (from enrichment/ - backward compatible exports)
-export { default as EnrichmentCard } from './enrichment/EnrichmentCard.svelte';
 export { default as StyleProfileDisplay } from './enrichment/StyleProfileDisplay.svelte';
 export { default as CriticScores } from './enrichment/CriticScores.svelte';
 export { default as DrinkWindow } from './enrichment/DrinkWindow.svelte';

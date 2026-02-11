@@ -168,6 +168,7 @@ return [
         'fast' => [
             'provider' => 'gemini',
             'model' => 'gemini-3-flash-preview',
+            'thinking_level' => 'MINIMAL', //Add in some basic thinking level
             // No thinking_level — pure structured output for fastest TTFB
             'description' => 'Quick identification - Tier 1',
             'temperature' => 1.0,
@@ -176,7 +177,7 @@ return [
         'detailed' => [
             'provider' => 'gemini',
             'model' => 'gemini-3-flash-preview',
-            'thinking_level' => 'HIGH', // Must be uppercase: LOW or HIGH
+            'thinking_level' => 'MEDIUM', //Must be uppercase: LOW or HIGH
             'description' => 'Deep analysis with thinking - Tier 1.5',
             'temperature' => 1.0,
             'max_tokens' => 16000, // High for thinking + JSON output

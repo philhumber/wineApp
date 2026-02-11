@@ -1133,6 +1133,7 @@ class WineApiClient {
     confirmMatch = false,
     forceRefresh = false,
     onField?: StreamFieldCallback,
+    onTextDelta?: (field: string, text: string) => void,
     onEvent?: StreamEventCallback,
     signal?: AbortSignal,
     requestId?: string | null
@@ -1174,6 +1175,10 @@ class WineApiClient {
       switch (event.type) {
         case 'field':
           onField?.(event.data.field, event.data.value);
+          break;
+
+        case 'text_delta':
+          onTextDelta?.(event.data.field, event.data.text);
           break;
 
         case 'result':

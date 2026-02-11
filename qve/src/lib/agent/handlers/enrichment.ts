@@ -15,6 +15,7 @@
 
 import type { AgentAction, EnrichmentData, AgentErrorInfo } from '../types';
 import type { AgentEnrichmentData } from '$lib/api/types';
+import { tick } from 'svelte';
 import { getMessageByKey, wn } from '../messages';
 import { MessageKey } from '../messageKeys';
 import * as conversation from '$lib/stores/agentConversation';
@@ -66,7 +67,7 @@ function mapAgentEnrichmentToLocal(data: AgentEnrichmentData | null): Enrichment
     overview: data.overview ?? undefined,
     grapeComposition: data.grapeVarieties?.map(g => ({
       grape: g.grape,
-      percentage: g.percentage ?? undefined,
+      percentage: g.percentage != null ? String(g.percentage) : undefined,
     })),
     styleProfile: {
       ...(data.body ? { body: data.body } : {}),
@@ -86,6 +87,30 @@ function mapAgentEnrichmentToLocal(data: AgentEnrichmentData | null): Enrichment
     foodPairings: data.pairingNotes ? data.pairingNotes.split(', ') : undefined,
   };
 }
+
+// ===========================================
+// Empty enrichment template for skeleton state
+// ===========================================
+
+const emptyAgentEnrichment: AgentEnrichmentData = {
+  grapeVarieties: null,
+  appellation: null,
+  alcoholContent: null,
+  drinkWindow: null,
+  productionMethod: null,
+  criticScores: null,
+  averagePrice: null,
+  priceSource: null,
+  body: null,
+  tannin: null,
+  acidity: null,
+  sweetness: null,
+  overview: null,
+  tastingNotes: null,
+  pairingNotes: null,
+  confidence: 0,
+  sources: [],
+};
 
 // ===========================================
 // Error Handling
@@ -183,7 +208,13 @@ function handleCacheConfirmationRequired(enrichmentResult: {
 /**
  * Execute the enrichment API call with streaming.
  * WIN-187: Uses AbortController for cancellation support.
+ *
+ * UX timing: The typing/thinking message stays visible for CARD_DELAY_MS before
+ * the enrichment card appears. This gives the user time to read the thinking text.
+ * For cache hits (fast response), the card appears immediately when data arrives.
  */
+const CARD_DELAY_MS = 7000;
+
 async function executeEnrichment(
   producer: string,
   wineName: string,
@@ -196,6 +227,64 @@ async function executeEnrichment(
   // WIN-187: Create abort controller for this request
   const abortController = createAbortController();
 
+  // Card creation is deferred — typing message stays visible for CARD_DELAY_MS
+  let msgId: string | null = null;
+  let cardCreated = false;
+  let cardDelayTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Mutable state buffered before card exists
+  const partialData: Partial<AgentEnrichmentData> = {};
+  const currentStreamingTexts: string[] = [];
+  let lastUpdateTime = 0;
+  const THROTTLE_MS = 100;
+
+  /** Create the enrichment card, flush buffered data, scroll to it. */
+  function createCard(): void {
+    if (cardCreated) return;
+    cardCreated = true;
+    if (cardDelayTimer !== null) {
+      clearTimeout(cardDelayTimer);
+      cardDelayTimer = null;
+    }
+
+    // Remove thinking message — user shouldn't see both at once
+    conversation.removeTypingMessage();
+
+    const hasBufferedData = Object.keys(partialData).length > 0;
+    const msg = conversation.addMessage({
+      category: 'enrichment',
+      role: 'agent',
+      data: {
+        category: 'enrichment',
+        data: hasBufferedData ? { ...emptyAgentEnrichment, ...partialData } : null,
+        streamingTextFields: [...currentStreamingTexts],
+      },
+    });
+    msgId = msg.id;
+
+    // Scroll to the new enrichment card
+    tick().then(() => {
+      const container = document.querySelector('.agent-chat-container');
+      const card = container?.querySelector('[data-enrichment-card]');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
+  /** Update the card if it exists. */
+  function updateCard(): void {
+    if (!cardCreated || !msgId) return;
+    conversation.updateMessage(msgId, {
+      data: {
+        category: 'enrichment',
+        data: { ...emptyAgentEnrichment, ...partialData },
+        streamingTextFields: [...currentStreamingTexts],
+      },
+    });
+  }
+
+  // Start the delay timer — card appears after CARD_DELAY_MS
+  cardDelayTimer = setTimeout(createCard, CARD_DELAY_MS);
+
   try {
     const enrichmentResult = await api.enrichWineStream(
       producer,
@@ -205,42 +294,64 @@ async function executeEnrichment(
       region,
       confirmMatch,
       forceRefresh,
-      (field, value) => {
-        enrichment.updateEnrichmentStreamingField(field, String(value), true);
+      // onField: structured field arrived (complete value)
+      (field: string, value: unknown) => {
+        (partialData as Record<string, unknown>)[field] = value;
+        const idx = currentStreamingTexts.indexOf(field);
+        if (idx !== -1) currentStreamingTexts.splice(idx, 1);
+        updateCard();
+      },
+      // onTextDelta: progressive text chunk (throttled)
+      (field: string, text: string) => {
+        (partialData as Record<string, unknown>)[field] = text;
+        if (!currentStreamingTexts.includes(field)) currentStreamingTexts.push(field);
+        if (!cardCreated) return; // Still buffering — card not visible yet
+        const now = Date.now();
+        if (now - lastUpdateTime >= THROTTLE_MS) {
+          lastUpdateTime = now;
+          updateCard();
+        }
       },
       undefined, // onEvent
       abortController.signal,
       getRequestId()
     );
 
+    // Clean up timer
+    if (cardDelayTimer !== null) {
+      clearTimeout(cardDelayTimer);
+      cardDelayTimer = null;
+    }
+
     // WIN-187: Skip processing if cancelled during the await
     if (wasCancelled()) {
+      if (cardCreated && msgId) conversation.removeMessage(msgId);
+      conversation.removeTypingMessage();
       return;
     }
 
-    conversation.removeTypingMessage();
-
     // Handle pending confirmation (cache match that needs user approval)
     if (enrichmentResult.pendingConfirmation && enrichmentResult.matchedTo) {
+      if (cardCreated && msgId) conversation.removeMessage(msgId);
+      conversation.removeTypingMessage();
       handleCacheConfirmationRequired(enrichmentResult);
       return;
     }
 
-    // Map API data to local type
-    const enrichmentData = mapAgentEnrichmentToLocal(enrichmentResult.data);
+    // Create card now if it wasn't created yet (cache hit — fast response)
+    if (!cardCreated) {
+      createCard();
+    } else {
+      conversation.removeTypingMessage();
+    }
 
-    // Store the enrichment data in the store
-    enrichment.setEnrichmentData(enrichmentData, enrichmentResult.source);
-
-    // Add enrichment result message
-    conversation.addMessage({
-      category: 'enrichment',
-      role: 'agent',
-      data: {
-        category: 'enrichment',
-        data: enrichmentData,
-      },
+    // Finalize with complete data
+    conversation.updateMessage(msgId!, {
+      data: { category: 'enrichment', data: enrichmentResult.data, streamingTextFields: [] }
     });
+
+    // Store for add wine flow
+    enrichment.setEnrichmentData(mapAgentEnrichmentToLocal(enrichmentResult.data), enrichmentResult.source);
 
     // Build wine name for display
     const displayName = [producer, wineName].filter(Boolean).join(' ');
@@ -260,10 +371,18 @@ async function executeEnrichment(
     conversation.setPhase('confirming');
 
   } catch (error) {
+    // Clean up timer
+    if (cardDelayTimer !== null) {
+      clearTimeout(cardDelayTimer);
+      cardDelayTimer = null;
+    }
     // WIN-187: Don't show error for intentional cancellation
     if (error instanceof DOMException && error.name === 'AbortError') {
+      if (cardCreated && msgId) conversation.removeMessage(msgId);
+      conversation.removeTypingMessage();
       return;
     }
+    if (cardCreated && msgId) conversation.removeMessage(msgId);
     conversation.removeTypingMessage();
     handleEnrichmentError(error);
   }

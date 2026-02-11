@@ -80,8 +80,8 @@ class IdentificationService
         $options = [
             'provider' => $tierConfig['provider'] ?? 'gemini',
             'model' => $tierConfig['model'] ?? 'gemini-3-flash-preview',
-            'temperature' => $tierConfig['temperature'] ?? 0.3,
-            'max_tokens' => $tierConfig['max_tokens'] ?? 500,
+            'temperature' => $tierConfig['temperature'] ?? 1.0, //Must be 1.0 for gemini 3
+            'max_tokens' => $tierConfig['max_tokens'] ?? 1000,
         ];
 
         // Add thinking level for Gemini 3 models
@@ -609,25 +609,31 @@ PROMPT;
      */
     private function getIdentificationSchema(): array
     {
+        // REST API (v1beta) requires lowercase types + propertyOrdering for streaming.
+        // propertyOrdering controls field output order for StreamingFieldDetector.
         return [
-            'type' => 'OBJECT',
+            'type' => 'object',
             'properties' => [
-                'producer' => ['type' => 'STRING'],
-                'wineName' => ['type' => 'STRING'],
-                'vintage' => ['type' => 'INTEGER', 'nullable' => true],
-                'region' => ['type' => 'STRING', 'nullable' => true],
-                'country' => ['type' => 'STRING', 'nullable' => true],
+                'producer' => ['type' => 'string'],
+                'wineName' => ['type' => 'string'],
+                'vintage' => ['type' => 'integer', 'nullable' => true],
+                'region' => ['type' => 'string', 'nullable' => true],
+                'country' => ['type' => 'string', 'nullable' => true],
                 'wineType' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'enum' => ['Red', 'White', 'Rosé', 'Sparkling', 'Dessert', 'Fortified'],
                 ],
                 'grapes' => [
-                    'type' => 'ARRAY',
-                    'items' => ['type' => 'STRING'],
+                    'type' => 'array',
+                    'items' => ['type' => 'string'],
                 ],
-                'confidence' => ['type' => 'INTEGER'],
+                'confidence' => ['type' => 'integer'],
             ],
             'required' => ['producer', 'wineName', 'confidence'],
+            'propertyOrdering' => [
+                'producer', 'wineName', 'vintage', 'region',
+                'country', 'wineType', 'grapes', 'confidence',
+            ],
         ];
     }
 

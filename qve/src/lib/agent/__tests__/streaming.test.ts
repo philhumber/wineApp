@@ -196,16 +196,6 @@ describe('Streaming Field Updates', () => {
 			await handleAgentAction({ type: 'correct', messageId: chips!.id });
 		});
 
-		it('should stream enrichment fields progressively', async () => {
-			// Test streaming field management
-			enrichment.updateEnrichmentStreamingField('overview', 'Partial', true);
-			expect(get(enrichment.enrichmentStreamingFields).get('overview')?.isTyping).toBe(true);
-
-			enrichment.updateEnrichmentStreamingField('overview', 'Full content', false);
-			expect(get(enrichment.enrichmentStreamingFields).get('overview')?.value).toBe('Full content');
-			expect(get(enrichment.enrichmentStreamingFields).get('overview')?.isTyping).toBe(false);
-		});
-
 		it('should set isEnriching during enrichment', async () => {
 			// Test the enrichment state management directly
 			enrichment.startEnrichment({ producer: 'Test', wineName: 'Wine', vintage: '2020' });
@@ -221,12 +211,9 @@ describe('Streaming Field Updates', () => {
 		});
 
 		it('should handle enrichment stream interruption', async () => {
-			// Test that error clears enrichment streaming state
+			// Test that error clears enrichment state
 			enrichment.startEnrichment({ producer: 'Test', wineName: 'Wine', vintage: '2020' });
 			expect(get(enrichment.isEnriching)).toBe(true);
-
-			enrichment.updateEnrichmentStreamingField('overview', 'Partial', true);
-			expect(get(enrichment.isEnrichmentStreaming)).toBe(true);
 
 			// Setting error should clear state
 			enrichment.setEnrichmentError({ type: 'timeout', userMessage: 'Error', retryable: true });

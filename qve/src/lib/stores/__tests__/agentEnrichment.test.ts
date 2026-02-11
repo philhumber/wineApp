@@ -5,10 +5,8 @@ import {
 	enrichmentData,
 	enrichmentError,
 	enrichmentSource,
-	enrichmentStreamingFields,
 	enrichmentForWine,
 	hasEnrichmentData,
-	isEnrichmentStreaming,
 	hasOverview,
 	hasGrapeComposition,
 	hasTastingNotes,
@@ -19,11 +17,6 @@ import {
 	setEnrichmentData,
 	setEnrichmentError,
 	clearEnrichmentError,
-	updateEnrichmentStreamingField,
-	completeEnrichmentStreamingField,
-	clearEnrichmentStreamingFields,
-	setPendingEnrichmentResult,
-	commitPendingEnrichmentResult,
 	clearEnrichment,
 	resetEnrichment,
 	restoreFromPersistence,
@@ -94,18 +87,6 @@ describe('agentEnrichment', () => {
 			expect(get(enrichmentError)).toBeNull();
 		});
 
-		it('should clear streaming fields', () => {
-			updateEnrichmentStreamingField('overview', 'Test', true);
-			startEnrichment(sampleWineInfo);
-			expect(get(enrichmentStreamingFields).size).toBe(0);
-		});
-
-		it('should clear pending result', () => {
-			setPendingEnrichmentResult(sampleEnrichmentData);
-			startEnrichment(sampleWineInfo);
-			expect(getCurrentState().pendingResult).toBeNull();
-		});
-
 		it('should accept wine info without vintage', () => {
 			const wineInfo = { producer: 'Test', wineName: 'Wine' };
 			startEnrichment(wineInfo);
@@ -145,18 +126,6 @@ describe('agentEnrichment', () => {
 			setEnrichmentData(sampleEnrichmentData, 'web_search');
 			expect(get(enrichmentSource)).toBe('web_search');
 		});
-
-		it('should clear streaming fields', () => {
-			updateEnrichmentStreamingField('overview', 'Test', true);
-			setEnrichmentData(sampleEnrichmentData);
-			expect(get(enrichmentStreamingFields).size).toBe(0);
-		});
-
-		it('should clear pending result', () => {
-			setPendingEnrichmentResult(sampleEnrichmentData);
-			setEnrichmentData(sampleEnrichmentData);
-			expect(getCurrentState().pendingResult).toBeNull();
-		});
 	});
 
 	describe('setEnrichmentError', () => {
@@ -170,12 +139,6 @@ describe('agentEnrichment', () => {
 			startEnrichment(sampleWineInfo);
 			setEnrichmentError({ type: 'timeout', userMessage: 'Error', retryable: true });
 			expect(get(isEnriching)).toBe(false);
-		});
-
-		it('should clear streaming fields', () => {
-			updateEnrichmentStreamingField('overview', 'Test', true);
-			setEnrichmentError({ type: 'timeout', userMessage: 'Error', retryable: true });
-			expect(get(enrichmentStreamingFields).size).toBe(0);
 		});
 
 		it('should preserve existing data', () => {
@@ -197,109 +160,6 @@ describe('agentEnrichment', () => {
 			setEnrichmentError({ type: 'timeout', userMessage: 'Error', retryable: true });
 			clearEnrichmentError();
 			expect(get(enrichmentData)).toEqual(sampleEnrichmentData);
-		});
-	});
-
-	describe('streaming fields', () => {
-		describe('updateEnrichmentStreamingField', () => {
-			it('should add a new streaming field', () => {
-				updateEnrichmentStreamingField('overview', 'Starting...', true);
-				const fields = get(enrichmentStreamingFields);
-				expect(fields.get('overview')).toEqual({ value: 'Starting...', isTyping: true });
-			});
-
-			it('should update existing streaming field', () => {
-				updateEnrichmentStreamingField('overview', 'First', true);
-				updateEnrichmentStreamingField('overview', 'First part of the overview', true);
-				const fields = get(enrichmentStreamingFields);
-				expect(fields.get('overview')?.value).toBe('First part of the overview');
-			});
-
-			it('should handle multiple fields', () => {
-				updateEnrichmentStreamingField('overview', 'Overview text', true);
-				updateEnrichmentStreamingField('tastingNotes', 'Notes text', true);
-				const fields = get(enrichmentStreamingFields);
-				expect(fields.size).toBe(2);
-				expect(fields.get('overview')?.value).toBe('Overview text');
-				expect(fields.get('tastingNotes')?.value).toBe('Notes text');
-			});
-		});
-
-		describe('completeEnrichmentStreamingField', () => {
-			it('should set isTyping to false', () => {
-				updateEnrichmentStreamingField('overview', 'Complete text', true);
-				completeEnrichmentStreamingField('overview');
-				const fields = get(enrichmentStreamingFields);
-				expect(fields.get('overview')).toEqual({ value: 'Complete text', isTyping: false });
-			});
-
-			it('should do nothing for non-existent field', () => {
-				completeEnrichmentStreamingField('nonexistent');
-				expect(get(enrichmentStreamingFields).size).toBe(0);
-			});
-
-			it('should preserve value when completing', () => {
-				updateEnrichmentStreamingField('overview', 'Final text', true);
-				completeEnrichmentStreamingField('overview');
-				const fields = get(enrichmentStreamingFields);
-				expect(fields.get('overview')?.value).toBe('Final text');
-			});
-		});
-
-		describe('clearEnrichmentStreamingFields', () => {
-			it('should clear all streaming fields', () => {
-				updateEnrichmentStreamingField('overview', 'Text', true);
-				updateEnrichmentStreamingField('notes', 'More text', true);
-				clearEnrichmentStreamingFields();
-				expect(get(enrichmentStreamingFields).size).toBe(0);
-			});
-		});
-	});
-
-	describe('pending result', () => {
-		describe('setPendingEnrichmentResult', () => {
-			it('should store pending result', () => {
-				setPendingEnrichmentResult(sampleEnrichmentData);
-				expect(getCurrentState().pendingResult).toEqual(sampleEnrichmentData);
-			});
-
-			it('should not affect main data', () => {
-				setPendingEnrichmentResult(sampleEnrichmentData);
-				expect(get(enrichmentData)).toBeNull();
-			});
-		});
-
-		describe('commitPendingEnrichmentResult', () => {
-			it('should move pending result to main data', () => {
-				setPendingEnrichmentResult(sampleEnrichmentData);
-				commitPendingEnrichmentResult();
-				expect(get(enrichmentData)).toEqual(sampleEnrichmentData);
-			});
-
-			it('should clear pending result', () => {
-				setPendingEnrichmentResult(sampleEnrichmentData);
-				commitPendingEnrichmentResult();
-				expect(getCurrentState().pendingResult).toBeNull();
-			});
-
-			it('should set isEnriching to false', () => {
-				startEnrichment(sampleWineInfo);
-				setPendingEnrichmentResult(sampleEnrichmentData);
-				commitPendingEnrichmentResult();
-				expect(get(isEnriching)).toBe(false);
-			});
-
-			it('should clear streaming fields', () => {
-				updateEnrichmentStreamingField('overview', 'Text', true);
-				setPendingEnrichmentResult(sampleEnrichmentData);
-				commitPendingEnrichmentResult();
-				expect(get(enrichmentStreamingFields).size).toBe(0);
-			});
-
-			it('should do nothing if no pending result', () => {
-				commitPendingEnrichmentResult();
-				expect(get(enrichmentData)).toBeNull();
-			});
 		});
 	});
 
@@ -356,23 +216,6 @@ describe('agentEnrichment', () => {
 			it('should be true when data exists', () => {
 				setEnrichmentData(sampleEnrichmentData);
 				expect(get(hasEnrichmentData)).toBe(true);
-			});
-		});
-
-		describe('isEnrichmentStreaming', () => {
-			it('should be false when no streaming fields', () => {
-				expect(get(isEnrichmentStreaming)).toBe(false);
-			});
-
-			it('should be true when a field is typing', () => {
-				updateEnrichmentStreamingField('overview', 'Text', true);
-				expect(get(isEnrichmentStreaming)).toBe(true);
-			});
-
-			it('should be false when all fields are complete', () => {
-				updateEnrichmentStreamingField('overview', 'Text', true);
-				completeEnrichmentStreamingField('overview');
-				expect(get(isEnrichmentStreaming)).toBe(false);
 			});
 		});
 

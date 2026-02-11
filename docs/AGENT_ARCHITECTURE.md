@@ -26,6 +26,8 @@ The wine sommelier agent is a conversational AI assistant that identifies wines 
 15. [Backend Agent Endpoints](#15-backend-agent-endpoints)
 16. [Handler Contribution Guide](#16-handler-contribution-guide)
 
+> **Tuning the agent?** See [AGENT_TUNING_GUIDE.md](AGENT_TUNING_GUIDE.md) for a practical guide to configuring identification tiers, enrichment models, confidence scoring, caching, validation, and prompts.
+
 ---
 
 ## 1. High-Level Architecture

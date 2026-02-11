@@ -893,7 +893,8 @@ describe('handleAgentAction', () => {
 					false, // confirmMatch
 					false, // forceRefresh
 					expect.any(Function), // onField callback
-					undefined, // onEvent (WIN-187)
+					expect.any(Function), // onTextDelta callback
+					undefined, // onEvent
 					expect.anything(), // AbortSignal (WIN-187)
 					expect.anything() // requestId (WIN-227)
 				);

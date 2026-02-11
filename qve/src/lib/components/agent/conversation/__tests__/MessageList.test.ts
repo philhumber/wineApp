@@ -193,7 +193,28 @@ describe('MessageList', () => {
 	// forwarding requires either wrapper components or integration/E2E tests.
 	// The event forwarding functionality is tested via E2E tests.
 
-	// Note: Dynamic update tests that trigger rerender are skipped because Svelte's
-	// flip/fly animations require Web Animations API features that are not fully
-	// supported in jsdom. Dynamic behavior is tested via E2E tests.
+	describe('dynamic updates (regression: NaN flip animation)', () => {
+		it('should render new messages added after initial render', async () => {
+			const initialMessages = [
+				createTestMessage({ id: 'msg-1', data: { category: 'text', content: 'First' } }),
+			];
+			const { rerender } = render(MessageList, { props: { messages: initialMessages } });
+
+			expect(document.querySelectorAll('.message-item')).toHaveLength(1);
+
+			// Simulate adding messages (as happens during identification/enrichment)
+			const updatedMessages = [
+				...initialMessages,
+				createTestMessage({ id: 'msg-2', data: { category: 'text', content: 'Second' } }),
+				createTestMessage({ id: 'msg-3', data: { category: 'text', content: 'Third' } }),
+			];
+			await rerender({ messages: updatedMessages });
+
+			const items = document.querySelectorAll('.message-item');
+			expect(items).toHaveLength(3);
+			expect(items[0]).toHaveAttribute('data-message-id', 'msg-1');
+			expect(items[1]).toHaveAttribute('data-message-id', 'msg-2');
+			expect(items[2]).toHaveAttribute('data-message-id', 'msg-3');
+		});
+	});
 });

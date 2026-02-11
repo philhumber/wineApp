@@ -15,7 +15,6 @@ import { persistState } from './agentPersistence';
 import type {
   EnrichmentData,
   AgentErrorInfo,
-  StreamingField,
 } from '$lib/agent/types';
 
 // ===========================================
@@ -43,10 +42,8 @@ interface EnrichmentState {
   data: EnrichmentData | null;
   error: AgentErrorInfo | null;
   source: 'cache' | 'web_search' | 'inference' | null;
-  streamingFields: Map<string, StreamingField>;
   forWine: EnrichmentWineInfo | null;
   lastRequest: EnrichmentRequest | null; // For retry support
-  pendingResult: EnrichmentData | null; // Buffered during streaming
 }
 
 // ===========================================
@@ -58,10 +55,8 @@ const initialState: EnrichmentState = {
   data: null,
   error: null,
   source: null,
-  streamingFields: new Map(),
   forWine: null,
   lastRequest: null,
-  pendingResult: null,
 };
 
 const store = writable<EnrichmentState>(initialState);
@@ -74,16 +69,11 @@ export const isEnriching = derived(store, ($s) => $s.isEnriching);
 export const enrichmentData = derived(store, ($s) => $s.data);
 export const enrichmentError = derived(store, ($s) => $s.error);
 export const enrichmentSource = derived(store, ($s) => $s.source);
-export const enrichmentStreamingFields = derived(store, ($s) => $s.streamingFields);
 export const enrichmentForWine = derived(store, ($s) => $s.forWine);
 export const lastEnrichmentRequest = derived(store, ($s) => $s.lastRequest);
 
 // Computed derived stores
 export const hasEnrichmentData = derived(store, ($s) => $s.data !== null);
-export const isEnrichmentStreaming = derived(
-  store,
-  ($s) => $s.streamingFields.size > 0 && [...$s.streamingFields.values()].some((f) => f.isTyping)
-);
 
 // Enrichment section availability
 export const hasOverview = derived(
@@ -124,8 +114,6 @@ export function startEnrichment(wineInfo: EnrichmentWineInfo): void {
     isEnriching: true,
     error: null,
     forWine: wineInfo,
-    streamingFields: new Map(),
-    pendingResult: null,
   }));
 }
 
@@ -159,8 +147,6 @@ export function setEnrichmentData(
     data,
     source,
     error: null,
-    streamingFields: new Map(),
-    pendingResult: null,
   }));
 
   // Persist immediately
@@ -175,7 +161,6 @@ export function setEnrichmentError(error: AgentErrorInfo): void {
     ...state,
     isEnriching: false,
     error,
-    streamingFields: new Map(),
   }));
 }
 
@@ -197,76 +182,7 @@ export function clearEnriching(): void {
   store.update((state) => ({
     ...state,
     isEnriching: false,
-    streamingFields: new Map(),
-    pendingResult: null,
   }));
-}
-
-/**
- * Update a streaming field for enrichment.
- */
-export function updateEnrichmentStreamingField(
-  fieldName: string,
-  value: string,
-  isTyping: boolean
-): void {
-  store.update((state) => {
-    const newFields = new Map(state.streamingFields);
-    newFields.set(fieldName, { value, isTyping });
-    return { ...state, streamingFields: newFields };
-  });
-}
-
-/**
- * Complete a streaming field.
- */
-export function completeEnrichmentStreamingField(fieldName: string): void {
-  store.update((state) => {
-    const field = state.streamingFields.get(fieldName);
-    if (!field) return state;
-
-    const newFields = new Map(state.streamingFields);
-    newFields.set(fieldName, { ...field, isTyping: false });
-    return { ...state, streamingFields: newFields };
-  });
-}
-
-/**
- * Clear all streaming fields.
- */
-export function clearEnrichmentStreamingFields(): void {
-  store.update((state) => ({
-    ...state,
-    streamingFields: new Map(),
-  }));
-}
-
-/**
- * Set pending result (buffered during streaming).
- */
-export function setPendingEnrichmentResult(data: EnrichmentData): void {
-  store.update((state) => ({
-    ...state,
-    pendingResult: data,
-  }));
-}
-
-/**
- * Commit pending result to main data.
- */
-export function commitPendingEnrichmentResult(): void {
-  store.update((state) => {
-    if (!state.pendingResult) return state;
-    return {
-      ...state,
-      data: state.pendingResult,
-      pendingResult: null,
-      isEnriching: false,
-      streamingFields: new Map(),
-    };
-  });
-
-  persistEnrichmentState(true);
 }
 
 /**
@@ -343,7 +259,6 @@ if (typeof window !== 'undefined' && import.meta.env.DEV) {
       isEnriching: state.isEnriching,
       hasData: state.data !== null,
       source: state.source,
-      streamingFieldCount: state.streamingFields.size,
       forWine: state.forWine?.wineName,
     });
   });

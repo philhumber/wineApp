@@ -136,6 +136,118 @@ class EnrichmentService
     }
 
     /**
+     * Get the WebSearchEnricher instance for direct streaming access.
+     */
+    public function getEnricher(): WebSearchEnricher
+    {
+        return $this->enricher;
+    }
+
+    /**
+     * Check cache only (no LLM call).
+     * Returns EnrichmentResult if cache hit or pending confirmation.
+     * Returns null if cache miss.
+     *
+     * @param array $identification Parsed identification data
+     * @param bool $confirmMatch If true, user confirmed non-exact match
+     * @return EnrichmentResult|null
+     */
+    public function checkCache(array $identification, bool $confirmMatch = false): ?EnrichmentResult
+    {
+        $producer = $identification['parsed']['producer'] ?? null;
+        $wineName = $identification['parsed']['wineName'] ?? null;
+        $vintage = $identification['parsed']['vintage'] ?? null;
+
+        if (!$producer && !$wineName) {
+            $result = new EnrichmentResult();
+            $result->success = false;
+            $result->warnings = ['No producer or wine name provided'];
+            return $result;
+        }
+
+        $thresholds = $this->config['enrichment']['confidence_thresholds'];
+
+        $cacheResult = $this->cache->getWithResolution($producer ?? '', $wineName ?? '', $vintage);
+
+        if ($cacheResult && $cacheResult['data']->confidence >= $thresholds['cache_accept']) {
+            $matchType = $cacheResult['matchType'] ?? 'exact';
+
+            // For non-exact matches, require user confirmation
+            if ($matchType !== 'exact' && !$confirmMatch) {
+                return $this->buildPendingConfirmation($cacheResult, $identification);
+            }
+
+            // Exact match or user confirmed - return cached data
+            $this->cache->incrementHitCount($cacheResult['lookupKey']);
+            $result = new EnrichmentResult();
+            $result->success = true;
+            $result->data = $cacheResult['data'];
+            $result->source = 'cache';
+            $result->matchType = $matchType;
+            return $result;
+        }
+
+        return null; // Cache miss
+    }
+
+    /**
+     * Post-process enrichment data from streaming LLM response.
+     * Validates, caches, and returns final result.
+     *
+     * @param EnrichmentData $fresh Raw enrichment data from LLM
+     * @param array $identification Original identification data
+     * @param bool $forceRefresh If true, skip cache merge
+     * @return EnrichmentResult
+     */
+    public function processEnrichmentResult(
+        EnrichmentData $fresh,
+        array $identification,
+        bool $forceRefresh = false
+    ): EnrichmentResult {
+        $producer = $identification['parsed']['producer'] ?? null;
+        $wineName = $identification['parsed']['wineName'] ?? null;
+        $vintage = $identification['parsed']['vintage'] ?? null;
+        $wineType = $identification['parsed']['wineType'] ?? null;
+        $region = $identification['parsed']['region'] ?? null;
+
+        $thresholds = $this->config['enrichment']['confidence_thresholds'];
+        $result = new EnrichmentResult();
+
+        // Sanitize LLM output
+        $fresh = $this->validator->sanitize($fresh);
+
+        // Validate and detect hallucinations
+        $warnings = $this->validator->validate($fresh, $vintage, $wineType);
+        $result->warnings = $warnings;
+
+        // Cache if confidence meets threshold
+        if ($fresh->confidence >= $thresholds['store_minimum']) {
+            $this->cache->set($producer ?? '', $wineName ?? '', $vintage, $fresh);
+        }
+
+        // Merge with cache/inference if needed
+        $cached = null;
+        if (!$forceRefresh) {
+            $cacheResult = $this->cache->get($producer ?? '', $wineName ?? '', $vintage);
+            $cached = $cacheResult ? $cacheResult['data'] : null;
+        }
+        $inference = null;
+
+        if ($fresh->confidence < $thresholds['merge_threshold']) {
+            $inference = $this->fallback->inferFromReference($producer, $wineName, $region, $wineType);
+        }
+
+        $mergeResult = $this->merger->merge($fresh, $cached, $inference);
+
+        $result->success = true;
+        $result->data = $mergeResult['data'];
+        $result->fieldSources = $mergeResult['fieldSources'];
+        $result->source = 'web_search';
+
+        return $result;
+    }
+
+    /**
      * Build a pending confirmation response for non-exact cache matches
      *
      * @param array $cacheResult Cache result with matchType

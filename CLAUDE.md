@@ -317,7 +317,7 @@ State survives mobile browser tab switches (e.g., switching to Camera app). See 
 
 ### Streaming Card vs Message Card (Gotcha)
 
-The agent panel renders wine/enrichment data via **two separate paths**:
+**Identification** uses a dual-path rendering approach:
 1. **Streaming card** — in `AgentPanel.svelte`, reads from `streamingFields` store, shows progressive field arrival during SSE
 2. **Message card** — in `MessageList` via `WineCardMessage.svelte`, reads from `message.data.result`, shows static data after completion
 
@@ -338,7 +338,20 @@ handleIdentificationResultFlow(wineResult, confidence);
 
 **TypeScript gotcha**: TS narrows callback-mutated variables to `never`. Use type assertion: `const esc = escalatedResult as Type | null;`
 
+**Enrichment** uses a single-path approach — the enrichment handler creates one message card immediately (skeleton state) and updates it in-place as SSE fields arrive via `conversation.updateMessage()`. A 7-second delay keeps the typing/thinking message visible before the card appears for LLM responses (cache hits show the card immediately). Text fields (`overview`, `tastingNotes`, `pairingNotes`) stream token-by-token with a blinking cursor via `text_delta` SSE events, throttled at 100ms.
+
 See `PLAN.md` "Critical Lesson" section for full breakdown with broken vs working code examples.
+
+### Gemini REST API Gotchas
+
+When calling Gemini via the REST API (v1beta), NOT the SDK:
+- **`googleSearch` camelCase**: REST API requires `googleSearch`, not `google_search`. Snake case silently fails (no grounding, no error).
+- **Schema types lowercase**: Use `"type": "object"`, not `"OBJECT"`. Uppercase causes `response_schema` + streaming to produce looping/garbage output.
+- **`nullable: true` not `["type", "null"]`**: SDK docs show `{"type": ["string", "null"]}` but REST protobuf rejects arrays — use `"nullable": true` instead.
+- **`propertyOrdering`**: Controls field output order in structured output — critical for streaming field detection. Add to all object types in the schema.
+- **`response_schema` + `googleSearch` + streaming**: Works on `gemini-3-flash-preview` with `thinkingLevel: MEDIUM`. Does NOT work reliably on `gemini-3-pro-preview` (produces repeating text).
+- **Grounding metadata empty with `responseSchema`**: When combining `responseSchema` + `googleSearch`, grounding chunks/supports come back empty. Use fixed confidence (0.7) instead of calculating from metadata.
+- **Citation markers in grounded output**: Google Search grounding injects `[[1](url)]` in text fields. Strip with regex in `cleanAndParseJSON()` before JSON parsing.
 
 ### Agent Input & Command Detection
 

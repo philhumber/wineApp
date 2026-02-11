@@ -223,6 +223,40 @@ class ClaudeAdapter implements LLMProviderInterface
         $inputDesc = $hasImage ? "image+{$promptLen}ch" : "{$promptLen}ch";
 
         \error_log("[Agent] LLM request: provider=claude model={$model} type={$type}{$hasSystem} maxTokens={$maxTokens} temp={$temp} input={$inputDesc}");
+
+        // DEBUG: Dump the exact request payload sent to the LLM
+        $debugPayload = $this->redactPayloadForLog($payload);
+        \error_log("╔══════════════════════════════════════════════════════════════════");
+        \error_log("║ DEBUG: EXACT LLM REQUEST — provider=claude model={$model}");
+        \error_log("╠══════════════════════════════════════════════════════════════════");
+        foreach (\explode("\n", \json_encode($debugPayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) as $line) {
+            \error_log("║ " . $line);
+        }
+        \error_log("╚══════════════════════════════════════════════════════════════════");
+    }
+
+    /**
+     * Redact large binary data from payload for logging
+     *
+     * @param array $payload Request payload
+     * @return array Payload safe for logging
+     */
+    private function redactPayloadForLog(array $payload): array
+    {
+        $redacted = $payload;
+        if (isset($redacted['messages'])) {
+            foreach ($redacted['messages'] as &$message) {
+                if (\is_array($message['content'])) {
+                    foreach ($message['content'] as &$part) {
+                        if (($part['type'] ?? '') === 'image' && isset($part['source']['data'])) {
+                            $len = \strlen($part['source']['data']);
+                            $part['source']['data'] = "[BASE64_IMAGE: {$len} chars]";
+                        }
+                    }
+                }
+            }
+        }
+        return $redacted;
     }
 
     /**
@@ -339,6 +373,16 @@ class ClaudeAdapter implements LLMProviderInterface
 
         \error_log("[Agent] LLM response: provider=claude model={$model} tokens={$inputTokens}+{$outputTokens} latency={$latencyMs}ms cost=\${$costUSD}");
 
+        // DEBUG: Dump the exact LLM response
+        \error_log("╔══════════════════════════════════════════════════════════════════");
+        \error_log("║ DEBUG: EXACT LLM RESPONSE — provider=claude model={$model}");
+        \error_log("║ tokens: {$inputTokens} in / {$outputTokens} out | latency: {$latencyMs}ms | cost: \${$costUSD}");
+        \error_log("╠══════════════════════════════════════════════════════════════════");
+        foreach (\explode("\n", $content) as $line) {
+            \error_log("║ " . $line);
+        }
+        \error_log("╚══════════════════════════════════════════════════════════════════");
+
         return new LLMResponse([
             'success' => true,
             'content' => $content,
@@ -386,6 +430,20 @@ class ClaudeAdapter implements LLMProviderInterface
     {
         $errorMessage = $data['error']['message'] ?? 'Unknown error';
         $errorType = $this->classifyError($httpCode, $errorMessage);
+
+        // DEBUG: Dump the error response
+        \error_log("╔══════════════════════════════════════════════════════════════════");
+        \error_log("║ DEBUG: LLM ERROR RESPONSE — provider=claude model={$model}");
+        \error_log("║ HTTP {$httpCode} | type: {$errorType} | latency: {$latencyMs}ms");
+        \error_log("╠══════════════════════════════════════════════════════════════════");
+        if ($data) {
+            foreach (\explode("\n", \json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) as $line) {
+                \error_log("║ " . $line);
+            }
+        } else {
+            \error_log("║ (no response body)");
+        }
+        \error_log("╚══════════════════════════════════════════════════════════════════");
 
         return new LLMResponse([
             'success' => false,

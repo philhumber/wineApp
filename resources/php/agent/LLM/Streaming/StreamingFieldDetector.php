@@ -31,6 +31,12 @@ class StreamingFieldDetector
         'grapes',
     ];
 
+    /** @var array Fields that should emit partial text deltas */
+    private array $textStreamFields = [];
+
+    /** @var array Tracks last emitted text length per field */
+    private array $lastEmittedTextLength = [];
+
     /**
      * Set custom target fields
      *
@@ -42,12 +48,23 @@ class StreamingFieldDetector
     }
 
     /**
+     * Set fields that should emit partial text deltas during streaming
+     *
+     * @param array $fields Field names to stream text for
+     */
+    public function setTextStreamFields(array $fields): void
+    {
+        $this->textStreamFields = $fields;
+    }
+
+    /**
      * Process a JSON text chunk, detect newly completed fields
      *
      * @param string $jsonChunk Text chunk from LLM response
      * @param callable $onField Callback fn(string $field, mixed $value)
+     * @param callable|null $onTextDelta Callback fn(string $field, string $fullText) for partial text
      */
-    public function processChunk(string $jsonChunk, callable $onField): void
+    public function processChunk(string $jsonChunk, callable $onField, ?callable $onTextDelta = null): void
     {
         $this->partialJson .= $jsonChunk;
 
@@ -60,7 +77,29 @@ class StreamingFieldDetector
             $value = $this->extractFieldValue($field);
             if ($value !== null) {
                 $this->completedFields[$field] = $value;
+                // Clear text tracking — don't emit a final delta (frontend already has the text)
+                unset($this->lastEmittedTextLength[$field]);
                 $onField($field, $value);
+            }
+        }
+
+        // Emit partial text deltas for text stream fields
+        if ($onTextDelta !== null) {
+            foreach ($this->textStreamFields as $field) {
+                if (isset($this->completedFields[$field])) {
+                    continue; // Already complete
+                }
+
+                $text = $this->extractPartialStringValue($field);
+                if ($text === null) {
+                    continue;
+                }
+
+                $lastLen = $this->lastEmittedTextLength[$field] ?? 0;
+                if (\strlen($text) > $lastLen) {
+                    $this->lastEmittedTextLength[$field] = \strlen($text);
+                    $onTextDelta($field, $text);
+                }
             }
         }
     }
@@ -133,6 +172,70 @@ class StreamingFieldDetector
                 }
                 return null;
         }
+    }
+
+    /**
+     * Extract partial string value for a field from accumulated JSON
+     *
+     * Returns the text accumulated so far for a string field that hasn't
+     * closed yet. Used for streaming text deltas of narrative fields.
+     *
+     * @param string $field Field name to extract partial text for
+     * @return string|null Partial text or null if field not started / already complete
+     */
+    private function extractPartialStringValue(string $field): ?string
+    {
+        // Find "fieldName": " pattern
+        $fieldPattern = '/"' . preg_quote($field, '/') . '"\s*:\s*"/';
+        if (!preg_match($fieldPattern, $this->partialJson, $matches, PREG_OFFSET_CAPTURE)) {
+            return null;
+        }
+
+        // Position right after the opening quote of the value
+        $valueStart = $matches[0][1] + strlen($matches[0][0]);
+        $remaining = substr($this->partialJson, $valueStart);
+
+        if ($remaining === '' || $remaining === false) {
+            return '';
+        }
+
+        // Scan for the closing quote (unescaped), collecting text buffer
+        $len = strlen($remaining);
+        $inEscape = false;
+        $textBuffer = '';
+
+        for ($i = 0; $i < $len; $i++) {
+            $char = $remaining[$i];
+
+            if ($inEscape) {
+                $textBuffer .= $char;
+                $inEscape = false;
+                continue;
+            }
+
+            if ($char === '\\') {
+                $textBuffer .= $char;
+                $inEscape = true;
+                continue;
+            }
+
+            if ($char === '"') {
+                // Closing quote found — field is complete, don't emit partial
+                return null;
+            }
+
+            $textBuffer .= $char;
+        }
+
+        // No closing quote yet — this is a partial string value
+        // Try JSON decode to handle escape sequences properly
+        $decoded = json_decode('"' . $textBuffer . '"');
+        if ($decoded !== null) {
+            return $decoded;
+        }
+
+        // Decode failed (likely incomplete escape at chunk boundary) — return raw
+        return $textBuffer;
     }
 
     /**
@@ -377,5 +480,6 @@ class StreamingFieldDetector
     {
         $this->completedFields = [];
         $this->partialJson = '';
+        $this->lastEmittedTextLength = [];
     }
 }

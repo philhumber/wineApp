@@ -228,7 +228,7 @@ describe('LLM Request Cancellation (WIN-187)', () => {
 			let wasAborted = false;
 
 			vi.mocked(api.enrichWineStream).mockImplementation(
-				async (_producer, _wineName, _vintage, _wineType, _region, _confirmMatch, _forceRefresh, _onField?, _onEvent?, signal?) => {
+				async (_producer, _wineName, _vintage, _wineType, _region, _confirmMatch, _forceRefresh, _onField?, _onTextDelta?, _onEvent?, signal?) => {
 					if (signal) {
 						signal.addEventListener('abort', () => {
 							wasAborted = true;
@@ -290,7 +290,7 @@ describe('LLM Request Cancellation (WIN-187)', () => {
 
 		it('should not display enrichment card after cancellation', async () => {
 			vi.mocked(api.enrichWineStream).mockImplementation(
-				async (_producer, _wineName, _vintage, _wineType, _region, _confirmMatch, _forceRefresh, _onField?, _onEvent?, _signal?) => {
+				async (_producer, _wineName, _vintage, _wineType, _region, _confirmMatch, _forceRefresh, _onField?, _onTextDelta?, _onEvent?, _signal?) => {
 					await delay(50);
 
 					// Return data even if cancelled (simulating race)
