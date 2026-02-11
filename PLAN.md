@@ -261,9 +261,350 @@ When optimizing the enrichment flow:
 | Extended `agentIdentification.test.ts` | 3 edge case tests |
 | Extended `streaming.test.ts` | 4 escalation tests |
 
+### Unchanged (intentionally)
+- `text_identify.txt` / `vision_identify.txt` — kept for non-streaming escalation path via TextProcessor/VisionProcessor
+- `TextProcessor.php` / `VisionProcessor.php` — non-streaming path unchanged
+- `_bootstrap.php` — SSE helpers and cancellation functions unchanged
+- All existing component rendering logic — WineCard/EnrichmentCard already handle streaming/static/skeleton states
+
 ---
 
 ## What's Left
 
 - **Phase 5**: Manual testing with real wines (TTFB measurements, escalation UX)
-- **Enrichment card optimization**: Same non-blocking pattern, same streaming→message card lesson applies
+- **Phase 6**: Enrichment card optimization (below) — same non-blocking pattern, same streaming→message card lesson applies
+
+---
+
+## Phase 6: Enrichment Streaming Optimization
+
+### Problem
+
+Enrichment has a **fundamentally different bottleneck** from identification. The streaming endpoint `agentEnrichStream.php` is **faking** streaming:
+
+```php
+// Line 71-73: Blocking call — user sees nothing for 10-30 seconds
+$result = $service->enrich($identification, $confirmMatch, $forceRefresh);
+
+// Lines 125-136: AFTER full result, fake streaming with 50ms delays
+foreach ($fieldOrder as $field) {
+    sendSSE('field', ['field' => $field, 'value' => $data[$field]]);
+    usleep(50000);
+}
+```
+
+The `WebSearchEnricher::enrich()` calls `$llmClient->complete('enrich', ...)` — a blocking, non-streaming call to Gemini 3 Pro with `web_search: true`, `max_tokens: 10000`, and `timeout: 90`. This is a **single heavy LLM call** that takes 10-30 seconds with zero visual feedback.
+
+The frontend is **already wired for streaming** — `EnrichmentCard.svelte` has the same `skeleton | streaming | static` three-state pattern, `enrichmentStreamingFields` store, and per-section components that handle partial data. We just need the backend to actually stream.
+
+### Solution: True LLM Streaming for Enrichment
+
+#### 6.1 Add streaming to WebSearchEnricher
+
+**File**: `resources/php/agent/Enrichment/WebSearchEnricher.php`
+- Add new method `enrichStreaming()` alongside existing `enrich()`:
+
+```php
+/**
+ * Enrich wine with streaming — fields emitted as the LLM generates them.
+ *
+ * @param string $producer
+ * @param string $wineName
+ * @param string|null $vintage
+ * @param callable $onField fn(string $field, mixed $value)
+ * @return EnrichmentData|null
+ */
+public function enrichStreaming(
+    string $producer,
+    string $wineName,
+    ?string $vintage,
+    callable $onField
+): ?EnrichmentData {
+    $prompt = $this->buildStreamingPrompt($producer, $wineName, $vintage);
+
+    $options = [
+        'web_search' => true,
+        'temperature' => 1.0,
+        'max_tokens' => 10000,
+        'json_response' => true,
+        'timeout' => 90,
+        'response_schema' => $this->getEnrichmentSchema(),
+    ];
+
+    $response = $this->llmClient->streamComplete('enrich', $prompt, $onField, $options);
+
+    if (!$response->success) {
+        error_log("WebSearchEnricher: Streaming LLM call failed - {$response->error}");
+        return null;
+    }
+
+    return $this->parseStreamingResponse($response);
+}
+```
+
+**Key**: Uses `streamComplete()` instead of `complete()`. The `$onField` callback is passed through to the `StreamingFieldDetector` in `GeminiAdapter::executeStreaming()`. Fields emit to the SSE stream as the LLM generates them.
+
+#### 6.2 Slim the enrichment streaming prompt
+
+**File**: `resources/php/agent/Enrichment/WebSearchEnricher.php`
+- Add `buildStreamingPrompt()` — shorter than the file-based prompt:
+
+```php
+private function buildStreamingPrompt(string $producer, string $wineName, ?string $vintage): string
+{
+    $v = $vintage ?? 'NV';
+    return <<<PROMPT
+Search for wine data: {$producer} {$wineName} {$v}
+
+Return JSON with:
+- grapeVarieties: [{grape, percentage}] from sources
+- appellation: AOC/AVA classification
+- alcoholContent: ABV as number
+- drinkWindow: {start, end, maturity} (maturity: young/ready/peak/declining)
+- criticScores: [{critic, score, year}] — WS, RP, Decanter, JS only, 100-point scale
+- productionMethod: notable methods (oak aging etc)
+- body/tannin/acidity/sweetness: style descriptors
+- overview: 3-4 sentences on character and reputation
+- tastingNotes: 3-4 sentences on aromas, palate, finish
+- pairingNotes: 3-4 sentences with specific food pairings
+
+Use null for unverified fields. Only include data from reputable sources.
+PROMPT;
+}
+```
+
+This is ~500 chars vs ~1400 chars — fewer input tokens for faster TTFB.
+
+#### 6.3 Add responseSchema for enrichment
+
+**File**: `resources/php/agent/Enrichment/WebSearchEnricher.php`
+- Add schema method:
+
+```php
+private function getEnrichmentSchema(): array
+{
+    return [
+        'type' => 'OBJECT',
+        'properties' => [
+            'grapeVarieties' => [
+                'type' => 'ARRAY', 'nullable' => true,
+                'items' => [
+                    'type' => 'OBJECT',
+                    'properties' => [
+                        'grape' => ['type' => 'STRING'],
+                        'percentage' => ['type' => 'INTEGER', 'nullable' => true],
+                    ],
+                ],
+            ],
+            'appellation'      => ['type' => 'STRING', 'nullable' => true],
+            'alcoholContent'   => ['type' => 'NUMBER', 'nullable' => true],
+            'drinkWindow' => [
+                'type' => 'OBJECT', 'nullable' => true,
+                'properties' => [
+                    'start' => ['type' => 'INTEGER'],
+                    'end'   => ['type' => 'INTEGER'],
+                    'maturity' => ['type' => 'STRING', 'nullable' => true,
+                                   'enum' => ['young', 'ready', 'peak', 'declining']],
+                ],
+            ],
+            'criticScores' => [
+                'type' => 'ARRAY', 'nullable' => true,
+                'items' => [
+                    'type' => 'OBJECT',
+                    'properties' => [
+                        'critic' => ['type' => 'STRING'],
+                        'score'  => ['type' => 'INTEGER'],
+                        'year'   => ['type' => 'INTEGER', 'nullable' => true],
+                    ],
+                ],
+            ],
+            'productionMethod' => ['type' => 'STRING', 'nullable' => true],
+            'body'             => ['type' => 'STRING', 'nullable' => true],
+            'tannin'           => ['type' => 'STRING', 'nullable' => true],
+            'acidity'          => ['type' => 'STRING', 'nullable' => true],
+            'sweetness'        => ['type' => 'STRING', 'nullable' => true],
+            'overview'         => ['type' => 'STRING', 'nullable' => true],
+            'tastingNotes'     => ['type' => 'STRING', 'nullable' => true],
+            'pairingNotes'     => ['type' => 'STRING', 'nullable' => true],
+        ],
+    ];
+}
+```
+
+#### 6.4 Update agentEnrichStream.php to use true streaming
+
+**File**: `resources/php/agent/agentEnrichStream.php`
+Replace the blocking `$service->enrich()` call with a streaming path:
+
+```php
+// Check cache first (fast path — no LLM needed)
+$cacheResult = $service->checkCache($identification, $confirmMatch);
+
+if ($cacheResult) {
+    if ($cacheResult->pendingConfirmation) {
+        // Cache match needs confirmation — same as current flow
+        sendSSE('confirmation_required', [
+            'matchType' => $cacheResult->matchType ?? 'unknown',
+            'searchedFor' => $cacheResult->searchedFor ?? null,
+            'matchedTo' => $cacheResult->matchedTo ?? null,
+            'confidence' => $cacheResult->confidence ?? 0,
+        ]);
+        sendSSE('done', []);
+        exit;
+    }
+
+    // Cache hit — emit fields with delays (fast, no LLM needed)
+    $data = $cacheResult->data->toArray();
+    foreach ($fieldOrder as $field) {
+        if (isset($data[$field]) && $data[$field] !== null) {
+            sendSSE('field', ['field' => $field, 'value' => $data[$field]]);
+            usleep(50000);
+        }
+    }
+    sendSSE('result', $cacheResult->toArray());
+    sendSSE('done', []);
+    exit;
+}
+
+// Cache miss — stream from LLM
+$enricher = getAgentWebSearchEnricher(getAgentUserId());
+$enrichmentData = $enricher->enrichStreaming(
+    $body['producer'],
+    $body['wineName'],
+    $body['vintage'] ?? null,
+    function ($field, $value) {
+        // WIN-227: Stop streaming if client cancelled
+        if (isRequestCancelled()) {
+            return;
+        }
+        sendSSE('field', ['field' => $field, 'value' => $value]);
+    }
+);
+
+if (!$enrichmentData) {
+    sendSSE('error', [
+        'type' => 'enrichment_error',
+        'message' => 'Could not enrich wine data',
+        'retryable' => true,
+    ]);
+    sendSSE('done', []);
+    exit;
+}
+
+// Validate, cache, and send result
+$result = $service->processEnrichmentResult($enrichmentData, $identification, $forceRefresh);
+sendSSE('result', $result->toArray());
+sendSSE('done', []);
+```
+
+**Key architectural change**: Split `EnrichmentService::enrich()` into:
+1. `checkCache()` — cache lookup + canonical resolution (fast, no LLM)
+2. `processEnrichmentResult()` — validation, caching, merge (post-LLM processing)
+
+This lets the streaming endpoint control the flow: cache check → stream from LLM → post-process.
+
+#### 6.5 Add StreamingFieldDetector target fields for enrichment
+
+**File**: `resources/php/agent/LLM/Streaming/StreamingFieldDetector.php`
+- The detector's `targetFields` are currently set for identification fields. For enrichment streaming, the calling code needs to pass enrichment-specific target fields:
+
+```php
+$targetFields = [
+    'body', 'tannin', 'acidity', 'sweetness',     // Style fields (small, fast)
+    'grapeVarieties', 'alcoholContent',              // Structured data
+    'drinkWindow', 'criticScores',                   // Complex objects
+    'productionMethod',
+    'overview', 'tastingNotes', 'pairingNotes',      // Narrative (last, longest)
+];
+```
+
+The field order in the detector determines which fields the UI shows first. Style profile fields (body, tannin, acidity) are single words that arrive in the first few tokens — the user sees immediate feedback.
+
+#### 6.6 GeminiAdapter: responseSchema + web_search compatibility
+
+**Gotcha**: Gemini's `web_search` tool (Google Search grounding) may have limitations when combined with `responseSchema`. If the API rejects this combination:
+- **Fallback**: Keep `json_response: true` without schema for enrichment streaming
+- **Test this first** before committing to schema
+
+**File**: `resources/php/agent/LLM/Adapters/GeminiAdapter.php`
+- In `buildStreamingPayload()`, if both `web_search` and `response_schema` are set, prefer `response_schema` but fall back to `json_response` if the API errors.
+
+### Frontend Changes (Minimal)
+
+The enrichment frontend is **already wired** for streaming. The key components:
+
+- `EnrichmentCard.svelte` — already supports `skeleton | streaming | static` states
+- `enrichmentStreamingFields` store — already has `updateEnrichmentStreamingField()`
+- `enrichment.ts` handler — already passes `onField` callback to `api.enrichWineStream()`
+- All section components (`OverviewSection`, `StyleProfileSection`, etc.) — already handle partial data via `DataCard` slot props
+
+**No frontend changes needed** for basic streaming. The current `onField` callback in `executeEnrichment()` (enrichment.ts:208) already calls `enrichment.updateEnrichmentStreamingField()`.
+
+The only potential enhancement:
+- The `EnrichmentCard.svelte` header currently shows "Researching..." during streaming (line 65-66). This is already correct. No badge change needed unlike identification's "Refining..." because enrichment doesn't have escalation tiers.
+
+### EnrichmentService Refactoring
+
+**File**: `resources/php/agent/Enrichment/EnrichmentService.php`
+Extract from `enrich()` method into two new public methods:
+
+```php
+/**
+ * Check cache only (no LLM call).
+ * Returns EnrichmentResult if cache hit or pending confirmation.
+ * Returns null if cache miss.
+ */
+public function checkCache(array $identification, bool $confirmMatch): ?EnrichmentResult
+
+/**
+ * Post-process enrichment data from streaming LLM response.
+ * Validates, caches, and returns final result.
+ */
+public function processEnrichmentResult(
+    EnrichmentData $data,
+    array $identification,
+    bool $forceRefresh
+): EnrichmentResult
+```
+
+The existing `enrich()` method remains unchanged for the non-streaming fallback path.
+
+### Risk Analysis
+
+| Risk | Severity | Mitigation |
+|------|----------|------------|
+| **web_search + responseSchema incompatibility** | Medium | Test first; fall back to `json_response: true` without schema |
+| **web_search + streamGenerateContent** | Medium | Verify Gemini 3 Pro supports streaming with grounding. If not, keep faked streaming for web search calls |
+| **EnrichmentService refactor breaks non-streaming** | Low | Keep `enrich()` unchanged; new methods are additive |
+| **StreamingFieldDetector needs different target fields** | Low | Pass target fields as parameter, already designed for this |
+| **Cancellation during enrichment streaming** | Low | `isRequestCancelled()` checks already in place via WIN-227 |
+
+### Verification
+
+- Run existing enrichment tests
+- Test cache hit path (should be fast, no regression)
+- Test cache miss path with streaming (fields appear progressively)
+- Test `confirmation_required` path (canonical name resolution)
+- Manual test: "Learn More" on Château Margaux → style fields appear within 2-3s, full data within 8-10s (down from 15-30s of nothing)
+
+### Phase 6 Files Modified
+
+| File | Changes |
+|------|---------|
+| `resources/php/agent/Enrichment/WebSearchEnricher.php` | New `enrichStreaming()`, `buildStreamingPrompt()`, `getEnrichmentSchema()` |
+| `resources/php/agent/Enrichment/EnrichmentService.php` | New `checkCache()`, `processEnrichmentResult()` (extracted from `enrich()`) |
+| `resources/php/agent/agentEnrichStream.php` | True streaming: cache check → stream from LLM → post-process |
+| `resources/php/agent/LLM/Adapters/GeminiAdapter.php` | Handle `response_schema` + `web_search` gracefully in `buildStreamingPayload()` |
+
+### Implementation Order Update
+
+```
+Phase 0 → Phase 1 + 3 → Phase 2 → Phase 4 → Phase 6 → Phase 5
+ tests    thinking+schema  prompt   escalation  enrichment  verify
+```
+
+Phase 6 comes after Phase 4 because:
+- It builds on the `responseSchema` support added in Phase 3
+- The `buildStreamingPayload()` changes from Phase 3 benefit enrichment
+- It can reuse test patterns established in Phase 0
+- Phase 5 (verification) runs last to validate everything together
