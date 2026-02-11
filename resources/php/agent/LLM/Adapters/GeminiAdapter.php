@@ -335,6 +335,11 @@ class GeminiAdapter implements LLMProviderInterface
             ];
         }
 
+        // Handle web_search option (enables Google Search grounding)
+        if ($options['web_search'] ?? false) {
+            $payload['tools'] = [['google_search' => new \stdClass()]];
+        }
+
         // Add JSON response format if requested
         if ($options['json_response'] ?? false) {
             $payload['generationConfig']['responseMimeType'] = 'application/json';
@@ -370,6 +375,9 @@ class GeminiAdapter implements LLMProviderInterface
     ): LLMStreamingResponse {
         $parser = new SSEParser();
         $detector = new StreamingFieldDetector();
+        if (!empty($options['target_fields'])) {
+            $detector->setTargetFields($options['target_fields']);
+        }
         $chunks = [];
         $ttfb = null;
         $fieldTimings = [];
