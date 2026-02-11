@@ -31,7 +31,7 @@
 		hasActiveChips
 	} from '$lib/stores/agentConversation';
 	import { streamingFields } from '$lib/stores/agentIdentification';
-	import { isEnriching, enrichmentStreamingFields } from '$lib/stores/agentEnrichment';
+	import { isEnriching } from '$lib/stores/agentEnrichment';
 	import { addedWineId, resetAddWine } from '$lib/stores/agentAddWine';
 	import { api } from '$lib/api';
 	import type { OriginViewMode } from '$lib/stores/agentConversation';
@@ -45,7 +45,6 @@
 	import MessageList from './conversation/MessageList.svelte';
 	import InputArea from './conversation/InputArea.svelte';
 	import WineCard from './cards/WineCard.svelte';
-	import EnrichmentCard from './cards/EnrichmentCard.svelte';
 	import { Icon } from '$lib/components';
 
 	// ===========================================
@@ -64,7 +63,6 @@
 	$: isOpen = $agentPanelOpen;
 	$: phase = $agentPhase;
 	$: isWineStreaming = $streamingFields.size > 0 && !$isEnriching;
-	$: isEnrichmentStreaming = $enrichmentStreamingFields.size > 0;
 
 	// Track completion for navigation
 	let completionHandled = false;
@@ -294,13 +292,6 @@
 				{#if isWineStreaming}
 					<div class="streaming-card" data-streaming-card>
 						<WineCard state="streaming" />
-					</div>
-				{/if}
-
-				<!-- Streaming Enrichment Card -->
-				{#if isEnrichmentStreaming}
-					<div class="streaming-card" data-enrichment-card>
-						<EnrichmentCard state="streaming" />
 					</div>
 				{/if}
 			</svelte:fragment>

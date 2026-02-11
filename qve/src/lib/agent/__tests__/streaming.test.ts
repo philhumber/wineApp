@@ -196,16 +196,6 @@ describe('Streaming Field Updates', () => {
 			await handleAgentAction({ type: 'correct', messageId: chips!.id });
 		});
 
-		it('should stream enrichment fields progressively', async () => {
-			// Test streaming field management
-			enrichment.updateEnrichmentStreamingField('overview', 'Partial', true);
-			expect(get(enrichment.enrichmentStreamingFields).get('overview')?.isTyping).toBe(true);
-
-			enrichment.updateEnrichmentStreamingField('overview', 'Full content', false);
-			expect(get(enrichment.enrichmentStreamingFields).get('overview')?.value).toBe('Full content');
-			expect(get(enrichment.enrichmentStreamingFields).get('overview')?.isTyping).toBe(false);
-		});
-
 		it('should set isEnriching during enrichment', async () => {
 			// Test the enrichment state management directly
 			enrichment.startEnrichment({ producer: 'Test', wineName: 'Wine', vintage: '2020' });
@@ -221,12 +211,9 @@ describe('Streaming Field Updates', () => {
 		});
 
 		it('should handle enrichment stream interruption', async () => {
-			// Test that error clears enrichment streaming state
+			// Test that error clears enrichment state
 			enrichment.startEnrichment({ producer: 'Test', wineName: 'Wine', vintage: '2020' });
 			expect(get(enrichment.isEnriching)).toBe(true);
-
-			enrichment.updateEnrichmentStreamingField('overview', 'Partial', true);
-			expect(get(enrichment.isEnrichmentStreaming)).toBe(true);
 
 			// Setting error should clear state
 			enrichment.setEnrichmentError({ type: 'timeout', userMessage: 'Error', retryable: true });
@@ -278,6 +265,76 @@ describe('Streaming Field Updates', () => {
 			const fields = get(identification.streamingFields);
 			expect(fields.get('producer')?.value).toBe('Château Margaux');
 			expect(fields.get('producer')?.isTyping).toBe(true);
+		});
+	});
+
+	describe('streaming edge cases', () => {
+		it('should handle empty field value from stream', async () => {
+			vi.mocked(api.identifyTextStream).mockImplementation(async (text, onField) => {
+				if (onField) {
+					onField('producer', '');
+				}
+				return {
+					intent: 'add' as const,
+					parsed: {
+						producer: '',
+						wineName: 'Test Wine',
+						vintage: null,
+						region: null,
+						appellation: null,
+						country: null,
+						wineType: null,
+						grapes: [],
+						confidence: 0.5,
+					},
+					confidence: 0.5,
+					action: 'auto_populate' as const,
+					candidates: [],
+					inputType: 'text' as const,
+				};
+			});
+
+			await handleAgentAction({ type: 'submit_text', payload: 'test wine' });
+
+			// The streaming field should have been set with empty string
+			// After result is set, streaming fields are cleared, so we verify result arrived
+			expect(get(identification.hasResult)).toBe(true);
+		});
+
+		it('should handle rapid sequential field updates', async () => {
+			vi.mocked(api.identifyTextStream).mockImplementation(async (text, onField) => {
+				if (onField) {
+					onField('producer', 'C');
+					onField('producer', 'Ch');
+					onField('producer', 'Châ');
+					onField('producer', 'Château');
+					onField('producer', 'Château Margaux');
+				}
+				return {
+					intent: 'add' as const,
+					parsed: {
+						producer: 'Château Margaux',
+						wineName: 'Grand Vin',
+						vintage: '2018',
+						region: 'Margaux',
+						appellation: null,
+						country: 'France',
+						wineType: 'Red' as const,
+						grapes: [],
+						confidence: 0.95,
+					},
+					confidence: 0.95,
+					action: 'auto_populate' as const,
+					candidates: [],
+					inputType: 'text' as const,
+				};
+			});
+
+			await handleAgentAction({ type: 'submit_text', payload: 'chateau margaux' });
+
+			// All 5 rapid updates should have been processed, final result should be set
+			expect(get(identification.hasResult)).toBe(true);
+			expect(identification.getResult()?.producer).toBe('Château Margaux');
 		});
 	});
 

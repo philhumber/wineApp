@@ -341,12 +341,28 @@ async function executeTextIdentification(
   const abortController = createAbortController();
 
   try {
+    // Track escalated result if background refinement improves confidence
+    let escalatedResult: { parsed: AgentParsedWine; confidence: number } | null = null;
+
     const result = await api.identifyTextStream(
       text,
       (field, value) => {
+        // Always update streaming fields — the streaming card in AgentPanel
+        // shows progressive field arrival. Escalation field events update
+        // the streaming card in-place (e.g., better producer/region).
         identification.updateStreamingField(field, String(value), true);
       },
-      undefined, // onEvent
+      (event) => {
+        if (event.type === 'refining') {
+          // Show "Refining..." badge on the streaming card
+          identification.startEscalation(2);
+        } else if (event.type === 'refined' && event.data.escalated) {
+          // Capture escalated result — will be used after stream completes
+          escalatedResult = { parsed: event.data.parsed, confidence: event.data.confidence };
+        }
+        // 'result' event: handled by processSSEStream internally (sets finalResult)
+        // 'refined' non-escalated: nothing to do (Tier 1 result is already best)
+      },
       abortController.signal,
       getRequestId()
     );
@@ -357,9 +373,17 @@ async function executeTextIdentification(
     }
 
     conversation.removeTypingMessage();
-    const wineResult = convertParsedWineToResult(result.parsed, result.confidence);
-    identification.setResult(wineResult, result.confidence);
-    handleIdentificationResultFlow(wineResult, result.confidence ?? 1);
+
+    // Use escalated result if refinement improved confidence, otherwise Tier 1
+    // Note: TypeScript can't track that the callback above may have mutated escalatedResult,
+    // so we reassign to a new const to satisfy control flow analysis.
+    const esc = escalatedResult as { parsed: AgentParsedWine; confidence: number } | null;
+    const finalParsed = esc ? esc.parsed : result.parsed;
+    const finalConfidence = esc ? esc.confidence : result.confidence;
+
+    const wineResult = convertParsedWineToResult(finalParsed, finalConfidence);
+    identification.setResult(wineResult, finalConfidence); // Clears streamingFields + isEscalating
+    handleIdentificationResultFlow(wineResult, finalConfidence ?? 1);
 
   } catch (error) {
     // WIN-187: Don't show error for intentional cancellation
@@ -389,14 +413,27 @@ async function executeImageIdentification(
   const abortController = createAbortController();
 
   try {
+    // Track escalated result if background refinement improves confidence
+    let escalatedResult: { parsed: AgentParsedWine; confidence: number } | null = null;
+
     const result = await api.identifyImageStream(
       data,
       mimeType,
       supplementaryText,
       (field, value) => {
+        // Always update streaming fields — the streaming card shows progressive
+        // field arrival. Escalation field events update in-place.
         identification.updateStreamingField(field, String(value), true);
       },
-      undefined, // onEvent
+      (event) => {
+        if (event.type === 'refining') {
+          // Show "Refining..." badge on the streaming card
+          identification.startEscalation(2);
+        } else if (event.type === 'refined' && event.data.escalated) {
+          // Capture escalated result — will be used after stream completes
+          escalatedResult = { parsed: event.data.parsed, confidence: event.data.confidence };
+        }
+      },
       abortController.signal,
       getRequestId()
     );
@@ -407,9 +444,15 @@ async function executeImageIdentification(
     }
 
     conversation.removeTypingMessage();
-    const wineResult = convertParsedWineToResult(result.parsed, result.confidence);
-    identification.setResult(wineResult, result.confidence);
-    handleIdentificationResultFlow(wineResult, result.confidence ?? 1);
+
+    // Use escalated result if refinement improved confidence, otherwise Tier 1
+    const esc = escalatedResult as { parsed: AgentParsedWine; confidence: number } | null;
+    const finalParsed = esc ? esc.parsed : result.parsed;
+    const finalConfidence = esc ? esc.confidence : result.confidence;
+
+    const wineResult = convertParsedWineToResult(finalParsed, finalConfidence);
+    identification.setResult(wineResult, finalConfidence); // Clears streamingFields + isEscalating
+    handleIdentificationResultFlow(wineResult, finalConfidence ?? 1);
 
   } catch (error) {
     // WIN-187: Don't show error for intentional cancellation

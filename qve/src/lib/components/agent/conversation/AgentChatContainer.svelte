@@ -17,7 +17,7 @@
 	// Import stores for reactive scroll triggers
 	import { agentMessages, agentPhase } from '$lib/stores/agentConversation';
 	import { isIdentifying, streamingFields } from '$lib/stores/agentIdentification';
-	import { isEnriching, enrichmentStreamingFields } from '$lib/stores/agentEnrichment';
+	import { isEnriching } from '$lib/stores/agentEnrichment';
 	import { isScrollLocked } from '$lib/agent/requestLifecycle';
 
 	export let messages: AgentMessage[] = [];
@@ -33,7 +33,6 @@
 	let lastSeenMessageId: string | null = null;
 	let wasIdentifying = false;
 	let wasShowingWineCard = false;
-	let wasShowingEnrichmentCard = false;
 
 	// ─────────────────────────────────────────────────────────────────────────────
 	// SCROLL DETECTION
@@ -161,22 +160,16 @@
 
 	// 2. Scroll when wine card streaming starts (identification, not enrichment)
 	$: {
-		const isShowingWineCard =
-			$streamingFields.size > 0 && !$isEnriching && $enrichmentStreamingFields.size === 0;
+		const isShowingWineCard = $streamingFields.size > 0 && !$isEnriching;
 		if (isShowingWineCard && !wasShowingWineCard) {
 			scrollToStreamingWineCard();
 		}
 		wasShowingWineCard = isShowingWineCard;
 	}
 
-	// 3. Scroll when enrichment card streaming starts
-	$: {
-		const isShowingEnrichmentCard =
-			$enrichmentStreamingFields.size > 0 || ($isEnriching && $streamingFields.size > 0);
-		if (isShowingEnrichmentCard && !wasShowingEnrichmentCard) {
-			scrollToEnrichmentCardTop();
-		}
-		wasShowingEnrichmentCard = isShowingEnrichmentCard;
+	// 3. Scroll when enrichment starts
+	$: if ($isEnriching) {
+		tick().then(() => scrollToEnrichmentCardTop());
 	}
 
 	// ─────────────────────────────────────────────────────────────────────────────

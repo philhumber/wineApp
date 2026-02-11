@@ -99,8 +99,9 @@ class GeminiAdapter implements LLMProviderInterface
         }
 
         // Handle web_search option (enables Google Search grounding)
+        // Uses camelCase googleSearch — required by REST API (v1beta)
         if ($options['web_search'] ?? false) {
-            $payload['tools'] = [['google_search' => new \stdClass()]];
+            $payload['tools'] = [['googleSearch' => new \stdClass()]];
         }
 
         // Add JSON response format if requested
@@ -108,7 +109,7 @@ class GeminiAdapter implements LLMProviderInterface
             $payload['generationConfig']['responseMimeType'] = 'application/json';
         }
 
-        // Structured output schema (works with google_search on Gemini 3)
+        // Structured output schema (works with googleSearch on Gemini 3)
         if (!empty($options['response_schema'])) {
             $payload['generationConfig']['responseMimeType'] = 'application/json';
             $payload['generationConfig']['responseSchema'] = $options['response_schema'];
@@ -261,6 +262,9 @@ class GeminiAdapter implements LLMProviderInterface
 
         $payload = $this->buildStreamingPayload($prompt, null, null, $options);
 
+        // Debug: Log context chain before streaming LLM call
+        $this->logContextChain('stream_text', $model, $payload, $options);
+
         // WIN-253: API key sent via header, not URL query parameter
         // Streaming URL: streamGenerateContent?alt=sse
         $url = "{$this->baseUrl}/models/{$model}:streamGenerateContent?alt=sse";
@@ -284,6 +288,9 @@ class GeminiAdapter implements LLMProviderInterface
         $model = $options['model'] ?? $this->model;
 
         $payload = $this->buildStreamingPayload($prompt, $imageBase64, $mimeType, $options);
+
+        // Debug: Log context chain before streaming vision LLM call
+        $this->logContextChain('stream_vision', $model, $payload, $options);
 
         // WIN-253: API key sent via header, not URL query parameter
         // Streaming URL: streamGenerateContent?alt=sse
@@ -340,6 +347,18 @@ class GeminiAdapter implements LLMProviderInterface
             $payload['generationConfig']['responseMimeType'] = 'application/json';
         }
 
+        // Handle web_search option (enables Google Search grounding)
+        // Uses camelCase googleSearch — required by REST API (v1beta)
+        if ($options['web_search'] ?? false) {
+            $payload['tools'] = [['googleSearch' => new \stdClass()]];
+        }
+
+        // Structured output schema (overrides json_response when present)
+        if (!empty($options['response_schema'])) {
+            $payload['generationConfig']['responseMimeType'] = 'application/json';
+            $payload['generationConfig']['responseSchema'] = $options['response_schema'];
+        }
+
         return $payload;
     }
 
@@ -364,6 +383,13 @@ class GeminiAdapter implements LLMProviderInterface
     ): LLMStreamingResponse {
         $parser = new SSEParser();
         $detector = new StreamingFieldDetector();
+        if (!empty($options['target_fields'])) {
+            $detector->setTargetFields($options['target_fields']);
+        }
+        $onTextDelta = $options['on_text_delta'] ?? null;
+        if (!empty($options['text_stream_fields'])) {
+            $detector->setTextStreamFields($options['text_stream_fields']);
+        }
         $chunks = [];
         $ttfb = null;
         $fieldTimings = [];
@@ -386,6 +412,7 @@ class GeminiAdapter implements LLMProviderInterface
                 $parser,
                 $detector,
                 $onChunk,
+                $onTextDelta,
                 &$chunks,
                 &$ttfb,
                 &$fieldTimings,
@@ -405,8 +432,12 @@ class GeminiAdapter implements LLMProviderInterface
                     $ttfb = (int)((\microtime(true) - $startTime) * 1000);
                 }
 
+                // DEBUG: Raw curl data before any parsing
+                \error_log("║ RAW CURL WRITE [" . \strlen($data) . " bytes]: " . \rtrim(\substr($data, 0, 2000)) . (\strlen($data) > 2000 ? '...' : ''));
+
                 // Parse SSE chunks from Gemini
                 $jsonPayloads = $parser->parse($data);
+                \error_log("║ SSE PARSE: " . \count($jsonPayloads) . " payloads, buffer=" . \strlen($parser->getBuffer()) . " bytes remaining");
 
                 foreach ($jsonPayloads as $json) {
                     $chunks[] = $json;
@@ -425,7 +456,7 @@ class GeminiAdapter implements LLMProviderInterface
                         ) {
                             $fieldTimings[$field] = (int)((\microtime(true) - $startTime) * 1000);
                             $onChunk($field, $value);
-                        });
+                        }, $onTextDelta);
                     }
                 }
 
@@ -442,6 +473,27 @@ class GeminiAdapter implements LLMProviderInterface
         $httpCode = \curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlError = \curl_error($ch);
         \curl_close($ch);
+
+        // Flush any remaining SSE data left in the parser buffer.
+        // Without this, the final event (or entire response for short inputs)
+        // can be silently lost if Gemini doesn't send a trailing \n\n.
+        $finalPayload = $parser->flush();
+        \error_log("║ SSE FLUSH: " . ($finalPayload !== null ? 'got payload' : 'empty'));
+        if ($finalPayload !== null) {
+            $chunks[] = $finalPayload;
+            $text = $finalPayload['candidates'][0]['content']['parts'][0]['text'] ?? '';
+            if ($text) {
+                $accumulatedText .= $text;
+                $detector->processChunk($text, function ($field, $value) use (
+                    $onChunk,
+                    &$fieldTimings,
+                    $startTime
+                ) {
+                    $fieldTimings[$field] = (int)((\microtime(true) - $startTime) * 1000);
+                    $onChunk($field, $value);
+                }, $onTextDelta);
+            }
+        }
 
         $latencyMs = (int)((\microtime(true) - $startTime) * 1000);
 
@@ -491,6 +543,17 @@ class GeminiAdapter implements LLMProviderInterface
         $costUSD = ($inputTokens * $costConfig['input'] / 1000000) +
                    ($outputTokens * $costConfig['output'] / 1000000);
 
+        // DEBUG: Dump the streaming response
+        \error_log("╔══════════════════════════════════════════════════════════════════");
+        \error_log("║ DEBUG: EXACT LLM RESPONSE (streamed) — provider=gemini model={$model}");
+        \error_log("║ tokens: {$inputTokens} in / {$outputTokens} out | latency: {$latencyMs}ms | ttfb: " . ($ttfb ?? '?') . "ms | cost: \${$costUSD}");
+        \error_log("║ chunks: " . \count($chunks) . " | fields: " . \implode(', ', \array_keys($fieldTimings)));
+        \error_log("╠══════════════════════════════════════════════════════════════════");
+        foreach (\explode("\n", $content) as $line) {
+            \error_log("║ " . $line);
+        }
+        \error_log("╚══════════════════════════════════════════════════════════════════");
+
         return new LLMStreamingResponse([
             'success' => true,
             'content' => $content,
@@ -539,6 +602,38 @@ class GeminiAdapter implements LLMProviderInterface
         $inputDesc = $hasImage ? "image+{$promptLen}ch" : "{$promptLen}ch";
 
         \error_log("[Agent] LLM request: provider=gemini model={$model} type={$type}{$thinking} maxTokens={$maxTokens} temp={$temp} input={$inputDesc}");
+
+        // DEBUG: Dump the exact request payload sent to the LLM
+        $debugPayload = $this->redactPayloadForLog($payload);
+        \error_log("╔══════════════════════════════════════════════════════════════════");
+        \error_log("║ DEBUG: EXACT LLM REQUEST — provider=gemini model={$model}");
+        \error_log("╠══════════════════════════════════════════════════════════════════");
+        foreach (\explode("\n", \json_encode($debugPayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) as $line) {
+            \error_log("║ " . $line);
+        }
+        \error_log("╚══════════════════════════════════════════════════════════════════");
+    }
+
+    /**
+     * Redact large binary data from payload for logging
+     *
+     * @param array $payload Request payload
+     * @return array Payload safe for logging
+     */
+    private function redactPayloadForLog(array $payload): array
+    {
+        $redacted = $payload;
+        if (isset($redacted['contents'])) {
+            foreach ($redacted['contents'] as &$content) {
+                foreach ($content['parts'] as &$part) {
+                    if (isset($part['inline_data']['data'])) {
+                        $len = \strlen($part['inline_data']['data']);
+                        $part['inline_data']['data'] = "[BASE64_IMAGE: {$len} chars]";
+                    }
+                }
+            }
+        }
+        return $redacted;
     }
 
     /**
@@ -679,6 +774,19 @@ class GeminiAdapter implements LLMProviderInterface
 
         \error_log("[Agent] LLM response: provider=gemini model={$model} tokens={$inputTokens}+{$outputTokens} latency={$latencyMs}ms cost=\${$costUSD}");
 
+        // DEBUG: Dump the exact LLM response
+        \error_log("╔══════════════════════════════════════════════════════════════════");
+        \error_log("║ DEBUG: EXACT LLM RESPONSE — provider=gemini model={$model}");
+        \error_log("║ tokens: {$inputTokens} in / {$outputTokens} out | latency: {$latencyMs}ms | cost: \${$costUSD}");
+        \error_log("╠══════════════════════════════════════════════════════════════════");
+        foreach (\explode("\n", $content) as $line) {
+            \error_log("║ " . $line);
+        }
+        if ($thinkingContent) {
+            \error_log("║ [THINKING]: " . \substr($thinkingContent, 0, 500) . (\strlen($thinkingContent) > 500 ? '...' : ''));
+        }
+        \error_log("╚══════════════════════════════════════════════════════════════════");
+
         return new LLMResponse([
             'success' => true,
             'content' => $content,
@@ -705,6 +813,20 @@ class GeminiAdapter implements LLMProviderInterface
     {
         $errorMessage = $data['error']['message'] ?? 'Unknown error';
         $errorType = $this->classifyError($httpCode, $errorMessage);
+
+        // DEBUG: Dump the error response
+        \error_log("╔══════════════════════════════════════════════════════════════════");
+        \error_log("║ DEBUG: LLM ERROR RESPONSE — provider=gemini model={$model}");
+        \error_log("║ HTTP {$httpCode} | type: {$errorType} | latency: {$latencyMs}ms");
+        \error_log("╠══════════════════════════════════════════════════════════════════");
+        if ($data) {
+            foreach (\explode("\n", \json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) as $line) {
+                \error_log("║ " . $line);
+            }
+        } else {
+            \error_log("║ (no response body)");
+        }
+        \error_log("╚══════════════════════════════════════════════════════════════════");
 
         return new LLMResponse([
             'success' => false,
@@ -793,8 +915,8 @@ class GeminiAdapter implements LLMProviderInterface
 
         foreach ($tools as $tool) {
             if (is_string($tool) && $tool === 'google_search') {
-                // Built-in tool format (matches geminiAPI.php pattern)
-                $formatted[] = ['google_search' => new \stdClass()];
+                // Built-in tool format — camelCase googleSearch for REST API (v1beta)
+                $formatted[] = ['googleSearch' => new \stdClass()];
             } else {
                 // Collect function declarations
                 $functionDeclarations[] = $tool;

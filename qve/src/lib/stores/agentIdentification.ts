@@ -131,6 +131,7 @@ export function setResult(
   store.update((state) => ({
     ...state,
     isIdentifying: false,
+    isEscalating: false,
     result,
     confidence: confidence ?? null,
     error: null,

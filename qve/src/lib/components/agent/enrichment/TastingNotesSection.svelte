@@ -4,23 +4,20 @@
 	 * Displays wine tasting notes
 	 */
 	import type { StreamingField } from '$lib/agent/types';
-	import FieldTypewriter from '../FieldTypewriter.svelte';
 
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
 	export let fieldsMap: Map<string, StreamingField> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
-	export let isFieldTyping: (field: string) => boolean; // Passed by DataCard slot
+	export let isFieldTyping: (field: string) => boolean;
 	export let handleFieldComplete: (field: string) => void;
+	export let isTextStreaming = false;
 	void isFieldTyping;
+	void handleFieldComplete;
 
-	// For streaming mode, directly access fieldsMap to ensure proper Svelte reactivity
-	$: tastingNotesField = state === 'streaming' ? fieldsMap.get('tastingNotes') : null;
-
-	$: tastingNotes = state === 'streaming' ? tastingNotesField?.value : getFieldValue('tastingNotes');
-	$: hasTastingNotes = state === 'streaming' ? !!tastingNotesField : hasField('tastingNotes');
-	$: isTyping = state === 'streaming' ? (tastingNotesField?.isTyping ?? false) : false;
+	$: tastingNotes = getFieldValue('tastingNotes');
+	$: hasTastingNotes = hasField('tastingNotes');
 </script>
 
 <section class="section">
@@ -32,15 +29,7 @@
 		</div>
 	{:else}
 		<p class="narrative-text">
-			{#if state === 'streaming'}
-				<FieldTypewriter
-					value={tastingNotes}
-					{isTyping}
-					on:complete={() => handleFieldComplete('tastingNotes')}
-				/>
-			{:else}
-				{tastingNotes}
-			{/if}
+			{tastingNotes}{#if isTextStreaming}<span class="streaming-cursor">&#9611;</span>{/if}
 		</p>
 	{/if}
 </section>
@@ -68,6 +57,17 @@
 		font-size: 0.9375rem;
 		line-height: 1.6;
 		color: var(--text-primary);
+	}
+
+	.streaming-cursor {
+		animation: blink 0.7s step-end infinite;
+		color: var(--accent);
+		font-weight: 300;
+		margin-left: 2px;
+	}
+
+	@keyframes blink {
+		50% { opacity: 0; }
 	}
 
 	.shimmer-container {
@@ -103,6 +103,9 @@
 		.shimmer-bar {
 			animation: none;
 			background: var(--bg-subtle);
+		}
+		.streaming-cursor {
+			animation: none;
 		}
 	}
 </style>

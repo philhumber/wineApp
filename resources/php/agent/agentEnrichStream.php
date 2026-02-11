@@ -68,78 +68,81 @@ try {
     $requestId = getRequestId() ?? '-';
     error_log("[Agent] enrich: request={$requestId} producer=\"{$body['producer']}\" wine=\"{$body['wineName']}\"");
 
-    // For now, use non-streaming enrichment and emit fields progressively
-    // Full streaming enrichment can be added to EnrichmentService later
-    $result = $service->enrich($identification, $confirmMatch, $forceRefresh);
-    $resultArray = $result->toArray();
+    // Step 1: Check cache (fast path — no LLM needed)
+    if (!$forceRefresh) {
+        $cacheResult = $service->checkCache($identification, $confirmMatch);
 
-    // WIN-227: Skip field emission if client cancelled during enrich()
+        if ($cacheResult !== null) {
+            $cacheArray = $cacheResult->toArray();
+
+            // Pending confirmation (canonical name resolution)
+            if ($cacheArray['pendingConfirmation'] ?? false) {
+                sendSSE('confirmation_required', [
+                    'matchType' => $cacheArray['matchType'] ?? 'unknown',
+                    'searchedFor' => $cacheArray['searchedFor'] ?? null,
+                    'matchedTo' => $cacheArray['matchedTo'] ?? null,
+                    'confidence' => $cacheArray['confidence'] ?? 0,
+                ]);
+                sendSSE('done', []);
+                exit;
+            }
+
+            // Cache hit — send complete result directly (no field-by-field delays)
+            sendSSE('result', $cacheArray);
+            $fieldCount = count(array_filter($cacheArray['data'] ?? [], fn($v) => $v !== null));
+            error_log("[Agent] enrich: done fields={$fieldCount} cached=yes");
+            sendSSE('done', []);
+            exit;
+        }
+    }
+
+    // Step 2: Cache miss — stream from LLM
+    $enricher = $service->getEnricher();
+    $enrichmentData = $enricher->enrichStreaming(
+        $body['producer'],
+        $body['wineName'],
+        $body['vintage'] ?? null,
+        function ($field, $value) {
+            // WIN-227: Stop streaming if client cancelled
+            if (isRequestCancelled()) {
+                return;
+            }
+            sendSSE('field', ['field' => $field, 'value' => $value]);
+        },
+        function ($field, $textSoFar) {
+            if (isRequestCancelled()) {
+                return;
+            }
+            sendSSE('text_delta', ['field' => $field, 'text' => $textSoFar]);
+        }
+    );
+
+    // WIN-227: Skip processing if cancelled during streaming
     if (isRequestCancelled()) {
-        error_log("[Agent] enrich: CANCELLED after enrich()");
+        error_log("[Agent] enrich: CANCELLED after streaming");
         sendSSE('done', []);
         exit;
     }
 
-    // Check for pending confirmation (canonical name resolution)
-    if ($resultArray['pendingConfirmation'] ?? false) {
-        sendSSE('confirmation_required', [
-            'matchType' => $resultArray['matchType'] ?? 'unknown',
-            'searchedFor' => $resultArray['searchedFor'] ?? null,
-            'matchedTo' => $resultArray['matchedTo'] ?? null,
-            'confidence' => $resultArray['confidence'] ?? 0,
-        ]);
-        sendSSE('done', []);
-        exit;
-    }
-
-    if (!$resultArray['success']) {
+    if (!$enrichmentData) {
         sendSSE('error', [
             'type' => 'enrichment_error',
             'message' => 'Could not enrich wine data',
-            'retryable' => false,
+            'retryable' => true,
         ]);
         sendSSE('done', []);
         exit;
     }
 
-    // Emit enrichment fields progressively
-    // WIN-181: Field names must match actual enrichment data structure
-    $data = $resultArray['data'] ?? [];
-    $fieldOrder = [
-        // Style profile fields (shown first, quick visual feedback)
-        'body',
-        'tannin',
-        'acidity',
-        // Structured data fields
-        'grapeVarieties',
-        'alcoholContent',
-        'drinkWindow',
-        'criticScores',
-        // Narrative fields (shown last, longer content)
-        'overview',
-        'tastingNotes',
-        'pairingNotes',
-        'productionMethod',
-    ];
+    // Step 3: Post-process (validate, cache, merge)
+    $result = $service->processEnrichmentResult($enrichmentData, $identification, $forceRefresh);
+    $resultArray = $result->toArray();
 
-    foreach ($fieldOrder as $field) {
-        // WIN-227: Stop emitting fields if client cancelled
-        if (isRequestCancelled()) {
-            error_log("[Agent] enrich: CANCELLED during field emission");
-            break;
-        }
-        if (isset($data[$field]) && $data[$field] !== null) {
-            sendSSE('field', ['field' => $field, 'value' => $data[$field]]);
-            // Small delay to simulate streaming effect
-            usleep(50000); // 50ms
-        }
-    }
-
-    // Send the complete result
     sendSSE('result', $resultArray);
 
+    $data = $resultArray['data'] ?? [];
     $fieldCount = count(array_filter($data, fn($v) => $v !== null));
-    error_log("[Agent] enrich: done fields={$fieldCount} cached=" . ($resultArray['cached'] ?? false ? 'yes' : 'no'));
+    error_log("[Agent] enrich: done fields={$fieldCount} cached=no");
 
     sendSSE('done', []);
 

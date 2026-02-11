@@ -940,13 +940,9 @@ AI Wine Assistant components organized into 6 subdirectories. These implement th
 |-----------|-------------|
 | `WineCard` | Wine identification result card with streaming support |
 | `DataCard` | Generic data display card |
-| `UnifiedEnrichmentCard` | Enrichment card supporting skeleton, streaming, and static states |
+| `EnrichmentCard` | Enrichment card supporting skeleton and static states, updated in-place during streaming |
 
 ### Enrichment Components (`agent/enrichment/`)
-
-| Component | Description |
-|-----------|-------------|
-| `EnrichmentCard` | Legacy enrichment card wrapper |
 | `OverviewSection` | Wine overview text |
 | `GrapeComposition` / `GrapeCompositionSection` | Grape variety breakdown |
 | `TastingNotesSection` | Tasting notes display |

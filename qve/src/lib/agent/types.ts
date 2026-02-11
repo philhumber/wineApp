@@ -1,4 +1,5 @@
 import { generateUUID } from '$lib/utils';
+import type { AgentEnrichmentData } from '$lib/api/types';
 
 // ===========================================
 // Message Categories (reduced from 18 types)
@@ -100,7 +101,8 @@ export interface WineResultMessageData {
 
 export interface EnrichmentMessageData {
   category: 'enrichment';
-  data: EnrichmentData;
+  data: AgentEnrichmentData | null;  // null = skeleton state
+  streamingTextFields: string[];      // field names with active text cursor
 }
 
 export type FormType = 'bottle_details' | 'manual_entry' | 'match_selection';

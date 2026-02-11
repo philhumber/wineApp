@@ -16,7 +16,16 @@
  *   data: {"field": "producer", "value": "Chateau Margaux"}
  *
  *   event: result
- *   data: {complete identification result}
+ *   data: {complete Tier 1 identification result}
+ *
+ *   event: refining
+ *   data: {"message": "Looking deeper...", "tier1Confidence": 65}
+ *
+ *   event: field (updated fields during refinement)
+ *   data: {"field": "region", "value": "Bordeaux"}
+ *
+ *   event: refined
+ *   data: {escalated identification result}
  *
  *   event: done
  *   data: {}
@@ -104,42 +113,61 @@ try {
         exit;
     }
 
-    // Check if escalation is needed BEFORE emitting confidence
+    // Always emit Tier 1 confidence and result first (non-blocking)
+    if (isset($result['confidence'])) {
+        sendSSE('field', ['field' => 'confidence', 'value' => $result['confidence']]);
+    }
+    sendSSE('result', [
+        'inputType' => 'image',
+        'intent' => $result['intent'] ?? 'add',
+        'parsed' => $result['parsed'],
+        'confidence' => $result['confidence'],
+        'action' => $result['action'],
+        'candidates' => $result['candidates'] ?? [],
+        'usage' => $result['usage'] ?? null,
+        'quality' => $result['quality'] ?? null,
+        'escalation' => $result['escalation'] ?? null,
+        'inferences_applied' => $result['inferences_applied'] ?? [],
+        'streamed' => $result['streamed'] ?? true,
+    ]);
+
+    // Check if escalation is needed
     $tier1Threshold = $config['confidence']['tier1_threshold'] ?? 85;
     $needsEscalation = $result['confidence'] < $tier1Threshold && ($config['streaming']['tier1_only'] ?? true);
 
     if ($needsEscalation) {
-        // WIN-227: Skip escalation if client cancelled via token
+        // WIN-227: Skip escalation if client cancelled
         if (isRequestCancelled()) {
             error_log("[Agent] identifyImage: CANCELLED before escalation (confidence={$result['confidence']})");
             sendSSE('done', []);
             exit;
         }
 
-        error_log("[Agent] identifyImage: escalating (streaming confidence={$result['confidence']}, threshold={$tier1Threshold})");
-        sendSSE('escalating', ['message' => 'Looking deeper...']);
+        error_log("[Agent] identifyImage: refining (streaming confidence={$result['confidence']}, threshold={$tier1Threshold})");
+        sendSSE('refining', ['message' => 'Looking deeper...', 'tier1Confidence' => $result['confidence']]);
 
-        // Do non-streaming escalation
-        $escalatedResult = $service->identify($identifyInput);
+        // Run escalation starting from Tier 1.5 (skips redundant Tier 1)
+        $escalatedResult = $service->identifyEscalateOnly($identifyInput, $result, 'image');
 
         if ($escalatedResult['success'] && $escalatedResult['confidence'] > $result['confidence']) {
-            // Stream the escalated fields progressively for consistent UX
-            $parsed = $escalatedResult['parsed'] ?? [];
+            // Emit only changed fields for progressive update
+            $tier1Parsed = $result['parsed'] ?? [];
+            $refinedParsed = $escalatedResult['parsed'] ?? [];
             $fieldOrder = ['producer', 'wineName', 'vintage', 'region', 'country', 'wineType', 'grapes'];
 
             foreach ($fieldOrder as $field) {
-                if (isset($parsed[$field]) && $parsed[$field] !== null) {
-                    sendSSE('field', ['field' => $field, 'value' => $parsed[$field]]);
-                    usleep(50000); // 50ms delay between fields for visual effect
+                if (isset($refinedParsed[$field]) && $refinedParsed[$field] !== null
+                    && (!isset($tier1Parsed[$field]) || $tier1Parsed[$field] !== $refinedParsed[$field])) {
+                    sendSSE('field', ['field' => $field, 'value' => $refinedParsed[$field]]);
+                    usleep(50000);
                 }
             }
 
-            // Emit confidence LAST (after all wine fields)
-            if (isset($escalatedResult['confidence'])) {
+            if ($escalatedResult['confidence'] !== $result['confidence']) {
                 sendSSE('field', ['field' => 'confidence', 'value' => $escalatedResult['confidence']]);
             }
 
-            sendSSE('result', [
+            sendSSE('refined', [
                 'inputType' => 'image',
                 'intent' => $escalatedResult['intent'] ?? 'add',
                 'parsed' => $escalatedResult['parsed'],
@@ -154,11 +182,7 @@ try {
                 'escalated' => true,
             ]);
         } else {
-            // Escalation didn't improve - emit Tier 1 confidence and result
-            if (isset($result['confidence'])) {
-                sendSSE('field', ['field' => 'confidence', 'value' => $result['confidence']]);
-            }
-            sendSSE('result', [
+            sendSSE('refined', [
                 'inputType' => 'image',
                 'intent' => $result['intent'] ?? 'add',
                 'parsed' => $result['parsed'],
@@ -170,26 +194,9 @@ try {
                 'escalation' => $result['escalation'] ?? null,
                 'inferences_applied' => $result['inferences_applied'] ?? [],
                 'streamed' => $result['streamed'] ?? true,
+                'escalated' => false,
             ]);
         }
-    } else {
-        // No escalation needed - emit Tier 1 confidence LAST and result
-        if (isset($result['confidence'])) {
-            sendSSE('field', ['field' => 'confidence', 'value' => $result['confidence']]);
-        }
-        sendSSE('result', [
-            'inputType' => 'image',
-            'intent' => $result['intent'] ?? 'add',
-            'parsed' => $result['parsed'],
-            'confidence' => $result['confidence'],
-            'action' => $result['action'],
-            'candidates' => $result['candidates'] ?? [],
-            'usage' => $result['usage'] ?? null,
-            'quality' => $result['quality'] ?? null,
-            'escalation' => $result['escalation'] ?? null,
-            'inferences_applied' => $result['inferences_applied'] ?? [],
-            'streamed' => $result['streamed'] ?? true,
-        ]);
     }
 
     // Log identification result for analytics (WIN-181)

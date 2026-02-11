@@ -2,8 +2,8 @@
 
 The wine sommelier agent is a conversational AI assistant that identifies wines from text or images, enriches them with critic scores and tasting notes, and adds them to the user's cellar. It uses a **Router + Middleware + Handlers** pattern with split stores for separation of concerns.
 
-**Last Updated**: 2026-02-07
-**Phase**: 2 (Rearchitecture Complete - Sprint 6, legacy handler removed)
+**Last Updated**: 2026-02-12
+**Phase**: 2 (Rearchitecture) + Phase 6 (Enrichment Streaming Optimization)
 
 ---
 
@@ -25,6 +25,8 @@ The wine sommelier agent is a conversational AI assistant that identifies wines 
 14. [Component Hierarchy](#14-component-hierarchy)
 15. [Backend Agent Endpoints](#15-backend-agent-endpoints)
 16. [Handler Contribution Guide](#16-handler-contribution-guide)
+
+> **Tuning the agent?** See [AGENT_TUNING_GUIDE.md](AGENT_TUNING_GUIDE.md) for a practical guide to configuring identification tiers, enrichment models, confidence scoring, caching, validation, and prompts.
 
 ---
 
@@ -348,7 +350,7 @@ Wine identification flow. The largest handler module.
 
 ### enrichment.ts
 
-Wine information lookup with cache support.
+Wine information lookup with cache support and true LLM streaming.
 
 | Action | Description |
 |--------|-------------|
@@ -359,6 +361,15 @@ Wine information lookup with cache support.
 | `force_refresh` | Bypass cache (re-call API with `forceRefresh=true`) |
 
 **Note**: `enrich_now` and `add_quickly` are handled by `addWine.ts`, not `enrichment.ts`.
+
+**Streaming architecture** (Phase 6): Unlike identification (dual-path: streaming card → message card), enrichment uses a **single message card updated in-place**:
+1. Handler creates one enrichment message card in skeleton state
+2. A 7-second delay keeps the typing/thinking message visible before the card appears (LLM responses only; cache hits show immediately)
+3. As SSE `field` events arrive, `conversation.updateMessage()` updates the card's data reactively
+4. Text fields (`overview`, `tastingNotes`, `pairingNotes`) stream token-by-token via `text_delta` SSE events with a blinking cursor, throttled at 100ms
+5. On `result` event, final enrichment data is set and the card transitions to static state
+
+**Backend flow**: `agentEnrichStream.php` → `EnrichmentService.checkCache()` (fast path) or `WebSearchEnricher.enrichStreaming()` (LLM path with `response_schema` + `googleSearch` grounding on `gemini-3-flash-preview`) → `EnrichmentService.processEnrichmentResult()` (validate, cache, merge)
 
 ### addWine.ts
 
@@ -876,8 +887,8 @@ AgentPanel.svelte                      # Root panel — open/close, camera integ
 | `identifyImage.php` | Image-based identification | Gemini Vision | No |
 | `identifyImageStream.php` | Image identification with streaming | Gemini Vision | Yes (SSE) |
 | `identifyWithOpus.php` | Premium Opus model escalation | Claude Opus | No |
-| `agentEnrich.php` | Wine enrichment | Gemini | No |
-| `agentEnrichStream.php` | Streaming enrichment | Gemini | Yes (SSE) |
+| `agentEnrich.php` | Wine enrichment (non-streaming fallback) | Gemini | No |
+| `agentEnrichStream.php` | Streaming enrichment with web search grounding | Gemini 3 Flash + googleSearch | Yes (SSE) |
 | `clarifyMatch.php` | Match clarification/disambiguation | Gemini | No |
 
 ### Service Classes

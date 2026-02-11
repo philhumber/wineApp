@@ -12,6 +12,9 @@
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
 
+	/** Whether the wine card is being refined by background escalation */
+	export let isRefining = false;
+
 	// For streaming mode, directly access fieldsMap to ensure proper Svelte reactivity
 	$: confidenceField = state === 'streaming' ? fieldsMap.get('confidence') : null;
 
@@ -20,7 +23,7 @@
 	$: hasConfidence = state === 'streaming' ? !!confidenceField : hasField('confidence');
 </script>
 
-<div class="confidence-section">
+<div class="confidence-section" class:refining={isRefining}>
 	{#if state === 'skeleton' || !hasConfidence || confidence === null}
 		<span class="shimmer-inline shimmer-confidence"></span>
 	{:else}
@@ -32,6 +35,21 @@
 	.confidence-section {
 		margin-bottom: var(--space-4);
 		min-height: 1.5em;
+	}
+
+	.confidence-section.refining {
+		opacity: 0.7;
+		animation: pulse-confidence 1.5s ease-in-out infinite;
+	}
+
+	@keyframes pulse-confidence {
+		0%,
+		100% {
+			opacity: 0.7;
+		}
+		50% {
+			opacity: 1;
+		}
 	}
 
 	.shimmer-inline {
@@ -66,6 +84,11 @@
 		.shimmer-inline {
 			animation: none;
 			background: var(--bg-subtle);
+		}
+
+		.confidence-section.refining {
+			animation: none;
+			opacity: 0.7;
 		}
 	}
 </style>

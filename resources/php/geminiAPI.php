@@ -71,7 +71,7 @@ try {
             'temperature' => 0.25,
             'thinkingConfig' => ['thinkingBudget' => -1]
         ],
-        'tools' => [['google_search' => new stdClass()]]
+        'tools' => [['googleSearch' => new stdClass()]]
     ];
 
     // Make API call using file_get_contents (curl not always available)

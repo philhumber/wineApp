@@ -4,7 +4,7 @@
 	 * Unified enrichment card supporting skeleton, streaming, and static states.
 	 * Replaces both EnrichmentCard and EnrichmentCardStreaming.
 	 */
-	import { enrichmentStreamingFields, isEnriching } from '$lib/stores/agentEnrichment';
+	import { isEnriching } from '$lib/stores/agentEnrichment';
 	import type { AgentEnrichmentData } from '$lib/api/types';
 	import DataCard from './DataCard.svelte';
 	import OverviewSection from '../enrichment/OverviewSection.svelte';
@@ -28,13 +28,19 @@
 	/** Static state: Data source indicator */
 	export let source: 'cache' | 'web_search' | 'inference' | undefined = undefined;
 
+	/** Fields with active text streaming cursors */
+	export let streamingTextFields: string[] = [];
+
 	// ─────────────────────────────────────────────────────
 	// STREAMING STATE
 	// ─────────────────────────────────────────────────────
 
-	// Subscribe to streaming state for reactive updates
-	$: currentStreamingFields = $enrichmentStreamingFields;
 	$: enriching = $isEnriching;
+
+	// Per-section text streaming booleans
+	$: isOverviewStreaming = streamingTextFields.includes('overview');
+	$: isTastingNotesStreaming = streamingTextFields.includes('tastingNotes');
+	$: isPairingNotesStreaming = streamingTextFields.includes('pairingNotes');
 
 	// ─────────────────────────────────────────────────────
 	// STATIC STATE TRANSFORMATION
@@ -47,6 +53,7 @@
 				body: data.body,
 				tannin: data.tannin,
 				acidity: data.acidity,
+				sweetness: data.sweetness,
 				grapeVarieties: data.grapeVarieties,
 				tastingNotes: data.tastingNotes,
 				pairingNotes: data.pairingNotes,
@@ -85,7 +92,7 @@
 	<DataCard
 		{state}
 		data={staticData}
-		streamingFields={currentStreamingFields}
+		streamingFields={new Map()}
 		{header}
 		cardClass="enrichment-card"
 		{dataAttributes}
@@ -103,6 +110,7 @@
 			{hasField}
 			{isFieldTyping}
 			{handleFieldComplete}
+			isTextStreaming={isOverviewStreaming}
 		/>
 
 		<StyleProfileSection
@@ -126,6 +134,7 @@
 			{hasField}
 			{isFieldTyping}
 			{handleFieldComplete}
+			isTextStreaming={isTastingNotesStreaming}
 		/>
 
 		<FoodPairingsSection
@@ -135,6 +144,7 @@
 			{hasField}
 			{isFieldTyping}
 			{handleFieldComplete}
+			isTextStreaming={isPairingNotesStreaming}
 		/>
 
 		<DrinkWindowSection

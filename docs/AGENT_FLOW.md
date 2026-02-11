@@ -332,7 +332,7 @@ Single-word inputs WITH augmentation context bypass this check (the user is addi
 
 ### 3.3 Enrichment Flow
 
-The enrichment flow fetches wine details (grape composition, critic scores, tasting notes, drink window, food pairings) via streaming API.
+The enrichment flow fetches wine details (grape composition, critic scores, tasting notes, drink window, food pairings) via streaming API. The enrichment card is created as a message in the conversation and updated in-place as fields arrive. A 7-second delay keeps the thinking message visible before the card appears for LLM responses; cache hits show the card immediately.
 
 ```mermaid
 flowchart TB
@@ -343,16 +343,25 @@ flowchart TB
 
     StartEnrich --> SetPhase["setPhase('enriching')"]
     SetPhase --> AddTyping["addTypingMessage('Researching...')"]
-    AddTyping --> CallAPI["api.enrichWineStream()<br/>(producer, wineName, vintage, type, region,<br/>confirmMatch, forceRefresh, onField)"]
+    AddTyping --> StartTimer["Start 7s card delay timer"]
+    StartTimer --> CallAPI["api.enrichWineStream()<br/>(producer, wineName, vintage, type, region,<br/>confirmMatch, forceRefresh, onField, onTextDelta)"]
 
     CallAPI --> Streaming{Streaming}
-    Streaming -->|"onField callback"| UpdateField["enrichment.updateEnrichmentStreamingField()"]
-    UpdateField --> Streaming
+    Streaming -->|"onField callback"| BufferField["Buffer field in partialData<br/>updateCard() if card exists"]
+    BufferField --> Streaming
+    Streaming -->|"onTextDelta callback"| BufferText["Buffer text in partialData<br/>throttled updateCard() if card exists"]
+    BufferText --> Streaming
 
-    Streaming -->|"Complete"| CheckPending{pendingConfirmation<br/>in response?}
+    subgraph CardDelay["Card Creation (after 7s or on completion)"]
+        Timer["7s timer fires"] --> CreateCard["Remove typing message<br/>addMessage(enrichment card)<br/>Flush buffered fields"]
+    end
+    StartTimer -.->|"7 seconds"| Timer
 
-    CheckPending -->|"Yes (cache match)"| RemoveTyping1[Remove typing]
-    RemoveTyping1 --> ShowCacheMsg["Show: 'I found cached data for a similar wine...'"]
+    Streaming -->|"Complete"| ClearTimer["Clear delay timer"]
+    ClearTimer --> CheckPending{pendingConfirmation<br/>in response?}
+
+    CheckPending -->|"Yes (cache match)"| RemoveCard1["Remove card if exists<br/>Remove typing"]
+    RemoveCard1 --> ShowCacheMsg["Show: 'I found cached data for a similar wine...'"]
     ShowCacheMsg --> CacheChips["Chips: Yes, use cached / No, search online"]
     CacheChips --> SetConfirming1["setPhase('confirming')"]
 
@@ -362,15 +371,18 @@ flowchart TB
     RestartConfirm --> CallAPI
     RestartRefresh --> CallAPI
 
-    CheckPending -->|"No"| RemoveTyping2[Remove typing]
-    RemoveTyping2 --> StoreData["enrichment.setEnrichmentData(data, source)"]
-    StoreData --> AddCard["addMessage(enrichment card)"]
-    AddCard --> AddText["addMessage('Here's what I found...')"]
+    CheckPending -->|"No"| EnsureCard{"Card created?"}
+    EnsureCard -->|"No (cache hit)"| CreateCardNow["createCard() immediately"]
+    EnsureCard -->|"Yes"| RemoveTyping2["Remove typing"]
+    CreateCardNow --> FinalUpdate
+    RemoveTyping2 --> FinalUpdate
+    FinalUpdate["updateMessage(final data)<br/>enrichment.setEnrichmentData()"]
+    FinalUpdate --> AddText["addMessage('Here's what I found...')"]
     AddText --> PostChips["Chips: Add to Cellar (primary), Remember, Start Over (secondary)"]
     PostChips --> SetConfirming2["setPhase('confirming')"]
 
-    Streaming -->|"Error"| RemoveTyping3[Remove typing]
-    RemoveTyping3 --> HandleError["Show error message"]
+    Streaming -->|"Error"| RemoveCard3["Remove card if exists<br/>Remove typing"]
+    RemoveCard3 --> HandleError["Show error message"]
     HandleError --> ErrorChips{Retryable?}
     ErrorChips -->|Yes| RetryChips["Chips: Learn More (primary), Add Without Details, Start Over"]
     ErrorChips -->|No| NoRetryChips["Chips: Add Without Details, Start Over"]

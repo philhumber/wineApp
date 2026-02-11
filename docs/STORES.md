@@ -626,15 +626,20 @@ Manages wine identification results, streaming fields, and escalation state.
 
 ### agentEnrichment (`stores/agentEnrichment.ts`)
 
-Manages wine enrichment data (grapes, critics, drink window, etc.).
+Manages wine enrichment data (grapes, critics, drink window, etc.). Unlike identification, enrichment has no separate streaming fields store — the enrichment handler creates one message card and updates it in-place via `conversation.updateMessage()` as SSE fields arrive.
 
 | Export | Purpose |
 |--------|---------|
-| `isEnriching` | writable - Loading flag |
-| `enrichmentData` | writable - Full enrichment result |
-| `enrichmentForWine` | writable - Which wine was enriched |
+| `isEnriching` | derived - Loading flag |
+| `enrichmentData` | derived - Full enrichment result |
+| `enrichmentError` | derived - Error info |
+| `enrichmentSource` | derived - Data source (cache/web_search/inference) |
+| `enrichmentForWine` | derived - Which wine was enriched |
+| `lastEnrichmentRequest` | derived - Last request (for retry support) |
 | `hasEnrichmentData`, `hasOverview`, `hasGrapeComposition`, etc. | Derived section flags |
 | `startEnrichment()`, `setEnrichmentData()`, `clearEnrichment()` | Actions |
+| `setLastRequest()`, `getLastRequest()` | Retry support |
+| `clearEnriching()` | Stop loading without clearing data (cancellation) |
 
 ### agentAddWine (`stores/agentAddWine.ts`)
 

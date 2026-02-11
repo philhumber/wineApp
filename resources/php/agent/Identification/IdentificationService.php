@@ -80,8 +80,8 @@ class IdentificationService
         $options = [
             'provider' => $tierConfig['provider'] ?? 'gemini',
             'model' => $tierConfig['model'] ?? 'gemini-3-flash-preview',
-            'temperature' => $tierConfig['temperature'] ?? 0.3,
-            'max_tokens' => $tierConfig['max_tokens'] ?? 500,
+            'temperature' => $tierConfig['temperature'] ?? 1.0, //Must be 1.0 for gemini 3
+            'max_tokens' => $tierConfig['max_tokens'] ?? 1000,
         ];
 
         // Add thinking level for Gemini 3 models
@@ -351,8 +351,8 @@ class IdentificationService
             'provider' => $tierConfig['provider'] ?? 'gemini',
             'model' => $tierConfig['model'] ?? 'gemini-3-flash-preview',
             'temperature' => $tierConfig['temperature'] ?? 0.3,
-            'max_tokens' => $tierConfig['max_tokens'] ?? 4000,
-            'json_response' => true,
+            'max_tokens' => $tierConfig['max_tokens'] ?? 2000,
+            'response_schema' => $this->getIdentificationSchema(),
         ];
 
         // Add thinking level if configured
@@ -473,8 +473,8 @@ class IdentificationService
             'provider' => $tierConfig['provider'] ?? 'gemini',
             'model' => $tierConfig['model'] ?? 'gemini-3-flash-preview',
             'temperature' => $tierConfig['temperature'] ?? 0.3,
-            'max_tokens' => $tierConfig['max_tokens'] ?? 4000,
-            'json_response' => true,
+            'max_tokens' => $tierConfig['max_tokens'] ?? 2000,
+            'response_schema' => $this->getIdentificationSchema(),
         ];
 
         if (isset($tierConfig['thinking_level'])) {
@@ -572,22 +572,12 @@ class IdentificationService
     private function buildIdentificationPrompt(string $text): string
     {
         return <<<PROMPT
-You are an expert wine sommelier. Identify the wine from the following text and return ONLY a JSON object.
+Identify this wine. Return ONLY JSON.
 
 TEXT: {$text}
 
-Return a JSON object with these fields:
-- producer: The winery/producer name (required)
-- wineName: The specific wine name/cuvée (required)
-- vintage: The year as a number, or null if not mentioned
-- region: The wine region (e.g., "Bordeaux", "Napa Valley")
-- country: The country of origin
-- wineType: One of "Red", "White", "Rosé", "Sparkling", "Dessert", "Fortified"
-- grapes: Array of grape varieties if known
-- confidence: Your confidence score 0-100 in this identification
-- confidenceRationale: Brief explanation of your confidence score
-
-Be precise. If unsure about a field, use null rather than guessing.
+Fields: producer (required), wineName (required), vintage (number|null), region, country, wineType ("Red"|"White"|"Rosé"|"Sparkling"|"Dessert"|"Fortified"), grapes (array), confidence (0-100).
+Null if unsure.
 PROMPT;
     }
 
@@ -600,27 +590,298 @@ PROMPT;
     private function buildVisionPrompt(?string $supplementaryText = null): string
     {
         $prompt = <<<PROMPT
-You are an expert wine sommelier analyzing a wine label image. Identify the wine and return ONLY a JSON object.
+Identify the wine from this label image. Return ONLY JSON.
 
-Extract all visible information from the label image and return a JSON object with:
-- producer: The winery/producer name (required)
-- wineName: The specific wine name/cuvée (required)
-- vintage: The year as a number, or null if not visible
-- region: The wine region (e.g., "Bordeaux", "Napa Valley")
-- country: The country of origin
-- wineType: One of "Red", "White", "Rosé", "Sparkling", "Dessert", "Fortified"
-- grapes: Array of grape varieties if visible
-- confidence: Your confidence score 0-100 in this identification
-- confidenceRationale: Brief explanation of your confidence score
-
-Be precise. If unsure about a field, use null rather than guessing.
+Fields: producer (required), wineName (required), vintage (number|null), region, country, wineType ("Red"|"White"|"Rosé"|"Sparkling"|"Dessert"|"Fortified"), grapes (array), confidence (0-100).
+Null if unsure.
 PROMPT;
 
         if ($supplementaryText) {
-            $prompt .= "\n\nAdditional context from user: {$supplementaryText}";
+            $prompt .= "\n\nContext: {$supplementaryText}";
         }
 
         return $prompt;
+    }
+
+    /**
+     * Get the JSON schema for identification responses.
+     * Used with Gemini's responseSchema for structured output.
+     */
+    private function getIdentificationSchema(): array
+    {
+        // REST API (v1beta) requires lowercase types + propertyOrdering for streaming.
+        // propertyOrdering controls field output order for StreamingFieldDetector.
+        return [
+            'type' => 'object',
+            'properties' => [
+                'producer' => ['type' => 'string'],
+                'wineName' => ['type' => 'string'],
+                'vintage' => ['type' => 'integer', 'nullable' => true],
+                'region' => ['type' => 'string', 'nullable' => true],
+                'country' => ['type' => 'string', 'nullable' => true],
+                'wineType' => [
+                    'type' => 'string',
+                    'enum' => ['Red', 'White', 'Rosé', 'Sparkling', 'Dessert', 'Fortified'],
+                ],
+                'grapes' => [
+                    'type' => 'array',
+                    'items' => ['type' => 'string'],
+                ],
+                'confidence' => ['type' => 'integer'],
+            ],
+            'required' => ['producer', 'wineName', 'confidence'],
+            'propertyOrdering' => [
+                'producer', 'wineName', 'vintage', 'region',
+                'country', 'wineType', 'grapes', 'confidence',
+            ],
+        ];
+    }
+
+    /**
+     * Escalate identification starting from Tier 1.5 (skips redundant Tier 1).
+     * Used by streaming endpoints after Tier 1 result is already shown to user.
+     *
+     * @param array $input Original input data
+     * @param array $tier1Result Tier 1 result with parsed + confidence
+     * @param string $inputType 'text' or 'image'
+     * @return array Escalated identification result
+     */
+    public function identifyEscalateOnly(array $input, array $tier1Result, string $inputType = 'text'): array
+    {
+        if ($inputType === 'image') {
+            return $this->escalateImage($input, $tier1Result);
+        }
+        return $this->escalateText($input, $tier1Result);
+    }
+
+    /**
+     * Escalate text identification from Tier 1.5 onward
+     *
+     * @param array $input Original input data
+     * @param array $tier1Result Tier 1 result
+     * @return array Escalated result
+     */
+    private function escalateText(array $input, array $tier1Result): array
+    {
+        $inputText = $input['text'] ?? '';
+        $intent = $this->intentDetector->detect($inputText);
+
+        $thresholds = $this->config['confidence'] ?? [];
+        $tier1_5Threshold = $thresholds['tier1_5_threshold'] ?? 70;
+        $tier2Threshold = $thresholds['tier2_threshold'] ?? 60;
+
+        $escalationData = [
+            'tiers' => ['tier1' => ['confidence' => $tier1Result['confidence'], 'model' => 'streamed']],
+            'final_tier' => null,
+            'total_cost' => 0,
+        ];
+
+        $result = $tier1Result;
+
+        // ─── TIER 1.5: Detailed (Gemini 3 Flash, high thinking) ───
+        if (isRequestCancelled()) {
+            $escalationData['final_tier'] = 'tier1';
+            return $this->buildTextResult($result, 'suggest', $intent, $escalationData);
+        }
+
+        error_log("[Agent] escalateText: Tier 1.5 starting (from {$result['confidence']})");
+        $tier1_5Result = $this->processWithGemini($inputText, 'detailed', $tier1Result);
+
+        if ($tier1_5Result['success']) {
+            $tier1_5Result = $this->applyInference($tier1_5Result);
+            $scoring = $this->scorer->score($tier1_5Result['parsed']);
+            $tier1_5Result['confidence'] = $scoring['score'];
+            $tier1_5Result['action'] = $scoring['action'];
+
+            $detailedConfig = $this->config['model_tiers']['detailed'] ?? [];
+            $escalationData['tiers']['tier1_5'] = [
+                'confidence' => $tier1_5Result['confidence'],
+                'model' => $detailedConfig['model'] ?? 'gemini-3-flash-preview',
+                'thinking_level' => $detailedConfig['thinking_level'] ?? 'HIGH',
+            ];
+
+            if ($tier1_5Result['confidence'] > $result['confidence']) {
+                $result = $tier1_5Result;
+                $escalationData['total_cost'] += $tier1_5Result['cost'] ?? 0;
+            }
+        } else {
+            error_log("[Agent] escalateText: Tier 1.5 FAILED, keeping Tier 1");
+        }
+
+        if ($result['confidence'] >= $tier1_5Threshold) {
+            $escalationData['final_tier'] = 'tier1_5';
+            return $this->buildTextResult($result, 'suggest', $intent, $escalationData);
+        }
+
+        // ─── TIER 2: Balanced (Claude Sonnet 4.5) ───
+        if (isRequestCancelled()) {
+            $escalationData['final_tier'] = 'tier1_5';
+            return $this->buildTextResult($result, 'suggest', $intent, $escalationData);
+        }
+
+        if ($this->llmClient->isProviderAvailable('claude')) {
+            error_log("[Agent] escalateText: Tier 2 starting (from {$result['confidence']})");
+            $claudeResult = $this->processWithClaude($inputText, 'claude-sonnet-4-5-20250929', $result);
+
+            if ($claudeResult['success']) {
+                $claudeResult = $this->applyInference($claudeResult);
+                $scoring = $this->scorer->score($claudeResult['parsed']);
+                $claudeResult['confidence'] = $scoring['score'];
+                $claudeResult['action'] = $scoring['action'];
+
+                $escalationData['tiers']['tier2'] = [
+                    'confidence' => $claudeResult['confidence'],
+                    'model' => 'claude-sonnet-4-5-20250929',
+                ];
+
+                if ($claudeResult['confidence'] > $result['confidence']) {
+                    $result = $claudeResult;
+                    $escalationData['total_cost'] += $claudeResult['cost'] ?? 0;
+                }
+            } else {
+                error_log("[Agent] escalateText: Tier 2 FAILED");
+            }
+        }
+
+        if ($result['confidence'] >= $tier2Threshold) {
+            $escalationData['final_tier'] = 'tier2';
+            return $this->buildTextResult($result, 'suggest', $intent, $escalationData);
+        }
+
+        // ─── USER CHOICE ───
+        error_log("[Agent] escalateText: low confidence — offering user_choice");
+        $escalationData['final_tier'] = 'user_choice';
+        $finalResult = $this->buildTextResult($result, 'user_choice', $intent, $escalationData, [
+            'options' => ['try_harder', 'tell_me_more'],
+        ]);
+
+        if ($result['confidence'] < 30) {
+            $finalResult['candidates'] = $this->disambiguator->findCandidates($result['parsed']);
+        }
+
+        return $finalResult;
+    }
+
+    /**
+     * Escalate image identification from Tier 1.5 onward
+     *
+     * @param array $input Original input data
+     * @param array $tier1Result Tier 1 result
+     * @return array Escalated result
+     */
+    private function escalateImage(array $input, array $tier1Result): array
+    {
+        $imageData = $input['image'] ?? '';
+        $mimeType = $input['mimeType'] ?? '';
+        $supplementaryText = $input['supplementaryText'] ?? null;
+
+        $processOptions = [];
+        if ($supplementaryText) {
+            $processOptions['supplementary_text'] = $supplementaryText;
+        }
+
+        $thresholds = $this->config['confidence'] ?? [];
+        $tier1_5Threshold = $thresholds['tier1_5_threshold'] ?? 70;
+        $tier2Threshold = $thresholds['tier2_threshold'] ?? 60;
+
+        $quality = $tier1Result['quality'] ?? null;
+
+        $escalationData = [
+            'tiers' => ['tier1' => ['confidence' => $tier1Result['confidence'], 'model' => 'streamed']],
+            'final_tier' => null,
+            'total_cost' => 0,
+        ];
+
+        $result = $tier1Result;
+
+        // ─── TIER 1.5: Detailed (Gemini 3 Flash, high thinking) ───
+        if (isRequestCancelled()) {
+            $escalationData['final_tier'] = 'tier1';
+            return $this->buildImageResult($result, 'suggest', $escalationData, $quality);
+        }
+
+        error_log("[Agent] escalateImage: Tier 1.5 starting (from {$result['confidence']})");
+        // NOTE: Image path does NOT pass prior context to Tier 1.5 (by design)
+        $tier1_5Result = $this->processVisionWithGemini($imageData, $mimeType, 'detailed', $processOptions);
+
+        if ($tier1_5Result['success']) {
+            $tier1_5Result = $this->applyInference($tier1_5Result);
+            $scoring = $this->scorer->score($tier1_5Result['parsed']);
+            $tier1_5Result['confidence'] = $scoring['score'];
+            $tier1_5Result['action'] = $scoring['action'];
+
+            $detailedConfig = $this->config['model_tiers']['detailed'] ?? [];
+            $escalationData['tiers']['tier1_5'] = [
+                'confidence' => $tier1_5Result['confidence'],
+                'model' => $detailedConfig['model'] ?? 'gemini-3-flash-preview',
+                'thinking_level' => $detailedConfig['thinking_level'] ?? 'HIGH',
+            ];
+
+            if ($tier1_5Result['confidence'] > $result['confidence']) {
+                $result = $tier1_5Result;
+                $escalationData['total_cost'] += $tier1_5Result['cost'] ?? 0;
+            }
+        } else {
+            error_log("[Agent] escalateImage: Tier 1.5 FAILED, keeping Tier 1");
+        }
+
+        if ($result['confidence'] >= $tier1_5Threshold) {
+            $escalationData['final_tier'] = 'tier1_5';
+            return $this->buildImageResult($result, 'suggest', $escalationData, $quality);
+        }
+
+        // ─── TIER 2: Balanced (Claude Sonnet 4.5 with vision) ───
+        if (isRequestCancelled()) {
+            $escalationData['final_tier'] = 'tier1_5';
+            return $this->buildImageResult($result, 'suggest', $escalationData, $quality);
+        }
+
+        if ($this->llmClient->isProviderAvailable('claude')) {
+            error_log("[Agent] escalateImage: Tier 2 starting (from {$result['confidence']})");
+            $claudeResult = $this->processVisionWithClaude(
+                $imageData,
+                $mimeType,
+                'claude-sonnet-4-5-20250929',
+                $processOptions
+            );
+
+            if ($claudeResult['success']) {
+                $claudeResult = $this->applyInference($claudeResult);
+                $scoring = $this->scorer->score($claudeResult['parsed']);
+                $claudeResult['confidence'] = $scoring['score'];
+                $claudeResult['action'] = $scoring['action'];
+
+                $escalationData['tiers']['tier2'] = [
+                    'confidence' => $claudeResult['confidence'],
+                    'model' => 'claude-sonnet-4-5-20250929',
+                ];
+
+                if ($claudeResult['confidence'] > $result['confidence']) {
+                    $result = $claudeResult;
+                    $escalationData['total_cost'] += $claudeResult['cost'] ?? 0;
+                }
+            } else {
+                error_log("[Agent] escalateImage: Tier 2 FAILED");
+            }
+        }
+
+        if ($result['confidence'] >= $tier2Threshold) {
+            $escalationData['final_tier'] = 'tier2';
+            return $this->buildImageResult($result, 'suggest', $escalationData, $quality);
+        }
+
+        // ─── USER CHOICE ───
+        error_log("[Agent] escalateImage: low confidence — offering user_choice");
+        $escalationData['final_tier'] = 'user_choice';
+        $finalResult = $this->buildImageResult($result, 'user_choice', $escalationData, $quality, [
+            'options' => ['try_harder', 'tell_me_more'],
+        ]);
+
+        if ($result['confidence'] < 30) {
+            $finalResult['candidates'] = $this->disambiguator->findCandidates($result['parsed']);
+        }
+
+        return $finalResult;
     }
 
     /**

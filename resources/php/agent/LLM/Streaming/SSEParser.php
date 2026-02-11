@@ -26,7 +26,11 @@ class SSEParser
      */
     public function parse(string $chunk): array
     {
-        $this->buffer .= $chunk;
+        // Normalize \r\n to \n before buffering.
+        // Gemini's SSE stream uses \r\n\r\n as event separators (standard HTTP),
+        // but explode("\n\n") won't match \r\n\r\n since the chars are \r,\n,\r,\n
+        // — never two consecutive \n.
+        $this->buffer .= \str_replace("\r\n", "\n", $chunk);
         $payloads = [];
 
         // Split by double newline (SSE event separator)

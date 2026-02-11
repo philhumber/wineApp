@@ -3,10 +3,11 @@
 
 	export let grapes: GrapeVariety[] | null = [];
 
-	// Parse numeric percentage from string (e.g., "75", "40-50%", "~60%")
+	// Parse numeric percentage from string or number (e.g., 75, "75", "40-50%", "~60%")
 	// Returns first number found, or null if none
-	function parsePercentage(pct: string | null): number | null {
-		if (!pct) return null;
+	function parsePercentage(pct: string | number | null): number | null {
+		if (pct === null || pct === undefined) return null;
+		if (typeof pct === 'number') return pct;
 		const match = pct.match(/(\d+)/);
 		return match ? parseInt(match[1], 10) : null;
 	}
@@ -47,9 +48,10 @@
 			<li class="grape-item">
 				<span class="grape-dot" style="background-color: {getGrapeColor(i)};"></span>
 				<span class="grape-name">{grape.grape}</span>
-				{#if grape.percentage}
+				{#if grape.percentage !== null && grape.percentage !== undefined}
+					{@const pctStr = String(grape.percentage)}
 					<span class="grape-percent"
-						>{grape.percentage}{grape.percentage.includes('%') ? '' : '%'}</span
+						>{pctStr}{pctStr.includes('%') ? '' : '%'}</span
 					>
 				{/if}
 			</li>
