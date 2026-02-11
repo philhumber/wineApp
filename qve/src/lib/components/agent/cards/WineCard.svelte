@@ -4,7 +4,7 @@
 	 * Unified wine card supporting skeleton, streaming, and static states.
 	 * Replaces both WineIdentificationCard and WineCardStreaming.
 	 */
-	import { streamingFields as identificationStreamingFields } from '$lib/stores/agentIdentification';
+	import { streamingFields as identificationStreamingFields, isEscalating } from '$lib/stores/agentIdentification';
 	import type { AgentParsedWine } from '$lib/api/types';
 	import DataCard from './DataCard.svelte';
 	import WineNameSection from '../wine/WineNameSection.svelte';
@@ -67,67 +67,76 @@
 	$: dataAttributes = {
 		'streaming-card': state === 'streaming'
 	};
+
+	// Refining badge: shown when background escalation is in progress
+	$: header = $isEscalating
+		? { title: '', badge: 'Refining...', badgeStreaming: true }
+		: null;
 </script>
 
-<DataCard
-	{state}
-	data={staticData}
-	streamingFields={currentStreamingFields}
-	{cardClass}
-	{dataAttributes}
-	let:state={cardState}
-	let:fieldsMap
-	let:getFieldValue
-	let:hasField
-	let:isFieldTyping
-	let:handleFieldComplete
->
-	<WineNameSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-		{isFieldTyping}
-		{handleFieldComplete}
-	/>
+<div class="wine-card">
+	<DataCard
+		{state}
+		data={staticData}
+		streamingFields={currentStreamingFields}
+		{header}
+		{cardClass}
+		{dataAttributes}
+		let:state={cardState}
+		let:fieldsMap
+		let:getFieldValue
+		let:hasField
+		let:isFieldTyping
+		let:handleFieldComplete
+	>
+		<WineNameSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+			{isFieldTyping}
+			{handleFieldComplete}
+		/>
 
-	<WineProducerSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-		{isFieldTyping}
-		{handleFieldComplete}
-	/>
+		<WineProducerSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+			{isFieldTyping}
+			{handleFieldComplete}
+		/>
 
-	<WineMetadataSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-		{isFieldTyping}
-		{handleFieldComplete}
-	/>
+		<WineMetadataSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+			{isFieldTyping}
+			{handleFieldComplete}
+		/>
 
-	<WineConfidenceSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-	/>
+		<WineConfidenceSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+			isRefining={$isEscalating}
+		/>
 
-	<WineDetailsSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-		{isFieldTyping}
-		{handleFieldComplete}
-	/>
-</DataCard>
+		<WineDetailsSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+			{isFieldTyping}
+			{handleFieldComplete}
+		/>
+	</DataCard>
+</div>
 
 <style>
-	:global(.data-card.incomplete) {
+	.wine-card :global(.data-card.incomplete) {
 		border-color: var(--warning);
 		border-style: dashed;
 	}

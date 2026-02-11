@@ -81,88 +81,90 @@
 
 	</script>
 
-<DataCard
-	{state}
-	data={staticData}
-	streamingFields={currentStreamingFields}
-	{header}
-	cardClass="enrichment-card"
-	{dataAttributes}
-	let:state={cardState}
-	let:fieldsMap
-	let:getFieldValue
-	let:hasField
-	let:isFieldTyping
-	let:handleFieldComplete
->
-	<OverviewSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-		{isFieldTyping}
-		{handleFieldComplete}
-	/>
+<div class="enrichment-card-wrapper">
+	<DataCard
+		{state}
+		data={staticData}
+		streamingFields={currentStreamingFields}
+		{header}
+		cardClass="enrichment-card"
+		{dataAttributes}
+		let:state={cardState}
+		let:fieldsMap
+		let:getFieldValue
+		let:hasField
+		let:isFieldTyping
+		let:handleFieldComplete
+	>
+		<OverviewSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+			{isFieldTyping}
+			{handleFieldComplete}
+		/>
 
-	<StyleProfileSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-	/>
+		<StyleProfileSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+		/>
 
-	<GrapeCompositionSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-	/>
+		<GrapeCompositionSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+		/>
 
-	<TastingNotesSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-		{isFieldTyping}
-		{handleFieldComplete}
-	/>
+		<TastingNotesSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+			{isFieldTyping}
+			{handleFieldComplete}
+		/>
 
-	<FoodPairingsSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-		{isFieldTyping}
-		{handleFieldComplete}
-	/>
+		<FoodPairingsSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+			{isFieldTyping}
+			{handleFieldComplete}
+		/>
 
-	<DrinkWindowSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-	/>
+		<DrinkWindowSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+		/>
 
-	<CriticScoresSection
-		state={cardState}
-		{fieldsMap}
-		{getFieldValue}
-		{hasField}
-	/>
-</DataCard>
+		<CriticScoresSection
+			state={cardState}
+			{fieldsMap}
+			{getFieldValue}
+			{hasField}
+		/>
+	</DataCard>
+</div>
 
 <style>
-	:global(.data-card.enrichment-card) {
+	.enrichment-card-wrapper :global(.data-card.enrichment-card) {
 		background: var(--surface-raised);
 		margin-top: var(--space-3);
 	}
 
-	:global(.data-card.enrichment-card.skeleton) {
+	.enrichment-card-wrapper :global(.data-card.enrichment-card.skeleton) {
 		border: 1px solid var(--divider-subtle);
 	}
 
 	/* When streaming is complete, show accent border */
-	:global(.data-card.enrichment-card:not(.skeleton)) {
+	.enrichment-card-wrapper :global(.data-card.enrichment-card:not(.skeleton)) {
 		border: 1px solid var(--accent);
 	}
 </style>
