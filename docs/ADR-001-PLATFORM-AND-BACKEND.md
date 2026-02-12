@@ -77,17 +77,125 @@ A production audit (2026-02-06) found 14 critical, 32 warning, 28 nit findings. 
 
 All of these are Phase 3+ features. None block MVP or Phase 2.
 
-### Capacitor as the escape hatch
+### Future Route: Capacitor for Semi-Native App
 
-If native APIs become necessary, **Capacitor** (by Ionic) wraps the existing SvelteKit SPA in a native shell:
+The path to native is not a rewrite — it's **Capacitor** (by Ionic). Capacitor wraps the existing SvelteKit SPA in a native iOS/Android shell, giving access to native APIs through plugins while keeping the entire Svelte codebase unchanged. The web app continues to work as-is alongside the native builds.
 
-- Zero codebase rewrite — same Svelte components, same stores, same API calls
-- Native plugins for camera (with flash/focus), push notifications, filesystem, share sheet
-- App Store distribution (iOS + Android)
-- 1-2 day integration, not a rewrite
-- Active SvelteKit community support
+#### Why Capacitor (not React Native, Flutter, or Tauri)
 
-**Decision: Build Learn + Remember as web. If Phase 3 features demand native APIs, add Capacitor. Do not rewrite.**
+| Option | Keeps Svelte? | Native APIs | App Store | Effort | Risk |
+|--------|:---:|:---:|:---:|--------|------|
+| **Capacitor** | Yes — zero rewrite | Via plugins | Yes | 1-2 days setup | Very low |
+| React Native | No — full rewrite to React | Full native | Yes | 6+ months | High |
+| Flutter | No — full rewrite to Dart | Full native | Yes | 6+ months | High |
+| Tauri | Yes — but desktop-first | Limited mobile | No (desktop) | 1 week | Medium |
+
+Capacitor is purpose-built for wrapping web apps. It has first-class SvelteKit support, an active plugin ecosystem, and Ionic maintains it commercially (not abandonware risk).
+
+#### What Capacitor integration looks like
+
+```
+qve/
+├── src/                    # Existing SvelteKit app (unchanged)
+├── capacitor.config.ts     # Capacitor configuration
+├── ios/                    # Xcode project (auto-generated)
+├── android/                # Android Studio project (auto-generated)
+└── package.json            # Add @capacitor/core, @capacitor/cli
+```
+
+Setup is ~6 commands:
+```bash
+npm install @capacitor/core @capacitor/cli
+npx cap init "Qvé" "com.qve.wine" --web-dir build
+npm run build
+npx cap add ios
+npx cap add android
+npx cap sync
+```
+
+The web app runs inside a native WebView. All existing SvelteKit routes, stores, components, and API calls work unchanged. Native plugins are accessed via JavaScript imports — no Swift/Kotlin required for standard capabilities.
+
+#### Plugin mapping to Qvé features
+
+Each planned feature that currently hits a web limitation maps to a specific Capacitor plugin:
+
+| Feature | Web Limitation | Capacitor Plugin | Plugin Maturity |
+|---------|---------------|-----------------|-----------------|
+| **Remember: Camera** | Web camera API works but no flash/focus/resolution control | `@capacitor/camera` | Stable (official) |
+| **Remember: Photo gallery** | CSS scroll-snap works; no native gestures | `@capacitor/filesystem` + custom | Stable |
+| **Remember: Offline capture** | Service Worker + IndexedDB is fragile on iOS | `@capacitor/filesystem` + `@capacitor/network` | Stable |
+| **Remember: Share memory cards** | Web Share API limited on iOS < 16 | `@capacitor/share` | Stable (official) |
+| **Remember: Geolocation** | Requires explicit permission prompt each visit | `@capacitor/geolocation` | Stable (official) |
+| **Learn: Push notifications** (drink window alerts) | PWA notifications blocked on iOS Safari | `@capacitor/push-notifications` + FCM/APNs | Stable (official) |
+| **Background sync** | Not possible in PWA | `@capacitor/background-runner` | Beta |
+| **Haptic feedback** (rating dots, vibe ratings) | Not possible in web | `@capacitor/haptics` | Stable (official) |
+| **App Store distribution** | PWA install prompt only | Built-in (Xcode/Gradle build) | N/A |
+| **Biometric auth** (Face ID / fingerprint) | Not possible in web | `@capacitor-community/biometric-auth` | Community, stable |
+
+#### How existing code adapts
+
+The key architectural advantage: Capacitor plugins are progressive enhancements, not replacements. Code can detect the platform and use native APIs when available, falling back to web APIs otherwise:
+
+```typescript
+// Example: Camera capture in Remember
+import { Capacitor } from '@capacitor/core';
+
+async function capturePhoto(): Promise<string> {
+  if (Capacitor.isNativePlatform()) {
+    // Native: full camera control (flash, focus, gallery access)
+    const { Camera, CameraResultType } = await import('@capacitor/camera');
+    const photo = await Camera.getPhoto({
+      resultType: CameraResultType.DataUrl,
+      quality: 90,
+      allowEditing: false
+    });
+    return photo.dataUrl;
+  } else {
+    // Web: existing file input / agent camera flow
+    return existingWebCameraCapture();
+  }
+}
+```
+
+This means:
+- **Web PWA continues to work** for users who don't install the native app
+- **Native app gets enhanced capabilities** without forking the codebase
+- **One codebase, three targets**: web, iOS, Android
+
+#### Triggers for Capacitor adoption
+
+Don't add Capacitor preemptively. Add it when one of these triggers fires:
+
+| Trigger | Signal | Expected timeline |
+|---------|--------|-------------------|
+| **Remember Phase 3: Offline capture** | Users report lost memories from poor connectivity at restaurants/events | Sprint 20+ |
+| **Remember Phase 3: Share cards** | Web Share API doesn't work reliably on target iOS versions | Sprint 20+ |
+| **Learn/Remember: Push notifications** | Drink window alerts or "On This Day" memories need background delivery | Sprint 20+ |
+| **Marketing: App Store presence** | User acquisition strategy requires App Store discoverability | Business decision |
+| **User feedback: "Why isn't this in the App Store?"** | Repeated requests from testers/users | Organic signal |
+
+#### Capacitor integration effort estimate
+
+| Task | Effort | Notes |
+|------|--------|-------|
+| Initial setup (config, iOS/Android projects) | 2 hours | `cap init` + `cap add` |
+| Build pipeline (SvelteKit build → cap sync) | 2 hours | Add to existing deploy script |
+| Camera plugin integration | 4 hours | Replace web camera with native, keep web fallback |
+| Push notifications (FCM/APNs setup) | 1 day | Server-side token management, notification service |
+| Share plugin integration | 2 hours | Wrap existing share logic |
+| Geolocation plugin | 2 hours | Progressive enhancement over web API |
+| App Store submission (iOS) | 1 day | Screenshots, metadata, review process |
+| App Store submission (Android) | 4 hours | Play Store listing |
+| **Total initial launch** | **~3 days** | Camera + share + push + store submission |
+
+#### What NOT to do with Capacitor
+
+- **Don't use Ionic UI components.** Qvé already has a complete Svelte component library with its own design system. Ionic's UI layer is unnecessary and would create style conflicts.
+- **Don't move API calls to native HTTP.** Keep using `fetch()` — Capacitor's WebView handles it fine, and it keeps the web/native code paths identical.
+- **Don't build native-only features.** Every feature should work on web (possibly degraded) and be enhanced on native. This keeps the web PWA viable and avoids platform lock-in.
+- **Don't add Capacitor before Remember Phase 3.** The setup is fast enough that there's no benefit to early integration — it just adds build complexity before it's needed.
+
+**Decision: Build Learn + Remember as web. Add Capacitor when a concrete trigger fires (likely Remember Phase 3, ~Sprint 20+). Do not rewrite. Do not add Capacitor preemptively.**
 
 ---
 
@@ -322,7 +430,6 @@ Sprint 15-17:
 - **Query performance** (audit finding P-C1, 13 correlated subqueries) — optimization task, not architectural
 - **XSS via `{@html}`** (audit finding S-C1) — security fix, not architectural
 - **SvelteKit server routes migration** — revisit after Learn/Remember ship if PHP maintenance burden is still high
-- **Capacitor integration** — revisit after Remember Phase 2 if native APIs are needed
 
 ---
 
@@ -331,6 +438,6 @@ Sprint 15-17:
 | Date | Decision | Rationale |
 |------|----------|-----------|
 | 2026-02-12 | Stay web, no native rewrite | All planned features are web-achievable; native APIs not needed until Phase 3+; solo developer can't sustain dual codebases |
-| 2026-02-12 | Capacitor as escape hatch if needed | Zero-rewrite native wrapper; 1-2 day integration; defer until concrete need |
+| 2026-02-12 | Capacitor as future native route | Zero-rewrite native wrapper; ~3-day launch; plugin mapping to all Phase 3 features; triggers defined; defer until Remember Phase 3 or App Store demand |
 | 2026-02-12 | Unified bootstrap.php before new endpoints | Prevents 19 more inconsistent files; fixes security gaps; extends proven agent patterns |
 | 2026-02-12 | Incremental migration, not big-bang | Each endpoint migrates in ~15 min; no flag day; can ship alongside feature work |
