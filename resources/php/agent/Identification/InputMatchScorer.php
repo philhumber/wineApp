@@ -65,7 +65,18 @@ class InputMatchScorer
 
         // Specificity cap based on ORIGINAL anchor weight (what the user actually typed),
         // not the inflated weight from matching mechanics (e.g., appellation cross-check)
-        $specificityCap = min(95, max(50, round(50 + $anchors['totalWeight'] * 15)));
+        $capWeight = $anchors['totalWeight'];
+
+        // If type matched via name fallback, it's functioning as a name token (e.g., "rosé"
+        // in "Rosé Impérial"). Boost cap weight from type (0.3) to name token level (1.0).
+        foreach ($matchResult['matches'] as $m) {
+            if ($m['type'] === 'type' && $m['matched'] && str_contains($m['matchedAgainst'] ?? '', '(name fallback)')) {
+                $capWeight += 0.7; // 0.3 → 1.0 effective weight
+                break;
+            }
+        }
+
+        $specificityCap = min(95, max(50, round(50 + $capWeight * 18)));
 
         // Completeness bonus: +1 per non-empty, non-placeholder field in parsed output
         $placeholders = ['unknown', 'n/a', 'none', 'not specified', 'unspecified', 'tbd'];
@@ -384,6 +395,20 @@ class InputMatchScorer
             $parsedType = $parsed['wineType'] ?? null;
             $matched = ($parsedType !== null && mb_strtolower($anchors['type']) === mb_strtolower($parsedType));
             $matchedAgainst = $matched ? $parsedType : null;
+
+            // Name fallback: if type doesn't match wineType field, check if it appears
+            // in wineName/producer (e.g., "rosé" in "Rosé Impérial" when wineType="Sparkling")
+            if (!$matched) {
+                $typeNorm = mb_strtolower($this->stripAccents($anchors['type']));
+                $producer = $parsed['producer'] ?? '';
+                $wineName = $parsed['wineName'] ?? '';
+                $combinedNorm = mb_strtolower($this->stripAccents(trim($producer . ' ' . $wineName)));
+                if ($combinedNorm !== '' && strpos($combinedNorm, $typeNorm) !== false) {
+                    $matched = true;
+                    $matchedAgainst = trim($producer . ' ' . $wineName) . ' (name fallback)';
+                }
+            }
+
             if ($matched) {
                 $matchedWeight += 0.3;
             }
