@@ -487,10 +487,10 @@ CREATE TABLE `producers` (
   `deletedAt` timestamp NULL DEFAULT NULL,
   `deletedBy` int DEFAULT NULL,
   `regionID` int NOT NULL,
-  `town` varchar(255) NOT NULL,
-  `founded` int NOT NULL,
-  `ownership` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
-  `description` text NOT NULL
+  `town` varchar(255) DEFAULT NULL,
+  `founded` int DEFAULT NULL,
+  `ownership` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `description` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
@@ -683,10 +683,10 @@ CREATE TABLE `region` (
   `regionID` int NOT NULL,
   `regionName` varchar(50) NOT NULL,
   `countryID` int NOT NULL,
-  `description` text NOT NULL,
-  `climate` text NOT NULL,
-  `soil` text NOT NULL,
-  `map` text NOT NULL,
+  `description` text DEFAULT NULL,
+  `climate` text DEFAULT NULL,
+  `soil` text DEFAULT NULL,
+  `map` text DEFAULT NULL,
   `deleted` tinyint(1) NOT NULL DEFAULT '0',
   `deletedAt` timestamp NULL DEFAULT NULL,
   `deletedBy` int DEFAULT NULL
