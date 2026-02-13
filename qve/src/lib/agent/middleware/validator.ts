@@ -110,9 +110,10 @@ const defaultPrerequisites: Record<string, ActionPrerequisites> = {
   },
 
   // Opus escalation requires identification
+  // 'awaiting_input' needed: handleNotCorrect transitions to awaiting_input before showing Try Harder chip
   try_opus: {
     requiresIdentification: true,
-    requiresPhase: ['confirming'],
+    requiresPhase: ['confirming', 'awaiting_input'],
   },
 
   // Retry requires being in error state or having recent action

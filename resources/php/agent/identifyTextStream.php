@@ -61,6 +61,12 @@ if (!($config['streaming']['enabled'] ?? false)) {
 initSSE();
 registerCancelCleanup();
 
+// Test mode: bypass LLM with canned responses
+if (str_starts_with($input['text'], 'test:')) {
+    handleTestScenario(substr($input['text'], 5));
+    exit;
+}
+
 try {
     // WIN-254: Server-authoritative userId — ignore client-supplied value
     $userId = getAgentUserId();
@@ -193,4 +199,279 @@ try {
 
 } catch (\Exception $e) {
     sendSSEError($e, 'identifyTextStream');
+}
+
+/**
+ * Handle test: prefix scenarios with canned SSE responses.
+ * Bypasses all LLM calls for fast end-to-end flow testing.
+ */
+function handleTestScenario(string $scenario): void
+{
+    switch (trim($scenario)) {
+        case 'high':
+            handleTestHigh();
+            break;
+        case 'medium':
+            handleTestMedium();
+            break;
+        case 'low':
+            handleTestLow();
+            break;
+        case 'ambiguous':
+            handleTestAmbiguous();
+            break;
+        default:
+            sendSSE('error', [
+                'type' => 'identification_error',
+                'message' => "Unknown test scenario: {$scenario}. Use: high, medium, low, ambiguous",
+                'retryable' => false,
+            ]);
+            sendSSE('done', []);
+            break;
+    }
+}
+
+function handleTestHigh(): void
+{
+    $fields = [
+        ['producer', 'Château Margaux'],
+        ['wineName', 'Grand Vin'],
+        ['vintage', 2019],
+        ['region', 'Bordeaux'],
+        ['country', 'France'],
+        ['wineType', 'Red'],
+        ['grapes', ['Cabernet Sauvignon', 'Merlot', 'Petit Verdot', 'Cabernet Franc']],
+        ['confidence', 92],
+    ];
+
+    foreach ($fields as [$field, $value]) {
+        sendSSE('field', ['field' => $field, 'value' => $value]);
+        usleep(50000);
+    }
+
+    $parsed = [
+        'producer' => 'Château Margaux',
+        'wineName' => 'Grand Vin',
+        'vintage' => 2019,
+        'region' => 'Bordeaux',
+        'country' => 'France',
+        'wineType' => 'Red',
+        'grapes' => ['Cabernet Sauvignon', 'Merlot', 'Petit Verdot', 'Cabernet Franc'],
+    ];
+
+    sendSSE('result', [
+        'inputType' => 'text',
+        'intent' => 'add',
+        'parsed' => $parsed,
+        'confidence' => 92,
+        'action' => 'auto_populate',
+        'candidates' => [],
+        'usage' => null,
+        'escalation' => ['final_tier' => 'tier1', 'model' => 'test-mock'],
+        'inferences_applied' => [],
+        'streamed' => true,
+    ]);
+
+    sendSSE('done', []);
+}
+
+function handleTestMedium(): void
+{
+    // Tier 1 fields
+    $fields = [
+        ['producer', 'Cloudy Bay'],
+        ['wineName', 'Sauvignon Blanc'],
+        ['vintage', 2022],
+        ['region', 'Marlborough'],
+        ['country', 'New Zealand'],
+        ['wineType', 'White'],
+        ['grapes', ['Sauvignon Blanc']],
+        ['confidence', 72],
+    ];
+
+    foreach ($fields as [$field, $value]) {
+        sendSSE('field', ['field' => $field, 'value' => $value]);
+        usleep(50000);
+    }
+
+    $tier1Parsed = [
+        'producer' => 'Cloudy Bay',
+        'wineName' => 'Sauvignon Blanc',
+        'vintage' => 2022,
+        'region' => 'Marlborough',
+        'country' => 'New Zealand',
+        'wineType' => 'White',
+        'grapes' => ['Sauvignon Blanc'],
+    ];
+
+    sendSSE('result', [
+        'inputType' => 'text',
+        'intent' => 'add',
+        'parsed' => $tier1Parsed,
+        'confidence' => 72,
+        'action' => 'suggest',
+        'candidates' => [],
+        'usage' => null,
+        'escalation' => ['final_tier' => 'tier1', 'model' => 'test-mock'],
+        'inferences_applied' => [],
+        'streamed' => true,
+    ]);
+
+    // Escalation sequence
+    sendSSE('refining', ['message' => 'Looking deeper...', 'tier1Confidence' => 72]);
+    usleep(500000);
+
+    // Updated fields from refinement
+    sendSSE('field', ['field' => 'wineName', 'value' => 'Te Koko']);
+    usleep(50000);
+    sendSSE('field', ['field' => 'confidence', 'value' => 82]);
+
+    $refinedParsed = [
+        'producer' => 'Cloudy Bay',
+        'wineName' => 'Te Koko',
+        'vintage' => 2022,
+        'region' => 'Marlborough',
+        'country' => 'New Zealand',
+        'wineType' => 'White',
+        'grapes' => ['Sauvignon Blanc'],
+    ];
+
+    sendSSE('refined', [
+        'inputType' => 'text',
+        'intent' => 'add',
+        'parsed' => $refinedParsed,
+        'confidence' => 82,
+        'action' => 'suggest',
+        'candidates' => [],
+        'usage' => null,
+        'escalation' => ['final_tier' => 'tier1.5', 'model' => 'test-mock'],
+        'inferences_applied' => [],
+        'streamed' => false,
+        'escalated' => true,
+    ]);
+
+    sendSSE('done', []);
+}
+
+function handleTestLow(): void
+{
+    // Sparse fields — low confidence
+    $fields = [
+        ['wineType', 'Red'],
+        ['country', 'France'],
+        ['confidence', 45],
+    ];
+
+    foreach ($fields as [$field, $value]) {
+        sendSSE('field', ['field' => $field, 'value' => $value]);
+        usleep(50000);
+    }
+
+    $parsed = [
+        'producer' => null,
+        'wineName' => null,
+        'vintage' => null,
+        'region' => null,
+        'country' => 'France',
+        'wineType' => 'Red',
+        'grapes' => [],
+    ];
+
+    sendSSE('result', [
+        'inputType' => 'text',
+        'intent' => 'add',
+        'parsed' => $parsed,
+        'confidence' => 45,
+        'action' => 'user_choice',
+        'candidates' => [],
+        'usage' => null,
+        'escalation' => ['final_tier' => 'tier1', 'model' => 'test-mock'],
+        'inferences_applied' => [],
+        'streamed' => true,
+    ]);
+
+    // Escalation attempt — fails to improve
+    sendSSE('refining', ['message' => 'Looking deeper...', 'tier1Confidence' => 45]);
+    usleep(500000);
+
+    sendSSE('refined', [
+        'inputType' => 'text',
+        'intent' => 'add',
+        'parsed' => $parsed,
+        'confidence' => 45,
+        'action' => 'user_choice',
+        'candidates' => [],
+        'usage' => null,
+        'escalation' => ['final_tier' => 'tier1.5', 'model' => 'test-mock'],
+        'inferences_applied' => [],
+        'streamed' => true,
+        'escalated' => false,
+    ]);
+
+    sendSSE('done', []);
+}
+
+function handleTestAmbiguous(): void
+{
+    sendSSE('field', ['field' => 'producer', 'value' => 'Penfolds']);
+    usleep(50000);
+    sendSSE('field', ['field' => 'confidence', 'value' => 38]);
+
+    $parsed = [
+        'producer' => 'Penfolds',
+        'wineName' => null,
+        'vintage' => null,
+        'region' => null,
+        'country' => 'Australia',
+        'wineType' => 'Red',
+        'grapes' => [],
+    ];
+
+    $candidates = [
+        [
+            'producer' => 'Penfolds',
+            'wineName' => 'Grange',
+            'vintage' => null,
+            'region' => 'Barossa Valley',
+            'country' => 'Australia',
+            'wineType' => 'Red',
+            'grapes' => ['Shiraz'],
+            'matchScore' => 95,
+        ],
+        [
+            'producer' => 'Penfolds',
+            'wineName' => 'Bin 389',
+            'vintage' => null,
+            'region' => 'South Australia',
+            'country' => 'Australia',
+            'wineType' => 'Red',
+            'grapes' => ['Cabernet Sauvignon', 'Shiraz'],
+            'matchScore' => 80,
+        ],
+        [
+            'producer' => 'Penfolds',
+            'wineName' => 'RWT',
+            'vintage' => null,
+            'region' => 'Barossa Valley',
+            'country' => 'Australia',
+            'wineType' => 'Red',
+            'grapes' => ['Shiraz'],
+            'matchScore' => 65,
+        ],
+    ];
+
+    sendSSE('result', [
+        'inputType' => 'text',
+        'intent' => 'add',
+        'parsed' => $parsed,
+        'confidence' => 38,
+        'action' => 'disambiguate',
+        'candidates' => $candidates,
+        'usage' => null,
+        'escalation' => ['final_tier' => 'tier1', 'model' => 'test-mock'],
+        'inferences_applied' => [],
+        'streamed' => true,
+    ]);
+
+    sendSSE('done', []);
 }

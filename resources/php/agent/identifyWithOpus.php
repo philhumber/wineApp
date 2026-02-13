@@ -47,6 +47,13 @@ if (!$isImageInput && !$isTextInput) {
     agentError('Missing required field: text (string) or image (base64 string)');
 }
 
+// Test mode: return mock premium result
+$textInput = $input['text'] ?? '';
+if (str_starts_with($textInput, 'test:')) {
+    handleTestPremiumResult($textInput);
+    exit;
+}
+
 if (empty($input['priorResult']) || !is_array($input['priorResult'])) {
     agentError('Missing or invalid field: priorResult (object required)');
 }
@@ -95,4 +102,36 @@ try {
 
 } catch (\Exception $e) {
     agentExceptionError($e, 'identifyWithOpus');
+}
+
+/**
+ * Handle test: prefix with a mock premium identification result.
+ * Supports the test:low → "Try Premium" → high-confidence result flow.
+ */
+function handleTestPremiumResult(string $textInput): void
+{
+    $parsed = [
+        'producer' => 'Domaine de la Romanée-Conti',
+        'wineName' => 'Romanée-Conti Grand Cru',
+        'vintage' => 2018,
+        'region' => 'Burgundy',
+        'country' => 'France',
+        'wineType' => 'Red',
+        'grapes' => ['Pinot Noir'],
+    ];
+
+    agentResponse(true, 'Wine identified with premium model', [
+        'inputType' => 'text',
+        'intent' => 'add',
+        'parsed' => $parsed,
+        'confidence' => 91,
+        'action' => 'auto_populate',
+        'candidates' => [],
+        'usage' => null,
+        'escalation' => [
+            'final_tier' => 'premium',
+            'model' => 'claude-opus-4-5',
+        ],
+        'inferences_applied' => [],
+    ]);
 }
