@@ -445,6 +445,13 @@ class GeminiAdapter implements LLMProviderInterface
                     // Extract text from Gemini response structure
                     $text = $json['candidates'][0]['content']['parts'][0]['text'] ?? '';
 
+                    // Strip null bytes — Gemini structured output can intermittently
+                    // produce \u0000 in place of Unicode characters (e.g., è → \0)
+                    if ($text && \strpos($text, "\x00") !== false) {
+                        \error_log("[Agent Warning] Null byte in Gemini streaming chunk, stripping");
+                        $text = \str_replace("\x00", '', $text);
+                    }
+
                     if ($text) {
                         $accumulatedText .= $text;
 
@@ -482,6 +489,10 @@ class GeminiAdapter implements LLMProviderInterface
         if ($finalPayload !== null) {
             $chunks[] = $finalPayload;
             $text = $finalPayload['candidates'][0]['content']['parts'][0]['text'] ?? '';
+            if ($text && \strpos($text, "\x00") !== false) {
+                \error_log("[Agent Warning] Null byte in Gemini flush chunk, stripping");
+                $text = \str_replace("\x00", '', $text);
+            }
             if ($text) {
                 $accumulatedText .= $text;
                 $detector->processChunk($text, function ($field, $value) use (
@@ -528,7 +539,7 @@ class GeminiAdapter implements LLMProviderInterface
 
         // Try to parse complete JSON from accumulated text
         $completeJson = $detector->tryParseComplete();
-        $content = $completeJson ? \json_encode($completeJson) : $accumulatedText;
+        $content = $completeJson ? \json_encode($completeJson, JSON_UNESCAPED_UNICODE) : $accumulatedText;
 
         // Calculate token counts from chunks (approximate)
         $inputTokens = 0;

@@ -53,6 +53,26 @@ import { PUBLIC_API_KEY } from '$env/static/public';
 import { goto } from '$app/navigation';
 import { base } from '$app/paths';
 
+/**
+ * Recursively strip null bytes from all string values.
+ * Gemini structured output can intermittently produce \u0000 in place of
+ * Unicode characters (e.g., "Ruchè" → "Ruch\0"), truncating display.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sanitizeNullBytes(obj: any): void {
+  if (obj === null || obj === undefined || typeof obj !== 'object') return;
+  const entries = Array.isArray(obj)
+    ? obj.map((v, i) => [i, v] as [number, unknown])
+    : Object.entries(obj);
+  for (const [key, val] of entries) {
+    if (typeof val === 'string' && val.includes('\0')) {
+      obj[key] = val.replace(/\0/g, '');
+    } else if (typeof val === 'object' && val !== null) {
+      sanitizeNullBytes(val);
+    }
+  }
+}
+
 class WineApiClient {
   private baseURL: string;
 
@@ -195,6 +215,7 @@ class WineApiClient {
             if (dataStr) {
               try {
                 const data = JSON.parse(dataStr);
+                sanitizeNullBytes(data);
                 onEvent({ type: currentEvent, data } as StreamEvent);
               } catch {
                 console.warn('Failed to parse SSE data:', dataStr);
@@ -215,6 +236,7 @@ class WineApiClient {
             if (dataStr) {
               try {
                 const data = JSON.parse(dataStr);
+                sanitizeNullBytes(data);
                 onEvent({ type: currentEvent, data } as StreamEvent);
               } catch {
                 console.warn('Failed to parse final SSE data:', dataStr);

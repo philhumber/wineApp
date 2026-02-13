@@ -453,6 +453,33 @@ function initSSE(): void
 }
 
 /**
+ * Recursively strip null bytes from all string values in a data structure.
+ *
+ * Gemini structured output can intermittently produce \u0000 (null bytes) in place
+ * of Unicode characters (e.g., "Ruchè" → "Ruch\0"). Null bytes silently truncate
+ * strings in JavaScript, corrupting display values.
+ *
+ * @param mixed $data Data to sanitize
+ * @return mixed Sanitized data with null bytes removed from strings
+ */
+function sanitizeNullBytes(mixed $data): mixed
+{
+    if (is_string($data)) {
+        $sanitized = str_replace("\x00", '', $data);
+        if ($sanitized !== $data) {
+            \error_log("[Agent Warning] Null byte stripped from string: " .
+                json_encode($data, JSON_UNESCAPED_UNICODE) . " → " .
+                json_encode($sanitized, JSON_UNESCAPED_UNICODE));
+        }
+        return $sanitized;
+    }
+    if (is_array($data)) {
+        return array_map('sanitizeNullBytes', $data);
+    }
+    return $data;
+}
+
+/**
  * Send an SSE event
  *
  * @param string $event Event name (field, result, error, done)
@@ -462,7 +489,7 @@ function initSSE(): void
 function sendSSE(string $event, array $data): void
 {
     echo "event: {$event}\n";
-    echo "data: " . json_encode($data) . "\n\n";
+    echo "data: " . json_encode(sanitizeNullBytes($data), JSON_UNESCAPED_UNICODE) . "\n\n";
     flush();
 }
 
