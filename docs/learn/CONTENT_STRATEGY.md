@@ -6,11 +6,11 @@
 
 ---
 
-## 1. Philosophy: The Qve Approach to Wine Education
+## 1. Philosophy: The Qvé Approach to Wine Education
 
 Wine education fails when it becomes homework. The best wine knowledge is absorbed the way you learn about music -- by listening, by caring about what you like, by following threads of curiosity until you realize you know more than you thought.
 
-Qve's Learn feature should feel like sitting at a wine bar next to someone who has been everywhere, tasted everything, and is genuinely interested in what *you* think. Not a lecture hall. Not a textbook. Not a certification prep course. A conversation.
+Qvé's Learn feature should feel like sitting at a wine bar next to someone who has been everywhere, tasted everything, and is genuinely interested in what *you* think. Not a lecture hall. Not a textbook. Not a certification prep course. A conversation.
 
 **Three principles:**
 
@@ -571,7 +571,7 @@ Scenario-based learning with no right answer -- just interesting trade-offs:
 
 ## 12. Content Voice Guidelines
 
-All Learn content should follow the Qve voice:
+All Learn content should follow the Qvé voice:
 
 | Do | Don't |
 |----|-------|
@@ -632,7 +632,7 @@ All Learn content should follow the Qve voice:
 
 ## 15. Summary
 
-The Qve Learn feature sits on a foundation of remarkably rich data: 42 grape varieties with full descriptions, 33 countries with wine histories and classification systems, 47 appellations, 30 wine styles, 58 pairing rules, and per-wine enrichment data including critic scores, drink windows, and style profiles. Most wine education apps start from scratch. We start from a database that already knows more than most sommeliers.
+The Qvé Learn feature sits on a foundation of remarkably rich data: 42 grape varieties with full descriptions, 33 countries with wine histories and classification systems, 47 appellations, 30 wine styles, 58 pairing rules, and per-wine enrichment data including critic scores, drink windows, and style profiles. Most wine education apps start from scratch. We start from a database that already knows more than most sommeliers.
 
 The strategy is: **start contextual, go deep gradually, always stay personal.** Wine Moments cost almost nothing to build and create immediate value by surfacing existing data at the right time. Quick Fact Cards turn seed data into daily engagement. Cellar Insights turn the user's own collection into a mirror. And the sommelier agent -- already built, already voiced, already loved -- becomes the most natural wine teacher imaginable.
 

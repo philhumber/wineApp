@@ -1,6 +1,6 @@
 # Development Guide
 
-> **Executive Summary**: This guide covers everything needed to develop, test, and deploy the Qve Wine App. The frontend is a SvelteKit 2 static SPA (Svelte 5) built with Vite, proxying API calls to a PHP 8.3 backend backed by MySQL 8.0. Development requires two terminals (Vite dev server + PHP built-in server). Deployment uses a PowerShell script that builds, backs up, and syncs files to a production server via Robocopy. The project uses JIRA for issue tracking with a custom PowerShell CLI.
+> **Executive Summary**: This guide covers everything needed to develop, test, and deploy the Qvé Wine App. The frontend is a SvelteKit 2 static SPA (Svelte 5) built with Vite, proxying API calls to a PHP 8.3 backend backed by MySQL 8.0. Development requires two terminals (Vite dev server + PHP built-in server). Deployment uses a PowerShell script that builds, backs up, and syncs files to a production server via Robocopy. The project uses JIRA for issue tracking with a custom PowerShell CLI.
 
 ---
 
@@ -374,7 +374,7 @@ The app includes PWA configuration via `@vite-pwa/sveltekit`:
 
 - **Strategy**: `generateSW` (auto-generated service worker)
 - **Register type**: `autoUpdate` (updates silently)
-- **Manifest**: `Qve Wine Collection`, standalone display, start URL `/qve/`
+- **Manifest**: `Qvé Wine Collection`, standalone display, start URL `/qve/`
 - **Runtime caching**: Google Fonts (CacheFirst, 1 year), API calls (NetworkFirst, 5 min)
 - **Dev mode**: PWA enabled in dev with `navigateFallback: '/qve/'`
 

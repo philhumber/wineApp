@@ -1,5 +1,5 @@
 """
-Generate Qve app icon set from brand identity.
+Generate Qvé app icon set from brand identity.
 Uses Cormorant Garamond Light "Q" lettermark on dark background with wine accent.
 
 Brand colors from landing page:
@@ -94,7 +94,7 @@ def create_svg_favicon(output_path):
 
 def main():
     os.makedirs(STATIC_DIR, exist_ok=True)
-    print('Generating Qve icon set...\n')
+    print('Generating Qvé icon set...\n')
 
     # Generate PNG icons
     sizes = {

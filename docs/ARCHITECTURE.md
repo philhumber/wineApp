@@ -1,6 +1,6 @@
 # System Architecture
 
-> **Executive Summary**: Qve is a personal wine collection manager built as a client-side SPA (SvelteKit 2 with static adapter) backed by a PHP REST API and MySQL database. The frontend runs entirely in the browser as a PWA, communicating with PHP endpoints via Vite dev-server proxy (development) or directly (production). An AI-powered "Agent" subsystem handles wine identification and enrichment through external LLM services. The app deploys to a self-hosted server via a PowerShell script with backup/rollback support.
+> **Executive Summary**: Qvé is a personal wine collection manager built as a client-side SPA (SvelteKit 2 with static adapter) backed by a PHP REST API and MySQL database. The frontend runs entirely in the browser as a PWA, communicating with PHP endpoints via Vite dev-server proxy (development) or directly (production). An AI-powered "Agent" subsystem handles wine identification and enrichment through external LLM services. The app deploys to a self-hosted server via a PowerShell script with backup/rollback support.
 
 ---
 
@@ -178,7 +178,7 @@ graph LR
 The app is a Progressive Web App using Workbox via `@vite-pwa/sveltekit`:
 
 - **Strategy**: `generateSW` with `autoUpdate` registration
-- **Manifest**: `name: "Qve Wine Collection"`, standalone display, scoped to `/qve/`
+- **Manifest**: `name: "Qvé Wine Collection"`, standalone display, scoped to `/qve/`
 - **Precaching**: All static assets (`*.{js,css,html,ico,png,svg,woff2}`)
 - **Runtime caching**:
   - Google Fonts: CacheFirst (365-day expiry)

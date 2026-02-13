@@ -169,7 +169,7 @@ I'm staring at 200 bottles. I know I like certain things. I want to pull up my s
 
 ## The Agent Conversation Angle
 
-This is where I get genuinely excited. The existing agent in Qve already identifies wines from photos and text. Extending that to memories feels natural:
+This is where I get genuinely excited. The existing agent in Qvé already identifies wines from photos and text. Extending that to memories feels natural:
 
 **Saving via agent:**
 > Me: "Save this -- had an amazing Barolo at Antonio's last night"
@@ -226,7 +226,7 @@ The hardest problem isn't capture -- it's retention. Why would I open my wine me
 **Things that would bring me back:**
 - Seeing a "This time last year" memory pop up (like phone photo memories)
 - The agent suggesting a re-buy when I'm clearly browsing wines: "You loved the Malbec from Sarah's dinner -- want to add it to your cellar?"
-- A friend asking for a recommendation and me thinking "I'll check my Qve memories"
+- A friend asking for a recommendation and me thinking "I'll check my Qvé memories"
 - Planning a dinner party and browsing my "loved it" wines for what to serve
 - Being at a wine shop and pulling up my try-list or re-buy list
 

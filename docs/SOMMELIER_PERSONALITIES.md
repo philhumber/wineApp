@@ -64,7 +64,7 @@ Note: The original design document had "Barnaby Cork" (Eccentric & Quirky) and "
 
 ### The Name
 
-"Verre-Epais" translates to "thick glass" in French -- a nod to both fine crystal and the slightly self-aware acknowledgment that he's made of code. The app name "Qve" is a subtle contraction of his name.
+"Verre-Epais" translates to "thick glass" in French -- a nod to both fine crystal and the slightly self-aware acknowledgment that he's made of code. The app name "Qvé" is a subtle contraction of his name.
 
 ### Personality Profile
 

@@ -30,7 +30,7 @@
 
 ## 1. Executive Summary
 
-The **Remember** feature transforms Qve from a cellar inventory tool into a personal wine journal. Users can capture wine experiences — tastings at restaurants, memorable bottles at dinner parties, wines spotted on a shelf — without the commitment of adding them to their cellar. Memories are timestamped, taggable, searchable, and connected to the existing wine knowledge graph.
+The **Remember** feature transforms Qvé from a cellar inventory tool into a personal wine journal. Users can capture wine experiences — tastings at restaurants, memorable bottles at dinner parties, wines spotted on a shelf — without the commitment of adding them to their cellar. Memories are timestamped, taggable, searchable, and connected to the existing wine knowledge graph.
 
 **Key integration points:**
 - The AI agent gains a `save_memory` action after identification/enrichment (alongside "Add to Cellar")

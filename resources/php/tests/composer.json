@@ -1,6 +1,6 @@
 {
     "name": "qve/backend-tests",
-    "description": "PHPUnit tests for Qve Wine App PHP backend",
+    "description": "PHPUnit tests for Qvé Wine App PHP backend",
     "type": "project",
     "require-dev": {
         "phpunit/phpunit": "^10.0"

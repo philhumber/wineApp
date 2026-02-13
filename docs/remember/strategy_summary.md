@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-The Remember feature transforms Qve from a wine *inventory* app into a wine *life* app. After an intensive brainstorming session with five perspectives (system architecture, data modelling, frontend design, power user, casual user), a clear consensus emerged:
+The Remember feature transforms Qvé from a wine *inventory* app into a wine *life* app. After an intensive brainstorming session with five perspectives (system architecture, data modelling, frontend design, power user, casual user), a clear consensus emerged:
 
 **70% of memorable wine experiences happen outside the cellar.** Restaurant discoveries, friend recommendations, tasting events, travel moments, social media finds, magazine articles -- none of these are captured today. The cellar tracks what you *own*; Remember tracks what you *experience*.
 
@@ -263,7 +263,7 @@ Open these in a browser to see the designs. Each has a light/dark theme toggle a
 | **Memory Detail** | `docs/remember/mockups/memory-detail.html` | Photo gallery, notes, tags, context card, linked wine, enrichment suggestions, related memories |
 | **Agent Integration** | `docs/remember/mockups/agent-integration.html` | Save after identification, proactive recall ("You spotted this exact wine last week"), natural language search |
 
-**Design language**: All mockups use the exact Qve token palette (Cormorant Garamond + Outfit fonts, warm neutral colors). Type-specific colour coding: Tasted (wine/rose), Spotted (blue), Recommended (green), Travel (gold), Event (accent).
+**Design language**: All mockups use the exact Qvé token palette (Cormorant Garamond + Outfit fonts, warm neutral colors). Type-specific colour coding: Tasted (wine/rose), Spotted (blue), Recommended (green), Travel (gold), Event (accent).
 
 ---
 

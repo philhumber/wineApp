@@ -8,11 +8,11 @@
 
 ## Executive Summary
 
-The Learn feature transforms Qve from a wine *tracking* app into a wine *knowledge* app. After an intensive brainstorming session with five perspectives (architecture, data, content, user, design), a clear consensus emerged:
+The Learn feature transforms Qvé from a wine *tracking* app into a wine *knowledge* app. After an intensive brainstorming session with five perspectives (architecture, data, content, user, design), a clear consensus emerged:
 
 **The app already sits on a goldmine of educational data that is invisible to users.** 42 grape varieties, 33 countries with wine histories, 47 appellations, 30 wine styles, 58 pairing rules, and 500+ cached enrichments -- all collected but never surfaced outside the add-wine flow. The MVP strategy is to **reveal what's hidden before creating anything new**.
 
-**The single design principle every team member agreed on**: Every piece of knowledge must connect to the user's own wines, ratings, or preferences. A generic wine encyclopedia belongs on Wikipedia. Qve's Learn is personal.
+**The single design principle every team member agreed on**: Every piece of knowledge must connect to the user's own wines, ratings, or preferences. A generic wine encyclopedia belongs on Wikipedia. Qvé's Learn is personal.
 
 ---
 
@@ -223,7 +223,7 @@ Open these in a browser to see the designs. Each has a light/dark theme toggle a
 
 > **Wine Teacher**: "We are not building a wine encyclopedia. We are building a trail of breadcrumbs that makes people want to know more."
 
-> **Wine Student**: "Every piece of knowledge must connect to the user's own wines, ratings, or preferences. If it does not, it belongs on Wikipedia, not in Qve."
+> **Wine Student**: "Every piece of knowledge must connect to the user's own wines, ratings, or preferences. If it does not, it belongs on Wikipedia, not in Qvé."
 
 > **Wine Teacher**: "If Nebbiolo were a person: shows up late, doesn't apologize, makes the evening better anyway."
 

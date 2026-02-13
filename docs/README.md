@@ -1,6 +1,6 @@
 # Documentation Index
 
-> Central index for all Qve Wine App documentation. Each document covers a specific domain of the codebase with detailed references, diagrams, and code examples.
+> Central index for all Qvé Wine App documentation. Each document covers a specific domain of the codebase with detailed references, diagrams, and code examples.
 
 **Last Updated**: 2026-02-08
 

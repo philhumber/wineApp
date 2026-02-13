@@ -10,7 +10,7 @@
 
 I photograph every wine label before the cork comes out. I keep a shoebox of corks with dates written on them in Sharpie. I have a folder of screenshots from wine menus, blurry photos of bottles across restaurant tables, and saved articles about producers I want to visit. I remember that the 2015 Barolo I had at that trattoria near Piazza Navona was life-changing, but I can never find the photo when I need it. My Notes app has fragments like "the Chablis at Sarah's wedding - ask sommelier" that I will never follow up on because the context is gone.
 
-I am the person this feature is for. My wine memories are scattered across seven different apps, a physical notebook, and the bottom of my bag. Qve already tracks what's in my cellar and what I've drunk. What it doesn't capture is the *everything else* -- the wines I loved at restaurants, the bottles friends brought to dinner, the recommendations from that wine bar owner in Barcelona, the wines I read about and want to try someday. The stuff between "identify" and "add to cellar."
+I am the person this feature is for. My wine memories are scattered across seven different apps, a physical notebook, and the bottom of my bag. Qvé already tracks what's in my cellar and what I've drunk. What it doesn't capture is the *everything else* -- the wines I loved at restaurants, the bottles friends brought to dinner, the recommendations from that wine bar owner in Barcelona, the wines I read about and want to try someday. The stuff between "identify" and "add to cellar."
 
 ---
 
@@ -24,7 +24,7 @@ I am the person this feature is for. My wine memories are scattered across seven
 
 3. **Vivino/Delectable are social, not personal** -- I don't want to "check in" a wine. I want to capture a *moment*. The wine is part of it, but so is the place, the people, the food, the weather, the occasion. These apps reduce wine to a rating.
 
-4. **My cellar app (Qve today) only tracks inventory** -- The drink history is great for bottles I owned. But 70% of my memorable wine experiences are wines I *didn't* own -- restaurant pours, tastings, friend's bottles, wine bar discoveries.
+4. **My cellar app (Qvé today) only tracks inventory** -- The drink history is great for bottles I owned. But 70% of my memorable wine experiences are wines I *didn't* own -- restaurant pours, tastings, friend's bottles, wine bar discoveries.
 
 5. **Context decays fast** -- If I don't capture it within 24 hours, the details fade. The producer name gets fuzzy, the vintage becomes "maybe 2017 or 2018," and the pairing becomes "some fish thing."
 
@@ -73,7 +73,7 @@ I want a beautiful, chronological feed of my wine memories -- like a personal wi
 
 **User Story**: *As a scrapbooker, I want to browse my wine memories as a visual timeline so I can relive experiences and spot patterns in my taste.*
 
-### 4. Integration with Existing Qve Features
+### 4. Integration with Existing Qvé Features
 
 This is where Remember becomes powerful rather than just another notes feature:
 
@@ -125,7 +125,7 @@ I attend a Barolo tasting with 12 wines. I want to capture all of them quickly.
 
 My friend texts me: "You HAVE to try Raul Perez Ultreia Saint Jacques 2019. Changed my life."
 
-1. I open Qve, type "Raul Perez Ultreia Saint Jacques 2019" and the agent identifies it.
+1. I open Qvé, type "Raul Perez Ultreia Saint Jacques 2019" and the agent identifies it.
 2. I tap "Remember" with occasion = "recommendation" and people = "James."
 3. I mark "Would buy: Yes, if I see it."
 4. Six months later, I'm at a wine shop and I browse my wish list. There it is. I buy it, add to cellar, and the memory updates to show "Recommended by James -> Purchased -> In Cellar."
@@ -252,7 +252,7 @@ At a wine cave in rural France, I might have no signal. Quick capture (photo + t
 5. **Physical notebooks**: Can't search, can't link to identification data, get lost, get stained (by wine, ironically).
 6. **Notes apps**: No structure, no visuals, no integration with wine data.
 
-Qve has the *identification engine* and the *wine data layer*. What it lacks is the *personal narrative layer*. Remember is that layer.
+Qvé has the *identification engine* and the *wine data layer*. What it lacks is the *personal narrative layer*. Remember is that layer.
 
 ---
 
@@ -275,7 +275,7 @@ If I had to choose features in order of implementation:
 
 ## Summary
 
-The Remember feature transforms Qve from a cellar management tool into a wine life companion. It captures the 70% of wine experiences that happen outside your cellar -- the restaurant discoveries, the friend's recommendations, the tasting events, the travel moments. It's a personal wine journal with the intelligence of AI identification, the richness of contextual metadata, and the beauty of a visual scrapbook.
+The Remember feature transforms Qvé from a cellar management tool into a wine life companion. It captures the 70% of wine experiences that happen outside your cellar -- the restaurant discoveries, the friend's recommendations, the tasting events, the travel moments. It's a personal wine journal with the intelligence of AI identification, the richness of contextual metadata, and the beauty of a visual scrapbook.
 
 The key insight: **the wine is never the whole story.** The memory is about the wine AND the moment. Capture both, connect them to your cellar, and you have something no other app offers.
 

@@ -3,7 +3,7 @@
 > **Author**: System Architect Agent
 > **Date**: 2026-02-09
 > **Status**: Proposal (Pre-Implementation)
-> **Scope**: Full-stack architecture for a wine education "Learn" feature integrated into the Qve wine app
+> **Scope**: Full-stack architecture for a wine education "Learn" feature integrated into the Qvé wine app
 
 ---
 
@@ -30,7 +30,7 @@
 
 ## 1. Executive Summary
 
-The Learn feature transforms Qve from a wine *tracking* app into a wine *knowledge* app by weaving educational content into the collection experience. Rather than a standalone "academy" bolted onto the side, Learn is designed as a contextual knowledge layer that surfaces relevant information where the user is already looking -- on wine cards, in the agent panel, and via dedicated exploration pages.
+The Learn feature transforms Qvé from a wine *tracking* app into a wine *knowledge* app by weaving educational content into the collection experience. Rather than a standalone "academy" bolted onto the side, Learn is designed as a contextual knowledge layer that surfaces relevant information where the user is already looking -- on wine cards, in the agent panel, and via dedicated exploration pages.
 
 **Core principle**: The user's own collection is the best curriculum. A bottle of Barolo in the cellar is the perfect entry point to learn about Nebbiolo, Piedmont, and Italian wine classification -- not a generic textbook.
 
@@ -626,7 +626,7 @@ resources/php/learn/
 
 ### 8.2 Endpoint Design Pattern
 
-Each endpoint follows the existing Qve PHP pattern:
+Each endpoint follows the existing Qvé PHP pattern:
 
 ```php
 <?php

@@ -1,6 +1,6 @@
 # API Reference
 
-> Complete reference for the Qve Wine App API layer: TypeScript client methods, PHP backend endpoints, streaming SSE protocol, and agent AI endpoints. All frontend-to-backend communication flows through the singleton `api` client in `qve/src/lib/api/client.ts`.
+> Complete reference for the Qvé Wine App API layer: TypeScript client methods, PHP backend endpoints, streaming SSE protocol, and agent AI endpoints. All frontend-to-backend communication flows through the singleton `api` client in `qve/src/lib/api/client.ts`.
 
 **Last Updated**: 2026-02-07
 

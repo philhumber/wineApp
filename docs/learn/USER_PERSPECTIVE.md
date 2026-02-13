@@ -1,6 +1,6 @@
 # User Perspective: The Learn Feature
 
-> Written from the perspective of a real wine enthusiast using Qve daily. This document captures what users actually want, what would excite them, what would bore them, and how a Learn feature should feel when it works.
+> Written from the perspective of a real wine enthusiast using Qvé daily. This document captures what users actually want, what would excite them, what would bore them, and how a Learn feature should feel when it works.
 
 ---
 
@@ -21,7 +21,7 @@
 
 ## 1. Where the App Is Today
 
-Walking through Qve as a user, here is what I experience:
+Walking through Qvé as a user, here is what I experience:
 
 **Cellar view** (`/qve/`): A grid of wine cards with images, names, vintages, producers, ratings, bottle counts, and price indicators. I can filter by country, region, type, producer, and year. I can sort by 12 different criteria. I can toggle between "Cellar" (bottles I own) and "All Wines" (everything I have ever logged). The header shows my collection name and an estimated cellar value.
 
@@ -149,19 +149,19 @@ Reading that Burgundy uses Pinot Noir is useless trivia unless it helps me appre
 ## 5. Interaction Scenarios
 
 ### Scenario 1: "Saturday afternoon at the wine shop"
-> I am standing in front of the Italian section. I see a Barolo for 35 EUR and a Barbaresco for 28 EUR. I open Qve, tap Learn, and search "Barolo vs Barbaresco." I get a concise comparison: both use Nebbiolo, Barolo is more structured and needs more aging, Barbaresco is approachable sooner. It shows me that I already own a Barolo (rated 8) and no Barbaresco. It suggests: "Try the Barbaresco -- it is the same grape you loved in your Barolo but a different expression. You might drink it sooner." I buy it. I feel smart. I learned something that will make the wine taste better when I open it.
+> I am standing in front of the Italian section. I see a Barolo for 35 EUR and a Barbaresco for 28 EUR. I open Qvé, tap Learn, and search "Barolo vs Barbaresco." I get a concise comparison: both use Nebbiolo, Barolo is more structured and needs more aging, Barbaresco is approachable sooner. It shows me that I already own a Barolo (rated 8) and no Barbaresco. It suggests: "Try the Barbaresco -- it is the same grape you loved in your Barolo but a different expression. You might drink it sooner." I buy it. I feel smart. I learned something that will make the wine taste better when I open it.
 
 ### Scenario 2: "Tuesday evening planning dinner"
-> I am making salmon tonight. I open Qve, tap Learn, and type "What goes with salmon?" Instead of a generic Google result, the app looks at MY cellar and says: "Salmon loves acidity and light tannins. From your cellar, your 2022 Sancerre (Sauvignon Blanc, Loire Valley) would be ideal -- its citrus acidity cuts through the richness. Your 2020 Pinot Noir (Burgundy) would also work if you prefer red -- Pinot's silky texture complements fish." I pick the Sancerre. When I open it, the app shows a card: "Fun fact: Sancerre was almost forgotten in the 1950s. It was the Parisian bistro scene that revived it." I enjoy the wine and the story.
+> I am making salmon tonight. I open Qvé, tap Learn, and type "What goes with salmon?" Instead of a generic Google result, the app looks at MY cellar and says: "Salmon loves acidity and light tannins. From your cellar, your 2022 Sancerre (Sauvignon Blanc, Loire Valley) would be ideal -- its citrus acidity cuts through the richness. Your 2020 Pinot Noir (Burgundy) would also work if you prefer red -- Pinot's silky texture complements fish." I pick the Sancerre. When I open it, the app shows a card: "Fun fact: Sancerre was almost forgotten in the 1950s. It was the Parisian bistro scene that revived it." I enjoy the wine and the story.
 
 ### Scenario 3: "Weekend boredom -- I want to learn something fun"
-> It is Sunday afternoon. I have no particular goal. I open Qve, tap Learn, and see a personalized dashboard. At the top: "Your collection spans 8 countries and 14 grape varieties." Below that, a map shows dots for every wine origin. I notice I have nothing from Spain and tap on Spain. It shows me: "Spain is the world's third largest wine producer. Tempranillo is the signature grape -- similar in body to your Merlots but with more earthy, leathery notes. Rioja is the most famous region, but Ribera del Duero is gaining cult status." I think, "I should try a Tempranillo." This whole interaction took 90 seconds.
+> It is Sunday afternoon. I have no particular goal. I open Qvé, tap Learn, and see a personalized dashboard. At the top: "Your collection spans 8 countries and 14 grape varieties." Below that, a map shows dots for every wine origin. I notice I have nothing from Spain and tap on Spain. It shows me: "Spain is the world's third largest wine producer. Tempranillo is the signature grape -- similar in body to your Merlots but with more earthy, leathery notes. Rioja is the most famous region, but Ribera del Duero is gaining cult status." I think, "I should try a Tempranillo." This whole interaction took 90 seconds.
 
 ### Scenario 4: "Just rated a wine 9/10"
 > I just finished an incredible Cotes du Rhone and rated it 9. The app says: "Great score! Here is why this wine might have impressed you." It shows the grape blend (Grenache 60%, Syrah 30%, Mourvedre 10%), the warm climate of the Southern Rhone, and the wine's style profile (full-bodied, fruit-forward, spicy). It then says: "Your top-rated wines tend to be full-bodied reds with spice. You might also enjoy: Priorat (Spain) -- similar warmth and intensity, or Barossa Valley Shiraz (Australia) -- bold and peppery." I feel like the app understands me. I did not just rate a wine; I learned something about myself.
 
 ### Scenario 5: "Hosting a dinner party on Friday"
-> I have 6 guests coming and I am serving three courses: goat cheese salad, braised short ribs, and chocolate tart. I open Qve, tap Learn, and use a "Dinner Party Planner." I enter my menu. The app scans my cellar and suggests: "Starter: Your 2021 Vouvray (Chenin Blanc) -- its honey notes complement goat cheese. Main: Your 2018 Cahors (Malbec) -- the dark fruit and tannin can stand up to braised beef. Dessert: Your 2019 Banyuls (fortified Grenache) -- its sweetness matches chocolate without overwhelming it." For each, it gives a one-liner I can say at the table: "This Cahors is from southwest France -- they have been making Malbec here since before Argentina made it famous." I feel prepared and knowledgeable.
+> I have 6 guests coming and I am serving three courses: goat cheese salad, braised short ribs, and chocolate tart. I open Qvé, tap Learn, and use a "Dinner Party Planner." I enter my menu. The app scans my cellar and suggests: "Starter: Your 2021 Vouvray (Chenin Blanc) -- its honey notes complement goat cheese. Main: Your 2018 Cahors (Malbec) -- the dark fruit and tannin can stand up to braised beef. Dessert: Your 2019 Banyuls (fortified Grenache) -- its sweetness matches chocolate without overwhelming it." For each, it gives a one-liner I can say at the table: "This Cahors is from southwest France -- they have been making Malbec here since before Argentina made it famous." I feel prepared and knowledgeable.
 
 ---
 
@@ -319,8 +319,8 @@ Users want all three, but in different moments:
 
 The Learn feature should feel like a **knowledgeable friend who has memorized everything about my wine collection.** Not a professor. Not a database. A friend who says: "Oh, you are opening that tonight? Let me tell you something cool about it." And: "You know what? Based on everything you have told me you like, you should really try a Nerello Mascalese from Etna."
 
-The single most important design principle: **Every piece of knowledge must connect to the user's own wines, ratings, or preferences.** If it does not, it belongs on Wikipedia, not in Qve.
+The single most important design principle: **Every piece of knowledge must connect to the user's own wines, ratings, or preferences.** If it does not, it belongs on Wikipedia, not in Qvé.
 
 The single most important technical principle: **Content must be pre-loaded and instant.** A Learn feature that makes the user wait is a Learn feature nobody uses.
 
-The single most important emotional principle: **The user should feel smarter after every interaction, not dumber.** Wine intimidates people. Qve should be the antidote.
+The single most important emotional principle: **The user should feel smarter after every interaction, not dumber.** Wine intimidates people. Qvé should be the antidote.

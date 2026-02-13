@@ -1,4 +1,4 @@
-# Qve Wine App
+# Qvé Wine App
 
 A personal wine cellar management app with an AI sommelier assistant. Photograph a wine label or describe a wine, and the agent identifies it, enriches it with critic scores and tasting notes, and adds it to your cellar.
 
