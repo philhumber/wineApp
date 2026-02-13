@@ -161,7 +161,7 @@
       <div class="modal-body">
         <!-- Section 1: Hero value -->
         <div class="hero-section">
-          <span class="hero-label" id="cellar-value-title">CELLAR VALUE</span>
+          <span class="hero-label" id="cellar-value-title">OVERALL CELLAR VALUE</span>
           <span class="hero-value">{heroValue}</span>
           <span class="hero-subtitle">{currentBottleCount} bottles in cellar</span>
         </div>
