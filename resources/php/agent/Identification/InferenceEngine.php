@@ -28,7 +28,7 @@ class InferenceEngine
     // ─────────────────────────────────────────────────────
 
     /** Region -> Country mapping (~25 entries) */
-    private const REGIONS = [
+    public const REGIONS = [
         'bordeaux' => ['name' => 'Bordeaux', 'country' => 'France'],
         'burgundy' => ['name' => 'Burgundy', 'country' => 'France'],
         'bourgogne' => ['name' => 'Burgundy', 'country' => 'France'],
@@ -62,7 +62,7 @@ class InferenceEngine
     ];
 
     /** Country name normalization */
-    private const COUNTRIES = [
+    public const COUNTRIES = [
         'france' => 'France',
         'french' => 'France',
         'italy' => 'Italy',
@@ -92,7 +92,7 @@ class InferenceEngine
     ];
 
     /** Wine type normalization */
-    private const WINE_TYPES = [
+    public const WINE_TYPES = [
         'red' => 'Red',
         'white' => 'White',
         'rose' => 'Rosé',
@@ -107,7 +107,7 @@ class InferenceEngine
     ];
 
     /** Grape variety matching with color (red/white) */
-    private const GRAPES = [
+    public const GRAPES = [
         // Red grapes
         'cabernet sauvignon' => ['name' => 'Cabernet Sauvignon', 'color' => 'Red'],
         'cabernet' => ['name' => 'Cabernet Sauvignon', 'color' => 'Red'],
@@ -151,7 +151,7 @@ class InferenceEngine
     ];
 
     /** Country -> typical regions mapping for inferences */
-    private const COUNTRY_REGIONS = [
+    public const COUNTRY_REGIONS = [
         'France' => ['Bordeaux', 'Burgundy', 'Champagne', 'Rhône', 'Loire', 'Alsace', 'Provence'],
         'Italy' => ['Tuscany', 'Piedmont', 'Veneto', 'Sicily', 'Puglia'],
         'Spain' => ['Rioja', 'Ribera del Duero', 'Priorat', 'Rías Baixas'],
@@ -351,7 +351,7 @@ class InferenceEngine
      * @param string $text Appellation name
      * @return array|null
      */
-    private function matchAppellationStatic(string $text): ?array
+    public function matchAppellationStatic(string $text): ?array
     {
         $appellations = [
             // ─────────────────────────────────────────────────────
@@ -679,7 +679,7 @@ class InferenceEngine
      * @param string $text Lowercase text
      * @return array|null {name, country} or null
      */
-    private function matchRegion(string $text): ?array
+    public function matchRegion(string $text): ?array
     {
         if (isset(self::REGIONS[$text])) {
             return self::REGIONS[$text];
@@ -700,7 +700,7 @@ class InferenceEngine
      * @param string $text Lowercase text
      * @return string|null Normalized country name or null
      */
-    private function matchCountry(string $text): ?string
+    public function matchCountry(string $text): ?string
     {
         if (isset(self::COUNTRIES[$text])) {
             return self::COUNTRIES[$text];
@@ -721,7 +721,7 @@ class InferenceEngine
      * @param string $text Lowercase text
      * @return string|null Normalized wine type or null
      */
-    private function matchWineType(string $text): ?string
+    public function matchWineType(string $text): ?string
     {
         foreach (self::WINE_TYPES as $key => $type) {
             if (preg_match('/\b' . preg_quote($key, '/') . '\b/', $text)) {
@@ -738,7 +738,7 @@ class InferenceEngine
      * @param string $text Lowercase text
      * @return array|null {name, color} or null
      */
-    private function matchGrape(string $text): ?array
+    public function matchGrape(string $text): ?array
     {
         if (isset(self::GRAPES[$text])) {
             return self::GRAPES[$text];

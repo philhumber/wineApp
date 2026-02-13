@@ -23,13 +23,18 @@ class ConfidenceScorer
     /** @var array Confidence thresholds */
     private array $thresholds;
 
+    /** @var InputMatchScorer|null Input-output match scorer (new scoring) */
+    private ?InputMatchScorer $inputMatchScorer;
+
     /**
      * Create a new confidence scorer
      *
      * @param array $config Configuration with weights and thresholds
+     * @param InputMatchScorer|null $inputMatchScorer Optional new scorer (null = legacy 70/30 blend)
      */
-    public function __construct(array $config)
+    public function __construct(array $config, ?InputMatchScorer $inputMatchScorer = null)
     {
+        $this->inputMatchScorer = $inputMatchScorer;
         $this->weights = $config['confidence']['weights'] ?? [
             'producer' => 0.30,
             'wine_name' => 0.20,
@@ -50,10 +55,23 @@ class ConfidenceScorer
      * Score parsed wine data
      *
      * @param array $parsed Parsed wine data from LLM
+     * @param string|null $userInput Original user input text (null for image-only)
      * @return array Scoring result with score, action, and details
      */
-    public function score(array $parsed): array
+    public function score(array $parsed, ?string $userInput = null): array
     {
+        // Delegate to InputMatchScorer when available
+        if ($this->inputMatchScorer !== null) {
+            if ($userInput !== null && $userInput !== '') {
+                return $this->inputMatchScorer->score($userInput, $parsed, $this->thresholds);
+            }
+            // Image-only: use image fallback
+            return $this->inputMatchScorer->scoreImageFallback($parsed, $parsed['confidence'] ?? 50, $this->thresholds);
+        }
+
+        // Legacy 70/30 blend — retained for backward compatibility if InputMatchScorer
+        // is not injected (e.g., tests, migration rollback). In production, the new
+        // InputMatchScorer is always wired via IdentificationService constructor.
         $fieldScores = [];
         $totalWeight = 0;
         $weightedScore = 0;
@@ -369,11 +387,12 @@ class ConfidenceScorer
      * Get scoring explanation for debugging
      *
      * @param array $parsed Parsed wine data
+     * @param string|null $userInput Original user input text
      * @return array Detailed scoring explanation
      */
-    public function explain(array $parsed): array
+    public function explain(array $parsed, ?string $userInput = null): array
     {
-        $result = $this->score($parsed);
+        $result = $this->score($parsed, $userInput);
 
         $explanation = [
             'finalScore' => $result['score'],

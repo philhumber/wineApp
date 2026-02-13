@@ -56,9 +56,10 @@ class IdentificationService
         $this->intentDetector = new IntentDetector();
         $this->textProcessor = new TextProcessor($llmClient);
         $this->visionProcessor = new VisionProcessor($llmClient);
-        $this->scorer = new ConfidenceScorer($config);
-        $this->disambiguator = new DisambiguationHandler($pdo);
         $this->inferenceEngine = new InferenceEngine($pdo);
+        $inputMatchScorer = new InputMatchScorer($this->inferenceEngine);
+        $this->scorer = new ConfidenceScorer($config, $inputMatchScorer);
+        $this->disambiguator = new DisambiguationHandler($pdo);
     }
 
     // ─────────────────────────────────────────────────────
@@ -253,10 +254,8 @@ class IdentificationService
             }
         }
 
-        // Re-score after inference
-        $newScoring = $this->scorer->score($result['parsed']);
-        $result['confidence'] = $newScoring['score'];
-        $result['action'] = $newScoring['action'];
+        // NOTE: Scoring removed from applyInference() — all 14 callers re-score
+        // immediately after this call with user input context for accurate matching.
 
         return $result;
     }
@@ -394,7 +393,7 @@ class IdentificationService
         $result = $this->applyInference($result);
 
         // Score the result
-        $scoring = $this->scorer->score($result['parsed']);
+        $scoring = $this->scorer->score($result['parsed'], $text);
 
         // Determine action based on confidence
         $thresholds = $this->config['confidence'] ?? [];
@@ -521,7 +520,7 @@ class IdentificationService
         $result = $this->applyInference($result);
 
         // Score the result
-        $scoring = $this->scorer->score($result['parsed']);
+        $scoring = $this->scorer->score($result['parsed'], $supplementaryText);
 
         $thresholds = $this->config['confidence'] ?? [];
         $tier1Threshold = $thresholds['tier1_threshold'] ?? 85;
@@ -689,7 +688,7 @@ PROMPT;
 
         if ($tier1_5Result['success']) {
             $tier1_5Result = $this->applyInference($tier1_5Result);
-            $scoring = $this->scorer->score($tier1_5Result['parsed']);
+            $scoring = $this->scorer->score($tier1_5Result['parsed'], $inputText);
             $tier1_5Result['confidence'] = $scoring['score'];
             $tier1_5Result['action'] = $scoring['action'];
 
@@ -725,7 +724,7 @@ PROMPT;
 
             if ($claudeResult['success']) {
                 $claudeResult = $this->applyInference($claudeResult);
-                $scoring = $this->scorer->score($claudeResult['parsed']);
+                $scoring = $this->scorer->score($claudeResult['parsed'], $inputText);
                 $claudeResult['confidence'] = $scoring['score'];
                 $claudeResult['action'] = $scoring['action'];
 
@@ -806,7 +805,7 @@ PROMPT;
 
         if ($tier1_5Result['success']) {
             $tier1_5Result = $this->applyInference($tier1_5Result);
-            $scoring = $this->scorer->score($tier1_5Result['parsed']);
+            $scoring = $this->scorer->score($tier1_5Result['parsed'], $supplementaryText);
             $tier1_5Result['confidence'] = $scoring['score'];
             $tier1_5Result['action'] = $scoring['action'];
 
@@ -847,7 +846,7 @@ PROMPT;
 
             if ($claudeResult['success']) {
                 $claudeResult = $this->applyInference($claudeResult);
-                $scoring = $this->scorer->score($claudeResult['parsed']);
+                $scoring = $this->scorer->score($claudeResult['parsed'], $supplementaryText);
                 $claudeResult['confidence'] = $scoring['score'];
                 $claudeResult['action'] = $scoring['action'];
 
@@ -934,7 +933,7 @@ PROMPT;
         }
 
         $result = $this->applyInference($result);
-        $scoring = $this->scorer->score($result['parsed']);
+        $scoring = $this->scorer->score($result['parsed'], $inputText);
         $result['confidence'] = $scoring['score'];
         $result['action'] = $scoring['action'];
 
@@ -969,7 +968,7 @@ PROMPT;
 
         if ($result['success']) {
             $result = $this->applyInference($result);
-            $scoring = $this->scorer->score($result['parsed']);
+            $scoring = $this->scorer->score($result['parsed'], $inputText);
             $result['confidence'] = $scoring['score'];
             $result['action'] = $scoring['action'];
 
@@ -1018,7 +1017,7 @@ PROMPT;
 
             if ($claudeResult['success']) {
                 $claudeResult = $this->applyInference($claudeResult);
-                $scoring = $this->scorer->score($claudeResult['parsed']);
+                $scoring = $this->scorer->score($claudeResult['parsed'], $inputText);
                 $claudeResult['confidence'] = $scoring['score'];
                 $claudeResult['action'] = $scoring['action'];
 
@@ -1136,7 +1135,7 @@ PROMPT;
         }
 
         $result = $this->applyInference($result);
-        $scoring = $this->scorer->score($result['parsed']);
+        $scoring = $this->scorer->score($result['parsed'], $inputText);
         $result['confidence'] = $scoring['score'];
         $result['action'] = $scoring['action'];
 
@@ -1215,7 +1214,7 @@ PROMPT;
         }
 
         $result = $this->applyInference($result);
-        $scoring = $this->scorer->score($result['parsed']);
+        $scoring = $this->scorer->score($result['parsed'], $supplementaryText);
         $result['confidence'] = $scoring['score'];
         $result['action'] = $scoring['action'];
 
@@ -1306,7 +1305,7 @@ PROMPT;
 
         $quality = $result['quality'] ?? null;
         $result = $this->applyInference($result);
-        $scoring = $this->scorer->score($result['parsed']);
+        $scoring = $this->scorer->score($result['parsed'], $supplementaryText);
         $result['confidence'] = $scoring['score'];
         $result['action'] = $scoring['action'];
 
@@ -1341,7 +1340,7 @@ PROMPT;
 
         if ($result['success']) {
             $result = $this->applyInference($result);
-            $scoring = $this->scorer->score($result['parsed']);
+            $scoring = $this->scorer->score($result['parsed'], $supplementaryText);
             $result['confidence'] = $scoring['score'];
             $result['action'] = $scoring['action'];
 
@@ -1394,7 +1393,7 @@ PROMPT;
 
             if ($claudeResult['success']) {
                 $claudeResult = $this->applyInference($claudeResult);
-                $scoring = $this->scorer->score($claudeResult['parsed']);
+                $scoring = $this->scorer->score($claudeResult['parsed'], $supplementaryText);
                 $claudeResult['confidence'] = $scoring['score'];
                 $claudeResult['action'] = $scoring['action'];
 
@@ -1494,11 +1493,12 @@ PROMPT;
      * Get detailed scoring explanation
      *
      * @param array $parsed Parsed wine data
+     * @param string|null $userInput Original user input text
      * @return array Scoring explanation
      */
-    public function explainScoring(array $parsed): array
+    public function explainScoring(array $parsed, ?string $userInput = null): array
     {
-        return $this->scorer->explain($parsed);
+        return $this->scorer->explain($parsed, $userInput);
     }
 
     /**
