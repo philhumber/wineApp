@@ -67,6 +67,9 @@ if (isset($input['supplementaryText'])) {
     }
 }
 
+// Validate and sanitize locked fields
+$validatedLockedFields = validateLockedFields($input);
+
 // Check if streaming is enabled - fallback to non-streaming endpoint
 $config = getAgentConfig();
 if (!($config['streaming']['enabled'] ?? false)) {
@@ -87,6 +90,7 @@ try {
     $identifyInput = [
         'image' => $input['image'],
         'mimeType' => $input['mimeType'],
+        'lockedFields' => $validatedLockedFields,
     ];
     if ($supplementaryText !== null) {
         $identifyInput['supplementaryText'] = $supplementaryText;

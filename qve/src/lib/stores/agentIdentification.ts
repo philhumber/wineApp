@@ -30,6 +30,7 @@ export interface AugmentationContext {
   conversationHistory?: string[];
   /** WIN-270: Prefix from brief input confirmation for concatenation */
   briefInputPrefix?: string;
+  lockedFields?: Record<string, string | number>;
 }
 
 export interface ImageData {
@@ -50,6 +51,8 @@ interface IdentificationState {
   inputType: 'text' | 'image' | null;
   isEscalating: boolean;
   escalationTier: number;
+  lockedFields: Record<string, string | number>;
+  awaitingFieldCorrection: string | null;
 }
 
 // ===========================================
@@ -69,6 +72,8 @@ const initialState: IdentificationState = {
   inputType: null,
   isEscalating: false,
   escalationTier: 1,
+  lockedFields: {},
+  awaitingFieldCorrection: null,
 };
 
 const store = writable<IdentificationState>(initialState);
@@ -90,6 +95,8 @@ export const lastImageData = derived(store, ($s) => $s.lastImageData);
 export const inputType = derived(store, ($s) => $s.inputType);
 export const isEscalating = derived(store, ($s) => $s.isEscalating);
 export const escalationTier = derived(store, ($s) => $s.escalationTier);
+export const lockedFields = derived(store, ($s) => $s.lockedFields);
+export const awaitingFieldCorrection = derived(store, ($s) => $s.awaitingFieldCorrection);
 
 // Computed derived stores
 export const hasResult = derived(store, ($s) => $s.result !== null);
@@ -321,6 +328,52 @@ export function completeEscalation(): void {
 }
 
 /**
+ * Lock a field value for re-identification.
+ */
+export function lockField(field: string, value: string | number): void {
+  store.update((s) => ({
+    ...s,
+    lockedFields: { ...s.lockedFields, [field]: value },
+  }));
+  persistIdentificationState(true);
+}
+
+/**
+ * Clear all locked fields.
+ */
+export function clearLockedFields(): void {
+  store.update((s) => ({
+    ...s,
+    lockedFields: {},
+    awaitingFieldCorrection: null,
+  }));
+}
+
+/**
+ * Get current locked fields.
+ */
+export function getLockedFields(): Record<string, string | number> {
+  return get(store).lockedFields;
+}
+
+/**
+ * Set which field is awaiting correction input.
+ */
+export function setAwaitingFieldCorrection(field: string | null): void {
+  store.update((s) => ({
+    ...s,
+    awaitingFieldCorrection: field,
+  }));
+}
+
+/**
+ * Get which field is awaiting correction input.
+ */
+export function getAwaitingFieldCorrection(): string | null {
+  return get(store).awaitingFieldCorrection;
+}
+
+/**
  * Clear identification state (but preserve context if needed).
  */
 export function clearIdentification(preserveContext = false): void {
@@ -328,6 +381,7 @@ export function clearIdentification(preserveContext = false): void {
     ...initialState,
     augmentationContext: preserveContext ? state.augmentationContext : null,
     lastImageData: preserveContext ? state.lastImageData : null,
+    lockedFields: preserveContext ? state.lockedFields : {},
   }));
 
   persistIdentificationState();
@@ -354,6 +408,8 @@ export function restoreFromPersistence(data: {
   pendingNewSearch: string | null;
   pendingBriefSearch?: string | null;
   imageData: { data: string; mimeType: string } | null;
+  lockedFields?: Record<string, string | number>;
+  awaitingFieldCorrection?: string | null;
 }): void {
   store.set({
     ...initialState,
@@ -364,6 +420,8 @@ export function restoreFromPersistence(data: {
     lastImageData: data.imageData,
     // Note: isIdentifying is NOT restored (prevents orphan loading states)
     confidence: data.result?.confidence ?? null,
+    lockedFields: data.lockedFields ?? {},
+    awaitingFieldCorrection: data.awaitingFieldCorrection ?? null,
   });
 }
 
@@ -381,6 +439,8 @@ function persistIdentificationState(immediate = false): void {
       pendingNewSearch: state.pendingNewSearch,
       pendingBriefSearch: state.pendingBriefSearch,
       imageData: state.lastImageData,
+      lockedFields: state.lockedFields,
+      awaitingFieldCorrection: state.awaitingFieldCorrection,
     },
     immediate
   );

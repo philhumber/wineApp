@@ -38,6 +38,9 @@ if (json_last_error() !== JSON_ERROR_NONE) {
     agentError('Invalid JSON body');
 }
 
+// Validate and sanitize locked fields
+$input['lockedFields'] = validateLockedFields($input);
+
 // Determine input type
 $isImageInput = !empty($input['image']);
 $isTextInput = !empty($input['text']);
@@ -71,13 +74,14 @@ try {
                 'image' => $input['image'],
                 'mimeType' => $input['mimeType'] ?? 'image/jpeg',
                 'supplementaryText' => $input['supplementaryText'] ?? null,
+                'lockedFields' => $input['lockedFields'],
             ],
             $input['priorResult']
         );
     } else {
         // Text input - use identifyWithOpus
         $result = $service->identifyWithOpus(
-            ['text' => $input['text']],
+            ['text' => $input['text'], 'lockedFields' => $input['lockedFields']],
             $input['priorResult']
         );
     }

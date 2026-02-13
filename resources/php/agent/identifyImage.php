@@ -50,6 +50,9 @@ if (empty($input['mimeType']) || !is_string($input['mimeType'])) {
     agentError('Missing or invalid field: mimeType (string required)');
 }
 
+// Validate and sanitize locked fields
+$validatedLockedFields = validateLockedFields($input);
+
 // Validate optional supplementary text (for re-identification with user context)
 $supplementaryText = null;
 if (isset($input['supplementaryText'])) {
@@ -70,6 +73,7 @@ try {
     $identifyInput = [
         'image' => $input['image'],
         'mimeType' => $input['mimeType'],
+        'lockedFields' => $validatedLockedFields,
     ];
     if ($supplementaryText !== null) {
         $identifyInput['supplementaryText'] = $supplementaryText;

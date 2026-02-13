@@ -29,6 +29,8 @@ import {
   generateIncompleteChips,
   generateActionChips,
   generateErrorChips,
+  generateNotCorrectChips,
+  generateCorrectionConfirmationChips,
   detectCommand,
   detectChipResponse,
   detectFieldInput,
@@ -66,7 +68,9 @@ type IdentificationActionType =
   | 'provide_more'
   | 'continue_as_is'
   | 'see_result'
-  | 'identify';
+  | 'identify'
+  | 'correct_field'
+  | 'confirm_corrections';
 
 // ===========================================
 // Type Conversion Helpers
@@ -343,6 +347,7 @@ async function executeTextIdentification(
   try {
     // Track escalated result if background refinement improves confidence
     let escalatedResult: { parsed: AgentParsedWine; confidence: number } | null = null;
+    const lockedFields = identification.getLockedFields();
 
     const result = await api.identifyTextStream(
       text,
@@ -364,7 +369,8 @@ async function executeTextIdentification(
         // 'refined' non-escalated: nothing to do (Tier 1 result is already best)
       },
       abortController.signal,
-      getRequestId()
+      getRequestId(),
+      lockedFields
     );
 
     // WIN-187: Skip processing if cancelled during the await
@@ -382,6 +388,7 @@ async function executeTextIdentification(
     const finalConfidence = esc ? esc.confidence : result.confidence;
 
     const wineResult = convertParsedWineToResult(finalParsed, finalConfidence);
+    applyLockedFieldsClient(wineResult, lockedFields);
     identification.setResult(wineResult, finalConfidence); // Clears streamingFields + isEscalating
     handleIdentificationResultFlow(wineResult, finalConfidence ?? 1);
 
@@ -415,6 +422,7 @@ async function executeImageIdentification(
   try {
     // Track escalated result if background refinement improves confidence
     let escalatedResult: { parsed: AgentParsedWine; confidence: number } | null = null;
+    const lockedFields = identification.getLockedFields();
 
     const result = await api.identifyImageStream(
       data,
@@ -435,7 +443,8 @@ async function executeImageIdentification(
         }
       },
       abortController.signal,
-      getRequestId()
+      getRequestId(),
+      lockedFields
     );
 
     // WIN-187: Skip processing if cancelled during the await
@@ -451,6 +460,7 @@ async function executeImageIdentification(
     const finalConfidence = esc ? esc.confidence : result.confidence;
 
     const wineResult = convertParsedWineToResult(finalParsed, finalConfidence);
+    applyLockedFieldsClient(wineResult, lockedFields);
     identification.setResult(wineResult, finalConfidence); // Clears streamingFields + isEscalating
     handleIdentificationResultFlow(wineResult, finalConfidence ?? 1);
 
@@ -474,6 +484,37 @@ async function executeImageIdentification(
 async function handleTextSubmit(text: string): Promise<void> {
   const currentPhase = conversation.getCurrentPhase();
   const hasAugmentation = identification.getAugmentationContext() !== null;
+  const existingResult = identification.getResult();
+
+  // 0. Field Correction Intercept — capture typed value for awaiting field
+  const awaitingField = identification.getAwaitingFieldCorrection();
+  if (awaitingField && existingResult) {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      identification.setAwaitingFieldCorrection(null);
+      showFieldCorrectionChips(existingResult);
+      return;
+    }
+
+    const updatedResult = { ...existingResult, [awaitingField]: trimmed };
+    const confidence = identification.getConfidence() ?? existingResult.confidence ?? 1;
+    identification.setResult(updatedResult, confidence);
+    identification.lockField(awaitingField, trimmed);
+    identification.setAwaitingFieldCorrection(null);
+
+    conversation.addMessage(conversation.createTextMessage(text, { role: 'user' }));
+
+    // Show updated card with correction applied + confirmation chips including "Look Closer"
+    const wineName = [updatedResult.producer, updatedResult.wineName].filter(Boolean).join(' ');
+    conversation.addMessages([
+      conversation.createTextMessage('Got it. Here\'s the updated result:'),
+      { category: 'wine_result', role: 'agent', data: { category: 'wine_result', result: updatedResult, confidence } },
+      conversation.createTextMessage(getMessageByKey(MessageKey.ID_FOUND, { wineName })),
+      conversation.createChipsMessage(generateCorrectionConfirmationChips()),
+    ]);
+    conversation.setPhase('confirming');
+    return;
+  }
 
   // 1. Command Detection - dispatch to conversation handlers
   const commandResult = detectCommand(text);
@@ -495,7 +536,6 @@ async function handleTextSubmit(text: string): Promise<void> {
   }
 
   // 2. Field Input Detection (with augmentation context)
-  const existingResult = identification.getResult();
   if (existingResult && currentPhase === 'awaiting_input') {
     const fieldResult = detectFieldInput(text, existingResult);
     if (fieldResult.detected && fieldResult.updatedResult) {
@@ -566,6 +606,7 @@ async function handleTextSubmit(text: string): Promise<void> {
     const hasResult = identification.getResult() !== null;
     if (hasResult) {
       identification.setPendingNewSearch(text);
+      identification.setAwaitingFieldCorrection(null);
       conversation.addMessage(
         conversation.createTextMessage(getMessageByKey(MessageKey.CONFIRM_NEW_SEARCH))
       );
@@ -790,6 +831,120 @@ async function handleCorrect(messageId: string): Promise<void> {
   conversation.setPhase('awaiting_input');
 }
 
+/**
+ * Apply locked field values to a result, overriding LLM values where they differ.
+ */
+function applyLockedFieldsClient(
+  result: WineIdentificationResult,
+  lockedFields: Record<string, string | number>
+): void {
+  for (const [field, lockedValue] of Object.entries(lockedFields)) {
+    if (field in result) {
+      const llmValue = (result as Record<string, unknown>)[field];
+      if (typeof llmValue === 'string' && typeof lockedValue === 'string') {
+        const normalize = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (normalize(llmValue) === normalize(String(lockedValue))) {
+          continue;
+        }
+      }
+      (result as Record<string, unknown>)[field] = lockedValue;
+    }
+  }
+}
+
+/**
+ * Show field correction chips for the "Not Correct" flow.
+ */
+function showFieldCorrectionChips(result: WineIdentificationResult | null): void {
+  if (!result) return;
+  const lockedFields = identification.getLockedFields();
+  const { fieldChips, actionChips } = generateNotCorrectChips(result, lockedFields);
+
+  const promptText = 'What needs fixing? Tap a field to correct it, or add more details.';
+
+  // Use addMessages (batch) so field chips and action chips are added together
+  // without disabling each other (addMessage disables all existing chips on each call)
+  const messages: Parameters<typeof conversation.addMessages>[0] = [
+    conversation.createTextMessage(promptText),
+  ];
+  if (fieldChips.length > 0) {
+    messages.push(conversation.createChipsMessage(fieldChips, { groupLabel: 'Fields' }));
+  }
+  messages.push(conversation.createChipsMessage(actionChips, { groupLabel: 'Actions' }));
+  conversation.addMessages(messages);
+}
+
+/**
+ * Handle user tapping a field chip to correct it.
+ */
+function handleCorrectField(messageId: string, payload: { field: string }): void {
+  conversation.disableMessage(messageId);
+  identification.setAwaitingFieldCorrection(payload.field);
+
+  const fieldLabels: Record<string, string> = {
+    producer: 'producer',
+    wineName: 'wine name',
+    vintage: 'vintage',
+    region: 'region',
+    country: 'country',
+    type: 'type',
+  };
+  const label = fieldLabels[payload.field] || 'value';
+  conversation.addMessage(
+    conversation.createTextMessage(`Enter the correct ${label}:`)
+  );
+}
+
+/**
+ * Handle confirming field corrections and re-identifying.
+ */
+async function handleConfirmCorrections(messageId: string): Promise<void> {
+  conversation.disableMessage(messageId);
+  const result = identification.getResult();
+  const lockedFields = identification.getLockedFields();
+  if (!result || Object.keys(lockedFields).length === 0) return;
+
+  identification.startIdentification('text');
+  conversation.setPhase('identifying');
+  conversation.addTypingMessage(getMessageByKey(MessageKey.ID_THINKING));
+
+  try {
+    // Build search text from result fields; avoid using raw JSON from augmentation context
+    const parts = [result.producer, result.wineName, result.vintage].filter(Boolean);
+    const text = parts.length > 0
+      ? parts.join(' ')
+      : identification.getCurrentState().augmentationContext?.originalInput || '';
+
+    const abortController = createAbortController();
+
+    const apiResult = await api.identifyTextStream(
+      text,
+      (field, value) => {
+        identification.updateStreamingField(field, String(value), true);
+      },
+      undefined,
+      abortController.signal,
+      getRequestId(),
+      lockedFields
+    );
+
+    if (wasCancelled()) return;
+
+    conversation.removeTypingMessage();
+
+    const wineResult = convertParsedWineToResult(apiResult.parsed, apiResult.confidence);
+    applyLockedFieldsClient(wineResult, lockedFields);
+    identification.setResult(wineResult, apiResult.confidence);
+    handleIdentificationResultFlow(wineResult, apiResult.confidence ?? 1);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') return;
+    conversation.removeTypingMessage();
+    identification.setResult(result, identification.getConfidence() ?? 80);
+    const confidence = identification.getConfidence() ?? 80;
+    handleIdentificationResultFlow(result, confidence);
+  }
+}
+
 async function handleNotCorrect(messageId: string): Promise<void> {
   conversation.disableMessage(messageId);
 
@@ -800,19 +955,10 @@ async function handleNotCorrect(messageId: string): Promise<void> {
     originalInput: result ? JSON.stringify(result) : undefined,
     imageData: imageData?.data,
     imageMimeType: imageData?.mimeType,
+    lockedFields: identification.getLockedFields(),
   });
 
-  conversation.addMessage(
-    conversation.createTextMessage(getMessageByKey(MessageKey.CONFIRM_INCORRECT))
-  );
-
-  conversation.addMessage(
-    conversation.createChipsMessage([
-      { id: 'provide_more', label: 'Add Details', action: 'provide_more' },
-      { id: 'try_opus', label: 'Try Harder', action: 'try_opus' },
-      { id: 'start_fresh', label: 'Start Over', action: 'start_fresh' },
-    ])
-  );
+  showFieldCorrectionChips(result);
 
   conversation.setPhase('awaiting_input');
 }
@@ -823,6 +969,7 @@ async function handleConfirmNewSearch(messageId: string): Promise<void> {
   const pendingText = identification.getCurrentState().pendingNewSearch;
   if (pendingText) {
     identification.setPendingNewSearch(null);
+    identification.clearLockedFields();
     identification.clearIdentification();
     await handleTextSubmit(pendingText);
   }
@@ -1003,25 +1150,34 @@ async function handleTryOpus(messageId: string): Promise<void> {
     };
 
     let result;
+    const lockedFields = identification.getLockedFields();
 
     if (imageData?.data) {
       result = await api.identifyWithOpus(
         imageData.data,
         'image',
         priorResult,
-        imageData.mimeType
+        imageData.mimeType,
+        undefined,
+        lockedFields
       );
     } else if (lastAction?.type === 'submit_text' && lastAction.payload) {
       result = await api.identifyWithOpus(
         lastAction.payload as string,
         'text',
-        priorResult
+        priorResult,
+        undefined,
+        undefined,
+        lockedFields
       );
     } else if (augContext?.originalInput) {
       result = await api.identifyWithOpus(
         augContext.originalInput,
         'text',
-        priorResult
+        priorResult,
+        undefined,
+        undefined,
+        lockedFields
       );
     } else {
       throw new Error('No input available for Opus identification');
@@ -1029,6 +1185,7 @@ async function handleTryOpus(messageId: string): Promise<void> {
 
     conversation.removeTypingMessage();
     const wineResult = convertParsedWineToResult(result.parsed, result.confidence);
+    applyLockedFieldsClient(wineResult, lockedFields);
     identification.setResult(wineResult, result.confidence);
     identification.completeEscalation();
 
@@ -1142,6 +1299,8 @@ export function isIdentificationAction(type: string): type is IdentificationActi
     'continue_as_is',
     'see_result',
     'identify',
+    'correct_field',
+    'confirm_corrections',
   ].includes(type);
 }
 
@@ -1235,6 +1394,14 @@ export async function handleIdentificationAction(action: AgentAction): Promise<v
     case 'identify':
       conversation.disableMessage(action.messageId ?? '');
       conversation.setPhase('awaiting_input');
+      break;
+
+    case 'correct_field':
+      handleCorrectField(action.messageId ?? '', action.payload as { field: string });
+      break;
+
+    case 'confirm_corrections':
+      await handleConfirmCorrections(action.messageId ?? '');
       break;
   }
 }

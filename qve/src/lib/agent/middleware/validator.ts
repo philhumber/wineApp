@@ -109,6 +109,16 @@ const defaultPrerequisites: Record<string, ActionPrerequisites> = {
     requiresIdentification: true,
   },
 
+  // Field correction actions require identification
+  correct_field: {
+    requiresIdentification: true,
+    requiresPhase: ['confirming', 'awaiting_input'],
+  },
+  confirm_corrections: {
+    requiresIdentification: true,
+    requiresPhase: ['confirming', 'awaiting_input'],
+  },
+
   // Opus escalation requires identification
   // 'awaiting_input' needed: handleNotCorrect transitions to awaiting_input before showing Try Harder chip
   try_opus: {

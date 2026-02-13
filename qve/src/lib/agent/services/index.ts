@@ -23,6 +23,7 @@ export {
 // Chip Generation
 export {
   generateConfirmationChips,
+  generateCorrectionConfirmationChips,
   generateIncompleteChips,
   generateEscalationChips,
   generateBriefSearchChips,
@@ -34,6 +35,8 @@ export {
   generateErrorChips,
   generateEnrichmentErrorChips,
   generateIdentificationChips,
+  generateFieldCorrectionChips,
+  generateNotCorrectChips,
 } from './chipGenerator';
 
 // Input Processing

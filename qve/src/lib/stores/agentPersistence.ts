@@ -46,6 +46,10 @@ export interface PersistedState {
   // Image data (separate for quota handling)
   imageData: ImageDataSlice | null;
 
+  // Locked fields (field correction flow)
+  lockedFields?: Record<string, string | number>;
+  awaitingFieldCorrection?: string | null;
+
   // Timestamps
   lastActivityAt: number;
 }
@@ -54,6 +58,7 @@ export interface AugmentationContext {
   originalInput?: string;
   imageData?: string;
   conversationHistory?: string[];
+  lockedFields?: Record<string, string | number>;
 }
 
 export interface AddWineStateSlice {
@@ -353,6 +358,7 @@ export function createEmptyState(): PersistedState {
     enrichmentData: null,
     addWineState: null,
     imageData: null,
+    lockedFields: {},
     lastActivityAt: Date.now(),
   };
 }
@@ -408,6 +414,8 @@ export function createRestoreCallbacks(state: PersistedState): RestoreCallbacks 
       augmentationContext: state.augmentationContext,
       pendingNewSearch: state.pendingNewSearch,
       imageData: state.imageData,
+      lockedFields: state.lockedFields ?? {},
+      awaitingFieldCorrection: state.awaitingFieldCorrection ?? null,
     }),
 
     restoreEnrichment: () => ({
@@ -432,6 +440,8 @@ export interface RestoreCallbacks {
     augmentationContext: AugmentationContext | null;
     pendingNewSearch: string | null;
     imageData: ImageDataSlice | null;
+    lockedFields: Record<string, string | number>;
+    awaitingFieldCorrection: string | null;
   };
   restoreEnrichment: () => {
     data: EnrichmentData | null;

@@ -839,10 +839,14 @@ class WineApiClient {
     inputType: 'text' | 'image',
     priorResult: AgentIdentificationResult,
     mimeType?: string,
-    supplementaryText?: string
+    supplementaryText?: string,
+    lockedFields?: Record<string, string | number>
   ): Promise<AgentIdentificationResult> {
     // Build request body based on input type
-    const body: Record<string, unknown> = { priorResult };
+    const body: Record<string, unknown> = {
+      priorResult,
+      ...(lockedFields && Object.keys(lockedFields).length > 0 && { lockedFields }),
+    };
 
     if (inputType === 'image') {
       body.image = input;
@@ -885,7 +889,8 @@ class WineApiClient {
     onField?: StreamFieldCallback,
     onEvent?: StreamEventCallback,
     signal?: AbortSignal,
-    requestId?: string | null
+    requestId?: string | null,
+    lockedFields?: Record<string, string | number>
   ): Promise<AgentIdentificationResultWithMeta> {
     const url = `${this.baseURL}agent/identifyTextStream.php`;
 
@@ -895,7 +900,10 @@ class WineApiClient {
     const response = await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({
+        text,
+        ...(lockedFields && Object.keys(lockedFields).length > 0 && { lockedFields }),
+      }),
       signal
     });
 
@@ -993,13 +1001,17 @@ class WineApiClient {
     onField?: StreamFieldCallback,
     onEvent?: StreamEventCallback,
     signal?: AbortSignal,
-    requestId?: string | null
+    requestId?: string | null,
+    lockedFields?: Record<string, string | number>
   ): Promise<AgentIdentificationResultWithMeta> {
     const url = `${this.baseURL}agent/identifyImageStream.php`;
 
-    const body: Record<string, string> = { image: imageBase64, mimeType };
+    const body: Record<string, unknown> = { image: imageBase64, mimeType };
     if (supplementaryText) {
       body.supplementaryText = supplementaryText;
+    }
+    if (lockedFields && Object.keys(lockedFields).length > 0) {
+      body.lockedFields = lockedFields;
     }
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json', ...this.authHeaders };
