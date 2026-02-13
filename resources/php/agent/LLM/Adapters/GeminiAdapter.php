@@ -199,8 +199,20 @@ class GeminiAdapter implements LLMProviderInterface
             ];
         }
 
+        // Handle web_search option (enables Google Search grounding)
+        // Uses camelCase googleSearch — required by REST API (v1beta)
+        if ($options['web_search'] ?? false) {
+            $payload['tools'] = [['googleSearch' => new \stdClass()]];
+        }
+
         if ($options['json_response'] ?? false) {
             $payload['generationConfig']['responseMimeType'] = 'application/json';
+        }
+
+        // Structured output schema (overrides json_response when present)
+        if (!empty($options['response_schema'])) {
+            $payload['generationConfig']['responseMimeType'] = 'application/json';
+            $payload['generationConfig']['responseSchema'] = $options['response_schema'];
         }
 
         // Debug: Log context chain before LLM call

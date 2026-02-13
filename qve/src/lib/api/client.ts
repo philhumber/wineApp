@@ -892,6 +892,35 @@ class WineApiClient {
     return response.data;
   }
 
+  /**
+   * User-triggered verification with Google Search grounding.
+   * Called when user clicks "Verify" chip after fast Tier 1 image identification.
+   */
+  async verifyImage(
+    imageBase64: string,
+    mimeType: string,
+    priorResult: AgentIdentificationResult,
+    lockedFields?: Record<string, string | number>
+  ): Promise<AgentIdentificationResult> {
+    const body: Record<string, unknown> = {
+      image: imageBase64,
+      mimeType,
+      priorResult,
+      ...(lockedFields && Object.keys(lockedFields).length > 0 && { lockedFields }),
+    };
+
+    const response = await this.fetchJSON<AgentIdentificationResult>(
+      'agent/verifyImage.php',
+      body
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to verify wine identification');
+    }
+
+    return response.data;
+  }
+
   // ─────────────────────────────────────────────────────────
   // AI AGENT STREAMING IDENTIFICATION (WIN-181)
   // ─────────────────────────────────────────────────────────

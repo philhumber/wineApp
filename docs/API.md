@@ -503,15 +503,19 @@ The agent AI system identifies wines from text or images using a multi-tier LLM 
 ```mermaid
 graph TD
     A[User Input] --> B{Text or Image?}
-    B -->|Text| C[identifyText / identifyTextStream]
-    B -->|Image| D[identifyImage / identifyImageStream]
+    B -->|Text| C[identifyTextStream]
+    B -->|Image| D[identifyImageStream - Tier 1 fast]
     C --> E{Confidence OK?}
-    D --> E
-    E -->|Yes| F[Return Result]
-    E -->|No| G[Auto-Escalate Tier]
+    D --> I{Confidence >= 60?}
+    I -->|No| J[verifyImage - Tier 1.5 grounded]
+    I -->|Yes| F[Return Result + Verify chip]
+    J --> F2[Return Verified Result]
+    E -->|Yes| F3[Return Result]
+    E -->|No| G[Auto-Escalate Tier via SSE]
     G --> E
-    F -->|User clicks Try Harder| H[identifyWithOpus]
-    H --> F
+    F -->|User clicks Verify| J
+    F3 -->|User clicks Try Harder| H[identifyWithOpus]
+    H --> F3
 ```
 
 ### identifyText
@@ -574,7 +578,7 @@ const result = await api.identifyTextStream(
 
 ### identifyImageStream
 
-Streaming image identification. Fields arrive progressively via SSE.
+Streaming image identification. Fields arrive progressively via SSE. Tier 1 only (fast, ungrounded). If confidence < 60, the frontend auto-verifies via `verifyImage`.
 
 ```typescript
 const result = await api.identifyImageStream(
@@ -582,12 +586,31 @@ const result = await api.identifyImageStream(
   mimeType: string,
   supplementaryText?: string,
   onField?: (field: string, value: unknown) => void,
-  onEvent?: (event: StreamEvent) => void
+  onEvent?: (event: StreamEvent) => void,
+  signal?: AbortSignal,
+  requestId?: string,
+  lockedFields?: Record<string, string | number>
 );
 ```
 
 **Returns**: `AgentIdentificationResultWithMeta` (after stream completes)
 **PHP**: `agent/identifyImageStream.php`
+
+### verifyImage
+
+User-triggered or auto-triggered grounded verification for image identifications. Runs Tier 1.5 (grounded Gemini + detailed prompt) → optionally Tier 2 (Claude Sonnet fallback).
+
+```typescript
+const result = await api.verifyImage(
+  imageBase64: string,
+  mimeType: string,
+  priorResult: AgentIdentificationResult,
+  lockedFields?: Record<string, string | number>
+);
+```
+
+**Returns**: `AgentIdentificationResult`
+**PHP**: `agent/verifyImage.php`
 
 ---
 
@@ -922,8 +945,9 @@ interface AgentEnrichmentResult {
 | `agent/identifyText.php` | `api.identifyText()` | Text-based wine identification |
 | `agent/identifyImage.php` | `api.identifyImage()` | Image-based wine identification |
 | `agent/identifyWithOpus.php` | `api.identifyWithOpus()` | Premium Opus model escalation |
+| `agent/verifyImage.php` | `api.verifyImage()` | Grounded image verification (Tier 1.5+) |
 | `agent/identifyTextStream.php` | `api.identifyTextStream()` | Streaming text identification (SSE) |
-| `agent/identifyImageStream.php` | `api.identifyImageStream()` | Streaming image identification (SSE) |
+| `agent/identifyImageStream.php` | `api.identifyImageStream()` | Streaming image identification (SSE, Tier 1 only) |
 | `agent/agentEnrich.php` | `api.enrichWine()` | Wine enrichment (grapes, critics, drink window) |
 | `agent/agentEnrichStream.php` | `api.enrichWineStream()` | Streaming enrichment (SSE) |
 | `agent/clarifyMatch.php` | `api.clarifyMatch()` | Match clarification/disambiguation |

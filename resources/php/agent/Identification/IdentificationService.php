@@ -194,6 +194,16 @@ class IdentificationService
             $processOptions['supplementary_text'] = $options['supplementary_text'];
         }
 
+        // Enable Google Search grounding + structured output for image identification
+        $processOptions['web_search'] = true;
+        $processOptions['response_schema'] = $this->getIdentificationSchema();
+
+        // Grounding + response_schema requires at least MEDIUM thinking
+        if (empty($processOptions['thinking_level']) ||
+            in_array($processOptions['thinking_level'], ['MINIMAL', 'LOW'])) {
+            $processOptions['thinking_level'] = 'MEDIUM';
+        }
+
         return $this->visionProcessor->process($imageData, $mimeType, $processOptions);
     }
 
@@ -332,11 +342,12 @@ class IdentificationService
      * @param array $parsed The parsed wine data
      * @param string|null $userInput The original user input text
      * @param array $lockedFields User-locked fields
+     * @param bool $grounded Whether Google Search grounding was used
      * @return array Scoring result with boosted score
      */
-    private function scoreWithLockedBoost(array $parsed, ?string $userInput, array $lockedFields = []): array
+    private function scoreWithLockedBoost(array $parsed, ?string $userInput, array $lockedFields = [], bool $grounded = false): array
     {
-        $scoring = $this->scorer->score($parsed, $userInput);
+        $scoring = $this->scorer->score($parsed, $userInput, $grounded);
         if (!empty($lockedFields)) {
             $boost = count($lockedFields) * 5;
             $scoring['score'] = min(100, $scoring['score'] + $boost);
@@ -571,13 +582,24 @@ class IdentificationService
             $options['thinking_level'] = $tierConfig['thinking_level'];
         }
 
+        // No grounding on Tier 1 — keeps TTFB fast (~2s).
+        // User can manually verify via "Verify" chip → verifyImage.php → Tier 1.5 with grounding.
+
+        // Wrap callback to capture emitted fields — used as fallback if final
+        // JSON is truncated (response_schema can truncate mid-array).
+        $capturedFields = [];
+        $wrappedOnField = function ($field, $value) use ($onField, &$capturedFields) {
+            $capturedFields[$field] = $value;
+            $onField($field, $value);
+        };
+
         // Execute streaming request with image
         $response = $this->llmClient->streamCompleteWithImage(
             'identify_image',
             $prompt,
             $imageData,
             $mimeType,
-            $onField,
+            $wrappedOnField,
             $options
         );
 
@@ -606,13 +628,22 @@ class IdentificationService
         // Parse the complete response
         $parsed = \json_decode($response->content, true) ?? [];
 
+        // Fallback: if JSON was truncated but streaming detected fields, use those
+        if (empty($parsed) && !empty($capturedFields)) {
+            \error_log("[Agent] identifyStreamingImage: JSON truncated, using " . count($capturedFields) . " streamed fields");
+            $parsed = $capturedFields;
+            if (!isset($parsed['confidence'])) {
+                $parsed['confidence'] = 50; // Default when confidence wasn't reached
+            }
+        }
+
         // Apply inference and locked fields
         $result = ['success' => true, 'parsed' => $parsed];
         $result = $this->applyInference($result);
         $result = $this->applyLockedFields($result, $lockedFields);
 
-        // Score the result
-        $scoring = $this->scoreWithLockedBoost($result['parsed'], $supplementaryText, $lockedFields);
+        // Score the result (ungrounded — fast Tier 1 without Google Search)
+        $scoring = $this->scoreWithLockedBoost($result['parsed'], $supplementaryText, $lockedFields, false);
 
         $thresholds = $this->config['confidence'] ?? [];
         $tier1Threshold = $thresholds['tier1_threshold'] ?? 85;
@@ -680,11 +711,30 @@ PROMPT;
      */
     private function buildVisionPrompt(?string $supplementaryText = null): string
     {
-        $prompt = <<<PROMPT
-Identify the wine from this label image. Return ONLY JSON.
+        $prompt = <<<'PROMPT'
+Read the text on this wine label. Extract ONLY what you can literally see written on the label. Return JSON.
 
-Fields: producer (required), wineName (required), vintage (number|null), region, country, wineType ("Red"|"White"|"Rosé"|"Sparkling"|"Dessert"|"Fortified"), grapes (array), confidence (0-100).
-Null if unsure.
+STEP 1 — READ: Look at the label and identify every piece of readable text (words, numbers, names).
+STEP 2 — EXTRACT: Fill in fields ONLY from text you identified in Step 1. If a field's value is not written on the label, set it to null.
+
+RULES:
+- producer: Only if you can READ the producer/winery name on the label. null if not visible.
+- wineName: Only if a distinct wine name (not the producer) is readable. null if not visible.
+- vintage: Only if a 4-digit year is visible on the label. null if not visible.
+- region: Only if an appellation or region name is printed on the label. null if not visible.
+- country: Only if a country name is printed on the label. null if not visible.
+- wineType: Only if the wine type is stated on the label (e.g., "Red Wine"). null if not stated.
+- grapes: Only if grape varieties are listed on the label. null if not listed.
+
+CRITICAL: Return null — NEVER guess. An incorrect value is far worse than null.
+If the label is artistic, decorative, or has minimal text, most fields should be null.
+Do not infer region from producer, do not infer grapes from region, do not infer country from language.
+
+Confidence: How much text could you actually read?
+- 80-100: All key fields are clearly readable on the label
+- 50-79: Some fields readable, others unclear or partially visible
+- 20-49: Very little readable text, only 1-2 fields extractable
+- 0-19: No readable text / not a wine label
 PROMPT;
 
         if ($supplementaryText) {
@@ -705,22 +755,24 @@ PROMPT;
         return [
             'type' => 'object',
             'properties' => [
-                'producer' => ['type' => 'string'],
-                'wineName' => ['type' => 'string'],
+                'producer' => ['type' => 'string', 'nullable' => true],
+                'wineName' => ['type' => 'string', 'nullable' => true],
                 'vintage' => ['type' => 'integer', 'nullable' => true],
                 'region' => ['type' => 'string', 'nullable' => true],
                 'country' => ['type' => 'string', 'nullable' => true],
                 'wineType' => [
                     'type' => 'string',
+                    'nullable' => true,
                     'enum' => ['Red', 'White', 'Rosé', 'Sparkling', 'Dessert', 'Fortified'],
                 ],
                 'grapes' => [
                     'type' => 'array',
+                    'nullable' => true,
                     'items' => ['type' => 'string'],
                 ],
                 'confidence' => ['type' => 'integer'],
             ],
-            'required' => ['producer', 'wineName', 'confidence'],
+            'required' => ['confidence'],
             'propertyOrdering' => [
                 'producer', 'wineName', 'vintage', 'region',
                 'country', 'wineType', 'grapes', 'confidence',
@@ -902,7 +954,7 @@ PROMPT;
         if ($tier1_5Result['success']) {
             $tier1_5Result = $this->applyInference($tier1_5Result);
             $tier1_5Result = $this->applyLockedFields($tier1_5Result, $lockedFields);
-            $scoring = $this->scoreWithLockedBoost($tier1_5Result['parsed'], $supplementaryText, $lockedFields);
+            $scoring = $this->scoreWithLockedBoost($tier1_5Result['parsed'], $supplementaryText, $lockedFields, true);
             $tier1_5Result['confidence'] = $scoring['score'];
             $tier1_5Result['action'] = $scoring['action'];
 
@@ -913,7 +965,7 @@ PROMPT;
                 'thinking_level' => $detailedConfig['thinking_level'] ?? 'HIGH',
             ];
 
-            if ($tier1_5Result['confidence'] > $result['confidence']) {
+            if ($tier1_5Result['confidence'] >= $result['confidence']) {
                 $result = $tier1_5Result;
                 $escalationData['total_cost'] += $tier1_5Result['cost'] ?? 0;
             }
@@ -953,7 +1005,7 @@ PROMPT;
                     'model' => 'claude-sonnet-4-5-20250929',
                 ];
 
-                if ($claudeResult['confidence'] > $result['confidence']) {
+                if ($claudeResult['confidence'] >= $result['confidence']) {
                     $result = $claudeResult;
                     $escalationData['total_cost'] += $claudeResult['cost'] ?? 0;
                 }
@@ -1413,7 +1465,7 @@ PROMPT;
         $quality = $result['quality'] ?? null;
         $result = $this->applyInference($result);
         $result = $this->applyLockedFields($result, $lockedFields);
-        $scoring = $this->scoreWithLockedBoost($result['parsed'], $supplementaryText, $lockedFields);
+        $scoring = $this->scoreWithLockedBoost($result['parsed'], $supplementaryText, $lockedFields, true);
         $result['confidence'] = $scoring['score'];
         $result['action'] = $scoring['action'];
 
@@ -1449,7 +1501,7 @@ PROMPT;
         if ($result['success']) {
             $result = $this->applyInference($result);
             $result = $this->applyLockedFields($result, $lockedFields);
-            $scoring = $this->scoreWithLockedBoost($result['parsed'], $supplementaryText, $lockedFields);
+            $scoring = $this->scoreWithLockedBoost($result['parsed'], $supplementaryText, $lockedFields, true);
             $result['confidence'] = $scoring['score'];
             $result['action'] = $scoring['action'];
 

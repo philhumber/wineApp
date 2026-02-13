@@ -168,7 +168,7 @@ return [
         'fast' => [
             'provider' => 'gemini',
             'model' => 'gemini-3-flash-preview',
-            'thinking_level' => 'MINIMAL', //Add in some basic thinking level
+            'thinking_level' => 'MEDIUM', //Add in some basic thinking level
             // No thinking_level — pure structured output for fastest TTFB
             'description' => 'Quick identification - Tier 1',
             'temperature' => 1.0,

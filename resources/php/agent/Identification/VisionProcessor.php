@@ -173,6 +173,17 @@ PROMPT;
             $llmOptions['model'] = $options['model'];
         }
 
+        // Pass through web_search for Google Search grounding
+        if ($options['web_search'] ?? false) {
+            $llmOptions['web_search'] = true;
+        }
+
+        // Pass through response_schema for structured output (supersedes json_response)
+        if (!empty($options['response_schema'])) {
+            $llmOptions['response_schema'] = $options['response_schema'];
+            unset($llmOptions['json_response']);
+        }
+
         $response = $this->llmClient->completeWithImage(
             'identify_image',
             $prompt,
@@ -233,46 +244,27 @@ PROMPT;
     private function getDetailedPrompt(): string
     {
         return <<<'PROMPT'
-You are a master sommelier with expertise in wine label identification. Examine this wine label image with great care.
+Identify the wine from this label image. Use web search to verify your identification.
 
-Use your extensive knowledge to identify this wine:
-- Look closely at all text, even small or stylized fonts
-- Consider the label design style to help identify the region
-- For European wines, look for appellation markers (AOC, DOCG, etc.)
-- For premium wines, recognize estate names and classify growths
-- Examine any medallions, awards, or certifications
-- Look for alcohol percentage which can indicate wine style
-- Consider bottle shape if visible (Burgundy, Bordeaux, Alsace, etc.)
+Analysis steps:
+- Read all visible text carefully, including small or stylized fonts
+- Look for appellation markers (AOC, DOCG, etc.), alcohol %, awards
+- Search for the producer and wine name to verify they exist
+- Only fill fields with data you can READ on the label or VERIFY via search
 
-CRITICAL - Confidence Scoring:
-- HIGH confidence (80-100): Text is clearly readable AND you recognize this as a real wine
-- MEDIUM confidence (50-79): Text is partially readable or you're unsure if the wine exists
-- LOW confidence (0-49): Text is unclear, or the label doesn't match a wine you recognize
+CRITICAL RULES:
+- Do NOT guess or infer producer, region, or country from visual style alone
+- Do NOT fill fields with plausible-sounding data you cannot verify
+- Use null for any field you cannot read on the label or confirm via search
+- grapes: Only include if stated on label or confirmed via search for this specific wine
 
-Base confidence on BOTH readability AND whether this is a real wine you know.
-Do NOT give high confidence just because you can fill in plausible regional data.
+Confidence guide:
+- 80-100: Text clearly readable AND verified as a real wine via search
+- 50-79: Partially readable OR search results are inconclusive
+- 0-39: Cannot read label text OR search finds no matching wine
 
-Extract these fields (use null if uncertain):
-- producer: The full winery/producer name (only if clearly readable AND a real producer)
-- wineName: The specific wine/cuvée name if different from producer
-- vintage: The year (4 digits) - look carefully, sometimes in small print
-- region: The wine region or appellation (be specific)
-- country: Country of origin
-- wineType: Red, White, Rosé, Sparkling, Dessert, or Fortified
-- grapes: Array of likely grape varieties (infer from appellation if not stated)
-- confidence: Your confidence score (0-100) that this is a REAL, IDENTIFIABLE wine
-
-Respond ONLY with valid JSON:
-{
-  "producer": "string or null",
-  "wineName": "string or null",
-  "vintage": "string or null",
-  "region": "string or null",
-  "country": "string or null",
-  "wineType": "string or null",
-  "grapes": ["array"] or null,
-  "confidence": number
-}
+Fields: producer, wineName, vintage (number|null), region, country, wineType ("Red"|"White"|"Rosé"|"Sparkling"|"Dessert"|"Fortified"), grapes (array), confidence (0-100).
+Null if unsure.
 PROMPT;
     }
 
@@ -287,6 +279,11 @@ PROMPT;
         if (empty($content)) {
             return null;
         }
+
+        // Strip Google Search grounding citation markers before JSON parsing
+        // (matches WebSearchEnricher::cleanAndParseJSON pattern)
+        $content = preg_replace('/\[\[\d+\]\([^\)]*\)\]/', '', $content);
+        $content = preg_replace('/\[\d+\]/', '', $content);
 
         // Try direct JSON parse
         $parsed = json_decode($content, true);

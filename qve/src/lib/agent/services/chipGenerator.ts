@@ -29,6 +29,14 @@ export function generateConfirmationChips(): AgentChip[] {
 }
 
 /**
+ * Generate confirmation chips for image identification results.
+ * Includes "Verify" so the user can trigger grounded web search verification.
+ */
+export function generateImageConfirmationChips(): AgentChip[] {
+  return getChips(ChipKey.CORRECT, ChipKey.VERIFY, ChipKey.NOT_CORRECT);
+}
+
+/**
  * Generate confirmation chips after a field correction.
  * Includes "Look Closer" so the user can escalate with locked fields.
  */

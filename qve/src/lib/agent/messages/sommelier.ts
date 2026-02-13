@@ -78,6 +78,9 @@ export const sommelierMessages: PersonalityMessages = {
   [MessageKey.ID_ESCALATING]:
     'Let me look more carefully. Some wines don\'t reveal themselves on the first glance.',
 
+  [MessageKey.ID_VERIFYING]:
+    'Let me consult my sources. A proper identification deserves verification.',
+
   [MessageKey.ID_MULTIPLE_MATCHES]:
     'I found a few candidates. Even I can\'t narrow it further without your help—which one is it?',
 
@@ -235,6 +238,7 @@ export const sommelierMessages: PersonalityMessages = {
   [MessageKey.CHIP_SEARCH_AGAIN]: 'Search Again',
   [MessageKey.CHIP_CORRECT_FIELD]: 'Correct Field',
   [MessageKey.CHIP_CONFIRM_CORRECTIONS]: 'Looks Good',
+  [MessageKey.CHIP_VERIFY]: 'Verify',
 
   // ===========================================
   // IDENTIFICATION - Extended

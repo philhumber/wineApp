@@ -135,84 +135,16 @@ try {
         'streamed' => $result['streamed'] ?? true,
     ]);
 
-    // Check if escalation is needed
-    $tier1Threshold = $config['confidence']['tier1_threshold'] ?? 85;
-    $needsEscalation = $result['confidence'] < $tier1Threshold && ($config['streaming']['tier1_only'] ?? true);
-
-    if ($needsEscalation) {
-        // WIN-227: Skip escalation if client cancelled
-        if (isRequestCancelled()) {
-            error_log("[Agent] identifyImage: CANCELLED before escalation (confidence={$result['confidence']})");
-            sendSSE('done', []);
-            exit;
-        }
-
-        error_log("[Agent] identifyImage: refining (streaming confidence={$result['confidence']}, threshold={$tier1Threshold})");
-        sendSSE('refining', ['message' => 'Looking deeper...', 'tier1Confidence' => $result['confidence']]);
-
-        // Run escalation starting from Tier 1.5 (skips redundant Tier 1)
-        $escalatedResult = $service->identifyEscalateOnly($identifyInput, $result, 'image');
-
-        if ($escalatedResult['success'] && $escalatedResult['confidence'] > $result['confidence']) {
-            // Emit only changed fields for progressive update
-            $tier1Parsed = $result['parsed'] ?? [];
-            $refinedParsed = $escalatedResult['parsed'] ?? [];
-            $fieldOrder = ['producer', 'wineName', 'vintage', 'region', 'country', 'wineType', 'grapes'];
-
-            foreach ($fieldOrder as $field) {
-                if (isset($refinedParsed[$field]) && $refinedParsed[$field] !== null
-                    && (!isset($tier1Parsed[$field]) || $tier1Parsed[$field] !== $refinedParsed[$field])) {
-                    sendSSE('field', ['field' => $field, 'value' => $refinedParsed[$field]]);
-                    usleep(50000);
-                }
-            }
-
-            if ($escalatedResult['confidence'] !== $result['confidence']) {
-                sendSSE('field', ['field' => 'confidence', 'value' => $escalatedResult['confidence']]);
-            }
-
-            sendSSE('refined', [
-                'inputType' => 'image',
-                'intent' => $escalatedResult['intent'] ?? 'add',
-                'parsed' => $escalatedResult['parsed'],
-                'confidence' => $escalatedResult['confidence'],
-                'action' => $escalatedResult['action'],
-                'candidates' => $escalatedResult['candidates'] ?? [],
-                'usage' => $escalatedResult['usage'] ?? null,
-                'quality' => $escalatedResult['quality'] ?? null,
-                'escalation' => $escalatedResult['escalation'] ?? null,
-                'inferences_applied' => $escalatedResult['inferences_applied'] ?? [],
-                'streamed' => false,
-                'escalated' => true,
-            ]);
-        } else {
-            sendSSE('refined', [
-                'inputType' => 'image',
-                'intent' => $result['intent'] ?? 'add',
-                'parsed' => $result['parsed'],
-                'confidence' => $result['confidence'],
-                'action' => $result['action'],
-                'candidates' => $result['candidates'] ?? [],
-                'usage' => $result['usage'] ?? null,
-                'quality' => $result['quality'] ?? null,
-                'escalation' => $result['escalation'] ?? null,
-                'inferences_applied' => $result['inferences_applied'] ?? [],
-                'streamed' => $result['streamed'] ?? true,
-                'escalated' => false,
-            ]);
-        }
-    }
+    // No auto-escalation — user controls verification via "Verify" chip → verifyImage.php
 
     // Log identification result for analytics (WIN-181)
     $llmClient = getAgentLLMClient($userId);
-    $finalResult = $needsEscalation && isset($escalatedResult) && $escalatedResult['success'] && $escalatedResult['confidence'] > $result['confidence']
-        ? $escalatedResult
-        : $result;
+    $finalResult = $result;
 
     $producer = $finalResult['parsed']['producer'] ?? '?';
     $wine = $finalResult['parsed']['wineName'] ?? '?';
     $conf = $finalResult['confidence'] ?? 0;
-    $tier = $finalResult['escalation']['final_tier'] ?? ($needsEscalation ? 'escalated' : 'tier1');
+    $tier = $finalResult['escalation']['final_tier'] ?? 'tier1';
     error_log("[Agent] identifyImage: done producer=\"{$producer}\" wine=\"{$wine}\" confidence={$conf} tier={$tier}");
 
     try {

@@ -311,15 +311,23 @@ State survives mobile browser tab switches (e.g., switching to Camera app). See 
 
 ### Confidence Handling (Gotcha)
 
-- **Scoring**: `InputMatchScorer` extracts anchors from user input (vintage, grapes, regions, appellations, name tokens) and matches them against LLM output fields. Score = `min(anchorMatchScore, specificityCap) + completenessBonus`, clamped 0-100
+- **Text scoring**: `InputMatchScorer` extracts anchors from user input (vintage, grapes, regions, appellations, name tokens) and matches them against LLM output fields. Score = `min(anchorMatchScore, specificityCap) + completenessBonus`, clamped 0-100
 - **Specificity cap**: Based on **original** anchor weight from user input (not inflated by matching mechanics). Formula: `min(95, max(50, 50 + totalWeight * 15))`
 - **Appellation cross-check**: Appellations consumed as geographic matches are also verified against wine name/producer to distinguish same-appellation wines (e.g., Château Margaux vs Château Palmer)
-- **Image fallback**: No text anchors available → uses `min(70, fieldCompleteness * 0.7 + llmConfidence * 0.3)`, capped at 70
+- **Image fallback** (`scoreImageFallback`): No text anchors → `fieldCompleteness * 0.7 + effectiveLLMConf * 0.3`. LLM confidence is **capped by field completeness** (`min(llmConf, fieldCompleteness)`) — can't be more confident than the data you have. Ungrounded cap: 70. Grounded: no cap.
 - **Placeholder filtering**: Producer values like "Unknown", "N/A" don't count toward completeness bonus
-- **API format**: PHP returns confidence as **percentage (0-100)**, e.g., `18` = 18%
-- **Internal format**: `analyzeResultQuality()` normalizes to **decimal (0-1)** for threshold comparisons
-- **Thresholds**: `LOW_CONFIDENCE_THRESHOLD = 0.7`, `ESCALATION_CONFIDENCE_THRESHOLD = 0.6`
+- **API format**: PHP returns confidence as **percentage (0-100)**, e.g., `38` = 38%
+- **Frontend normalization**: `analyzeResultQuality()` and `handleIdentificationResultFlow()` normalize with `confidence > 1 ? confidence / 100 : confidence` before threshold comparisons
+- **Thresholds**: `LOW_CONFIDENCE_THRESHOLD = 0.7` (decimal), `ESCALATION_CONFIDENCE_THRESHOLD = 0.6` (decimal), `AUTO_VERIFY_THRESHOLD = 60` (percentage, in handler)
 - **Always use** `identification.getConfidence()` as the authoritative source — `result.confidence` may be lost through serialization during field accumulation flows
+
+### Image Identification & Verification
+
+- **Tier 1** (fast, ~2s): Ungrounded Gemini Flash with MINIMAL thinking. Prompt is framed as "read text on the label" — not "identify wine" — to reduce hallucination. Schema has all fields nullable.
+- **Auto-verify**: If Tier 1 confidence < 60, frontend automatically triggers `verifyImage.php` (grounded Tier 1.5 with MEDIUM+ thinking). Streaming card stays visible with "Refining..." badge during verification.
+- **Manual verify**: If confidence >= 60, user sees Correct / Verify / Not Correct chips. "Verify" triggers the same `verifyImage.php` endpoint.
+- **Verify endpoint**: `verifyImage.php` → `identifyEscalateOnly()` → Tier 1.5 (grounded + detailed prompt) → optionally Tier 2 (Claude Sonnet fallback)
+- **After verification**: Shows standard confirmation chips (no Verify chip — already verified)
 
 ### Streaming Card vs Message Card (Gotcha)
 
@@ -439,6 +447,7 @@ Endpoints in `resources/php/`:
 | `identifyText.php` | Text-based wine identification |
 | `identifyImage.php` | Image-based wine identification |
 | `identifyWithOpus.php` | Premium Opus model escalation |
+| `verifyImage.php` | Grounded image verification (Tier 1.5+) |
 | `agentEnrich.php` | Wine enrichment (grapes, critics, drink window) |
 | `clarifyMatch.php` | Match clarification/disambiguation |
 | `identifyTextStream.php` | Streaming text identification |

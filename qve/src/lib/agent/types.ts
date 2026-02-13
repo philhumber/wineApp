@@ -199,7 +199,8 @@ export type IdentificationAction =
   | { type: 'reidentify'; messageId: string }
   | { type: 'continue_as_is'; messageId: string }
   | { type: 'correct_field'; messageId: string; payload: { field: string } }
-  | { type: 'confirm_corrections'; messageId: string };
+  | { type: 'confirm_corrections'; messageId: string }
+  | { type: 'verify'; messageId: string };
 
 // Wine Flow Actions
 export type WineFlowAction =

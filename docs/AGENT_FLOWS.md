@@ -87,13 +87,15 @@ Example: **[That's Right]** `correct` means a primary chip labeled "That's Right
 
 ---
 
-### 3b. Low Confidence Path (< 0.7)
+### 3b. Low Confidence Path (< 70%)
 
 Same as 3a but step 4 uses the low-confidence message:
 
 | Step | Phase | Agent Says | Chips |
 |------|-------|-----------|-------|
 | 4 | `confirming` | "I have a suspicion this is *Château Margaux*, though I'd rather be certain than confident. Does this look right?" | **[That's Right]** `correct` · [Not Quite] `not_correct` |
+
+For **image** identifications, chips also include [Verify] `verify` between Correct and Not Correct (see [4. Image Identification Flow]).
 
 **Same branching as 3a.**
 
@@ -178,9 +180,9 @@ If low confidence + can escalate: additional chip **[Look Closer]** `try_opus`
 
 ---
 
-### 3h. Tier 2 Auto-Escalation During Streaming
+### 3h. Text Tier 2 Auto-Escalation During Streaming
 
-**Trigger**: During SSE streaming, backend sends `refining` event (Tier 2 started), then `refined` event with improved result.
+**Trigger**: During **text** SSE streaming, backend sends `refining` event (Tier 2 started), then `refined` event with improved result.
 
 | Step | Phase | Agent Says | Chips |
 |------|-------|-----------|-------|
@@ -189,6 +191,8 @@ If low confidence + can escalate: additional chip **[Look Closer]** `try_opus`
 | | | *(escalated result replaces Tier 1 if confidence improved)* | |
 
 This is invisible to the user except for the "Refining..." badge. The final result shown is whichever tier produced higher confidence. Flow continues to 3a-3g based on the final result.
+
+**Note**: Image identification does NOT use backend auto-escalation. See [4. Image Identification Flow] for image-specific escalation.
 
 ---
 
@@ -203,12 +207,53 @@ This is invisible to the user except for the "Refining..." badge. The final resu
 | 2 | `identifying` | "Analyzing the label. The details matter." *(1 of 3)* | — |
 | | | *(streaming card shows fields arriving)* | |
 
-**Result branches are identical to Text Identification (3a-3h).**
+**Tier 1 prompt**: Framed as "read text on this label" (not "identify wine") to reduce hallucination. All schema fields are nullable — the LLM returns null for anything it can't literally read on the label.
 
-The only differences from text flow:
+**After Tier 1 completes, two paths based on confidence:**
+
+### 4a. Auto-Verify (confidence < 60%)
+
+When Tier 1 returns low confidence (< 60), the frontend automatically triggers grounded verification.
+
+| Step | Phase | Agent Says | Chips |
+|------|-------|-----------|-------|
+| 3 | `identifying` | *(streaming card stays visible with "Refining..." badge)* | — |
+| | | "Let me verify this with a web search..." | — |
+| 4 | `confirming` | *(streaming fields update in-place with verified data, then transition to message card)* | — |
+| 5 | `confirming` | Confidence-appropriate message (see 3a/3b) | **[That's Right]** `correct` · [Not Quite] `not_correct` |
+
+The verify call hits `verifyImage.php` → `identifyEscalateOnly()` → Tier 1.5 (grounded Gemini + detailed prompt) → optionally Tier 2 (Claude Sonnet fallback).
+
+If verification fails, falls back to showing the original Tier 1 result with the [Verify] chip.
+
+### 4b. Manual Verify (confidence >= 60%)
+
+| Step | Phase | Agent Says | Chips |
+|------|-------|-----------|-------|
+| 3 | `confirming` | Wine Card (producer, name, vintage, region, confidence %) | — |
+| 4 | `confirming` | Confidence-appropriate message (see 3a/3b) | **[That's Right]** `correct` · [Verify] `verify` · [Not Quite] `not_correct` |
+
+**User taps "Verify"** → Go to [4c. Manual Verify Flow]
+**Other chips** → Same branching as 3a.
+
+### 4c. Manual Verify Flow
+
+**Trigger**: User taps [Verify] chip on an image result.
+
+| Step | Phase | Agent Says | Chips |
+|------|-------|-----------|-------|
+| 1 | `identifying` | "Let me verify this with a web search..." | — |
+| 2 | `confirming` | Wine Card (verified result — possibly updated fields and confidence) | — |
+| 3 | `confirming` | Confidence-appropriate message | **[That's Right]** `correct` · [Not Quite] `not_correct` |
+
+After verification, no [Verify] chip is shown — the result is already verified.
+
+### Image flow differences from text
 - User message is an image (not text)
 - Typing indicator uses `ID_ANALYZING` instead of `ID_THINKING`
 - Image data is stored for potential re-identification with supplementary text
+- Confirmation chips include [Verify] for manual grounded verification (text flow does not)
+- Auto-escalation happens in frontend (not backend SSE events)
 
 ---
 

@@ -23,6 +23,7 @@ export {
 // Chip Generation
 export {
   generateConfirmationChips,
+  generateImageConfirmationChips,
   generateCorrectionConfirmationChips,
   generateIncompleteChips,
   generateEscalationChips,

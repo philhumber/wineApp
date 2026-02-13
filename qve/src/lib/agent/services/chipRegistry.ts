@@ -89,6 +89,9 @@ export enum ChipKey {
   SEARCH_AGAIN = 'search_again',
   USE_THIS_RESULT = 'use_this_result',
 
+  // Verification
+  VERIFY = 'verify',
+
   // Field Correction
   CORRECT_FIELD = 'correct_field',
   CONFIRM_CORRECTIONS = 'confirm_corrections',
@@ -317,6 +320,13 @@ const CHIP_DEFINITIONS: Record<ChipKey, ChipDefinition> = {
     id: 'use_anyway',
     action: 'continue_as_is',
     messageKey: MessageKey.CHIP_USE_THIS_RESULT,
+  },
+
+  // Verification
+  [ChipKey.VERIFY]: {
+    id: 'verify',
+    action: 'verify',
+    messageKey: MessageKey.CHIP_VERIFY,
   },
 
   // Field Correction

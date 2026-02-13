@@ -126,6 +126,12 @@ const defaultPrerequisites: Record<string, ActionPrerequisites> = {
     requiresPhase: ['confirming', 'awaiting_input'],
   },
 
+  // Verify (grounded web search) requires identification and confirming phase
+  verify: {
+    requiresIdentification: true,
+    requiresPhase: ['confirming'],
+  },
+
   // Retry requires being in error state or having recent action
   retry: {
     // Retry validation is handled by retry tracker, not phase

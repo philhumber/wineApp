@@ -26,6 +26,7 @@ import { AgentError } from '$lib/api/types';
 import {
   analyzeResultQuality,
   generateConfirmationChips,
+  generateImageConfirmationChips,
   generateIncompleteChips,
   generateActionChips,
   generateErrorChips,
@@ -70,7 +71,8 @@ type IdentificationActionType =
   | 'see_result'
   | 'identify'
   | 'correct_field'
-  | 'confirm_corrections';
+  | 'confirm_corrections'
+  | 'verify';
 
 // ===========================================
 // Type Conversion Helpers
@@ -106,7 +108,8 @@ function convertParsedWineToResult(
  */
 function handleIdentificationResultFlow(
   wineResult: WineIdentificationResult,
-  confidence: number
+  confidence: number,
+  options?: { skipVerifyChip?: boolean }
 ): void {
   const wineName = [wineResult.producer, wineResult.wineName]
     .filter(Boolean)
@@ -130,13 +133,18 @@ function handleIdentificationResultFlow(
 
   // Case 1: We have producer and/or wine name - show confirmation chips
   if (hasProducerOrWineName) {
-    const messageKey = confidence < 0.7 ? MessageKey.ID_LOW_CONFIDENCE : MessageKey.ID_FOUND;
+    const normalizedConf = confidence > 1 ? confidence / 100 : confidence;
+    const messageKey = normalizedConf < 0.7 ? MessageKey.ID_LOW_CONFIDENCE : MessageKey.ID_FOUND;
     conversation.addMessage(
       conversation.createTextMessage(getMessageByKey(messageKey, { wineName }))
     );
 
+    // Image identifications get a "Verify" chip for optional grounded verification
+    // (skip if already auto-verified via escalation)
+    const isImage = identification.getCurrentState().inputType === 'image';
+    const chips = (isImage && !options?.skipVerifyChip) ? generateImageConfirmationChips() : generateConfirmationChips();
     conversation.addMessage(
-      conversation.createChipsMessage(generateConfirmationChips())
+      conversation.createChipsMessage(chips)
     );
 
     conversation.setPhase('confirming');
@@ -459,9 +467,61 @@ async function executeImageIdentification(
     const finalParsed = esc ? esc.parsed : result.parsed;
     const finalConfidence = esc ? esc.confidence : result.confidence;
 
-    const wineResult = convertParsedWineToResult(finalParsed, finalConfidence);
+    let wineResult = convertParsedWineToResult(finalParsed, finalConfidence);
     applyLockedFieldsClient(wineResult, lockedFields);
-    identification.setResult(wineResult, finalConfidence); // Clears streamingFields + isEscalating
+
+    // Auto-verify low confidence images — the honest prompt now gives
+    // meaningful scores, so we can trust < 60 means the label was hard to read.
+    // Don't call setResult() yet — keep the streaming card visible with
+    // the "Refining..." badge during verification.
+    const AUTO_VERIFY_THRESHOLD = 60;
+    if ((finalConfidence ?? 0) < AUTO_VERIFY_THRESHOLD) {
+      identification.startEscalation(2);
+      conversation.addTypingMessage(getMessageByKey(MessageKey.ID_VERIFYING));
+
+      try {
+        const priorResult = {
+          intent: 'add' as const,
+          parsed: finalParsed as AgentParsedWine,
+          confidence: finalConfidence ?? 0,
+          action: 'suggest' as const,
+          candidates: [],
+        };
+
+        const verified = await api.verifyImage(data, mimeType, priorResult, lockedFields);
+
+        if (wasCancelled()) return;
+
+        conversation.removeTypingMessage();
+
+        // Update streaming fields in-place so the card refreshes before transitioning
+        const vp = verified.parsed;
+        for (const [field, value] of Object.entries(vp)) {
+          if (value != null && field !== 'confidence') {
+            const display = Array.isArray(value) ? value.join(', ') : String(value);
+            identification.updateStreamingField(field, display, false);
+          }
+        }
+        if (verified.confidence != null) {
+          identification.updateStreamingField('confidence', String(verified.confidence), false);
+        }
+
+        wineResult = convertParsedWineToResult(verified.parsed, verified.confidence);
+        applyLockedFieldsClient(wineResult, lockedFields);
+
+        // Transition streaming card → message card
+        identification.setResult(wineResult, verified.confidence);
+        handleIdentificationResultFlow(wineResult, verified.confidence, { skipVerifyChip: true });
+        return;
+      } catch (verifyError) {
+        // Verification failed — show original Tier 1 result with Verify chip
+        conversation.removeTypingMessage();
+        identification.completeEscalation();
+      }
+    }
+
+    // Normal flow (high confidence or failed verification fallback)
+    identification.setResult(wineResult, finalConfidence);
     handleIdentificationResultFlow(wineResult, finalConfidence ?? 1);
 
   } catch (error) {
@@ -1207,7 +1267,8 @@ async function handleTryOpus(messageId: string): Promise<void> {
 
     let foundMessage: string;
     if (wineName) {
-      const messageKey = (result.confidence ?? 1) < 0.7 ? MessageKey.ID_LOW_CONFIDENCE : MessageKey.ID_FOUND;
+      const opusConf = (result.confidence ?? 100) > 1 ? (result.confidence ?? 100) / 100 : (result.confidence ?? 1);
+      const messageKey = opusConf < 0.7 ? MessageKey.ID_LOW_CONFIDENCE : MessageKey.ID_FOUND;
       foundMessage = getMessageByKey(messageKey, { wineName });
     } else if (wineResult.grapes?.length) {
       foundMessage = getMessageByKey(MessageKey.ID_GRAPE_ONLY, { grape: wineResult.grapes[0] });
@@ -1218,6 +1279,93 @@ async function handleTryOpus(messageId: string): Promise<void> {
       conversation.createTextMessage(foundMessage)
     );
 
+    conversation.addMessage(
+      conversation.createChipsMessage(generateConfirmationChips())
+    );
+
+    conversation.setPhase('confirming');
+
+  } catch (error) {
+    conversation.removeTypingMessage();
+    identification.completeEscalation();
+    handleIdentificationError(error);
+  }
+}
+
+// ===========================================
+// Verify Handler (grounded web search)
+// ===========================================
+
+async function handleVerify(messageId: string): Promise<void> {
+  conversation.disableMessage(messageId);
+
+  identification.startEscalation(2);
+  conversation.setPhase('identifying');
+
+  conversation.addTypingMessage(getMessageByKey(MessageKey.ID_VERIFYING));
+
+  try {
+    const currentResult = identification.getResult();
+    const imageData = identification.getCurrentState().lastImageData;
+
+    if (!imageData?.data) {
+      throw new Error('No image data available for verification');
+    }
+
+    const lockedFields = identification.getLockedFields();
+
+    const priorResult = {
+      intent: 'add' as const,
+      parsed: (currentResult ?? {}) as AgentParsedWine,
+      confidence: currentResult?.confidence ?? 0,
+      action: 'suggest' as const,
+      candidates: [],
+    };
+
+    const result = await api.verifyImage(
+      imageData.data,
+      imageData.mimeType,
+      priorResult,
+      lockedFields
+    );
+
+    conversation.removeTypingMessage();
+    const wineResult = convertParsedWineToResult(result.parsed, result.confidence);
+    applyLockedFieldsClient(wineResult, lockedFields);
+    identification.setResult(wineResult, result.confidence);
+    identification.completeEscalation();
+
+    const wineName = [wineResult.producer, wineResult.wineName]
+      .filter(Boolean)
+      .join(' ');
+
+    if (wineName || wineResult.grapes?.length) {
+      conversation.addMessage({
+        category: 'wine_result',
+        role: 'agent',
+        data: {
+          category: 'wine_result',
+          result: wineResult,
+          confidence: result.confidence,
+        },
+      });
+    }
+
+    let foundMessage: string;
+    if (wineName) {
+      const verifyConf = (result.confidence ?? 100) > 1 ? (result.confidence ?? 100) / 100 : (result.confidence ?? 1);
+      const messageKey = verifyConf < 0.7 ? MessageKey.ID_LOW_CONFIDENCE : MessageKey.ID_FOUND;
+      foundMessage = getMessageByKey(messageKey, { wineName });
+    } else if (wineResult.grapes?.length) {
+      foundMessage = getMessageByKey(MessageKey.ID_GRAPE_ONLY, { grape: wineResult.grapes[0] });
+    } else {
+      foundMessage = getMessageByKey(MessageKey.ID_NOT_FOUND);
+    }
+    conversation.addMessage(
+      conversation.createTextMessage(foundMessage)
+    );
+
+    // After verification, show standard confirmation (no Verify chip — already verified)
     conversation.addMessage(
       conversation.createChipsMessage(generateConfirmationChips())
     );
@@ -1301,6 +1449,7 @@ export function isIdentificationAction(type: string): type is IdentificationActi
     'identify',
     'correct_field',
     'confirm_corrections',
+    'verify',
   ].includes(type);
 }
 
@@ -1320,6 +1469,10 @@ export async function handleIdentificationAction(action: AgentAction): Promise<v
 
     case 'try_opus':
       await handleTryOpus(action.messageId ?? '');
+      break;
+
+    case 'verify':
+      await handleVerify(action.messageId ?? '');
       break;
 
     case 'reidentify':

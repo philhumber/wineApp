@@ -57,6 +57,7 @@ export const neutralMessages: PersonalityMessages = {
     `I'm not entirely sure, but this might be ${wn(ctx.wineName || 'the wine you\'re looking for')}.`,
 
   [MessageKey.ID_ESCALATING]: 'Let me take a closer look at this...',
+  [MessageKey.ID_VERIFYING]: 'Let me verify this with a web search...',
 
   [MessageKey.ID_MULTIPLE_MATCHES]: 'I found a few possibilities. Which one looks right?',
 
@@ -171,6 +172,7 @@ export const neutralMessages: PersonalityMessages = {
   [MessageKey.CHIP_SEARCH_AGAIN]: 'Search Again',
   [MessageKey.CHIP_CORRECT_FIELD]: 'Correct Field',
   [MessageKey.CHIP_CONFIRM_CORRECTIONS]: 'Looks Good',
+  [MessageKey.CHIP_VERIFY]: 'Verify',
 
   // ===========================================
   // IDENTIFICATION - Extended

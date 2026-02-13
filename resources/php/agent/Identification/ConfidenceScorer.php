@@ -56,17 +56,18 @@ class ConfidenceScorer
      *
      * @param array $parsed Parsed wine data from LLM
      * @param string|null $userInput Original user input text (null for image-only)
+     * @param bool $grounded Whether Google Search grounding was used
      * @return array Scoring result with score, action, and details
      */
-    public function score(array $parsed, ?string $userInput = null): array
+    public function score(array $parsed, ?string $userInput = null, bool $grounded = false): array
     {
         // Delegate to InputMatchScorer when available
         if ($this->inputMatchScorer !== null) {
             if ($userInput !== null && $userInput !== '') {
                 return $this->inputMatchScorer->score($userInput, $parsed, $this->thresholds);
             }
-            // Image-only: use image fallback
-            return $this->inputMatchScorer->scoreImageFallback($parsed, $parsed['confidence'] ?? 50, $this->thresholds);
+            // Image-only: use image fallback (grounded flag raises cap from 70 to 80)
+            return $this->inputMatchScorer->scoreImageFallback($parsed, $parsed['confidence'] ?? 50, $this->thresholds, $grounded);
         }
 
         // Legacy 70/30 blend — retained for backward compatibility if InputMatchScorer

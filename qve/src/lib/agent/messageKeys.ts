@@ -30,6 +30,7 @@ export enum MessageKey {
   ID_NOT_FOUND = 'identification.notFound',
   ID_LOW_CONFIDENCE = 'identification.lowConfidence',
   ID_ESCALATING = 'identification.escalating',
+  ID_VERIFYING = 'identification.verifying',
   ID_MULTIPLE_MATCHES = 'identification.multipleMatches',
   ID_NEEDS_MORE_INFO = 'identification.needMoreInfo',
   ID_MISSING_WINE_NAME = 'identification.missingWineName',
@@ -218,4 +219,5 @@ export enum MessageKey {
   CHIP_SEARCH_AGAIN = 'chips.searchAgain',
   CHIP_CORRECT_FIELD = 'chips.correctField',
   CHIP_CONFIRM_CORRECTIONS = 'chips.confirmCorrections',
+  CHIP_VERIFY = 'chips.verify',
 }

@@ -126,9 +126,10 @@ class InputMatchScorer
      * @param array $parsed LLM parsed result
      * @param int $llmConfidence LLM's own confidence (0-100)
      * @param array $thresholds {auto_populate, suggest, user_choice}
+     * @param bool $grounded Whether Google Search grounding was used (raises cap from 70 to 80)
      * @return array Score result matching ConfidenceScorer return shape
      */
-    public function scoreImageFallback(array $parsed, int $llmConfidence, array $thresholds): array
+    public function scoreImageFallback(array $parsed, int $llmConfidence, array $thresholds, bool $grounded = false): array
     {
         // Image fallback checks 7 fields (including country, wineType) vs text path's 5,
         // because image identification can extract visual cues for type/country from labels
@@ -142,13 +143,20 @@ class InputMatchScorer
         }
 
         $fieldCompleteness = round(count($presentFields) / 7 * 100);
-        $blendedScore = ($fieldCompleteness * 0.7) + ($llmConfidence * 0.3);
-        $finalScore = min(70, round($blendedScore));
+        // LLM confidence can't exceed field completeness — you can't be
+        // more confident than the data you have
+        $effectiveLLMConf = min($llmConfidence, $fieldCompleteness);
+        $blendedScore = ($fieldCompleteness * 0.7) + ($effectiveLLMConf * 0.3);
+        // Grounded: web search provides external verification, no cap needed
+        // Ungrounded: no verification, conservative cap (70)
+        $cap = $grounded ? null : 70;
+        $finalScore = $cap !== null ? min($cap, round($blendedScore)) : round($blendedScore);
         $finalScore = max(0, min(100, $finalScore));
 
         $action = $this->determineAction($finalScore, $thresholds);
 
-        error_log("[InputMatchScorer] imageFallback: fieldCompleteness={$fieldCompleteness}, llmConf={$llmConfidence}, blended={$blendedScore}, final={$finalScore}");
+        $capLabel = $cap !== null ? $cap : 'none';
+        error_log("[InputMatchScorer] imageFallback: fieldCompleteness={$fieldCompleteness}, llmConf={$llmConfidence}, effectiveLLMConf={$effectiveLLMConf}, blended={$blendedScore}, cap={$capLabel}, grounded=" . ($grounded ? 'true' : 'false') . ", final={$finalScore}");
 
         return [
             'score' => (int) $finalScore,
@@ -159,8 +167,11 @@ class InputMatchScorer
             'thresholds' => $thresholds,
             'trace' => [
                 'imageFallback' => true,
+                'grounded' => $grounded,
+                'cap' => $cap,
                 'presentFields' => $presentFields,
                 'fieldCompleteness' => $fieldCompleteness,
+                'effectiveLLMConf' => $effectiveLLMConf,
                 'blendedScore' => $blendedScore,
             ],
         ];
