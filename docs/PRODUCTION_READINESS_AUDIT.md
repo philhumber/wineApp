@@ -312,9 +312,9 @@ All modals (`DrinkRateModal`, `AddBottleModal`, `ConfirmModal`, `SettingsModal`,
 **A-I3. `agent-test` Route Ships to Production** -- **FIXED**
 Route deleted. The 580-line dev testing page no longer ships to production builds.
 
-**A-I4. Deploy Script Missing Branch Check**
-`deploy.ps1` doesn't verify git branch or check for uncommitted changes before deploying.
-**Fix**: Require `main` branch (with override flag), warn on uncommitted changes.
+**A-I4. Deploy Script Missing Branch Check** -- **FIXED**
+~~`deploy.ps1` doesn't verify git branch or check for uncommitted changes before deploying.~~
+Deploy script now requires `develop` branch, checks for uncommitted changes, and verifies local is up to date with `origin/develop`. All checks support `-Force` override. Production deploys (main) handled by GitHub Actions.
 
 **A-I5. No Frontend Error Tracking or Monitoring**
 No APM (Sentry, etc.), no global error handler for unhandled promise rejections. No health check endpoint.

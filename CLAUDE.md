@@ -39,11 +39,12 @@ git checkout -b feature/WINE-XX-description
 # Database connection
 mysql -h 10.0.0.16 -u username -p winelist
 
-# Deploy to production (PowerShell)
+# Deploy to staging (PowerShell) — requires develop branch, up to date with origin
 .\scripts\deploy.ps1 -DryRun    # Preview changes
 .\scripts\deploy.ps1            # Deploy with auto-backup
 .\scripts\deploy.ps1 -ListBackups
 .\scripts\deploy.ps1 -Rollback "2026-01-18_143022"
+# Production (main → prod) is handled by GitHub Actions
 
 # JIRA CLI (REST API v3 + Agile)
 .\scripts\jira.ps1 list                      # List open issues (paginated)
