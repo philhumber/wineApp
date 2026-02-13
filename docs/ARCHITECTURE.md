@@ -635,11 +635,17 @@ In production, both paths are served from the same host, so no proxy is needed.
 
 ## 8. Deployment Pipeline
 
-Deployment is managed by `deploy.ps1`, a PowerShell script that builds the SvelteKit app and copies production files to a network-mounted directory.
+### Staging (deploy.ps1)
+
+`deploy.ps1` deploys the `develop` branch to the staging server at `V:\html\wineApp`. It requires the `develop` branch to be checked out and up to date with `origin/develop` (use `-Force` to override).
+
+Production deploys (main → prod) are handled by GitHub Actions.
 
 ```mermaid
 flowchart TD
-    A[deploy.ps1] --> B{Check Prerequisites}
+    A[deploy.ps1] --> A1{On develop + up to date?}
+    A1 -->|No| A2[ERROR: wrong branch or out of sync]
+    A1 -->|Yes| B{Check Prerequisites}
     B -->|V: drive, Node.js| C[npm run build]
     C --> D[Create Timestamped Backup]
     D --> E[Deploy Files]
@@ -653,15 +659,16 @@ flowchart TD
 ```
 
 **Key behaviors**:
+- **Branch guard**: Must be on `develop`, synced with `origin/develop` (fetches before comparing)
 - **Target**: `V:\html\wineApp` (network drive mapped to `\\10.0.0.10\www`)
-- **Backup**: Timestamped copy of current production before each deploy, stored at `V:\html\wineApp-backups/`
+- **Backup**: Timestamped copy before each deploy, stored at `V:\html\wineApp-backups/`
 - **Retention**: Keeps 5 most recent backups, auto-cleans older ones
 - **Image merge**: Wine images are additive only (never overwrites existing images)
 - **Config protection**: `config.local.php` is never deployed (production has its own)
 - **Rollback**: `deploy.ps1 -Rollback "2026-01-22_143022"` restores from any backup
 - **Dry run**: `deploy.ps1 -DryRun` previews all changes without executing
 
-**Production environment**:
+**Staging environment**:
 - Server: self-hosted at `10.0.0.16`
 - Web server: serves static files and PHP
 - Database: MySQL 8 on same host

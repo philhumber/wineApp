@@ -906,6 +906,7 @@ resources/php/agent/
 │   ├── IntentDetector.php
 │   ├── InputClassifier.php
 │   ├── ConfidenceScorer.php
+│   ├── InputMatchScorer.php   # Anchor-based input↔output confidence scoring
 │   ├── InferenceEngine.php
 │   ├── DisambiguationHandler.php
 │   ├── SupplementaryContextParser.php

@@ -39,11 +39,12 @@ git checkout -b feature/WINE-XX-description
 # Database connection
 mysql -h 10.0.0.16 -u username -p winelist
 
-# Deploy to production (PowerShell)
+# Deploy to staging (PowerShell) — requires develop branch, up to date with origin
 .\scripts\deploy.ps1 -DryRun    # Preview changes
 .\scripts\deploy.ps1            # Deploy with auto-backup
 .\scripts\deploy.ps1 -ListBackups
 .\scripts\deploy.ps1 -Rollback "2026-01-18_143022"
+# Production (main → prod) is handled by GitHub Actions
 
 # JIRA CLI (REST API v3 + Agile)
 .\scripts\jira.ps1 list                      # List open issues (paginated)
@@ -310,6 +311,11 @@ State survives mobile browser tab switches (e.g., switching to Camera app). See 
 
 ### Confidence Handling (Gotcha)
 
+- **Scoring**: `InputMatchScorer` extracts anchors from user input (vintage, grapes, regions, appellations, name tokens) and matches them against LLM output fields. Score = `min(anchorMatchScore, specificityCap) + completenessBonus`, clamped 0-100
+- **Specificity cap**: Based on **original** anchor weight from user input (not inflated by matching mechanics). Formula: `min(95, max(50, 50 + totalWeight * 15))`
+- **Appellation cross-check**: Appellations consumed as geographic matches are also verified against wine name/producer to distinguish same-appellation wines (e.g., Château Margaux vs Château Palmer)
+- **Image fallback**: No text anchors available → uses `min(70, fieldCompleteness * 0.7 + llmConfidence * 0.3)`, capped at 70
+- **Placeholder filtering**: Producer values like "Unknown", "N/A" don't count toward completeness bonus
 - **API format**: PHP returns confidence as **percentage (0-100)**, e.g., `18` = 18%
 - **Internal format**: `analyzeResultQuality()` normalizes to **decimal (0-1)** for threshold comparisons
 - **Thresholds**: `LOW_CONFIDENCE_THRESHOLD = 0.7`, `ESCALATION_CONFIDENCE_THRESHOLD = 0.6`
@@ -439,7 +445,7 @@ Endpoints in `resources/php/`:
 | `identifyImageStream.php` | Streaming image identification |
 | `agentEnrichStream.php` | Streaming enrichment endpoint |
 | `config/` | Agent configuration (`agent.config.php`) |
-| `Identification/` | Service classes (ImageQualityAssessor, IntentDetector, InputClassifier, etc.) |
+| `Identification/` | Service classes (ImageQualityAssessor, IntentDetector, InputClassifier, InputMatchScorer, etc.) |
 | `Enrichment/` | Service classes (EnrichmentService, EnrichmentCache, ValidationService, etc.) |
 | `LLM/` | LLM client and adapters (ClaudeAdapter, GeminiAdapter, SSLConfig, CircuitBreaker, etc.) |
 

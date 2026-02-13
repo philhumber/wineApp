@@ -639,9 +639,17 @@ Get an API token from: https://id.atlassian.com/manage-profile/security/api-toke
 
 ## Deployment
 
+### Staging (deploy.ps1)
+
+`deploy.ps1` deploys the `develop` branch to the staging server. Production deploys (main → prod) are handled by GitHub Actions.
+
 ```mermaid
 graph TD
-    A[scripts\deploy.ps1] --> B{SkipBuild?}
+    A[scripts\deploy.ps1] --> A1{On develop branch?}
+    A1 -->|No| A2[ERROR: Must be on develop]
+    A1 -->|Yes| A3{Up to date with origin?}
+    A3 -->|No| A4[ERROR: Pull latest changes]
+    A3 -->|Yes| B{SkipBuild?}
     B -->|No| C[npm run build]
     B -->|Yes| D[Use existing build]
     C --> E[Create timestamped backup]
@@ -654,6 +662,8 @@ graph TD
     J --> K[Verify at http://10.0.0.16/qve/]
 
     style A fill:#e1f5fe
+    style A2 fill:#ffcdd2
+    style A4 fill:#ffcdd2
     style C fill:#fff3e0
     style E fill:#e8f5e9
     style K fill:#c8e6c9
@@ -662,9 +672,10 @@ graph TD
 ### Deployment Commands
 
 ```powershell
-.\scripts\deploy.ps1                   # Build and deploy with auto-backup
+.\scripts\deploy.ps1                   # Build and deploy from develop with auto-backup
 .\scripts\deploy.ps1 -DryRun           # Preview changes without deploying
 .\scripts\deploy.ps1 -SkipBuild        # Deploy using existing build (skip npm build)
+.\scripts\deploy.ps1 -Force            # Override branch/sync checks
 .\scripts\deploy.ps1 -ListBackups      # List available backups for rollback
 .\scripts\deploy.ps1 -Rollback "2026-01-22_143022"   # Restore from backup
 ```
