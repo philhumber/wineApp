@@ -126,6 +126,34 @@ class FuzzyMatcher
     }
 
     /**
+     * Normalize common equivalences for consistent matching
+     *
+     * Handles semantic equivalences common in wine names:
+     * - & ↔ and (Moët & Chandon = Moët and Chandon)
+     * - et ↔ and (French: Lurton et Fils = Lurton and Fils)
+     * - St./St ↔ Saint (St. Émilion = Saint Émilion)
+     *
+     * @param string $text Input text
+     * @return string Text with equivalences normalized
+     */
+    public static function normalizeEquivalences(string $text): string
+    {
+        // & → and (before punctuation removal which strips &)
+        $text = preg_replace('/\s*&\s*/u', ' and ', $text);
+
+        // St. → Saint (before punctuation removal which strips .)
+        $text = preg_replace('/\bSt\.\s*/iu', 'Saint ', $text);
+
+        // St followed by space → Saint (standalone abbreviation)
+        $text = preg_replace('/\bSt\s+/iu', 'Saint ', $text);
+
+        // et → and (French, whole word only)
+        $text = preg_replace('/\bet\b/iu', 'and', $text);
+
+        return preg_replace('/\s+/', ' ', trim($text));
+    }
+
+    /**
      * Tokenize and normalize text for comparison
      *
      * Pipeline:
@@ -143,16 +171,19 @@ class FuzzyMatcher
         // Step 1: Strip articles
         $text = self::stripArticles($text);
 
-        // Step 2: Normalize accents
+        // Step 2: Normalize common equivalences (& → and, St. → Saint, et → and)
+        $text = self::normalizeEquivalences($text);
+
+        // Step 3: Normalize accents
         $text = self::normalizeAccents($text);
 
-        // Step 3: Lowercase
+        // Step 4: Lowercase
         $text = mb_strtolower($text, 'UTF-8');
 
-        // Step 4: Remove punctuation, keep alphanumeric and spaces
+        // Step 5: Remove punctuation, keep alphanumeric and spaces
         $text = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $text);
 
-        // Step 5: Split and filter empty
+        // Step 6: Split and filter empty
         $tokens = preg_split('/\s+/', $text, -1, PREG_SPLIT_NO_EMPTY);
 
         return $tokens;
@@ -184,14 +215,20 @@ class FuzzyMatcher
             }
         }
 
-        // Fallback: iconv transliteration
-        $normalized = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $string);
-        if ($normalized !== false) {
-            // Remove any stray apostrophes/quotes that iconv may introduce
-            $normalized = preg_replace("/[''`´]/u", '', $normalized);
-            return $normalized;
-        }
-        return $string;
+        // Fallback: explicit character mapping for common wine diacritics.
+        // Windows iconv produces incorrect results (â → ^a, ë → "e),
+        // so we use direct str_replace instead.
+        return str_replace(
+            ['À','Á','Â','Ã','Ä','Å','Ç','È','É','Ê','Ë','Ì','Í','Î','Ï',
+             'Ñ','Ò','Ó','Ô','Õ','Ö','Ø','Ù','Ú','Û','Ü','Ý',
+             'à','á','â','ã','ä','å','ç','è','é','ê','ë','ì','í','î','ï',
+             'ñ','ò','ó','ô','õ','ö','ø','ù','ú','û','ü','ý','ÿ','Æ','æ','ß'],
+            ['A','A','A','A','A','A','C','E','E','E','E','I','I','I','I',
+             'N','O','O','O','O','O','O','U','U','U','U','Y',
+             'a','a','a','a','a','a','c','e','e','e','e','i','i','i','i',
+             'n','o','o','o','o','o','o','u','u','u','u','y','y','AE','ae','ss'],
+            $string
+        );
     }
 
     /**

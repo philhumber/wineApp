@@ -122,9 +122,9 @@ function isFuzzyMatch($input, $candidate, $threshold = null) {
  * - "Margaux" matches "Château Margaux"
  */
 function isSubstringMatch($input, $candidate) {
-    // Strip articles and normalize for comparison
-    $inputNorm = strtolower(FuzzyMatcher::stripArticles(normalizeAccents($input)));
-    $candidateNorm = strtolower(FuzzyMatcher::stripArticles(normalizeAccents($candidate)));
+    // Strip articles, normalize equivalences and accents for comparison
+    $inputNorm = strtolower(normalizeAccents(FuzzyMatcher::normalizeEquivalences(FuzzyMatcher::stripArticles($input))));
+    $candidateNorm = strtolower(normalizeAccents(FuzzyMatcher::normalizeEquivalences(FuzzyMatcher::stripArticles($candidate))));
 
     return strpos($candidateNorm, $inputNorm) !== false ||
            strpos($inputNorm, $candidateNorm) !== false;
@@ -299,13 +299,23 @@ function checkWineDuplicates($pdo, $name, $normalizedName, $producerId = null, $
     // Build producer filter (shared by both exact and fuzzy queries)
     $producerWhere = "";
     $producerParams = [];
+    $fuzzyProducerMatch = false;
 
     if ($producerId) {
         $producerWhere = " AND w.producerID = :producerId";
         $producerParams[':producerId'] = $producerId;
     } elseif ($producerName) {
-        $producerWhere = " AND p.producerName COLLATE utf8mb4_unicode_ci = :producerName AND p.deleted = 0";
-        $producerParams[':producerName'] = $producerName;
+        // Use SQL pre-filter + PHP fuzzy match for producer name
+        // Handles equivalences like & ↔ and, accented chars
+        $producerTokens = FuzzyMatcher::extractSearchTokens($producerName);
+        if (!empty($producerTokens)) {
+            [$pFilterSQL, $pFilterParams] = FuzzyMatcher::buildCandidateFilter(
+                'p.producerName', $producerTokens, $producerName, 'ptk'
+            );
+            $producerWhere = " AND p.deleted = 0 AND $pFilterSQL";
+            $producerParams = $pFilterParams;
+        }
+        $fuzzyProducerMatch = true;
     }
 
     // 1. Exact match via SQL (may return multiple rows for different vintages)
@@ -320,6 +330,15 @@ function checkWineDuplicates($pdo, $name, $normalizedName, $producerId = null, $
     ");
     $stmt->execute(array_merge([':name' => $name], $producerParams));
     $exactRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Refine with PHP fuzzy matching when using name-based producer lookup
+    if ($fuzzyProducerMatch && !empty($exactRows)) {
+        $exactRows = array_values(array_filter($exactRows, function($row) use ($producerName) {
+            if (empty($row['producerName'])) return false;
+            return isFuzzyMatch($producerName, $row['producerName'])
+                || isSubstringMatch($producerName, $row['producerName']);
+        }));
+    }
 
     // Collect all exact-name IDs (to exclude from fuzzy matches)
     $exactIds = array_map(fn($r) => (int)$r['wineID'], $exactRows);
@@ -380,6 +399,13 @@ function checkWineDuplicates($pdo, $name, $normalizedName, $producerId = null, $
         if (count($result['similarMatches']) >= 5) break;
 
         if (isSubstringMatch($name, $row['wineName']) || isFuzzyMatch($name, $row['wineName'])) {
+            // Verify producer also fuzzy matches when using name-based lookup
+            if ($fuzzyProducerMatch && !empty($row['producerName'])) {
+                if (!isFuzzyMatch($producerName, $row['producerName']) && !isSubstringMatch($producerName, $row['producerName'])) {
+                    continue;
+                }
+            }
+
             $result['similarMatches'][] = [
                 'id' => (int)$row['wineID'],
                 'name' => $row['wineName'],
