@@ -577,10 +577,44 @@ Admin (Phil)                               Backend                              
 - On submit → POST to `register.php` → auto-login → redirect to cellar
 - If token is invalid/expired → show message: "This invite link has expired. Please request a new one."
 
-**Admin invite UI** (simple, in Settings or a separate admin page):
-- Email input + "Send Invite" button
-- Shows list of pending/used invites with status
-- Accessible only when `$isAdmin` is true
+**New route: `/qve/admin`** (admin-only, separate page):
+- Linked from side menu — menu item only visible when `$isAdmin` is true
+- Route guard: redirect non-admins to home
+- Starts simple, room to grow into full user management
+
+```
+┌─────────────────────────────────────┐
+│  ← Admin                           │
+│                                     │
+│  Users (3)                          │
+│  ┌─────────────────────────────────┐│
+│  │ Phil Humber   admin   Active   ││
+│  │ Jane Smith    user    Active   ││
+│  │ Bob Jones     user    Active   ││
+│  └─────────────────────────────────┘│
+│                                     │
+│  Invite User                        │
+│  ┌──────────────┐  ┌──────────┐    │
+│  │ Email         │  │ Send     │    │
+│  └──────────────┘  └──────────┘    │
+│                                     │
+│  Recent Invites                     │
+│  friend@example.com   Pending  3d   │
+│  other@example.com    Used     ✓    │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+Phase B scope:
+- User list (name, role, status) — read-only for now
+- Invite form (email input + send button)
+- Invite list (pending/used/expired status)
+
+Future additions (post Phase B):
+- Suspend/reactivate accounts
+- Change user roles
+- Resend invites
+- Usage stats per user
 
 ### 3.4 Password Reset Flow
 
@@ -763,8 +797,9 @@ This link expires in 1 hour. If you didn't request this, you can ignore this ema
 | 12 | Frontend | `/qve/reset-password` | New password page |
 | 13 | Frontend | Login page | Add "Forgot password?" link |
 | 14 | Frontend | Account settings | Change password, display name |
-| 15 | Frontend | Admin invite UI | Invite management (admin-only) |
-| 16 | **Test** | Browser | Full invite → register → login → reset → change password flow |
+| 15 | Frontend | `/qve/admin` route | Admin page: user list + invite management |
+| 16 | Frontend | `SideMenu.svelte` | Add "Admin" link (admin-only) |
+| 17 | **Test** | Browser | Full invite → register → login → reset → change password flow |
 
 ### 3.8 Testing — Phase B
 
@@ -980,7 +1015,7 @@ Plus column on `users`: `otp_enabled BOOLEAN DEFAULT FALSE`
 | 1 | **SendGrid sender verification**: Domain-level (DNS) or single-sender? | Domain verification is stronger for deliverability but requires DNS changes. Single-sender works immediately. | Decide during Phase B |
 | 2 | **Invite expiry**: 7 days enough? | Some people are slow to check email. Could be 14 days. | Leaning 7 days, easy to change |
 | 3 | **Max users**: Any practical limit? | With shared DB + tenant columns, performance degrades gradually. No hard limit needed unless hosting constrains it. | No limit for now |
-| 4 | **Admin UI location**: Settings modal section or separate `/qve/admin` route? | Separate route is cleaner but more work. Settings section is quicker. | Decide during Phase B implementation |
+| 4 | **Admin UI location**: Settings modal section or separate `/qve/admin` route? | Separate route is cleaner and has room to grow. | **Resolved: `/qve/admin` route** |
 | 5 | **Email change flow**: Allow users to change their email? | Requires verification of new email. Adds complexity. | Defer to post-Phase B |
 | 6 | **Account deletion**: Self-service or admin-only? | GDPR-adjacent consideration, though not legally required for a personal app. | Admin-only for now (set status = 'deleted') |
 
@@ -1017,4 +1052,5 @@ Plus column on `users`: `otp_enabled BOOLEAN DEFAULT FALSE`
 | `qve/src/routes/reset-password/+page.svelte` | Create | New password page |
 | `qve/src/routes/login/+page.svelte` | Modify | Add "Forgot password?" link |
 | Account settings (location TBD) | Create | Change password, display name |
-| Admin invite UI (location TBD) | Create | Invite management |
+| `qve/src/routes/admin/+page.svelte` | Create | Admin page: user list, invite management |
+| `qve/src/lib/components/layout/SideMenu.svelte` | Modify | Add "Admin" menu item (admin-only) |
