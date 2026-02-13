@@ -41,6 +41,9 @@ if (empty($input['text']) || !is_string($input['text'])) {
     agentError('Missing or invalid field: text (string required)');
 }
 
+// Validate and sanitize locked fields
+$input['lockedFields'] = validateLockedFields($input);
+
 try {
     // WIN-254: Server-authoritative userId — ignore client-supplied value
     $userId = getAgentUserId();

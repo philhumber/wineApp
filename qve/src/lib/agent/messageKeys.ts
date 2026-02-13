@@ -216,4 +216,6 @@ export enum MessageKey {
   CHIP_ADD_WITHOUT_DETAILS = 'chips.addWithoutDetails',
   CHIP_USE_THIS_RESULT = 'chips.useThisResult',
   CHIP_SEARCH_AGAIN = 'chips.searchAgain',
+  CHIP_CORRECT_FIELD = 'chips.correctField',
+  CHIP_CONFIRM_CORRECTIONS = 'chips.confirmCorrections',
 }

@@ -83,6 +83,7 @@ export interface ChipsMessageData {
   category: 'chips';
   chips: AgentChip[];
   selectedChipId?: string;
+  groupLabel?: string;
 }
 
 export interface AgentChip {
@@ -196,7 +197,9 @@ export type IdentificationAction =
   | { type: 'new_input'; messageId: string }
   | { type: 'start_fresh'; messageId: string }
   | { type: 'reidentify'; messageId: string }
-  | { type: 'continue_as_is'; messageId: string };
+  | { type: 'continue_as_is'; messageId: string }
+  | { type: 'correct_field'; messageId: string; payload: { field: string } }
+  | { type: 'confirm_corrections'; messageId: string };
 
 // Wine Flow Actions
 export type WineFlowAction =

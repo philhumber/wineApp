@@ -233,6 +233,8 @@ export const sommelierMessages: PersonalityMessages = {
   [MessageKey.CHIP_ADD_WITHOUT_DETAILS]: 'Add Without Details',
   [MessageKey.CHIP_USE_THIS_RESULT]: 'Use This',
   [MessageKey.CHIP_SEARCH_AGAIN]: 'Search Again',
+  [MessageKey.CHIP_CORRECT_FIELD]: 'Correct Field',
+  [MessageKey.CHIP_CONFIRM_CORRECTIONS]: 'Looks Good',
 
   // ===========================================
   // IDENTIFICATION - Extended

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from 'svelte';
   import type { AgentAction } from '$lib/agent/types';
+  import { awaitingFieldCorrection } from '$stores';
 
   export let phase: string = 'greeting';
   export let disabled: boolean = false;
@@ -36,7 +37,20 @@
     error: 'Try again...',
     complete: 'Processing...',
   };
-  $: placeholder = placeholders[phase] ?? 'Type a message...';
+
+  const fieldLabels: Record<string, string> = {
+    producer: 'producer',
+    wineName: 'wine name',
+    vintage: 'vintage',
+    region: 'region',
+    country: 'country',
+    type: 'type',
+  };
+
+  $: basePlaceholder = placeholders[phase] ?? 'Type a message...';
+  $: placeholder = $awaitingFieldCorrection
+    ? `Enter correct ${fieldLabels[$awaitingFieldCorrection] ?? 'value'}...`
+    : basePlaceholder;
 
   function handleSubmit() {
     const text = inputValue.trim();

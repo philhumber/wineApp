@@ -362,6 +362,32 @@ function agentRequireFields(array $input, array $requiredFields): void
 }
 
 /**
+ * Validate and sanitize locked fields from client input.
+ * Returns only whitelisted field names with string/int values.
+ *
+ * @param array $input Request input data
+ * @return array Validated locked fields (field => value)
+ */
+function validateLockedFields(array $input): array
+{
+    $lockedFields = $input['lockedFields'] ?? [];
+    if (!is_array($lockedFields)) {
+        return [];
+    }
+    $allowedFields = ['producer', 'wineName', 'vintage', 'region', 'country', 'wineType', 'type', 'appellation'];
+    // Frontend uses 'type', backend uses 'wineType' — map for consistency
+    $fieldMap = ['type' => 'wineType'];
+    $validated = [];
+    foreach ($lockedFields as $field => $value) {
+        if (!in_array($field, $allowedFields, true)) continue;
+        if (!is_string($value) && !is_int($value)) continue;
+        $key = $fieldMap[$field] ?? $field;
+        $validated[$key] = $value;
+    }
+    return $validated;
+}
+
+/**
  * Log agent error
  *
  * @param string $message Error message

@@ -289,20 +289,55 @@ The agent prompts for the specific missing field. See sections [3c-3e] for the e
 
 ---
 
-### 7d. "Not Quite"
+### 7d. "Not Quite" — Field Correction Flow
 
-**Trigger**: User taps "Not Quite" or types "no"/"wrong".
+**Trigger**: User taps "Not Quite" or types "no"/"wrong". This is the same flow every time — whether it's the first "Not Quite" or after a correction/escalation.
 
 | Step | Phase | Agent Says | Chips |
 |------|-------|-----------|-------|
-| 1 | `awaiting_input` | "No matter. Tell me what I got wrong — I can take it." | [Add Details] `provide_more` · [Look Closer] `try_opus` · [Start Over] `start_fresh` |
+| 1 | `awaiting_input` | "What needs fixing? Tap a field to correct it, or add more details." | Field chips (grouped) + action chips (grouped) |
 
-**User taps "Add Details"** -> Stores current result as augmentation context -> Go to [8e. Provide More Context]
-**User taps "Look Closer"** -> Go to [9. Opus Escalation]
-**User taps "Start Over"** -> Go to [16a. Start Over]
-**User types correction text** -> Re-identification with augmented context (accumulated result + new text)
+**Visual grouping**: Field chips and action chips render in separate bordered containers with "FIELDS" and "ACTIONS" labels. Field chip labels show the field name in bold and the value in normal weight (e.g., **Producer:** Chateau Margaux).
 
-**Note**: Augmentation context includes the current result (serialized) and any image data. When user types next, the new text is combined with the accumulated context for a richer search.
+**Field Correction Chips** — one chip per scalar field (producer, wineName, vintage, region, country, type), displayed in a "Fields" group. All six fields are always shown — populated fields show their value, empty fields show *add...* as a placeholder:
+
+| Chip Label | Variant | Action | Payload |
+|-----------|---------|--------|---------|
+| **Producer:** Chateau Margaux | — | `correct_field` | `{ field: 'producer' }` |
+| **Wine:** Grand Vin | — | `correct_field` | `{ field: 'wineName' }` |
+| **Vintage:** *add...* | `secondary` | `correct_field` | `{ field: 'vintage' }` |
+| **Region:** Bordeaux | — | `correct_field` | `{ field: 'region' }` |
+| **Country:** France | — | `correct_field` | `{ field: 'country' }` |
+| **Type:** Red | — | `correct_field` | `{ field: 'type' }` |
+
+Grapes are NOT lockable (array field — excluded from field correction chips).
+Previously corrected fields show a lock indicator and `primary` variant.
+Empty fields use `secondary` variant — dashed border, reduced opacity, italic *add...* placeholder. This lets users add missing fields the LLM didn't identify.
+
+**Action chips** (displayed in a separate "Actions" group): [Add Details] `provide_more` | [Look Closer] `try_opus` | [Start Over] `start_fresh`
+
+**User taps a field chip** (e.g., `[Producer: Chateau Margaux]`):
+
+| Step | Phase | Agent Says | Chips |
+|------|-------|-----------|-------|
+| 2 | `awaiting_input` | "Enter the correct producer:" *(+ input placeholder changes)* | — |
+
+**User types correction** (e.g., "Chateau Palmer"):
+
+| Step | Phase | Agent Says | Chips |
+|------|-------|-----------|-------|
+| 3 | `confirming` | "Got it. Here's the updated result:" + updated wine card | [Looks Good] [Look Closer] [Not Quite] |
+
+The updated wine card shows the corrected field value. The confirmation chips include "Look Closer" so the user can escalate with their corrections applied.
+
+**User taps "Looks Good"** -> Accepts corrected result -> [7a. Correct — All Fields]
+**User taps "Look Closer"** -> Go to [9. Opus Escalation] (locked fields sent to backend, post-processed)
+**User taps "Not Quite"** -> Returns to Step 1 (same flow — previously locked fields preserved with lock indicators)
+**From Step 1, user taps "Add Details"** -> Existing free-text augmentation flow (locked fields preserved alongside)
+**From Step 1, user taps "Start Over"** -> Clears locked fields -> Go to [16a. Start Over]
+**From Step 1, user taps another field chip** -> Enters correction mode for that field (Step 2)
+
+**Locked fields guarantee**: Any subsequent LLM call (escalation, Opus, re-identification) will have locked field values forcibly overwritten via post-processing, regardless of LLM output. Minor normalization (capitalization, accents) is allowed if the LLM's value matches the user's core correction.
 
 ---
 
@@ -763,7 +798,7 @@ Error message from API + fallback:
 
 ## 19. Chip Reference Table
 
-All 34 chips with their sommelier labels, variants, and dispatched actions.
+All 36 chips with their sommelier labels, variants, and dispatched actions.
 
 | Chip Key | Sommelier Label | Variant | Action Dispatched |
 |----------|----------------|---------|-------------------|
@@ -802,6 +837,8 @@ All 34 chips with their sommelier labels, variants, and dispatched actions.
 | ADD_WITHOUT_DETAILS | Add Without Details | — | `add_to_cellar` |
 | SEARCH_AGAIN | Search Again | — | `provide_more` |
 | USE_THIS_RESULT | Use This | — | `continue_as_is` |
+| CORRECT_FIELD | *(dynamic: "Producer: X")* | — / `primary` (locked) | `correct_field` |
+| CONFIRM_CORRECTIONS | Looks Good | `primary` | `confirm_corrections` |
 
 ---
 
@@ -835,10 +872,13 @@ All 34 chips with their sommelier labels, variants, and dispatched actions.
 All positive/affirmative actions are consistently **primary** variant.
 
 #### "Not Correct" Flow Chips
-The "Not Quite" flow shows: [Add Details] + [Look Closer] + [Start Over]
-These are hardcoded in `handleNotCorrect()` — not using `generateXxxChips()` functions.
+The "Not Quite" flow now uses `generateNotCorrectChips()` which dynamically generates field correction chips from the identification result data. Each populated scalar field (producer, wineName, vintage, region, country, type) gets a chip with the field's current value. Locked fields show a lock indicator and use `primary` variant.
 
-**Note**: The labels here are hardcoded as "Add Details" / "Try Harder" / "Start Over" rather than using the chip registry's personality-aware labels ("I Can Help" / "Look Closer" / "Start Fresh"). This is a **consistency issue** — these should use `getChip()` from the registry.
+**Visual grouping**: Field chips and action chips render in separate bordered containers (`groupLabel` on `ChipsMessageData`) with "FIELDS" and "ACTIONS" headers. Field chip labels render with a bold field name and normal-weight value via `field-name`/`field-value` spans in `ChipsMessage.svelte` (triggered by `action === 'correct_field'`).
+
+**Post-correction flow**: After correcting a field, an updated wine card is shown with `generateCorrectionConfirmationChips()` — "Looks Good" / "Look Closer" / "Not Quite". This gives users the option to accept, escalate with corrections, or correct more fields. "Not Quite" returns to the same field correction flow (consistent — one flow, not two).
+
+**Note**: Field correction chips are unique in the system — they have dynamic labels generated from result data, not static registry entries. The action chips (Add Details, Look Closer, Start Over) alongside them do use the chip registry.
 
 #### "Nothing Found" Flow Chips
 The "not found" flow chips are also hardcoded:
@@ -870,7 +910,7 @@ These use hardcoded labels rather than the `generateNewSearchConfirmationChips()
 
 | Issue | Location | Severity |
 |-------|----------|----------|
-| `handleNotCorrect()` uses hardcoded chip labels instead of registry | identification.ts:810-814 | Medium |
+| ~~`handleNotCorrect()` uses hardcoded chip labels~~ — resolved by `generateNotCorrectChips()` | identification.ts | Resolved |
 | "Nothing Found" chips hardcoded instead of using registry | identification.ts:166-169 | Low |
 | `handleGoBack()` uses `enrich_now` instead of `learn` for enrichment action | conversation.ts:98 | Medium |
 | `handleContinueAsIs()` sets phase `adding_wine` but shows same chips as `confirming` flow | identification.ts:976 | Medium |

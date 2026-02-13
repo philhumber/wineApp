@@ -12,7 +12,7 @@
  * @see chipRegistry.ts for chip definitions
  */
 
-import type { AgentChip } from '../types';
+import type { AgentChip, WineIdentificationResult } from '../types';
 import type { ResultQuality, NextActionRecommendation } from './resultAnalyzer';
 import { ChipKey, getChip, getChips, getChipWithVariant } from './chipRegistry';
 
@@ -26,6 +26,14 @@ import { ChipKey, getChip, getChips, getChipWithVariant } from './chipRegistry';
  */
 export function generateConfirmationChips(): AgentChip[] {
   return getChips(ChipKey.CORRECT, ChipKey.NOT_CORRECT);
+}
+
+/**
+ * Generate confirmation chips after a field correction.
+ * Includes "Look Closer" so the user can escalate with locked fields.
+ */
+export function generateCorrectionConfirmationChips(): AgentChip[] {
+  return getChips(ChipKey.CORRECT, ChipKey.TRY_OPUS, ChipKey.NOT_CORRECT);
 }
 
 /**
@@ -271,4 +279,71 @@ export function generateAddRetryChips(): AgentChip[] {
  */
 export function generateAddCompleteChips(): AgentChip[] {
   return [getChip(ChipKey.IDENTIFY_ANOTHER)];
+}
+
+// ===========================================
+// Field Correction Chips
+// ===========================================
+
+/**
+ * Generate chips for each correctable field in the identification result.
+ * Locked fields show a lock indicator and primary variant.
+ */
+export function generateFieldCorrectionChips(
+  result: WineIdentificationResult,
+  lockedFields: Record<string, string | number>
+): AgentChip[] {
+  const chips: AgentChip[] = [];
+  const fields = [
+    { key: 'producer', label: 'Producer' },
+    { key: 'wineName', label: 'Wine' },
+    { key: 'vintage', label: 'Vintage' },
+    { key: 'region', label: 'Region' },
+    { key: 'country', label: 'Country' },
+    { key: 'type', label: 'Type' },
+  ];
+
+  for (const { key, label } of fields) {
+    const value = lockedFields[key] ?? result[key as keyof WineIdentificationResult];
+    const isLocked = key in lockedFields;
+    const isEmpty = !value;
+
+    const displayValue = isEmpty
+      ? 'add...'
+      : String(value).length > 20
+        ? String(value).slice(0, 18) + '...'
+        : String(value);
+
+    chips.push({
+      ...getChip(ChipKey.CORRECT_FIELD),
+      id: `correct_${key}`,
+      label: isLocked ? `\u{1F512} ${label}: ${displayValue}` : `${label}: ${displayValue}`,
+      action: 'correct_field',
+      payload: { field: key, currentValue: value ?? '' },
+      variant: isLocked ? 'primary' : isEmpty ? 'secondary' : undefined,
+    });
+  }
+  return chips;
+}
+
+/**
+ * Generate chips for the "Not Correct" flow.
+ * Returns field chips (one per correctable field) and action chips (confirm, provide more, etc.).
+ */
+export function generateNotCorrectChips(
+  result: WineIdentificationResult,
+  lockedFields: Record<string, string | number>
+): { fieldChips: AgentChip[]; actionChips: AgentChip[] } {
+  const fieldChips = generateFieldCorrectionChips(result, lockedFields);
+
+  const hasLocks = Object.keys(lockedFields).length > 0;
+  const actionChips: AgentChip[] = [];
+  if (hasLocks) {
+    actionChips.push(getChip(ChipKey.CONFIRM_CORRECTIONS));
+  }
+  actionChips.push(getChip(ChipKey.PROVIDE_MORE));
+  actionChips.push(getChip(ChipKey.TRY_OPUS));
+  actionChips.push(getChip(ChipKey.START_FRESH));
+
+  return { fieldChips, actionChips };
 }

@@ -74,7 +74,7 @@ class IdentificationService
      * @param array|null $priorResult Previous tier result for context
      * @return array Processing result
      */
-    private function processWithGemini(string $input, string $tier, ?array $priorResult = null): array
+    private function processWithGemini(string $input, string $tier, ?array $priorResult = null, array $lockedFields = []): array
     {
         $tierConfig = $this->config['model_tiers'][$tier] ?? $this->config['model_tiers']['fast'];
 
@@ -92,7 +92,7 @@ class IdentificationService
 
         // Add prior result context for escalation
         if ($priorResult) {
-            $options['prior_context'] = $this->buildPriorContext($priorResult);
+            $options['prior_context'] = $this->buildPriorContext($priorResult, $lockedFields);
         }
 
         return $this->textProcessor->process($input, $options);
@@ -106,7 +106,7 @@ class IdentificationService
      * @param array|null $priorResult Previous tier result for context
      * @return array Processing result
      */
-    private function processWithClaude(string $input, string $model, ?array $priorResult = null): array
+    private function processWithClaude(string $input, string $model, ?array $priorResult = null, array $lockedFields = []): array
     {
         $options = [
             'provider' => 'claude',
@@ -117,7 +117,7 @@ class IdentificationService
 
         // Add prior result context for escalation
         if ($priorResult) {
-            $options['prior_context'] = $this->buildPriorContext($priorResult);
+            $options['prior_context'] = $this->buildPriorContext($priorResult, $lockedFields);
         }
 
         return $this->textProcessor->process($input, $options);
@@ -127,18 +127,28 @@ class IdentificationService
      * Build context string from prior identification result
      *
      * @param array $priorResult Previous identification result
+     * @param array $lockedFields User-locked fields to include in context
      * @return string Context string for escalation
      */
-    private function buildPriorContext(array $priorResult): string
+    private function buildPriorContext(array $priorResult, array $lockedFields = []): string
     {
         $parsed = $priorResult['parsed'] ?? [];
-        return sprintf(
+        $context = sprintf(
             "Previous attempt found: Producer=%s, Wine=%s, Region=%s (confidence: %d%%). Please analyze more carefully and look for details that might have been missed.",
             $parsed['producer'] ?? 'unknown',
             $parsed['wineName'] ?? 'unknown',
             $parsed['region'] ?? 'unknown',
             $priorResult['confidence'] ?? 0
         );
+
+        if (!empty($lockedFields)) {
+            $context .= "\n\nUSER-CONFIRMED VALUES (use exactly as provided, you may normalize capitalization/accents):";
+            foreach ($lockedFields as $field => $value) {
+                $context .= "\n- {$field}: {$value}";
+            }
+        }
+
+        return $context;
     }
 
     // ─────────────────────────────────────────────────────
@@ -261,6 +271,81 @@ class IdentificationService
     }
 
     /**
+     * Apply user-locked field values to parsed result.
+     * Allows minor normalization (case/accents) if LLM value matches core intent.
+     *
+     * @param array $result Processing result
+     * @param array $lockedFields User-locked fields (field => value)
+     * @return array Updated result with locked fields applied
+     */
+    private function applyLockedFields(array $result, array $lockedFields): array
+    {
+        if (empty($lockedFields)) {
+            return $result;
+        }
+
+        $allowedFields = ['producer', 'wineName', 'vintage', 'region', 'country', 'wineType', 'appellation'];
+
+        foreach ($lockedFields as $field => $value) {
+            if (!in_array($field, $allowedFields, true)) continue;
+
+            $llmValue = $result['parsed'][$field] ?? null;
+
+            // If LLM provided a value, check if it's just a minor correction (case/accents)
+            if ($llmValue !== null && is_string($llmValue) && is_string($value)) {
+                $normalizedLlm = mb_strtolower($this->stripAccentsSimple($llmValue));
+                $normalizedLocked = mb_strtolower($this->stripAccentsSimple((string)$value));
+                if ($normalizedLlm === $normalizedLocked) {
+                    // LLM's formatting is better (e.g., proper accents) — keep it
+                    error_log("[IdentificationService] applyLockedFields: kept LLM formatting for {$field}: '{$llmValue}'");
+                    continue;
+                }
+            }
+
+            // Force locked value
+            $result['parsed'][$field] = $value;
+            error_log("[IdentificationService] applyLockedFields: forced {$field}='{$value}' (LLM had '{$llmValue}')");
+        }
+
+        return $result;
+    }
+
+    /**
+     * Simple accent stripping for locked field comparison.
+     * Uses str_replace instead of iconv (Windows iconv converts â to ^a not a).
+     *
+     * @param string $str Input string
+     * @return string String with accents replaced by plain equivalents
+     */
+    private function stripAccentsSimple(string $str): string
+    {
+        $accents = ['à','á','â','ã','ä','å','è','é','ê','ë','ì','í','î','ï','ò','ó','ô','õ','ö','ù','ú','û','ü','ý','ÿ','ñ','ç',
+                    'À','Á','Â','Ã','Ä','Å','È','É','Ê','Ë','Ì','Í','Î','Ï','Ò','Ó','Ô','Õ','Ö','Ù','Ú','Û','Ü','Ý','Ñ','Ç'];
+        $plain =   ['a','a','a','a','a','a','e','e','e','e','i','i','i','i','o','o','o','o','o','u','u','u','u','y','y','n','c',
+                    'A','A','A','A','A','A','E','E','E','E','I','I','I','I','O','O','O','O','O','U','U','U','U','Y','N','C'];
+        return str_replace($accents, $plain, $str);
+    }
+
+    /**
+     * Score result and apply confidence boost for locked fields.
+     *
+     * @param array $parsed The parsed wine data
+     * @param string|null $userInput The original user input text
+     * @param array $lockedFields User-locked fields
+     * @return array Scoring result with boosted score
+     */
+    private function scoreWithLockedBoost(array $parsed, ?string $userInput, array $lockedFields = []): array
+    {
+        $scoring = $this->scorer->score($parsed, $userInput);
+        if (!empty($lockedFields)) {
+            $boost = count($lockedFields) * 5;
+            $scoring['score'] = min(100, $scoring['score'] + $boost);
+            error_log("[IdentificationService] locked fields boost: +{$boost} → {$scoring['score']}");
+        }
+        return $scoring;
+    }
+
+    /**
      * Finalize identification result with escalation metadata
      *
      * @param array $result Processing result
@@ -302,6 +387,9 @@ class IdentificationService
             ];
         }
 
+        // Pass locked fields through classification for downstream methods
+        $classification['lockedFields'] = $input['lockedFields'] ?? [];
+
         // Route to appropriate processor based on input type
         if ($classification['type'] === InputClassifier::TYPE_IMAGE) {
             return $this->identifyFromImage($classification);
@@ -340,6 +428,7 @@ class IdentificationService
 
         $text = $classification['text'];
         $intent = $this->intentDetector->detect($text);
+        $lockedFields = $input['lockedFields'] ?? [];
 
         // Build prompt (reuse TextProcessor logic)
         $prompt = $this->buildIdentificationPrompt($text);
@@ -388,12 +477,13 @@ class IdentificationService
         // Parse the complete response
         $parsed = \json_decode($response->content, true) ?? [];
 
-        // Apply inference to fill missing fields
+        // Apply inference and locked fields
         $result = ['success' => true, 'parsed' => $parsed];
         $result = $this->applyInference($result);
+        $result = $this->applyLockedFields($result, $lockedFields);
 
         // Score the result
-        $scoring = $this->scorer->score($result['parsed'], $text);
+        $scoring = $this->scoreWithLockedBoost($result['parsed'], $text, $lockedFields);
 
         // Determine action based on confidence
         $thresholds = $this->config['confidence'] ?? [];
@@ -462,6 +552,7 @@ class IdentificationService
         $imageData = $classification['imageData'];
         $mimeType = $classification['mimeType'];
         $supplementaryText = $classification['supplementaryText'] ?? null;
+        $lockedFields = $input['lockedFields'] ?? [];
 
         // Build prompt (reuse VisionProcessor logic)
         $prompt = $this->buildVisionPrompt($supplementaryText);
@@ -515,12 +606,13 @@ class IdentificationService
         // Parse the complete response
         $parsed = \json_decode($response->content, true) ?? [];
 
-        // Apply inference
+        // Apply inference and locked fields
         $result = ['success' => true, 'parsed' => $parsed];
         $result = $this->applyInference($result);
+        $result = $this->applyLockedFields($result, $lockedFields);
 
         // Score the result
-        $scoring = $this->scorer->score($result['parsed'], $supplementaryText);
+        $scoring = $this->scoreWithLockedBoost($result['parsed'], $supplementaryText, $lockedFields);
 
         $thresholds = $this->config['confidence'] ?? [];
         $tier1Threshold = $thresholds['tier1_threshold'] ?? 85;
@@ -664,6 +756,7 @@ PROMPT;
     {
         $inputText = $input['text'] ?? '';
         $intent = $this->intentDetector->detect($inputText);
+        $lockedFields = $input['lockedFields'] ?? [];
 
         $thresholds = $this->config['confidence'] ?? [];
         $tier1_5Threshold = $thresholds['tier1_5_threshold'] ?? 70;
@@ -684,11 +777,12 @@ PROMPT;
         }
 
         error_log("[Agent] escalateText: Tier 1.5 starting (from {$result['confidence']})");
-        $tier1_5Result = $this->processWithGemini($inputText, 'detailed', $tier1Result);
+        $tier1_5Result = $this->processWithGemini($inputText, 'detailed', $tier1Result, $lockedFields);
 
         if ($tier1_5Result['success']) {
             $tier1_5Result = $this->applyInference($tier1_5Result);
-            $scoring = $this->scorer->score($tier1_5Result['parsed'], $inputText);
+            $tier1_5Result = $this->applyLockedFields($tier1_5Result, $lockedFields);
+            $scoring = $this->scoreWithLockedBoost($tier1_5Result['parsed'], $inputText, $lockedFields);
             $tier1_5Result['confidence'] = $scoring['score'];
             $tier1_5Result['action'] = $scoring['action'];
 
@@ -720,11 +814,12 @@ PROMPT;
 
         if ($this->llmClient->isProviderAvailable('claude')) {
             error_log("[Agent] escalateText: Tier 2 starting (from {$result['confidence']})");
-            $claudeResult = $this->processWithClaude($inputText, 'claude-sonnet-4-5-20250929', $result);
+            $claudeResult = $this->processWithClaude($inputText, 'claude-sonnet-4-5-20250929', $result, $lockedFields);
 
             if ($claudeResult['success']) {
                 $claudeResult = $this->applyInference($claudeResult);
-                $scoring = $this->scorer->score($claudeResult['parsed'], $inputText);
+                $claudeResult = $this->applyLockedFields($claudeResult, $lockedFields);
+                $scoring = $this->scoreWithLockedBoost($claudeResult['parsed'], $inputText, $lockedFields);
                 $claudeResult['confidence'] = $scoring['score'];
                 $claudeResult['action'] = $scoring['action'];
 
@@ -773,6 +868,7 @@ PROMPT;
         $imageData = $input['image'] ?? '';
         $mimeType = $input['mimeType'] ?? '';
         $supplementaryText = $input['supplementaryText'] ?? null;
+        $lockedFields = $input['lockedFields'] ?? [];
 
         $processOptions = [];
         if ($supplementaryText) {
@@ -805,7 +901,8 @@ PROMPT;
 
         if ($tier1_5Result['success']) {
             $tier1_5Result = $this->applyInference($tier1_5Result);
-            $scoring = $this->scorer->score($tier1_5Result['parsed'], $supplementaryText);
+            $tier1_5Result = $this->applyLockedFields($tier1_5Result, $lockedFields);
+            $scoring = $this->scoreWithLockedBoost($tier1_5Result['parsed'], $supplementaryText, $lockedFields);
             $tier1_5Result['confidence'] = $scoring['score'];
             $tier1_5Result['action'] = $scoring['action'];
 
@@ -846,7 +943,8 @@ PROMPT;
 
             if ($claudeResult['success']) {
                 $claudeResult = $this->applyInference($claudeResult);
-                $scoring = $this->scorer->score($claudeResult['parsed'], $supplementaryText);
+                $claudeResult = $this->applyLockedFields($claudeResult, $lockedFields);
+                $scoring = $this->scoreWithLockedBoost($claudeResult['parsed'], $supplementaryText, $lockedFields);
                 $claudeResult['confidence'] = $scoring['score'];
                 $claudeResult['action'] = $scoring['action'];
 
@@ -901,6 +999,7 @@ PROMPT;
         // Step 1: Detect intent
         $intent = $this->intentDetector->detect($classification['text']);
         $inputText = $classification['text'];
+        $lockedFields = $classification['lockedFields'] ?? [];
 
         // Get configurable thresholds
         $thresholds = $this->config['confidence'] ?? [];
@@ -933,7 +1032,8 @@ PROMPT;
         }
 
         $result = $this->applyInference($result);
-        $scoring = $this->scorer->score($result['parsed'], $inputText);
+        $result = $this->applyLockedFields($result, $lockedFields);
+        $scoring = $this->scoreWithLockedBoost($result['parsed'], $inputText, $lockedFields);
         $result['confidence'] = $scoring['score'];
         $result['action'] = $scoring['action'];
 
@@ -964,11 +1064,12 @@ PROMPT;
         // ─────────────────────────────────────────────────────
         error_log("[Agent] identify(text): Tier 1.5 starting (escalating from {$result['confidence']})");
         $tier1Result = $result; // Save for context
-        $result = $this->processWithGemini($inputText, 'detailed', $tier1Result);
+        $result = $this->processWithGemini($inputText, 'detailed', $tier1Result, $lockedFields);
 
         if ($result['success']) {
             $result = $this->applyInference($result);
-            $scoring = $this->scorer->score($result['parsed'], $inputText);
+            $result = $this->applyLockedFields($result, $lockedFields);
+            $scoring = $this->scoreWithLockedBoost($result['parsed'], $inputText, $lockedFields);
             $result['confidence'] = $scoring['score'];
             $result['action'] = $scoring['action'];
 
@@ -1013,11 +1114,12 @@ PROMPT;
         if ($this->llmClient->isProviderAvailable('claude')) {
             error_log("[Agent] identify(text): Tier 2 starting model=claude-sonnet-4-5 (escalating from {$result['confidence']})");
             $tier1_5Result = $result; // Save for context
-            $claudeResult = $this->processWithClaude($inputText, 'claude-sonnet-4-5-20250929', $tier1_5Result);
+            $claudeResult = $this->processWithClaude($inputText, 'claude-sonnet-4-5-20250929', $tier1_5Result, $lockedFields);
 
             if ($claudeResult['success']) {
                 $claudeResult = $this->applyInference($claudeResult);
-                $scoring = $this->scorer->score($claudeResult['parsed'], $inputText);
+                $claudeResult = $this->applyLockedFields($claudeResult, $lockedFields);
+                $scoring = $this->scoreWithLockedBoost($claudeResult['parsed'], $inputText, $lockedFields);
                 $claudeResult['confidence'] = $scoring['score'];
                 $claudeResult['action'] = $scoring['action'];
 
@@ -1108,6 +1210,7 @@ PROMPT;
     public function identifyWithOpus(array $input, array $priorResult): array
     {
         $inputText = $input['text'] ?? '';
+        $lockedFields = $input['lockedFields'] ?? [];
 
         // Get configurable threshold
         $tier2Threshold = $this->config['confidence']['tier2_threshold'] ?? 60;
@@ -1123,7 +1226,7 @@ PROMPT;
         }
 
         // Process with Opus
-        $result = $this->processWithClaude($inputText, 'claude-opus-4-5-20251101', $priorResult);
+        $result = $this->processWithClaude($inputText, 'claude-opus-4-5-20251101', $priorResult, $lockedFields);
 
         if (!$result['success']) {
             return [
@@ -1135,7 +1238,8 @@ PROMPT;
         }
 
         $result = $this->applyInference($result);
-        $scoring = $this->scorer->score($result['parsed'], $inputText);
+        $result = $this->applyLockedFields($result, $lockedFields);
+        $scoring = $this->scoreWithLockedBoost($result['parsed'], $inputText, $lockedFields);
         $result['confidence'] = $scoring['score'];
         $result['action'] = $scoring['action'];
 
@@ -1177,6 +1281,7 @@ PROMPT;
         $imageData = $input['image'] ?? '';
         $mimeType = $input['mimeType'] ?? 'image/jpeg';
         $supplementaryText = $input['supplementaryText'] ?? null;
+        $lockedFields = $input['lockedFields'] ?? [];
 
         // Get configurable threshold
         $tier2Threshold = $this->config['confidence']['tier2_threshold'] ?? 60;
@@ -1214,7 +1319,8 @@ PROMPT;
         }
 
         $result = $this->applyInference($result);
-        $scoring = $this->scorer->score($result['parsed'], $supplementaryText);
+        $result = $this->applyLockedFields($result, $lockedFields);
+        $scoring = $this->scoreWithLockedBoost($result['parsed'], $supplementaryText, $lockedFields);
         $result['confidence'] = $scoring['score'];
         $result['action'] = $scoring['action'];
 
@@ -1259,6 +1365,7 @@ PROMPT;
         $imageData = $classification['imageData'];
         $mimeType = $classification['mimeType'];
         $supplementaryText = $classification['supplementaryText'] ?? null;
+        $lockedFields = $classification['lockedFields'] ?? [];
 
         // Options to pass to processors
         $processOptions = [];
@@ -1305,7 +1412,8 @@ PROMPT;
 
         $quality = $result['quality'] ?? null;
         $result = $this->applyInference($result);
-        $scoring = $this->scorer->score($result['parsed'], $supplementaryText);
+        $result = $this->applyLockedFields($result, $lockedFields);
+        $scoring = $this->scoreWithLockedBoost($result['parsed'], $supplementaryText, $lockedFields);
         $result['confidence'] = $scoring['score'];
         $result['action'] = $scoring['action'];
 
@@ -1340,7 +1448,8 @@ PROMPT;
 
         if ($result['success']) {
             $result = $this->applyInference($result);
-            $scoring = $this->scorer->score($result['parsed'], $supplementaryText);
+            $result = $this->applyLockedFields($result, $lockedFields);
+            $scoring = $this->scoreWithLockedBoost($result['parsed'], $supplementaryText, $lockedFields);
             $result['confidence'] = $scoring['score'];
             $result['action'] = $scoring['action'];
 
@@ -1393,7 +1502,8 @@ PROMPT;
 
             if ($claudeResult['success']) {
                 $claudeResult = $this->applyInference($claudeResult);
-                $scoring = $this->scorer->score($claudeResult['parsed'], $supplementaryText);
+                $claudeResult = $this->applyLockedFields($claudeResult, $lockedFields);
+                $scoring = $this->scoreWithLockedBoost($claudeResult['parsed'], $supplementaryText, $lockedFields);
                 $claudeResult['confidence'] = $scoring['score'];
                 $claudeResult['action'] = $scoring['action'];
 

@@ -88,6 +88,10 @@ export enum ChipKey {
   // Search
   SEARCH_AGAIN = 'search_again',
   USE_THIS_RESULT = 'use_this_result',
+
+  // Field Correction
+  CORRECT_FIELD = 'correct_field',
+  CONFIRM_CORRECTIONS = 'confirm_corrections',
 }
 
 // ===========================================
@@ -313,6 +317,19 @@ const CHIP_DEFINITIONS: Record<ChipKey, ChipDefinition> = {
     id: 'use_anyway',
     action: 'continue_as_is',
     messageKey: MessageKey.CHIP_USE_THIS_RESULT,
+  },
+
+  // Field Correction
+  [ChipKey.CORRECT_FIELD]: {
+    id: 'correct_field',
+    action: 'correct_field',
+    messageKey: MessageKey.CHIP_CORRECT_FIELD,
+  },
+  [ChipKey.CONFIRM_CORRECTIONS]: {
+    id: 'confirm_corrections',
+    action: 'confirm_corrections',
+    messageKey: MessageKey.CHIP_CONFIRM_CORRECTIONS,
+    variant: 'primary',
   },
 };
 

@@ -190,9 +190,10 @@ export function createTextMessage(
  */
 export function createChipsMessage(
   chips: AgentChip[],
-  options: Partial<Omit<AgentMessage, 'id' | 'timestamp' | 'category' | 'data'>> = {}
+  options: Partial<Omit<AgentMessage, 'id' | 'timestamp' | 'category' | 'data'>> & { groupLabel?: string } = {}
 ): AgentMessage {
-  return createMessage('chips', { chips }, options);
+  const { groupLabel, ...messageOptions } = options;
+  return createMessage('chips', { chips, ...(groupLabel && { groupLabel }) }, messageOptions);
 }
 
 /**

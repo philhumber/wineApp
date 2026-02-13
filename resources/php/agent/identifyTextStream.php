@@ -50,6 +50,9 @@ if (empty($input['text']) || !is_string($input['text'])) {
     agentError('Missing or invalid field: text (string required)');
 }
 
+// Validate and sanitize locked fields
+$input['lockedFields'] = validateLockedFields($input);
+
 // Check if streaming is enabled - fallback to non-streaming endpoint
 $config = getAgentConfig();
 if (!($config['streaming']['enabled'] ?? false)) {
