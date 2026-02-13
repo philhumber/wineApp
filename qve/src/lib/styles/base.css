@@ -45,6 +45,8 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   transition: var(--theme-transition);
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
 }
 
 /* Dark mode ambient glow */
