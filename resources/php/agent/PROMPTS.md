@@ -9,29 +9,179 @@ To review or tweak any prompt, edit that file only.
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Prompt Registry](#prompt-registry)
-3. [Escalation Context](#escalation-context)
-4. [Prompt Usage by Tier](#prompt-usage-by-tier)
-5. [Key Design Principles](#key-design-principles)
+2. [Prompt Flow Diagrams](#prompt-flow-diagrams)
+3. [Prompt Registry](#prompt-registry)
+4. [Streaming vs Non-Streaming](#streaming-vs-non-streaming)
+5. [Escalation Context](#escalation-context)
+6. [Key Design Principles](#key-design-principles)
 
 ---
 
 ## Overview
 
-The wine identification system uses multiple prompts across a four-tier escalation architecture:
+The wine identification system uses multiple prompts across a four-tier escalation architecture.
+Each tier uses a different model/thinking level, and the prompt varies by tier and input type:
 
-| Tier | Model | Thinking | Prompt Method |
-|------|-------|----------|---------------|
-| **Tier 1** | Gemini 3 Flash | LOW | `textIdentify()` / `visionIdentify()` |
-| **Tier 1 Streaming** | Gemini 3 Flash | MINIMAL | `textIdentifyStreaming()` / `visionIdentifyStreaming()` |
-| **Tier 1.5** | Gemini 3 Flash | HIGH | `textIdentifyDetailed()` / `visionIdentifyDetailed()` |
-| **Tier 2** | Claude Sonnet 4.5 | N/A | `textIdentifyDetailed()` + `escalationContext()` |
-| **Tier 3** | Claude Opus 4.5 | N/A | `textIdentifyDetailed()` + `escalationContext()` |
+| Tier | Model | Thinking | Text Prompt | Vision Prompt |
+|------|-------|----------|-------------|---------------|
+| **Tier 1 Streaming** | Gemini Flash | MINIMAL | `textIdentifyStreaming()` | `visionIdentifyStreaming()` |
+| **Tier 1 Fallback** | Gemini Flash | LOW | `textIdentify()` | `visionIdentify()` |
+| **Tier 1.5** | Gemini Flash | HIGH | `textIdentifyDetailed()` | `visionIdentifyDetailed()` |
+| **Tier 2** | Claude Sonnet 4.5 | — | `textIdentify()` | `visionIdentifyDetailed()` |
+| **Tier 3** | Claude Opus 4.5 | — | `textIdentify()` | `visionIdentifyDetailed()` |
 
-All prompts enforce:
-- JSON-only output format
-- Confidence scoring based on recognition (not field completion)
-- Null values for unrecognized/uncertain fields
+Tiers 1.5–3 also append `escalationContext()` with prior result data.
+
+**Note:** Text Tiers 2/3 use the *standard* prompt (not detailed) — Claude models are capable
+enough with the standard prompt plus escalation context. Vision Tiers 2/3 always use the
+*detailed* prompt because image interpretation benefits from the stricter verification rules.
+
+---
+
+## Prompt Flow Diagrams
+
+### Text Identification
+
+```
+User types "Château Margaux 2015"
+             │
+             ▼
+┌─ identifyTextStreaming() ──────────────────────────────────────┐
+│  Prompt: textIdentifyStreaming($text)              [COMPACT]   │
+│  Model:  Gemini Flash (MINIMAL thinking)                      │
+│  + responseSchema (constrains JSON shape)                     │
+│  Fields stream to UI progressively                            │
+└──────────────────────────────┬─────────────────────────────────┘
+                               │
+              ┌────────────────┼────────────────┐
+       streaming off      streaming fails    confidence ok
+       or not enabled     (fallback_on_error)      │
+              │                │                   │
+              ▼                ▼                   │
+┌─ Tier 1 (non-streaming fallback) ────────┐      │
+│  Prompt: textIdentify($text)    [FULL]   │      │
+│  Model:  Gemini Flash (LOW thinking)     │      │
+│  47 lines: examples, confidence rules    │      │
+└────────────────────┬─────────────────────┘      │
+                     │                             │
+                conf < 85%                         │
+                     │                             │
+                     ▼                             │
+┌─ Tier 1.5 ───────────────────────────────┐      │
+│  Prompt: textIdentifyDetailed($text)     │      │
+│        + escalationContext()  [DETAILED]  │      │
+│  Model:  Gemini Flash (HIGH thinking)    │      │
+│  Sommelier persona, abbreviation rules   │      │
+└────────────────────┬─────────────────────┘      │
+                     │                             │
+                conf < 70%                         │
+                     │                             │
+                     ▼                             │
+┌─ Tier 2 ─────────────────────────────────┐      │
+│  Prompt: textIdentify($text)             │      │
+│        + escalationContext()    [FULL]    │      │
+│  Model:  Claude Sonnet 4.5              │      │
+└────────────────────┬─────────────────────┘      │
+                     │                             │
+                conf < 60% / user triggers         │
+                     │                             │
+                     ▼                             │
+┌─ Tier 3 (user-triggered) ────────────────┐      │
+│  Prompt: textIdentify($text)             │      │
+│        + escalationContext()    [FULL]    │      │
+│  Model:  Claude Opus 4.5                │      │
+│  Context includes user rejection reason  │      │
+└──────────────────────────────────────────┘      │
+                                                   │
+                                                   ▼
+                                              Return result
+```
+
+### Image Identification
+
+```
+User photographs a wine label
+             │
+             ▼
+┌─ identifyImageStreaming() ─────────────────────────────────────┐
+│  Prompt: visionIdentifyStreaming($suppText)        [COMPACT]   │
+│  Model:  Gemini Flash (MINIMAL thinking)                      │
+│  + responseSchema                                             │
+│  Framing: "Read the text on this label" (anti-hallucination)  │
+│  Fields stream to UI progressively                            │
+└──────────────────────────────┬─────────────────────────────────┘
+                               │
+              ┌────────────────┼────────────────┐
+       streaming off      streaming fails    confidence ok
+              │                │                   │
+              ▼                ▼                   │
+┌─ Tier 1 (non-streaming fallback) ────────┐      │
+│  Prompt: visionIdentify()       [FULL]   │      │
+│  Model:  Gemini Flash                    │      │
+│  "Analyze this wine label image"         │      │
+└────────────────────┬─────────────────────┘      │
+                     │                             │
+                conf < 85%                         │
+                     │                             │
+                     ▼                             │
+┌─ Tier 1.5 ───────────────────────────────┐      │
+│  Prompt: visionIdentifyDetailed()        │      │
+│                             [DETAILED]   │      │
+│  Model:  Gemini Flash (HIGH) + grounding │      │
+│  "Use web search to verify your ID"      │      │
+└────────────────────┬─────────────────────┘      │
+                     │                             │
+                conf < 70%                         │
+                     │                             │
+                     ▼                             │
+┌─ Tier 2/3 ───────────────────────────────┐      │
+│  Prompt: visionIdentifyDetailed()        │      │
+│                             [DETAILED]   │      │
+│  Model:  Claude Sonnet or Opus           │      │
+│  (always detailed for vision)            │      │
+└──────────────────────────────────────────┘      │
+                                                   │
+                                                   ▼
+                                              Return result
+```
+
+### Enrichment
+
+```
+User taps "Enrich" after identification
+             │
+             ▼
+┌─ agentEnrichStream.php ──────────────────┐
+│  Prompt: enrichmentStreaming(...)         │
+│  Model:  Gemini Flash (MEDIUM thinking)  │  [COMPACT]
+│  + Google Search grounding               │
+│  + responseSchema                        │
+│  Fields stream to UI                     │
+└──────────────────────────────────────────┘
+
+(Fallback if streaming unavailable)
+             │
+             ▼
+┌─ agentEnrich.php ────────────────────────┐
+│  Prompt: enrichment(...)                 │
+│  Model:  Gemini Flash                    │  [FULL]
+│  + Google Search grounding               │
+│  Full examples + narrative guidelines    │
+└──────────────────────────────────────────┘
+```
+
+### Clarification (single tier, no escalation)
+
+```
+Duplicate wine found during add-to-cellar
+             │
+             ▼
+┌─ clarifyMatch.php ───────────────────────┐
+│  Prompt: clarifyMatch(...)               │
+│  Model:  Gemini Flash                    │
+│  "Which option best matches?"            │
+└──────────────────────────────────────────┘
+```
 
 ---
 
@@ -43,16 +193,16 @@ All methods are static on the `Prompts` class in `prompts/prompts.php`.
 
 | Method | Used By | Description |
 |--------|---------|-------------|
-| `textIdentify($input)` | `TextProcessor::process()` | Standard Tier 1 prompt with examples and confidence rules |
-| `textIdentifyDetailed($input)` | `TextProcessor::process()` (escalation) | Tier 1.5+ with sommelier persona, abbreviation expansion, appellation rules |
-| `textIdentifyStreaming($text)` | `IdentificationService::identifyTextStreaming()` | Compact prompt for fast TTFB with Gemini `responseSchema` |
+| `textIdentify($input)` | `TextProcessor::process()` | Standard prompt — examples, confidence rules, field descriptions. Used by Tier 1 fallback and Tiers 2/3 |
+| `textIdentifyDetailed($input)` | `TextProcessor::process()` (escalation) | Tier 1.5 only — sommelier persona, abbreviation expansion, appellation rules |
+| `textIdentifyStreaming($text)` | `IdentificationService::identifyTextStreaming()` | Compact 7-line prompt for fast TTFB. Paired with `responseSchema` which handles structure |
 
 ### Vision (Image) Identification
 
 | Method | Used By | Description |
 |--------|---------|-------------|
 | `visionIdentify()` | `VisionProcessor::process()` | Standard Tier 1 — reads label text, infers from knowledge |
-| `visionIdentifyDetailed()` | `VisionProcessor::process()` (escalation) | Tier 1.5+ — adds web search verification, stricter null rules |
+| `visionIdentifyDetailed()` | `VisionProcessor::process()` (escalation) | Tier 1.5/2/3 — adds web search verification, stricter null rules |
 | `visionIdentifyStreaming($supplementaryText)` | `IdentificationService::identifyImageStreaming()` | "Read the label" framing to reduce hallucination. Compact for fast TTFB |
 
 ### Enrichment
@@ -66,13 +216,29 @@ All methods are static on the `Prompts` class in `prompts/prompts.php`.
 
 | Method | Used By | Description |
 |--------|---------|-------------|
-| `clarifyMatch($producer, $wineName, $vintage, $region, $type, $optionsList)` | `clarifyMatch.php` | Helps user disambiguate between similar wines/regions/producers |
+| `clarifyMatch(...)` | `clarifyMatch.php` | Helps user disambiguate between similar wines/regions/producers |
 
 ### Escalation Context
 
 | Method | Used By | Description |
 |--------|---------|-------------|
-| `escalationContext($priorResult, $lockedFields, $escalationContext)` | `IdentificationService` | Appended to any prompt when escalating to a higher tier |
+| `escalationContext(...)` | `IdentificationService` | Appended to any prompt when escalating to a higher tier |
+
+---
+
+## Streaming vs Non-Streaming
+
+Each query type has a **compact** streaming prompt and a **full** non-streaming prompt:
+
+| Query Type | Streaming (compact) | Non-streaming (full) | Why two? |
+|------------|--------------------|--------------------|----------|
+| Text ID | `textIdentifyStreaming` (7 lines) | `textIdentify` (47 lines) | Streaming uses `responseSchema` to constrain JSON shape, so the prompt doesn't need format/examples |
+| Vision ID | `visionIdentifyStreaming` (26 lines) | `visionIdentify` (44 lines) | Same — schema handles structure |
+| Enrichment | `enrichmentStreaming` (14 lines) | `enrichment` (51 lines) | Same — schema handles structure |
+
+**Streaming prompts are compact for TTFB.** The `responseSchema` (defined in `getIdentificationSchema()` / `getEnrichmentSchema()`) constrains the output structure — field names, types, enums, ordering — so the prompt can skip format instructions, field descriptions, and examples. Fewer input tokens = faster time to first streamed field (~2s target).
+
+**Non-streaming prompts include everything.** Without a schema, the prompt must fully describe the expected JSON shape, provide examples, and spell out field-level instructions. These are used for Tier 1 fallback and all escalation tiers.
 
 ---
 
@@ -85,7 +251,7 @@ When escalating from one tier to the next, `Prompts::escalationContext()` builds
 3. **Rejection reason** — whether the user rejected the result or the system auto-escalated
 4. **Locked fields** — user-confirmed values that must be preserved exactly
 
-This context is appended to the base prompt by the consuming code (`TextProcessor` or `VisionProcessor`) via the `prior_context` option.
+This context is appended to the base prompt by `TextProcessor` or `VisionProcessor` via the `prior_context` option.
 
 ### User Supplementary Context
 
@@ -105,35 +271,6 @@ USER CONTEXT: it's a French wine from the 2010s
 
 ---
 
-## Prompt Usage by Tier
-
-### Tier 1: Fast (Gemini 3 Flash, LOW thinking)
-
-- **Prompt**: `Prompts::textIdentify()` or `Prompts::visionIdentify()`
-- **Streaming**: `Prompts::textIdentifyStreaming()` or `Prompts::visionIdentifyStreaming()`
-- **Temperature**: 0.3
-- **Context**: None (first attempt)
-
-### Tier 1.5: Detailed (Gemini 3 Flash, HIGH thinking)
-
-- **Prompt**: `Prompts::textIdentifyDetailed()` or `Prompts::visionIdentifyDetailed()`
-- **Temperature**: 0.4
-- **Context**: `Prompts::escalationContext()` from Tier 1
-
-### Tier 2: Balanced (Claude Sonnet 4.5)
-
-- **Prompt**: `Prompts::textIdentifyDetailed()` (text) or `Prompts::visionIdentifyDetailed()` (vision)
-- **Temperature**: 0.3
-- **Context**: `Prompts::escalationContext()` from Tier 1.5
-
-### Tier 3: Premium (Claude Opus 4.5) - User-triggered
-
-- **Prompt**: `Prompts::textIdentifyDetailed()` + `Prompts::escalationContext()`
-- **Temperature**: 0.3
-- **Context**: Includes user rejection reason and locked fields
-
----
-
 ## Key Design Principles
 
 1. **Recognition over completion**: Confidence reflects whether the wine is actually recognized, not just whether fields can be filled with plausible data.
@@ -144,9 +281,11 @@ USER CONTEXT: it's a French wine from the 2010s
 
 4. **Label-reading framing**: Vision streaming prompt says "read the text on this label" — not "identify this wine" — to reduce hallucination.
 
-5. **Streaming prompts are compact**: Streaming variants are intentionally shorter than their non-streaming counterparts for faster time-to-first-byte.
+5. **Streaming prompts are compact**: Streaming variants are intentionally shorter for faster TTFB. The `responseSchema` handles structure, so the prompt can skip format instructions.
 
 6. **Single source of truth**: Every prompt lives in `prompts/prompts.php`. No inline prompts, no .txt template files.
+
+7. **Text vs vision escalation asymmetry**: Text Tiers 2/3 use the standard prompt (Claude handles text well without extra instructions). Vision Tiers 2/3 always use the detailed prompt (image interpretation benefits from stricter verification rules).
 
 ---
 
@@ -155,11 +294,11 @@ USER CONTEXT: it's a French wine from the 2010s
 | File | Purpose |
 |------|---------|
 | `prompts/prompts.php` | **All prompts** — the sole source of truth |
-| `Identification/TextProcessor.php` | Calls `Prompts::textIdentify()` / `textIdentifyDetailed()` |
-| `Identification/VisionProcessor.php` | Calls `Prompts::visionIdentify()` / `visionIdentifyDetailed()` |
+| `Identification/TextProcessor.php` | Calls `textIdentify()` / `textIdentifyDetailed()` |
+| `Identification/VisionProcessor.php` | Calls `visionIdentify()` / `visionIdentifyDetailed()` |
 | `Identification/IdentificationService.php` | Calls streaming prompts + `escalationContext()` |
-| `Enrichment/WebSearchEnricher.php` | Calls `Prompts::enrichment()` / `enrichmentStreaming()` |
-| `clarifyMatch.php` | Calls `Prompts::clarifyMatch()` |
+| `Enrichment/WebSearchEnricher.php` | Calls `enrichment()` / `enrichmentStreaming()` |
+| `clarifyMatch.php` | Calls `clarifyMatch()` |
 | `Identification/InferenceEngine.php` | Parses user supplementary context (not a prompt file) |
 
 ---
