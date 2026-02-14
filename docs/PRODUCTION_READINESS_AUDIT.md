@@ -83,7 +83,7 @@ All items verified against `develop` branch on 2026-02-14:
 | R-W7. No double-click protection | **Fixed** | WIN-228: Both add and edit pages check `$isSubmitting` before processing, buttons disabled during submit |
 | R-W8. checkDuplicate.php loads all records | **Fixed** | Token-based SQL pre-filtering with `LIMIT 50` on regions, producers, and wines |
 | R-W9. Agent persistence race condition | **Open** | Debounced read-merge-write still not atomic. Low risk for single-user app. See remaining items |
-| R-W10. Currency rate freshness | **Open** | Rates still loaded once at init, never refreshed. See remaining items |
+| R-W10. Currency rate freshness | **Fixed** | WIN-231: Rates auto-refresh on tab visibility change when stale (>24h). `getCurrencies.php` returns `ratesLastUpdated` |
 | S-W1. SSL verification disabled | **Fixed** | WIN-214: `SSLConfig.php` with `VERIFYPEER=true`, `VERIFYHOST=2`, cross-platform CA bundle resolution. Fail-closed design |
 | S-W2. No CSRF protection | **Fixed** | `securityHeaders.php`: Origin whitelist validation + `X-Requested-With: XMLHttpRequest` requirement on all POSTs |
 | S-W3. No CORS headers | **Fixed** | `securityHeaders.php`: Dynamic CORS headers, preflight handling, `Vary: Origin` |
@@ -100,7 +100,7 @@ All items verified against `develop` branch on 2026-02-14:
 | P-W6. Image compression blocks main thread | **Fixed** | `compressImageInWorker()`: `createImageBitmap` + `OffscreenCanvas` in Web Worker, main-thread fallback for older browsers |
 | P-W7. Filter dropdown no cache | **Fixed** | `filterOptions.ts`: Context-aware caching by composite key (`viewMode|filter1|filter2|...`) |
 | A-I1. No database migration runner | **Open** | `migrations/` dir exists but no versioning or runner. See remaining items |
-| A-I2. No focus trapping in modals | **Fixed** | All modals have `role="dialog"` or `role="alertdialog"`, `aria-modal="true"`, `aria-labelledby`. Confirmation modals correctly use `alertdialog` |
+| A-I2. No focus trapping in modals | **Fixed** | WIN-240: `focusTrap` Svelte action (`$lib/actions/focusTrap.ts`) applied to all 8 modals. Tab/Shift+Tab cycles within modal. All modals have `role="dialog"` or `role="alertdialog"`, `aria-modal="true"`, `aria-labelledby`. ConfirmModal variant-aware initial focus (danger → Cancel) |
 | A-I3. agent-test route ships to prod | **Fixed** | Route deleted |
 | A-I4. Deploy script no branch check | **Fixed** | Requires `develop` branch, checks uncommitted changes, verifies sync with origin. `-Force` override available |
 | A-I5. No error tracking/monitoring | **Fixed** | WIN-212/243: `hooks.client.ts` + `errorReporter.ts` (dedup, rate limit, keepalive) → `logError.php` → `error_log()`. 7 touch points: handleError, unhandledrejection, fetchJSON, 3 streaming methods, agent middleware. `healthcheck.php` for uptime (DB connectivity, 200/503) |
@@ -317,7 +317,7 @@ WIN-205: `getDrunkWines.php` implements server-side `LIMIT :limit OFFSET :offset
 
 ### Important (4 of 7 Fixed)
 
-**A-I2.** All 5 audited modals have proper `role`, `aria-modal="true"`, `aria-labelledby`
+**A-I2.** WIN-240: `focusTrap` action (`$lib/actions/focusTrap.ts`) applied to all 8 modals — Tab/Shift+Tab contained, focus restored on close. All modals have proper `role`, `aria-modal="true"`, `aria-labelledby`. ConfirmModal variant-aware initial focus (danger → Cancel)
 **A-I3.** agent-test route deleted
 **A-I4.** Deploy script has branch check, uncommitted changes check, origin sync check
 **A-I5.** `errorReporter.ts` → `logError.php` → `error_log()` with `[Frontend Error]` prefix. 7 touch points: `hooks.client.ts` (handleError + unhandledrejection), `client.ts` (fetchJSON + 3 streaming methods), `errorHandler.ts` (agent middleware). Dedup (60s window), rate limit (10/min), AbortError filter, `keepalive` for navigation. `healthcheck.php` for uptime (DB connectivity, 200/503)
@@ -347,19 +347,18 @@ WIN-205: `getDrunkWines.php` implements server-side `LIMIT :limit OFFSET :offset
 | # | ID | Task | Effort | Sprint |
 |---|-----|------|--------|--------|
 | 3 | R-W9 | **Fix agent persistence race condition** — Make read-merge-write atomic or add a write lock. Low risk for single-user but becomes critical with multi-user | Small | S17 |
-| 4 | R-W10 | **Add currency rate refresh** — Rates loaded once at init. Add periodic refresh (e.g., daily) or on-demand check | Small | S17 |
-| 5 | A-I1 | **Add database migration runner** — `schema_versions` table + PHP script to track/apply migrations. Essential before multi-user launch | Medium | S17 |
-| 6 | R-W5 | **Convert read endpoints to GET** — Enables browser/CDN caching. `getWines`, `getDrunkWines`, `getBottles`, filter endpoints | Medium | S17 |
-| 7 | P-W1 | **Optimize client-side sort** — `[...wines].sort()` creates new array on every reactive change. Memoize or move to derived store with comparison check | Small | S17 |
+| 4 | A-I1 | **Add database migration runner** — `schema_versions` table + PHP script to track/apply migrations. Essential before multi-user launch | Medium | S17 |
+| 5 | R-W5 | **Convert read endpoints to GET** — Enables browser/CDN caching. `getWines`, `getDrunkWines`, `getBottles`, filter endpoints | Medium | S17 |
+| 6 | P-W1 | **Optimize client-side sort** — `[...wines].sort()` creates new array on every reactive change. Memoize or move to derived store with comparison check | Small | S17 |
 
 ### Priority 3: Polish (Ongoing)
 
 | # | ID | Task | Effort |
 |---|-----|------|--------|
-| 8 | A-N1 | Large component refactoring — Extract sub-components from 500+ line files | Medium |
-| 9 | A-N2 | Replace TypeScript `any` usage (~18 occurrences) with proper types | Small |
-| 10 | A-N3 | Clean up barrel export inconsistencies | Small |
-| 11 | A-N5 | Add request logging middleware to non-agent endpoints | Medium |
+| 7 | A-N1 | Large component refactoring — Extract sub-components from 500+ line files | Medium |
+| 8 | A-N2 | Replace TypeScript `any` usage (~18 occurrences) with proper types | Small |
+| 9 | A-N3 | Clean up barrel export inconsistencies | Small |
+| 10 | A-N5 | Add request logging middleware to non-agent endpoints | Medium |
 | 12 | A-N6 | Split `api/client.ts` (1503 lines) by domain | Medium |
 | 13 | NEW-N1 | Add missing entries to `HANDLER_CATEGORIES` map | Tiny |
 | 14 | NEW-N2 | Route `handleCancelRequest` and `handleGoBack` through personality/chip systems | Small |

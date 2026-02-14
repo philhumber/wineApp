@@ -28,7 +28,7 @@ graph LR
 
 ### Request/Response Pattern
 
-All endpoints (except `upload.php`) accept and return JSON:
+All endpoints accept and return JSON:
 
 ```
 Request:  POST /resources/php/<endpoint>.php
@@ -399,8 +399,8 @@ Get currencies and bottle sizes (reference data for dropdowns and conversion).
 const data = await api.getCurrencies();
 ```
 
-**Returns**: `CurrencyDataResponse` — `{ currencies: Currency[], bottleSizes: BottleSize[] }`
-**PHP**: `getCurrencies.php` — Cached for 24 hours via `Cache-Control` header.
+**Returns**: `CurrencyDataResponse` — `{ currencies: Currency[], bottleSizes: BottleSize[], ratesLastUpdated?: string }`
+**PHP**: `getCurrencies.php` — Cached for 24 hours via `Cache-Control` header. Frontend auto-refreshes on tab visibility when rates are >24 hours stale (WIN-231).
 
 ### getUserSettings
 
@@ -475,7 +475,7 @@ const impact = await api.getDeleteImpact(
   }
 }
 ```
-**PHP**: `getDeleteImpact.php` — Read-only preview; counts cascading children per entity type.
+**PHP**: `getDeleteImpact.php` — Read-only preview; counts cascading children per entity type. Wine deletion counts only in-cellar bottles (`bottleDrunk = 0`); drunk bottles are represented by the ratings count.
 
 ### deleteItem
 
@@ -580,8 +580,8 @@ Upload a wine image. Backend resizes to 800x800px with edge-sampled background f
 const filename = await api.uploadImage(file: File);
 ```
 
-**Returns**: `string` — Filename (e.g., `a1b2c3d4e5f6.jpg`)
-**PHP**: `upload.php` — Uses `FormData` (not JSON). Validates file type and size with `getimagesize()`. Returns plain text `Filename: xyz.jpg` (not JSON).
+**Returns**: `string` — Relative path (e.g., `images/wines/a1b2c3d4e5f6.jpg`)
+**PHP**: `upload.php` — Uses `FormData` (not JSON body). Validates file type and size with `getimagesize()`. Returns JSON `{ success, data: { filename } }` with HTTP status codes (400 for validation errors, 500 for processing failures).
 
 ### compressImageForIdentification
 

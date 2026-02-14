@@ -767,6 +767,16 @@ Drag-and-drop image upload with preview and validation.
 
 Global modal system managed by the `modal` store. All modals render inside `ModalContainer`.
 
+**Focus trapping (WIN-240)**: All modals use `use:focusTrap` from `$lib/actions/focusTrap.ts` to contain Tab/Shift+Tab within the modal. The action saves the previously-focused element on mount and restores focus on destroy. Accepts an optional `initialFocus` CSS selector. ConfirmModal uses variant-aware initial focus (danger → Cancel button, default → Confirm button). Stacked overlays get independent traps that are naturally isolated via DOM sibling rendering.
+
+```svelte
+<!-- Basic usage -->
+<div class="modal-content" role="dialog" aria-modal="true" use:focusTrap>
+
+<!-- With initial focus target -->
+<div class="modal-content" role="dialog" aria-modal="true" use:focusTrap={{ initialFocus: '.close-btn' }}>
+```
+
 ### ModalContainer
 
 Global modal renderer. Add once to `+layout.svelte`. Routes to the correct modal based on `$modal.type`.

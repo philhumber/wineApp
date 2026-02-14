@@ -612,7 +612,13 @@ body {
 
 ### 15.3 Touch Scroll vs Tap Detection
 
-Prevent scroll gestures from triggering click handlers:
+Prevent scroll gestures from triggering click handlers. **Always use `on:touchstart|passive`** when the handler doesn't call `preventDefault()` — avoids Chrome's `[Violation] Added non-passive event listener to a scroll-blocking event` warning. `touchend` is NOT scroll-blocking, so it doesn't need `|passive`:
+```svelte
+<button
+  on:touchstart|passive={handleTouchStart}
+  on:touchend={handleTouchEnd}
+>
+```
 ```typescript
 const SCROLL_THRESHOLD = 10; // pixels
 const TAP_TIMEOUT = 300; // ms
@@ -620,6 +626,8 @@ const TAP_TIMEOUT = 300; // ms
 // Track touch start position and time
 // Only trigger tap if movement < threshold AND elapsed < timeout
 ```
+
+**Scroll prevention**: Prefer CSS (`overflow: hidden` + `touch-action: none`) over JS `on:wheel|preventDefault` / `on:touchmove|preventDefault` — CSS doesn't trigger passive listener warnings.
 
 ### 15.4 Momentum Scrolling
 

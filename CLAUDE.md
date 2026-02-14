@@ -272,7 +272,13 @@ Also add to fixed-position containers like `.header`:
 ```
 
 ### Touch Scroll vs Tap Detection (FilterPill.svelte)
-Prevent scroll gestures from triggering click handlers:
+Prevent scroll gestures from triggering click handlers. **Use `on:touchstart|passive`** since the handler only records coordinates — `touchend` doesn't need `|passive` (it's not scroll-blocking):
+```svelte
+<button
+  on:touchstart|passive={handleTouchStart}
+  on:touchend={handleTouchEnd}
+>
+```
 ```typescript
 let touchStartX = 0, touchStartY = 0;
 const SCROLL_THRESHOLD = 10; // pixels

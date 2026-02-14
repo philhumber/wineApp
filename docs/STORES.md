@@ -257,13 +257,14 @@ type CellarSortDir = 'asc' | 'desc';
 ### currency (`stores/currency.ts`)
 
 Display currency management with API-driven exchange rates and conversion utilities.
+Rates auto-refresh on tab visibility change when stale (>24 hours) — see WIN-231.
 
 ```typescript
 // Writable stores
 displayCurrency        // custom store: CurrencyCode (default: 'GBP')
   .set(value)
   .initialize()        // Fetches currencies/bottle sizes from API
-availableCurrencies    // writable<Currency[]> - from API
+availableCurrencies    // writable<Currency[]> - from API (auto-refreshed when stale)
 availableBottleSizes   // writable<BottleSize[]> - from API
 
 // Derived stores
