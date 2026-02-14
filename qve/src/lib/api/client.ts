@@ -677,14 +677,13 @@ class WineApiClient {
     // WIN-254: 401 → redirect to login
     if (response.status === 401) this.handle401();
 
-    const text = await response.text();
+    const json = await response.json();
 
-    // Backend returns "Filename: xyz.jpg" on success
-    if (text.startsWith('Filename: ')) {
-      return text.replace('Filename: ', '').trim();
+    if (json.success && json.data?.filename) {
+      return json.data.filename;
     }
 
-    throw new Error(text || 'Upload failed');
+    throw new Error(json.message || 'Upload failed');
   }
 
   // ─────────────────────────────────────────────────────────

@@ -1,6 +1,10 @@
 <?php
 require_once __DIR__ . '/securityHeaders.php';
 require_once __DIR__ . '/errorHandler.php';
+
+// WIN-310: All responses are JSON
+header('Content-Type: application/json');
+
 // ----------------------------
 // CONFIG
 // ----------------------------
@@ -311,7 +315,8 @@ function rotateAndResizeImage($sourcePath, $targetPath, $canvasSize = 800) {
 $uploadedFile  = get_uploaded_file();
 // Check if it's a valid upload
 if (!isset($uploadedFile) || !is_array($uploadedFile) || !isset($uploadedFile['name'])) {
-    echo 'Error: Invalid file upload. Likely the image is too large or the wrong format.';
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Invalid file upload. Likely the image is too large or the wrong format.']);
     return;
 }
 
@@ -319,7 +324,8 @@ $imageFileType = strtolower(pathinfo($uploadedFile['name'], PATHINFO_EXTENSION))
 
 $validation = validate_image($uploadedFile, $allowedTypes, $maxFileSize);
 if ($validation !== true) {
-    echo "Error: $validation";
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => $validation]);
     return;
 }
 
@@ -328,10 +334,19 @@ $guidFilename = get_unique_filename($target_dir, 'jpg');
 $finalFile = $target_dir . DIRECTORY_SEPARATOR . $guidFilename;
 try {
     $result = rotateAndResizeImage($uploadedFile['tmp_name'], $finalFile, $canvasSize);
-    echo "Filename: images/wines/" . basename($result);
+
+    // rotateAndResizeImage returns an error string on failure
+    if (is_string($result) && str_starts_with($result, 'Error:')) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Image processing failed. Please try a different image.']);
+        return;
+    }
+
+    echo json_encode(['success' => true, 'data' => ['filename' => 'images/wines/' . basename($result)]]);
 } catch (Exception $e) {
     // WIN-217: Don't leak internal error details (file paths, GD errors, etc.)
     error_log("Error in upload.php: " . $e->getMessage() . " | File: " . $e->getFile() . ":" . $e->getLine());
-    echo 'Error: Image processing failed. Please try a different image.';
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Image processing failed. Please try a different image.']);
 }
 ?>
