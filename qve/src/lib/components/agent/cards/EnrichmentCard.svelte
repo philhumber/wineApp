@@ -105,7 +105,6 @@
 	>
 		<OverviewSection
 			state={cardState}
-			{fieldsMap}
 			{getFieldValue}
 			{hasField}
 			{isFieldTyping}
@@ -129,7 +128,6 @@
 
 		<TastingNotesSection
 			state={cardState}
-			{fieldsMap}
 			{getFieldValue}
 			{hasField}
 			{isFieldTyping}
@@ -139,7 +137,6 @@
 
 		<FoodPairingsSection
 			state={cardState}
-			{fieldsMap}
 			{getFieldValue}
 			{hasField}
 			{isFieldTyping}

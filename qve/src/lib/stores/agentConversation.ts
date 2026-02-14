@@ -57,9 +57,55 @@ let messageQueue: Promise<void> = Promise.resolve();
 
 /**
  * Tracks whether there are pending operations in the message queue.
- * Used to warn in dev mode if addMessage is called while queue is active.
  */
 let queuePendingCount = 0;
+
+/**
+ * Generation counter for aborting queued messages (WIN-305).
+ * Incremented by abortMessageQueue(). Queued operations check this
+ * before executing — if it changed since they were queued, they skip.
+ */
+let queueGeneration = 0;
+
+/**
+ * WIN-305: Flag to suppress handleIntroEnd scroll in MessageWrapper/ChipsMessage
+ * during conversation reset. When clearAllNewFlags() flips isPrecedingReady,
+ * hidden messages fly in and their handleIntroEnd would scroll back to old
+ * positions, fighting the scroll-to-greeting. This flag blocks those scrolls.
+ * AgentChatContainer's reactive scrollToBottom is unaffected (uses isScrollLocked).
+ */
+let introScrollSuppressed = false;
+let introScrollTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Check if intro-end scroll is suppressed (WIN-305).
+ * Used by MessageWrapper and ChipsMessage to skip scrollIntoView
+ * for old messages that become visible during a conversation reset.
+ */
+export function isIntroScrollSuppressed(): boolean {
+  return introScrollSuppressed;
+}
+
+/**
+ * Abort all pending queued messages (WIN-305).
+ * Increments generation so queued operations become no-ops,
+ * clears all isNew flags to instantly complete typewriter animations,
+ * and suppresses intro-end scroll for old messages during the transition period.
+ */
+export function abortMessageQueue(): void {
+  // Suppress old messages' handleIntroEnd scroll during reset
+  introScrollSuppressed = true;
+  if (introScrollTimer) clearTimeout(introScrollTimer);
+  introScrollTimer = setTimeout(() => {
+    introScrollSuppressed = false;
+    introScrollTimer = null;
+  }, 400); // 250ms fly transition + 150ms buffer
+
+  queueGeneration++;
+  queuePendingCount = 0;
+  messageQueue = Promise.resolve();
+  clearAllNewFlags();
+}
 
 // ===========================================
 // Origin Tracking Types
@@ -243,15 +289,6 @@ export function addMessage(
   message: Omit<AgentMessage, 'id' | 'timestamp'> | AgentMessage,
   options: { _fromQueue?: boolean } = {}
 ): AgentMessage {
-  // DEV warning: detect potential race condition if addMessage is called
-  // while addMessageWithDelay has pending operations in the queue
-  if (import.meta.env.DEV && queuePendingCount > 0 && !options._fromQueue) {
-    console.warn(
-      '[AgentConversation] addMessage() called while addMessageWithDelay queue has pending operations. ' +
-      'This may cause message ordering issues. Ensure addMessageWithDelay is awaited before calling addMessage.'
-    );
-  }
-
   const fullMessage: AgentMessage = {
     id: 'id' in message && message.id ? message.id : generateMessageId(),
     timestamp: 'timestamp' in message && message.timestamp ? message.timestamp : Date.now(),
@@ -348,8 +385,18 @@ export async function addMessageWithDelay(
   // Track pending queue operations
   queuePendingCount++;
 
+  // Capture generation at queue time (WIN-305)
+  const myGeneration = queueGeneration;
+
   // Chain onto the queue to ensure FIFO ordering
   messageQueue = messageQueue.then(async () => {
+    // WIN-305: If queue was aborted since this was queued, skip silently
+    if (myGeneration !== queueGeneration) {
+      queuePendingCount = Math.max(0, queuePendingCount - 1);
+      resolveMessage!(null as unknown as AgentMessage);
+      return;
+    }
+
     // Check state HERE (inside queue), not before queueing
     // This ensures we see the actual current state after prior messages
     const state = get(store);
@@ -371,6 +418,13 @@ export async function addMessageWithDelay(
 
     if (shouldDelay) {
       await delay(MESSAGE_DELAY_MS);
+
+      // WIN-305: Re-check after delay in case queue was aborted while waiting
+      if (myGeneration !== queueGeneration) {
+        queuePendingCount = Math.max(0, queuePendingCount - 1);
+        resolveMessage!(null as unknown as AgentMessage);
+        return;
+      }
     }
 
     const addedMessage = addMessage(message, { _fromQueue: true });
@@ -556,6 +610,9 @@ export function setAddWineStep(step: AddWineStep | null): void {
 export function resetConversation(
   greetingContent = "Let's start fresh. What wine can I help you with?"
 ): void {
+  // WIN-305: Abort any pending queued messages and kill typewriter animations
+  abortMessageQueue();
+
   const currentMessages = get(store).messages;
 
   // Add divider if there are existing messages
@@ -717,16 +774,3 @@ export function getLastChipsMessage(): AgentMessage | null {
   return [...messages].reverse().find((m) => m.category === 'chips' && !m.disabled) ?? null;
 }
 
-// ===========================================
-// Subscribe for debugging
-// ===========================================
-
-if (typeof window !== 'undefined' && import.meta.env.DEV) {
-  store.subscribe((state) => {
-    console.debug('[AgentConversation]', {
-      messageCount: state.messages.length,
-      phase: state.phase,
-      addWineStep: state.addWineStep,
-    });
-  });
-}

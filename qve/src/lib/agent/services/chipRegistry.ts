@@ -269,6 +269,7 @@ const CHIP_DEFINITIONS: Record<ChipKey, ChipDefinition> = {
     id: 'retry_add',
     action: 'retry_add',
     messageKey: MessageKey.CHIP_TRY_AGAIN,
+    variant: 'primary',
   },
 
   // Navigation

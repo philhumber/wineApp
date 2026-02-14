@@ -33,16 +33,17 @@
 					FROM producers
 					LEFT JOIN region on region.regionID = producers.regionID AND region.deleted = 0
 					LEFT JOIN wine on wine.producerID = producers.producerID AND wine.deleted = 0
-					LEFT JOIN bottles ON bottles.wineID = wine.wineID AND bottles.bottleDrunk = 0 AND bottles.deleted = 0
-				WHERE producers.deleted = 0";
+					LEFT JOIN bottles ON bottles.wineID = wine.wineID AND bottles.bottleDrunk = 0 AND bottles.deleted = 0";
 
-		// Add JOINs for context-aware filtering
+		// Add JOINs for context-aware filtering (before WHERE)
 		if ($countryName) {
 			$sqlQuery .= " LEFT JOIN country ON region.countryID = country.countryID";
 		}
 		if ($typeName) {
 			$sqlQuery .= " LEFT JOIN winetype ON wine.wineTypeID = winetype.wineTypeID";
 		}
+
+		$where[] = "producers.deleted = 0";
 
 		// Add WHERE clauses for context-aware filtering
 		if ($countryName) {
@@ -62,9 +63,7 @@
 			$params[':year'] = $year;
 		}
 
-		if (!empty($where)) {
-			$sqlQuery .= " AND " . implode(' AND ', $where);
-		}
+		$sqlQuery .= " WHERE " . implode(' AND ', $where);
 
 		$sqlQuery .= " GROUP BY producers.producerID, producerName, region.regionName";
 

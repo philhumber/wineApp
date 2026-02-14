@@ -8,7 +8,7 @@ $target_dir    = dirname(__DIR__, 2) . "/images/wines"; // absolute path
 $hardcodedFile = __DIR__ . "/sample.jpg";              // CLI test file
 $maxFileSize   = 10 * 1024 * 1024;                      // 10MB
 $allowedTypes  = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-$canvasSize    = 800;   // Output square canvas size (800x800px)
+$canvasSize    = 1200;  // Output square canvas size (1200x1200px)
 
 // Ensure target directory exists
 if (!is_dir($target_dir)) {

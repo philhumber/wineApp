@@ -63,7 +63,7 @@
 	<div class="metadata-row">
 		{#if state === 'skeleton'}
 			<span class="shimmer-inline shimmer-vintage"></span>
-			<span class="separator"> · </span>
+			<span class="separator">·</span>
 			<span class="shimmer-inline shimmer-region"></span>
 		{:else}
 			{#if hasVintage}
@@ -81,7 +81,7 @@
 			{/if}
 
 			{#if hasVintage && (hasRegion || hasCountry)}
-				<span class="separator"> · </span>
+				<span class="separator">·</span>
 			{/if}
 
 			{#if hasRegion}
@@ -100,7 +100,7 @@
 
 			{#if hasCountry}
 				{#if hasRegion}
-					<span class="separator"> · </span>
+					<span class="separator">·</span>
 				{/if}
 				<span class="country">
 					{#if state === 'streaming'}
@@ -143,6 +143,7 @@
 
 	.separator {
 		color: var(--text-tertiary);
+		margin: 0 4px;
 	}
 
 	.flag {

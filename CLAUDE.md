@@ -249,11 +249,16 @@ Mobile-first approach with fixed column counts:
 **Note**: Avoid `auto-fill, minmax()` on mobile - causes overflow when minimum exceeds available space.
 
 ### Overflow Prevention (base.css)
-Required for iOS Safari horizontal scroll prevention:
+Required for iOS Safari horizontal scroll prevention — **only on `body`, NOT `html`**:
 ```css
-html, body {
+/* IMPORTANT: Do NOT add overflow-x: hidden to html — it creates a dual
+   scroll container with body, which breaks mousewheel and touch scrolling
+   in Chrome (compositor can't determine the correct scroll target). */
+body {
   overflow-x: hidden;
-  max-width: 100vw;  /* Prevents fixed elements from extending viewport */
+}
+html {
+  max-width: 100%;  /* Secondary safety net for horizontal overflow */
 }
 ```
 Also add to fixed-position containers like `.header`:

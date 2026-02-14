@@ -3,11 +3,8 @@
 	 * TastingNotesSection
 	 * Displays wine tasting notes
 	 */
-	import type { StreamingField } from '$lib/agent/types';
-
 	// Slot props from DataCard
 	export let state: 'skeleton' | 'streaming' | 'static';
-	export let fieldsMap: Map<string, StreamingField> = new Map();
 	export let getFieldValue: (field: string) => any;
 	export let hasField: (field: string) => boolean;
 	export let isFieldTyping: (field: string) => boolean;

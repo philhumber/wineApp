@@ -718,6 +718,7 @@ Identify this wine. Return ONLY JSON.
 TEXT: {$text}
 
 Fields: producer (required), wineName (required), vintage (number|null), region, country, wineType ("Red"|"White"|"Rosé"|"Sparkling"|"Dessert"|"Fortified"), grapes (array), confidence (0-100).
+All country names MUST be in English (e.g., "France", "Italy", "Germany", NOT "Deutschland", "España", "Italia").
 Null if unsure.
 PROMPT;
     }
@@ -748,6 +749,7 @@ RULES:
 CRITICAL: Return null — NEVER guess. An incorrect value is far worse than null.
 If the label is artistic, decorative, or has minimal text, most fields should be null.
 Do not infer region from producer, do not infer grapes from region, do not infer country from language.
+All country names MUST be in English (e.g., "France", "Italy", "Germany", NOT "Deutschland", "España", "Italia").
 
 Confidence: How much text could you actually read?
 - 80-100: All key fields are clearly readable on the label

@@ -538,23 +538,3 @@ export function clearError(form: 'bottle' | 'manual', field: string): void {
 export const addWineErrors = derived(store, ($s) => $s.flow?.errors ?? { bottle: {}, manual: {} });
 
 // ===========================================
-// Debug
-// ===========================================
-
-if (typeof window !== 'undefined' && import.meta.env.DEV) {
-  store.subscribe((state) => {
-    if (state.flow) {
-      console.debug('[AgentAddWine]', {
-        step: state.flow.step,
-        currentEntityType: state.flow.currentEntityType,
-        existingWineId: state.flow.existingWineId,
-        isSubmitting: state.flow.isSubmitting,
-        selectedRegion: state.flow.selectedEntities.region?.name,
-        selectedProducer: state.flow.selectedEntities.producer?.name,
-        selectedWine: state.flow.selectedEntities.wine?.name,
-      });
-    } else {
-      console.debug('[AgentAddWine] Not in add flow');
-    }
-  });
-}

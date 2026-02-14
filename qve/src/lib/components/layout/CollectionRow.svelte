@@ -48,10 +48,10 @@
       <span class="stat-loading">Loading...</span>
     {:else if bottleCount !== undefined}
       <!-- History page: show bottle count -->
-      <span><strong>{bottleCount}</strong> bottles</span>
+      <span><strong>{bottleCount}</strong> {bottleCount === 1 ? 'bottle' : 'bottles'}</span>
     {:else}
       <!-- Cellar page: show wine count and value -->
-      <span><strong>{wineCount}</strong> wines</span>
+      <span><strong>{wineCount}</strong> {wineCount === 1 ? 'wine' : 'wines'}</span>
       {#if totalValue}
         <span class="stat-sep">&middot;</span>
         <button
@@ -201,6 +201,13 @@
     }
   }
 
+  /* Hidden on mobile — accessible via Side Menu */
+  @media (max-width: 768px) {
+    .view-toggle {
+      display: none;
+    }
+  }
+
   @media (max-width: 480px) {
     .collection-row {
       gap: var(--space-2);
@@ -210,9 +217,8 @@
       gap: var(--space-2);
     }
 
-    .view-toggle button {
-      padding: 3px 8px;
-      font-size: 0.5625rem;
+    .collection-title {
+      font-size: 1rem;
     }
 
     .stats-inline {
@@ -221,6 +227,20 @@
 
     .stat-note {
       font-size: 0.5625rem;
+    }
+  }
+
+  @media (max-width: 374px) {
+    .collection-left {
+      gap: var(--space-1);
+    }
+
+    .collection-title {
+      font-size: 0.9375rem;
+    }
+
+    .stats-inline {
+      font-size: 0.625rem;
     }
   }
 </style>

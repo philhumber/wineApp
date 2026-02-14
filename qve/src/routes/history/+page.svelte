@@ -28,12 +28,14 @@
 
   // Track previous filter/sort state to detect actual changes (WIN-206)
   let previousHistoryState = '';
+  let previousHistoryFilters = '';
 
   // Import components
   import { Header, HistoryGrid } from '$lib/components';
 
   onMount(() => {
     previousHistoryState = JSON.stringify({ f: $historyFilters, sk: $historySortKey, sd: $historySortDir });
+    previousHistoryFilters = JSON.stringify($historyFilters);
     fetchHistory(1, true);
     initialized = true;
   });
@@ -42,8 +44,14 @@
   $: if (initialized) {
     const currentState = JSON.stringify({ f: $historyFilters, sk: $historySortKey, sd: $historySortDir });
     if (currentState !== previousHistoryState) {
+      const currentFilterStr = JSON.stringify($historyFilters);
+      const filtersChanged = currentFilterStr !== previousHistoryFilters;
       previousHistoryState = currentState;
+      previousHistoryFilters = currentFilterStr;
       fetchHistory(1);
+      if (filtersChanged && typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
   }
 
@@ -112,7 +120,8 @@
   <!-- History Section -->
   <section class="history-section">
     <!-- Three-state UI -->
-    {#if $historyLoading}
+    {#if $historyLoading && $drunkWineCount === 0}
+      <!-- Only show loading state on initial load; filter/sort changes keep current grid visible -->
       <div class="loading-state">
         <p>Loading history...</p>
       </div>
@@ -121,7 +130,7 @@
         <p>Error: {$historyError}</p>
         <button on:click={() => fetchHistory(1)}>Retry</button>
       </div>
-    {:else if $drunkWineCount === 0}
+    {:else if !$historyLoading && $drunkWineCount === 0}
       <div class="empty-state">
         <div class="empty-icon">🍷</div>
         <h3>No wines consumed yet</h3>

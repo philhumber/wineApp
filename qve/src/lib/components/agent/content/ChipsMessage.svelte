@@ -2,7 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import { fly } from 'svelte/transition';
   import type { AgentMessage, AgentAction } from '$lib/agent/types';
-  import { updateMessage, agentMessages, clearNewFlag } from '$lib/stores/agentConversation';
+  import { updateMessage, agentMessages, clearNewFlag, isIntroScrollSuppressed } from '$lib/stores/agentConversation';
   import { isScrollLocked } from '$lib/agent/requestLifecycle';
 
   export let message: AgentMessage;
@@ -30,8 +30,9 @@
    * Clearing the flag signals to following messages that this one is ready.
    */
   function handleIntroEnd() {
-    // Check scroll lock before scrolling (prevents chaos during enrichment streaming)
-    if (chipsElement && !isScrollLocked()) {
+    // Check scroll lock and intro suppression before scrolling
+    // WIN-305: isIntroScrollSuppressed blocks old messages from scrolling during reset
+    if (chipsElement && !isScrollLocked() && !isIntroScrollSuppressed()) {
       chipsElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
     // Signal completion so following messages can appear

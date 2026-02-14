@@ -399,7 +399,7 @@ async function submitWine(): Promise<void> {
         const file = base64ToFile(imageData.data, imageData.mimeType);
         uploadedPicturePath = await api.uploadImage(file);
       } catch (e) {
-        console.warn('Agent image upload failed, using placeholder:', e);
+        // Image upload failed, will use placeholder
       }
     }
 
@@ -554,7 +554,7 @@ async function handleAddToCellar(messageId: string): Promise<void> {
       return;
     }
   } catch (error) {
-    console.warn('Duplicate check failed, continuing with add flow:', error);
+    // Duplicate check failed, continuing with add flow
   }
 
   // No duplicate - start entity matching
