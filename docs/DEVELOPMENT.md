@@ -70,7 +70,7 @@ if (APP_ENV === 'test') {
 }
 
 // Authentication
-define('API_AUTH_KEY', 'your-api-key');           // Must match qve/.env PUBLIC_API_KEY
+define('API_AUTH_KEY', 'your-api-key');           // Must match qve/.env PUBLIC_API_KEY and GitHub secret
 define('APP_PASSWORD_HASH', '$2y$10$...');        // bcrypt hash for login (php -r "echo password_hash('pw', PASSWORD_BCRYPT);")
 
 // API Keys
@@ -703,6 +703,23 @@ graph TD
 - **V: drive**: Must be mapped to `\\10.0.0.10\www` (`net use V: \\10.0.0.10\www`)
 - **Pre-rollback backup**: Rolling back automatically creates a backup of current state first
 
+### CI / GitHub Actions
+
+The workflow at `.github/workflows/deploy.yml` runs on PRs to `main` and on pushes to `main`:
+
+1. **`check` job** (ubuntu-latest): install → type check → lint → test → build
+2. **`deploy` job** (self-hosted): runs `deploy.sh` on the production server (only on push to `main`)
+
+#### Required Repository Secrets
+
+| Secret | Purpose | When to rotate |
+|--------|---------|---------------|
+| `PUBLIC_API_KEY` | SvelteKit `$env/static/public` — used by the API client and error reporter to authenticate requests | Must match `API_AUTH_KEY` in `config.local.php`. Update the GitHub secret whenever you rotate the backend key. |
+
+Set secrets at: **GitHub repo → Settings → Secrets and variables → Actions → New repository secret**
+
+> **Note**: The `check` job doesn't make real API calls — it only needs the env var so `svelte-check` and `npm run build` can resolve the `$env/static/public` import. A dummy value will pass CI, but keeping it in sync with production avoids confusion.
+
 ### Production URL
 
 After deployment, verify at: **http://10.0.0.16/qve/**
@@ -747,3 +764,4 @@ Agent errors include a `supportRef` in format `ERR-XXXXXXXX`. These appear in er
 | `V:` drive not accessible | Network drive not mapped | Run: `net use V: \\10.0.0.10\www` |
 | JIRA CLI errors | Missing/expired API token | Update token at `../wineapp-config/jira.config.json` |
 | `config.local.php` not found | Config not created | Copy `resources/php/config.local.php.example` to `../wineapp-config/config.local.php` |
+| CI fails: `PUBLIC_API_KEY` not exported | Missing GitHub secret | Add `PUBLIC_API_KEY` secret in repo Settings → Secrets → Actions |
