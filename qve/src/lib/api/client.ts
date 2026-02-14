@@ -862,12 +862,14 @@ class WineApiClient {
     priorResult: AgentIdentificationResult,
     mimeType?: string,
     supplementaryText?: string,
-    lockedFields?: Record<string, string | number>
+    lockedFields?: Record<string, string | number>,
+    escalationContext?: { reason?: string; originalUserText?: string }
   ): Promise<AgentIdentificationResult> {
     // Build request body based on input type
     const body: Record<string, unknown> = {
       priorResult,
       ...(lockedFields && Object.keys(lockedFields).length > 0 && { lockedFields }),
+      ...(escalationContext && { escalationContext }),
     };
 
     if (inputType === 'image') {

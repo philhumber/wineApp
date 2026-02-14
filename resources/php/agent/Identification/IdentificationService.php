@@ -106,7 +106,7 @@ class IdentificationService
      * @param array|null $priorResult Previous tier result for context
      * @return array Processing result
      */
-    private function processWithClaude(string $input, string $model, ?array $priorResult = null, array $lockedFields = []): array
+    private function processWithClaude(string $input, string $model, ?array $priorResult = null, array $lockedFields = [], array $escalationContext = []): array
     {
         $options = [
             'provider' => 'claude',
@@ -117,7 +117,7 @@ class IdentificationService
 
         // Add prior result context for escalation
         if ($priorResult) {
-            $options['prior_context'] = $this->buildPriorContext($priorResult, $lockedFields);
+            $options['prior_context'] = $this->buildPriorContext($priorResult, $lockedFields, $escalationContext);
         }
 
         return $this->textProcessor->process($input, $options);
@@ -128,18 +128,37 @@ class IdentificationService
      *
      * @param array $priorResult Previous identification result
      * @param array $lockedFields User-locked fields to include in context
+     * @param array $escalationContext Optional escalation context (reason, originalUserText)
      * @return string Context string for escalation
      */
-    private function buildPriorContext(array $priorResult, array $lockedFields = []): string
+    private function buildPriorContext(array $priorResult, array $lockedFields = [], array $escalationContext = []): string
     {
         $parsed = $priorResult['parsed'] ?? [];
-        $context = sprintf(
-            "Previous attempt found: Producer=%s, Wine=%s, Region=%s (confidence: %d%%). Please analyze more carefully and look for details that might have been missed.",
+        $originalUserText = $escalationContext['originalUserText'] ?? null;
+        $reason = $escalationContext['reason'] ?? null;
+
+        $context = "ESCALATION CONTEXT:";
+
+        // Include the original user search text if available
+        if ($originalUserText) {
+            $context .= sprintf("\nThe user originally searched for: \"%s\"", $originalUserText);
+        }
+
+        // Describe what the previous model found
+        $context .= sprintf(
+            "\nA previous model identified this as: Producer=%s, Wine=%s, Region=%s (confidence: %d%%).",
             $parsed['producer'] ?? 'unknown',
             $parsed['wineName'] ?? 'unknown',
             $parsed['region'] ?? 'unknown',
             $priorResult['confidence'] ?? 0
         );
+
+        // Explain why escalation happened
+        if ($reason === 'user_rejected') {
+            $context .= "\nThe user indicated this identification is NOT CORRECT and has requested premium re-analysis.";
+        } else {
+            $context .= "\nPlease analyze more carefully and look for details that might have been missed.";
+        }
 
         if (!empty($lockedFields)) {
             $context .= "\n\nUSER-CONFIRMED VALUES (use exactly as provided, you may normalize capitalization/accents):";
@@ -1263,6 +1282,12 @@ PROMPT;
     {
         $inputText = $input['text'] ?? '';
         $lockedFields = $input['lockedFields'] ?? [];
+        $escalationContext = $input['escalationContext'] ?? [];
+
+        // Use original user text for scoring if available (avoids scoring on reconstructed text)
+        $scoringText = !empty($escalationContext['originalUserText'])
+            ? $escalationContext['originalUserText']
+            : $inputText;
 
         // Get configurable threshold
         $tier2Threshold = $this->config['confidence']['tier2_threshold'] ?? 60;
@@ -1277,8 +1302,8 @@ PROMPT;
             ];
         }
 
-        // Process with Opus
-        $result = $this->processWithClaude($inputText, 'claude-opus-4-5-20251101', $priorResult, $lockedFields);
+        // Process with Opus — pass escalation context for enhanced prompt
+        $result = $this->processWithClaude($inputText, 'claude-opus-4-5-20251101', $priorResult, $lockedFields, $escalationContext);
 
         if (!$result['success']) {
             return [
@@ -1291,7 +1316,7 @@ PROMPT;
 
         $result = $this->applyInference($result);
         $result = $this->applyLockedFields($result, $lockedFields);
-        $scoring = $this->scoreWithLockedBoost($result['parsed'], $inputText, $lockedFields);
+        $scoring = $this->scoreWithLockedBoost($result['parsed'], $scoringText, $lockedFields);
         $result['confidence'] = $scoring['score'];
         $result['action'] = $scoring['action'];
 
@@ -1334,6 +1359,12 @@ PROMPT;
         $mimeType = $input['mimeType'] ?? 'image/jpeg';
         $supplementaryText = $input['supplementaryText'] ?? null;
         $lockedFields = $input['lockedFields'] ?? [];
+        $escalationContext = $input['escalationContext'] ?? [];
+
+        // Use original user text for scoring if available
+        $scoringText = !empty($escalationContext['originalUserText'])
+            ? $escalationContext['originalUserText']
+            : $supplementaryText;
 
         // Get configurable threshold
         $tier2Threshold = $this->config['confidence']['tier2_threshold'] ?? 60;
@@ -1372,7 +1403,7 @@ PROMPT;
 
         $result = $this->applyInference($result);
         $result = $this->applyLockedFields($result, $lockedFields);
-        $scoring = $this->scoreWithLockedBoost($result['parsed'], $supplementaryText, $lockedFields);
+        $scoring = $this->scoreWithLockedBoost($result['parsed'], $scoringText, $lockedFields);
         $result['confidence'] = $scoring['score'];
         $result['action'] = $scoring['action'];
 

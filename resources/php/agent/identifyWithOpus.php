@@ -41,6 +41,9 @@ if (json_last_error() !== JSON_ERROR_NONE) {
 // Validate and sanitize locked fields
 $input['lockedFields'] = validateLockedFields($input);
 
+// Extract escalation context (reason + original user text)
+$input['escalationContext'] = is_array($input['escalationContext'] ?? null) ? $input['escalationContext'] : [];
+
 // Determine input type
 $isImageInput = !empty($input['image']);
 $isTextInput = !empty($input['text']);
@@ -75,13 +78,18 @@ try {
                 'mimeType' => $input['mimeType'] ?? 'image/jpeg',
                 'supplementaryText' => $input['supplementaryText'] ?? null,
                 'lockedFields' => $input['lockedFields'],
+                'escalationContext' => $input['escalationContext'],
             ],
             $input['priorResult']
         );
     } else {
         // Text input - use identifyWithOpus
         $result = $service->identifyWithOpus(
-            ['text' => $input['text'], 'lockedFields' => $input['lockedFields']],
+            [
+                'text' => $input['text'],
+                'lockedFields' => $input['lockedFields'],
+                'escalationContext' => $input['escalationContext'],
+            ],
             $input['priorResult']
         );
     }

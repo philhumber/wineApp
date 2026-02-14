@@ -969,11 +969,12 @@ async function handleConfirmCorrections(messageId: string): Promise<void> {
   conversation.addTypingMessage(getMessageByKey(MessageKey.ID_THINKING));
 
   try {
-    // Build search text from result fields; avoid using raw JSON from augmentation context
+    // Build search text from result fields; fall back to persisted original user text
     const parts = [result.producer, result.wineName, result.vintage].filter(Boolean);
+    const augCtx = identification.getCurrentState().augmentationContext;
     const text = parts.length > 0
       ? parts.join(' ')
-      : identification.getCurrentState().augmentationContext?.originalInput || '';
+      : augCtx?.originalUserText || '';
 
     const abortController = createAbortController();
 
@@ -1011,11 +1012,22 @@ async function handleNotCorrect(messageId: string): Promise<void> {
   const result = identification.getResult();
   const imageData = identification.getCurrentState().lastImageData;
 
+  // Capture original user text before it expires from lastAction (runtime-only, 5min TTL)
+  const lastAction = getLastAction();
+  let originalUserText: string | undefined;
+  if (lastAction?.type === 'submit_text' && typeof lastAction.payload === 'string') {
+    originalUserText = lastAction.payload;
+  } else if (result) {
+    originalUserText = [result.producer, result.wineName, result.vintage].filter(Boolean).join(' ') || undefined;
+  }
+
   identification.setAugmentationContext({
     originalInput: result ? JSON.stringify(result) : undefined,
+    originalUserText,
     imageData: imageData?.data,
     imageMimeType: imageData?.mimeType,
     lockedFields: identification.getLockedFields(),
+    rejectedResult: true,
   });
 
   showFieldCorrectionChips(result);
@@ -1146,8 +1158,18 @@ function handleProvideMore(messageId: string): void {
   const result = identification.getResult();
   const imageData = identification.getCurrentState().lastImageData;
 
+  // Capture original user text before it expires from lastAction (runtime-only, 5min TTL)
+  const lastAction = getLastAction();
+  let originalUserText: string | undefined;
+  if (lastAction?.type === 'submit_text' && typeof lastAction.payload === 'string') {
+    originalUserText = lastAction.payload;
+  } else if (result) {
+    originalUserText = [result.producer, result.wineName, result.vintage].filter(Boolean).join(' ') || undefined;
+  }
+
   identification.setAugmentationContext({
     originalInput: result ? JSON.stringify(result) : undefined,
+    originalUserText,
     imageData: imageData?.data,
     imageMimeType: imageData?.mimeType,
   });
@@ -1212,36 +1234,44 @@ async function handleTryOpus(messageId: string): Promise<void> {
     let result;
     const lockedFields = identification.getLockedFields();
 
+    // Build escalation context for the LLM prompt
+    const escalationContext = {
+      reason: augContext?.rejectedResult ? 'user_rejected' as const : undefined,
+      originalUserText: augContext?.originalUserText,
+    };
+
+    // Determine input text and type
+    let inputText: string | undefined;
+    let inputType: 'text' | 'image' = 'text';
+
     if (imageData?.data) {
-      result = await api.identifyWithOpus(
-        imageData.data,
-        'image',
-        priorResult,
-        imageData.mimeType,
-        undefined,
-        lockedFields
-      );
+      inputText = imageData.data;
+      inputType = 'image';
     } else if (lastAction?.type === 'submit_text' && lastAction.payload) {
-      result = await api.identifyWithOpus(
-        lastAction.payload as string,
-        'text',
-        priorResult,
-        undefined,
-        undefined,
-        lockedFields
-      );
+      inputText = lastAction.payload as string;
+    } else if (augContext?.originalUserText) {
+      inputText = augContext.originalUserText;
     } else if (augContext?.originalInput) {
-      result = await api.identifyWithOpus(
-        augContext.originalInput,
-        'text',
-        priorResult,
-        undefined,
-        undefined,
-        lockedFields
-      );
-    } else {
+      // Backward compat: reconstruct clean text from JSON result
+      try {
+        const parsed = JSON.parse(augContext.originalInput) as WineIdentificationResult;
+        inputText = [parsed.producer, parsed.wineName, parsed.vintage].filter(Boolean).join(' ');
+      } catch { /* fall through */ }
+    }
+
+    if (!inputText) {
       throw new Error('No input available for Opus identification');
     }
+
+    result = await api.identifyWithOpus(
+      inputText,
+      inputType,
+      priorResult,
+      inputType === 'image' ? imageData?.mimeType : undefined,
+      undefined,
+      lockedFields,
+      escalationContext
+    );
 
     conversation.removeTypingMessage();
     const wineResult = convertParsedWineToResult(result.parsed, result.confidence);

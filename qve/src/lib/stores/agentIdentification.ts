@@ -25,12 +25,16 @@ import type {
 
 export interface AugmentationContext {
   originalInput?: string;
+  /** The actual text the user typed (persisted for mobile tab-switch survival) */
+  originalUserText?: string;
   imageData?: string;
   imageMimeType?: string;
   conversationHistory?: string[];
   /** WIN-270: Prefix from brief input confirmation for concatenation */
   briefInputPrefix?: string;
   lockedFields?: Record<string, string | number>;
+  /** Whether the user explicitly clicked "Not Correct" */
+  rejectedResult?: boolean;
 }
 
 export interface ImageData {

@@ -56,9 +56,11 @@ export interface PersistedState {
 
 export interface AugmentationContext {
   originalInput?: string;
+  originalUserText?: string;
   imageData?: string;
   conversationHistory?: string[];
   lockedFields?: Record<string, string | number>;
+  rejectedResult?: boolean;
 }
 
 export interface AddWineStateSlice {
