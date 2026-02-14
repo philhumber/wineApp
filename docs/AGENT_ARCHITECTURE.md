@@ -2,7 +2,7 @@
 
 The wine sommelier agent is a conversational AI assistant that identifies wines from text or images, enriches them with critic scores and tasting notes, and adds them to the user's cellar. It uses a **Router + Middleware + Handlers** pattern with split stores for separation of concerns.
 
-**Last Updated**: 2026-02-12
+**Last Updated**: 2026-02-14
 **Phase**: 2 (Rearchitecture) + Phase 6 (Enrichment Streaming Optimization)
 
 ---
@@ -65,7 +65,7 @@ flowchart TB
         InputProcessor["inputProcessor.ts"]
     end
 
-    subgraph StoreLayer["Store Layer (6 agent stores)"]
+    subgraph StoreLayer["Store Layer (6 agent stores + agentPanel)"]
         ConversationStore["agentConversation.ts<br/>(Messages, Phase)"]
         IdentificationStore["agentIdentification.ts<br/>(Result, Streaming)"]
         EnrichmentStore["agentEnrichment.ts<br/>(Wine Details)"]
@@ -164,16 +164,17 @@ qve/src/lib/agent/
 ├── types.ts                  # AgentAction, AgentPhase, MessageCategory, all type definitions
 ├── stateMachine.ts           # Phase transition validation (PHASE_TRANSITIONS, ADD_WINE_STEP_TRANSITIONS)
 ├── messages.ts               # getMessage(), getMessageByKey(), personality resolution chain
-├── messageKeys.ts            # MessageKey enum (~80 keys across 10 categories)
+├── messageKeys.ts            # MessageKey enum (125 keys across 10 categories)
 ├── personalities.ts          # Personality enum, MessageContext, PersonalityMessages types
+├── requestLifecycle.ts       # AbortController, scroll lock, request ID for cancellation
 ├── actions.ts                # Action creator helpers
 ├── loadingStates.ts          # Loading state utilities
 ├── index.ts                  # Barrel exports
 │
 ├── handlers/
 │   ├── index.ts              # Barrel exports, type guards, HANDLER_CATEGORIES map
-│   ├── conversation.ts       # start_over, go_back, cancel, retry, new_input, start_fresh
-│   ├── identification.ts     # submit_text, submit_image, correct, not_correct, field completion
+│   ├── conversation.ts       # start_over, go_back, cancel, cancel_request, retry, new_input, start_fresh
+│   ├── identification.ts     # submit_text, submit_image, correct, not_correct, verify, correct_field, field completion
 │   ├── enrichment.ts         # learn, remember, recommend, cache handling
 │   ├── addWine.ts            # add_to_cellar, entity matching, submission
 │   ├── forms.ts              # bottle form, manual entry, retry_add
@@ -189,8 +190,8 @@ qve/src/lib/agent/
 │
 ├── services/
 │   ├── index.ts              # Barrel exports for all services
-│   ├── chipGenerator.ts      # generateXxxChips() functions (14 generators)
-│   ├── chipRegistry.ts       # ChipKey enum (~30 keys), getChip(), getChips()
+│   ├── chipGenerator.ts      # generateXxxChips() functions (20 generators)
+│   ├── chipRegistry.ts       # ChipKey enum (37 keys), getChip(), getChips()
 │   ├── inputProcessor.ts     # Field detection, direct value detection, brief input check
 │   └── resultAnalyzer.ts     # analyzeResultQuality(), ResultQuality, thresholds
 │
@@ -207,6 +208,7 @@ qve/src/lib/agent/
     ├── messages.test.ts
     ├── handleAgentAction.test.ts  # Legacy tests
     ├── errorScenarios.test.ts
+    ├── cancellation.test.ts
     ├── streaming.test.ts
     └── integration/
         └── addWineFlow.test.ts
@@ -317,7 +319,8 @@ Navigation and session control.
 |--------|-------------|
 | `start_over` | Abort HTTP + `abortMessageQueue()` (generation counter discards pending messages, `clearAllNewFlags` completes typewriter, `isIntroScrollSuppressed` blocks old message scroll for 400ms), reset stores, add divider + greeting, set phase to `awaiting_input` |
 | `go_back` | Return to previous phase based on current phase |
-| `cancel` | Close agent panel via `agent.closePanel()` |
+| `cancel` | Close agent panel via `closePanel()` (imported from `agentPanel` store) |
+| `cancel_request` | Abort in-flight LLM request: sends server-side cancel via `api.cancelAgentRequest(requestId)`, aborts fetch, clears loading states |
 | `retry` / `try_again` | Re-dispatch last tracked action (returns action to router for re-dispatch) |
 | `new_input` | Clear identification, set `awaiting_input` |
 | `start_fresh` | Alias for `start_over` |
@@ -344,9 +347,12 @@ Wine identification flow. The largest handler module.
 | `nv_vintage` | Set vintage to 'NV' (non-vintage) |
 | `add_missing_details` | Prompt for specific missing field |
 | `provide_more` | Set augmentation context, prompt for details |
-| `continue_as_is` | Accept low-confidence result, show action chips, set phase to `adding_wine` |
+| `continue_as_is` | Accept low-confidence result, show action chips, set phase to `confirming` |
 | `see_result` | Show wine card with confirmation chips |
 | `identify` | Set phase to `awaiting_input` |
+| `verify` | Trigger grounded web search verification (Tier 1.5+) via `api.verifyImage()` |
+| `correct_field` | User taps a field to correct it — shows field correction UI |
+| `confirm_corrections` | Apply locked field corrections and reidentify |
 
 ### enrichment.ts
 
@@ -436,7 +442,7 @@ Stores the last action for retry functionality. Actions expire after 5 minutes.
 **Retryable actions:**
 ```
 submit_text, submit_image, try_opus, reidentify,
-enrich_now, remember, recommend,
+learn, enrich_now, confirm_cache_match, force_refresh, remember, recommend,
 add_to_cellar, submit_bottle, add_bottle_existing,
 manual_entry_submit
 ```
@@ -454,14 +460,16 @@ Checks prerequisites before executing an action. Validation failures are logged 
 | `add_bottle_existing`, `create_new_wine` | Identification + add wine flow |
 | `submit_bottle` | Add wine flow + phase `adding_wine` |
 | `select_match`, `add_new` | Add wine flow |
-| `try_opus` | Identification + phase `confirming` |
+| `try_opus` | Identification + phase `confirming` or `awaiting_input` |
+| `verify` | Identification + phase `confirming` |
+| `correct_field`, `confirm_corrections` | Identification + phase `confirming` or `awaiting_input` |
 | `enrich_now`, `remember`, `recommend` | Identification |
 
 ---
 
 ## 7. Store Architecture
 
-The agent state is split across **6 specialized stores** plus the legacy `agent.ts` store (still used for panel state).
+The agent state is split across **6 specialized stores** plus the `agentPanel` module (`stores/agentPanel.ts`, used for panel open/close state via `closePanel()`).
 
 ```mermaid
 flowchart TB
@@ -594,8 +602,8 @@ Actions are organized by handler category:
 
 | Category | Actions |
 |----------|---------|
-| **conversation** | `start_over`, `go_back`, `cancel`, `retry`, `try_again`, `new_input`, `start_fresh`, `start_over_error` |
-| **identification** | `submit_text`, `submit_image`, `try_opus`, `reidentify`, `correct`, `not_correct`, `confirm_brief_search`, `add_more_detail`, `confirm_new_search`, `continue_current`, `use_producer_name`, `use_grape_as_name`, `nv_vintage`, `add_missing_details`, `provide_more`, `continue_as_is`, `see_result`, `identify` |
+| **conversation** | `start_over`, `go_back`, `cancel`, `cancel_request`, `retry`, `try_again`, `new_input`, `start_fresh`, `start_over_error` |
+| **identification** | `submit_text`, `submit_image`, `try_opus`, `reidentify`, `correct`, `not_correct`, `verify`, `correct_field`, `confirm_corrections`, `confirm_brief_search`, `add_more_detail`, `confirm_new_search`, `continue_current`, `use_producer_name`, `use_grape_as_name`, `nv_vintage`, `add_missing_details`, `provide_more`, `continue_as_is`, `see_result`, `identify` |
 | **enrichment** | `learn`, `remember`, `recommend`, `confirm_cache_match`, `force_refresh` |
 | **addWine** | `add_to_cellar`, `add_bottle_existing`, `create_new_wine`, `select_match`, `add_new`, `clarify`, `enrich_now`, `add_quickly` |
 | **forms** | `submit_bottle`, `bottle_next`, `bottle_submit`, `manual_entry_submit`, `manual_entry_complete`, `retry_add` |
@@ -603,12 +611,12 @@ Actions are organized by handler category:
 
 ### Generic chip_tap Fallback
 
-When a chip emits a `chip_tap` action (legacy), the router unwraps it and re-routes:
+When a chip emits a `chip_tap` action (legacy), the router unwraps it and re-dispatches through the full middleware chain (not `routeAction` directly) so retry tracking works:
 
 ```typescript
 if (action.type === 'chip_tap') {
-  const unwrapped = { type: payload.action, messageId: payload.messageId };
-  await routeAction(unwrapped);
+  const unwrapped = { type: payload.action, messageId: payload.messageId, payload: payload.data };
+  await dispatchAction(unwrapped); // Full middleware chain, not routeAction
 }
 ```
 
@@ -625,7 +633,7 @@ flowchart TB
     Start([User opens agent]) --> Greeting[Greeting Phase]
     Greeting --> Input{Text or Image?}
 
-    Input -->|Text| TextPipeline["Text Input Pipeline<br/>(6-step priority chain)"]
+    Input -->|Text| TextPipeline["Text Input Pipeline<br/>(7-step priority chain)"]
     Input -->|Image| ImageID["Image Identification<br/>(streaming API)"]
 
     TextPipeline --> Identifying["Identifying Phase<br/>(API call + streaming)"]
@@ -654,8 +662,9 @@ flowchart TB
 
 ### Text Input Pipeline
 
-When text is submitted during identification, it passes through a 6-step priority chain before making an API call. Each step can short-circuit the chain:
+When text is submitted during identification, it passes through a 7-step priority chain before making an API call. Each step can short-circuit the chain:
 
+0. **Field Correction Intercept** -- If field corrections are pending (locked fields from `correct_field` flow), applies them and reidentifies
 1. **Command Detection** -- "start over", "cancel", "help" (intercepted before any identification logic)
 2. **Field Input** -- "region is Bordeaux", "producer is Lafite" (requires existing result + `awaiting_input` phase)
 3. **Direct Value** -- A year like "2019" when vintage is missing (context-aware inference, no augmentation context)
@@ -887,9 +896,11 @@ AgentPanel.svelte                      # Root panel — open/close, camera integ
 | `identifyImage.php` | Image-based identification | Gemini Vision | No |
 | `identifyImageStream.php` | Image identification with streaming | Gemini Vision | Yes (SSE) |
 | `identifyWithOpus.php` | Premium Opus model escalation | Claude Opus | No |
+| `verifyImage.php` | Grounded image verification (Tier 1.5+) | Gemini + googleSearch | No |
 | `agentEnrich.php` | Wine enrichment (non-streaming fallback) | Gemini | No |
 | `agentEnrichStream.php` | Streaming enrichment with web search grounding | Gemini 3 Flash + googleSearch | Yes (SSE) |
 | `clarifyMatch.php` | Match clarification/disambiguation | Gemini | No |
+| `cancelRequest.php` | Abort in-flight LLM request (server-side cancellation) | N/A | No |
 
 ### Service Classes
 
@@ -898,6 +909,8 @@ resources/php/agent/
 ├── _bootstrap.php              # agentResponse(), agentExceptionError(), agentStructuredError()
 ├── config/
 │   └── agent.config.php        # Model config, API keys, timeouts
+├── prompts/
+│   └── prompts.php             # Consolidated LLM prompts (Prompts class)
 ├── Identification/
 │   ├── IdentificationService.php
 │   ├── TextProcessor.php
@@ -906,11 +919,10 @@ resources/php/agent/
 │   ├── IntentDetector.php
 │   ├── InputClassifier.php
 │   ├── ConfidenceScorer.php
-│   ├── InputMatchScorer.php   # Anchor-based input↔output confidence scoring
+│   ├── InputMatchScorer.php    # Anchor-based input↔output confidence scoring
 │   ├── InferenceEngine.php
 │   ├── DisambiguationHandler.php
-│   ├── SupplementaryContextParser.php
-│   └── TextProcessor.php
+│   └── SupplementaryContextParser.php
 ├── Enrichment/
 │   ├── EnrichmentService.php
 │   ├── EnrichmentCache.php
@@ -931,6 +943,7 @@ resources/php/agent/
     ├── LLMStreamingResponse.php
     ├── CostTracker.php
     ├── CircuitBreaker.php
+    ├── SSLConfig.php
     ├── Interfaces/
     │   └── LLMProviderInterface.php
     ├── Adapters/

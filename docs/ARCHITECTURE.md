@@ -93,28 +93,32 @@ qve/src/
 │   │   ├── stateMachine.ts     #   Phase transition validation
 │   │   ├── types.ts            #   Agent action and state types
 │   │   └── ...                 #   messageKeys, personalities, messages, etc.
-│   ├── components/             # ~86 Svelte components organized by domain
+│   ├── components/             # 96 Svelte components organized by domain
 │   │   ├── ui/                 #   10 generic UI (Icon, Toast, ThemeToggle, CurrencySelector, etc.)
 │   │   ├── wine/               #   5 wine display (WineCard, WineGrid, HistoryCard, etc.)
-│   │   ├── layout/             #   10 layout (Header, FilterBar, SideMenu, CollectionRow, etc.)
-│   │   ├── forms/              #   8 form primitives (FormInput, RatingDots, ToggleSwitch, etc.)
-│   │   ├── wizard/             #   8 add-wine wizard (WizardStepIndicator, SearchDropdown, etc.)
-│   │   ├── modals/             #   8 modals (DrinkRateModal, SettingsModal, ConfirmModal, etc.)
+│   │   ├── layout/             #   10 layout (Header, FilterBar, SideMenu, SearchInput, etc.)
+│   │   ├── forms/              #   7 form primitives (FormInput, RatingDots, ToggleSwitch, etc.)
+│   │   ├── wizard/             #   7 add-wine wizard (WizardStepIndicator, SearchDropdown, etc.)
+│   │   ├── modals/             #   10 modals (DrinkRateModal, SettingsModal, DeleteConfirmModal, CellarValueModal, etc.)
 │   │   ├── edit/               #   3 edit page (WineForm, BottleForm, BottleSelector)
-│   │   ├── agent/              #   ~34 agent panel components (see Section 5)
+│   │   ├── agent/              #   44 agent panel components (see Section 5)
 │   │   └── index.ts            #   Barrel exports
-│   ├── stores/                 # 24 Svelte stores (17 core + 7 agent)
+│   ├── stores/                 # 26 Svelte stores (19 core + 7 agent)
 │   │   ├── wines.ts            #   Wine list, loading, fetchWines()
 │   │   ├── filters.ts          #   Active filter values
 │   │   ├── filterOptions.ts    #   Available filter options (cascading)
 │   │   ├── cellarSort.ts       #   Cellar sort configuration
 │   │   ├── history.ts          #   Drink history
 │   │   ├── view.ts             #   Cellar vs All Wines mode
+│   │   ├── auth.ts              #   Authentication (WIN-254)
+│   │   ├── delete.ts           #   Soft delete + undo (WIN-80)
 │   │   ├── agent*.ts           #   7 agent stores (see Section 5)
 │   │   ├── settings.ts         #   User settings (collection name, etc.)
 │   │   └── ...                 #   theme, currency, toast, modal, menu, scroll, etc.
 │   ├── utils/                  # Utility functions
-│   │   └── commandDetector.ts  #   Agent command/chip detection
+│   │   ├── commandDetector.ts  #   Agent command/chip detection
+│   │   ├── validation.ts       #   Field validators and length limits
+│   │   └── uuid.ts             #   UUID v4 generation with fallbacks
 │   └── styles/                 # Global CSS
 │       ├── tokens.css          #   Design tokens (colors, spacing, typography)
 │       ├── base.css            #   Reset, utilities, iOS Safari fixes
@@ -124,10 +128,11 @@ qve/src/
     ├── +layout.svelte          #   Root layout (theme, menu, toast, modal, agent)
     ├── +layout.ts              #   SPA mode config (ssr=false, prerender=true)
     ├── +page.svelte            #   Home / Cellar view
+    ├── +error.svelte           #   Error page (404, 500)
+    ├── login/+page.svelte      #   Password login (WIN-254)
     ├── add/+page.svelte        #   4-step Add Wine wizard
     ├── history/+page.svelte    #   Drink history view
-    ├── edit/[id]/+page.svelte  #   Edit wine/bottle (two-tab)
-    └── drink/[id]/+page.svelte #   Drink/Rate flow
+    └── edit/[id]/+page.svelte  #   Edit wine/bottle (two-tab)
 ```
 
 ### 2.4 Routes
@@ -138,7 +143,8 @@ qve/src/
 | `/qve/add` | 4-step Add Wine wizard |
 | `/qve/history` | Drink history with filtering and sorting |
 | `/qve/edit/[id]` | Two-tab edit page (Wine details / Bottle details) |
-| `/qve/drink/[id]` | Drink and rate a bottle |
+| `/qve/login` | Password login page (WIN-254) |
+| `+error.svelte` | Error page (404, 500) |
 
 ### 2.5 State Management
 
@@ -160,8 +166,13 @@ graph LR
         filters -->|applied to| wines
     end
 
+    subgraph System["System Stores"]
+        auth["auth<br/>(login/session)"]
+        deleteStore["delete<br/>(soft delete + undo)"]
+    end
+
     subgraph Agent["Agent Stores (7)"]
-        agentCore["agent<br/>(phase, panel state)"]
+        agentPanel["agentPanel<br/>(panel open/close)"]
         agentConv["agentConversation<br/>(messages, typing)"]
         agentId["agentIdentification<br/>(results, confidence)"]
         agentEnrich["agentEnrichment<br/>(grapes, critics)"]
@@ -191,52 +202,68 @@ The app is a Progressive Web App using Workbox via `@vite-pwa/sveltekit`:
 
 ### 3.1 PHP API Layer
 
-The backend is a set of standalone PHP scripts (no framework). Each file is a single endpoint accepting GET or POST requests and returning JSON. All endpoints share a database connection utility (`databaseConnection.php`) and input validation (`validators.php`).
+The backend is a set of standalone PHP scripts (no framework). Each file is a single endpoint accepting POST requests and returning JSON (except `healthcheck.php` which accepts GET). All endpoints include `securityHeaders.php` for CORS, authentication, CSRF protection, and security headers. Shared utilities include `databaseConnection.php`, `validators.php`, `errorHandler.php`, and `audit_log.php`.
 
 ```
 resources/php/
-├── databaseConnection.php      # PDO connection to MySQL
-├── normalize.php               # String normalization utilities
-├── validators.php              # Input validation utilities
-│
-├── getWines.php                # GET: Wine list with JOINs and filters
-├── addWine.php                 # POST: 4-table transactional insert
-├── updateWine.php              # POST: Update wine details
-├── drinkBottle.php             # POST: Mark bottle drunk + add rating
-├── addBottle.php               # POST: Add bottle to existing wine
-├── updateBottle.php            # POST: Update bottle details
-├── getBottles.php              # GET: Bottles for a wine
-├── getDrunkWines.php           # GET: Drink history with ratings
-├── upload.php                  # POST: Image upload (resized to 800x800)
-├── checkDuplicate.php          # POST: Fuzzy duplicate detection
-├── updateRating.php            # POST: Update existing rating
-├── getCellarValue.php          # GET: Total cellar value calculation
+├── databaseConnection.php      # PDO connection factory (static caching)
+├── securityHeaders.php         # CORS, auth, CSRF, security headers (shared by all non-auth endpoints)
+├── authMiddleware.php          # Dual auth: API key OR session cookie
+├── errorHandler.php            # Safe error messages with support refs (ERR-XXXXXXXX)
+├── normalize.php               # Country/wineType normalization endpoint
+├── validators.php              # Shared validation (year, string, price, date, rating)
+├── FuzzyMatcher.php            # Token-based fuzzy matching with multilingual article removal
 ├── audit_log.php               # Audit trail utilities
 │
-├── getCountries.php            # GET: Countries with bottle counts (cascading)
-├── getTypes.php                # GET: Wine types with counts (cascading)
-├── getRegions.php              # GET: Regions with counts (cascading)
-├── getProducers.php            # GET: Producers with counts (cascading)
-├── getYears.php                # GET: Vintages with counts (cascading)
-├── getCurrencies.php           # GET: Currencies and bottle sizes
-├── getUserSettings.php         # GET: User settings
+├── getWines.php                # POST: Wine list with 6 CTEs, filters, free-text search
+├── addWine.php                 # POST: Multi-table transactional insert (region/producer/wine/bottle/grapes/critics)
+├── updateWine.php              # POST: Update wine details
+├── drinkBottle.php             # POST: Mark bottle drunk + add rating
+├── addBottle.php               # POST: Add bottle(s) to existing wine (batch, max 24)
+├── updateBottle.php            # POST: Update bottle details
+├── getBottles.php              # POST: Bottles for a wine
+├── getDrunkWines.php           # POST: History with pagination, sort, cascading filters
+├── deleteItem.php              # POST: Soft delete with cascade (WIN-80)
+├── getDeleteImpact.php         # POST: Delete impact preview (WIN-80)
+├── upload.php                  # POST: Image upload (resized to 800x800)
+├── checkDuplicate.php          # POST: Fuzzy duplicate detection (FuzzyMatcher)
+├── updateRating.php            # POST: Update existing rating
+├── getCellarValue.php          # POST: Total cellar value calculation
+├── getCellarValueHistory.php   # POST: Historical cellar value graph data (WIN-127)
+├── healthcheck.php             # GET: System health check (no auth)
+│
+├── getCountries.php            # POST: Countries with bottle counts (cascading)
+├── getTypes.php                # POST: Wine types with counts (cascading)
+├── getRegions.php              # POST: Regions with counts (cascading)
+├── getProducers.php            # POST: Producers with counts (cascading)
+├── getYears.php                # POST: Vintages with counts (cascading)
+├── getCurrencies.php           # POST: Currencies and bottle sizes
+├── getUserSettings.php         # POST: User settings
 ├── updateUserSettings.php      # POST: Update user settings
 ├── geminiAPI.php               # POST: Legacy Gemini AI enrichment
 │
+├── auth/                       # Authentication endpoints (WIN-254)
+│   ├── authCorsHeaders.php     #   CORS/security headers (avoids circular dep)
+│   ├── login.php               #   POST: Password login with bcrypt + brute force protection
+│   ├── checkAuth.php           #   GET: Session validity check
+│   └── logout.php              #   POST: Session destroy + cookie deletion
+│
 └── agent/                      # Agent subsystem endpoints (see Section 5)
-    ├── _bootstrap.php          #   Shared: agentResponse(), agentExceptionError()
+    ├── _bootstrap.php          #   Autoloader, factory functions, getAgentUserId()
     ├── identifyText.php        #   POST: Text-based wine identification
     ├── identifyImage.php       #   POST: Image-based wine identification
-    ├── identifyTextStream.php  #   POST: Streaming text identification
-    ├── identifyImageStream.php #   POST: Streaming image identification
+    ├── identifyTextStream.php  #   POST: Streaming text identification (SSE)
+    ├── identifyImageStream.php #   POST: Streaming image identification (SSE)
     ├── identifyWithOpus.php    #   POST: Premium model escalation
+    ├── verifyImage.php         #   POST: Grounded image verification (Tier 1.5+)
     ├── agentEnrich.php         #   POST: Wine enrichment
-    ├── agentEnrichStream.php   #   POST: Streaming enrichment
+    ├── agentEnrichStream.php   #   POST: Streaming enrichment (SSE)
     ├── clarifyMatch.php        #   POST: Match disambiguation
-    ├── config/                 #   Agent configuration
-    ├── Identification/         #   10 service classes
+    ├── cancelRequest.php       #   POST: Server-side request cancellation (WIN-227)
+    ├── config/                 #   Agent configuration (agent.config.php)
+    ├── Identification/         #   11 service classes
     ├── Enrichment/             #   13 service classes
-    ├── LLM/                    #   LLM client, adapters, circuit breaker
+    ├── LLM/                    #   LLM client, adapters, circuit breaker, streaming
     └── prompts/                #   Central prompt registry (prompts.php)
 ```
 
@@ -507,7 +534,7 @@ The Agent is an AI-powered wine identification and enrichment assistant that ope
 **Stores** (7 agent-specific stores manage all agent state):
 - `agent.ts`, `agentConversation.ts`, `agentIdentification.ts`, `agentEnrichment.ts`, `agentAddWine.ts`, `agentPersistence.ts`, `agentSettings.ts`
 
-**Frontend components** (~34 Svelte files under `components/agent/`):
+**Frontend components** (44 Svelte files under `components/agent/`):
 - `conversation/` -- Chat container, message list, input area, message routing
 - `content/` -- Message type renderers (text, chips, image, error, form, enrichment, wine card)
 - `cards/` -- Data display cards (wine, enrichment, data)

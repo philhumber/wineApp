@@ -1,6 +1,6 @@
 # Sommelier Personalities
 
-**Last Updated**: 2026-02-07
+**Last Updated**: 2026-02-14
 **Status**: Design Document (partially implemented)
 
 ---
@@ -9,7 +9,7 @@
 
 | Personality | Doc Name | Enum Value | Messages Implemented | Status |
 |-------------|----------|------------|---------------------|--------|
-| Quentin Verre-Epais | Sommelier | `Personality.SOMMELIER` | Yes (80+ keys in `sommelier.ts`) | **Active default** |
+| Quentin Verre-Epais | Sommelier | `Personality.SOMMELIER` | Yes (125 keys in `sommelier.ts`) | **Active default** |
 | Nadia "Nadi" Rosato | Friendly | `Personality.CASUAL` | No (empty `{}`, falls back to neutral) | Planned |
 | *(no character yet)* | Concise | `Personality.CONCISE` | No (empty `{}`, falls back to neutral) | Planned |
 | *(no character yet)* | Enthusiast | `Personality.ENTHUSIAST` | No (empty `{}`, falls back to neutral) | Planned |

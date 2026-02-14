@@ -2,7 +2,7 @@
 
 > Central index for all Qvé Wine App documentation. Each document covers a specific domain of the codebase with detailed references, diagrams, and code examples.
 
-**Last Updated**: 2026-02-08
+**Last Updated**: 2026-02-14
 
 ---
 
@@ -22,6 +22,11 @@ graph TD
     B --> K[PRODUCTION_READINESS_AUDIT.md]
     B --> L[PHASE_2_REARCHITECTURE.md]
     B --> M[UI_UX.md]
+    B --> N[SECURITY.md]
+    B --> O[deployment/]
+    O --> P[qve-production-setup.md]
+    O --> Q[qve-operations-runbook.md]
+    O --> R[qve-security-audit.md]
 ```
 
 ---
@@ -42,6 +47,10 @@ graph TD
 | **[SOMMELIER_PERSONALITIES.md](SOMMELIER_PERSONALITIES.md)** | Agent personality configuration and message templates | Customizing agent tone and response style |
 | **[PRODUCTION_READINESS_AUDIT.md](PRODUCTION_READINESS_AUDIT.md)** | Security, reliability, performance, architecture findings | Prioritizing technical debt and improvements |
 | **[UI_UX.md](UI_UX.md)** | Design system, visual language, interaction patterns | Building UI components; understanding design decisions |
+| **[SECURITY.md](SECURITY.md)** | Authentication, CORS, CSRF, security headers, input validation | Reviewing or modifying security measures |
+| **[deployment/qve-production-setup.md](deployment/qve-production-setup.md)** | Full server setup from blank Ubuntu box | Initial production deployment |
+| **[deployment/qve-operations-runbook.md](deployment/qve-operations-runbook.md)** | Maintenance procedures (weekly/monthly/quarterly/annual) | Ongoing server maintenance and incident response |
+| **[deployment/qve-security-audit.md](deployment/qve-security-audit.md)** | Security audit checklist with expected results | Quarterly security reviews |
 
 ---
 
@@ -66,7 +75,7 @@ Complete API reference for all 90+ Svelte components organized by category: UI p
 Reference for all 24 Svelte stores (16 core + 8 agent/settings). Documents state shapes, exported actions, derived stores, and inter-store dependencies. Includes the cascading filter store interaction pattern.
 
 ### [API.md](API.md)
-Complete API reference covering all TypeScript client methods (30+), PHP backend endpoints (25 core + 9 agent), type definitions, the SSE streaming protocol, error handling patterns (standard vs. agent structured errors), and field name mapping between frontend and backend.
+Complete API reference covering all TypeScript client methods (30+), PHP backend endpoints (20 core + 3 auth + 11 agent), type definitions, the SSE streaming protocol, error handling patterns (standard vs. agent structured errors), field name mapping between frontend and backend, and design notes on dual auth, 401 redirect handling, and null byte sanitization.
 
 ### [DEVELOPMENT.md](DEVELOPMENT.md)
 Developer guide covering environment setup, development workflow, Git branching strategy, testing approach, deployment via `deploy.ps1`, JIRA CLI usage, and common debugging techniques.
@@ -79,6 +88,20 @@ Comprehensive audit report from 2026-02-06 covering reliability (5 critical), se
 
 ### [UI_UX.md](UI_UX.md)
 Complete UI/UX design guide documenting the "quiet luxury" design philosophy, color system (light/dark modes), typography, spacing, elevation, motion, iconography, responsive breakpoints, component patterns, rating interface, AI loading states, toast notifications, empty/error states, iOS Safari specifics, and accessibility guidelines. Consolidates design decisions from the original mockups into implementation guidance.
+
+### [SECURITY.md](SECURITY.md)
+Security reference covering dual authentication (API key + session cookie), CORS policy, CSRF protection, HTTP security headers, input validation patterns, and file upload security. Documents the auth flow through `authMiddleware.php` and the session-based login system in `auth/`.
+
+### Deployment Docs (`deployment/`)
+
+#### [qve-production-setup.md](deployment/qve-production-setup.md)
+Complete 14-phase walkthrough for setting up a production server from a blank Ubuntu box. Covers system packages, directory structure, MySQL (app + locked migration user), Apache vhost with SPA fallback, PHP hardening, firewall, git deployment, health checks, 3-tier backup system (local DB + images + Backblaze B2 offsite), log rotation, cron jobs, Cloudflare Tunnel, and GitHub Actions automated deployment.
+
+#### [qve-operations-runbook.md](deployment/qve-operations-runbook.md)
+Ongoing maintenance procedures organized by frequency: weekly (log review, backup verification), monthly (npm audit, access pattern review, disk/DB growth, cloudflared updates), quarterly (full security audit, system updates, backup restore test, credential rotation), and annual (full disaster recovery dry-run, setup doc drift audit). Includes incident response procedures for compromise, downtime, and disk full scenarios.
+
+#### [qve-security-audit.md](deployment/qve-security-audit.md)
+Quarterly security audit checklist with 45+ checks organized by category: attack surface, Apache hardening, PHP hardening, MySQL security, file permissions, authentication & secrets, SSH hardening, Cloudflare tunnel, upload security, application-level security, logging & monitoring, and system-level hardening. Each check has expected results and red flags.
 
 ---
 

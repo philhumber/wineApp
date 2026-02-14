@@ -4,7 +4,7 @@
 > Use this to QA consistency, onboard to the agent's behavior, and audit message/chip pairings.
 
 **Personality**: All text shown is the **Sommelier** (Quentin Verre-Épais) — the default personality.
-**Last Updated**: 2026-02-13
+**Last Updated**: 2026-02-14
 
 ---
 
@@ -900,7 +900,7 @@ All 36 chips with their sommelier labels, variants, and dispatched actions.
 
 **Observation**: Identification and Add Wine use the same pattern (retry + start over), but Enrichment adds an "Add Without Details" escape hatch. This is intentional — enrichment is optional, so users can skip it on failure.
 
-**Observation**: Add Wine's "Try Again" chip uses `retry_add` action (not `retry`), and has no primary variant. Identification's "Try Again" uses `retry` with primary variant. Consider making Add Wine's retry also primary for consistency.
+**Observation**: Add Wine's "Try Again" chip uses `retry_add` action (not `retry`), with `primary` variant. Identification's "Try Again" uses `retry` with `primary` variant. Both are now consistently primary.
 
 #### Confirmation Chip Labels
 
@@ -926,40 +926,37 @@ The "Not Quite" flow now uses `generateNotCorrectChips()` which dynamically gene
 **Note**: Field correction chips are unique in the system — they have dynamic labels generated from result data, not static registry entries. The action chips (Add Details, Look Closer, Start Over) alongside them do use the chip registry.
 
 #### "Nothing Found" Flow Chips
-The "not found" flow chips are also hardcoded:
+The "not found" flow chips now use the chip registry:
 ```
-[Try Again] `provide_more` + [Start Over] `start_over`
+getChip(ChipKey.SEARCH_AGAIN) + getChip(ChipKey.START_OVER)
 ```
-These use hardcoded labels rather than the chip registry. Should use `getChip(ChipKey.SEARCH_AGAIN)` and `getChip(ChipKey.START_OVER)` for personality-aware labels.
+`SEARCH_AGAIN` maps to action `provide_more` (triggers re-identification with more context).
 
 #### "Go Back" from `adding_wine` Chips
 The "go back" handler hardcodes: `[Add to Cellar]` + `[Learn More]` + `[Remember Later]`
-with action `enrich_now` for "Learn More" — but the standard action chip uses `learn`. This is a **potential inconsistency** (different action for the same concept in different contexts).
+with action `learn` for "Learn More" — consistent with the standard action chip. Labels are still hardcoded rather than using the chip registry (minor consistency gap).
 
 #### "Continue As-Is" / "Add Manually" Phase
-`handleContinueAsIs()` sets phase to `adding_wine` but shows the same CONFIRM_CORRECT message + action chips that `handleCorrect()` shows in `confirming` phase. The phase difference means validator middleware may behave differently. Consider whether this should be `confirming` for consistency.
+`handleContinueAsIs()` sets phase to `confirming` and shows the same CONFIRM_CORRECT message + action chips that `handleCorrect()` shows. This is now consistent.
 
 #### Cancel Request Message
 "No problem, I've stopped. What would you like to do?" — this message is hardcoded, not using the personality system. It works for sommelier tone but wouldn't adapt to other personalities.
 
 #### New Search Confirmation Chips
-When typing during `confirming` phase, the chips are hardcoded:
-```
-[Search New] `confirm_new_search` + [Keep Current] `continue_current`
-```
-These use hardcoded labels rather than the `generateNewSearchConfirmationChips()` function, which does exist and uses the registry. The handler should call the generator function instead.
+When typing during `confirming` phase, the handler calls `generateNewSearchConfirmationChips()` which uses the chip registry for personality-aware labels.
 
 ---
 
 ### Summary of Consistency Issues Found
 
-| Issue | Location | Severity |
-|-------|----------|----------|
-| ~~`handleNotCorrect()` uses hardcoded chip labels~~ — resolved by `generateNotCorrectChips()` | identification.ts | Resolved |
-| "Nothing Found" chips hardcoded instead of using registry | identification.ts:166-169 | Low |
-| `handleGoBack()` uses `enrich_now` instead of `learn` for enrichment action | conversation.ts:98 | Medium |
-| `handleContinueAsIs()` sets phase `adding_wine` but shows same chips as `confirming` flow | identification.ts:976 | Medium |
-| Cancel request message not using personality system | conversation.ts:164 | Low |
-| New search confirmation chips hardcoded instead of using `generateNewSearchConfirmationChips()` | identification.ts:573-577 | Low |
-| Brief input confirmation chips hardcoded instead of using `generateBriefSearchChips()` | identification.ts:595-598 | Low |
-| Add Wine retry chip not primary variant (identification retry is primary) | chipRegistry.ts:262-265 | Low |
+| Issue | Location | Status |
+|-------|----------|--------|
+| ~~`handleNotCorrect()` uses hardcoded chip labels~~ | identification.ts | Resolved — uses `generateNotCorrectChips()` |
+| ~~"Nothing Found" chips hardcoded~~ | identification.ts | Resolved — uses `getChip(ChipKey.SEARCH_AGAIN)` + `getChip(ChipKey.START_OVER)` |
+| ~~`handleGoBack()` uses `enrich_now` instead of `learn`~~ | conversation.ts:98 | Resolved — uses `learn` action |
+| ~~`handleContinueAsIs()` sets phase `adding_wine`~~ | identification.ts:1202 | Resolved — sets `confirming` |
+| Cancel request message not using personality system | conversation.ts | Open (Low) |
+| ~~New search confirmation chips hardcoded~~ | identification.ts | Resolved — uses `generateNewSearchConfirmationChips()` |
+| ~~Brief input chips hardcoded~~ | identification.ts | Resolved — uses `generateBriefSearchChips()` |
+| ~~Add Wine retry chip not primary variant~~ | chipRegistry.ts:268-273 | Resolved — RETRY_ADD now has `variant: 'primary'` |
+| `handleGoBack()` from adding_wine uses hardcoded chip labels | conversation.ts:96-100 | Open (Low) — labels not from chip registry |

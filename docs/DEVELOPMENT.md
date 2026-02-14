@@ -69,9 +69,14 @@ if (APP_ENV === 'test') {
     define('DB_NAME', 'winelist');
 }
 
+// Authentication
+define('API_AUTH_KEY', 'your-api-key');           // Must match qve/.env PUBLIC_API_KEY
+define('APP_PASSWORD_HASH', '$2y$10$...');        // bcrypt hash for login (php -r "echo password_hash('pw', PASSWORD_BCRYPT);")
+
 // API Keys
 define('GEMINI_API_KEY', 'your-gemini-api-key');
 // Optional: define('ANTHROPIC_API_KEY', 'your-anthropic-key');
+// Optional: define('SSL_CA_BUNDLE', '/path/to/cacert.pem');
 ```
 
 JIRA credentials are in a separate file at `../wineapp-config/jira.config.json`:

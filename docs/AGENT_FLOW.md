@@ -2,7 +2,7 @@
 
 A debugging-oriented flow guide for the wine sommelier agent. Use this document to trace issues, understand user journeys, and diagnose unexpected behavior.
 
-**Last Updated**: 2026-02-07
+**Last Updated**: 2026-02-14
 **Companion doc**: [AGENT_ARCHITECTURE.md](./AGENT_ARCHITECTURE.md) (how it's built)
 **This doc**: How it works, what happens when, how to debug it
 
@@ -56,7 +56,7 @@ flowchart TB
     Greeting --> AwaitInput["awaiting_input phase<br/>Text input or camera"]
 
     %% Identification entry points
-    AwaitInput -->|"Text submitted"| TextPipeline["Text Input Pipeline<br/>(6-step priority chain)"]
+    AwaitInput -->|"Text submitted"| TextPipeline["Text Input Pipeline<br/>(7-step priority chain)"]
     AwaitInput -->|"Image submitted"| ImageID["Image Identification<br/>identifying phase"]
 
     %% Text pipeline outcomes
@@ -591,7 +591,7 @@ Exception errors include a support reference (`ERR-XXXXXXXX`) generated server-s
 
 ### 3.6 Text Input Decision Tree
 
-When the user submits text, it passes through a 6-step priority chain in `handleTextSubmit()`. The first match wins -- later checks are skipped.
+When the user submits text, it passes through a 7-step priority chain in `handleTextSubmit()`. The first match wins -- later checks are skipped. Step 0 (field correction intercept) handles pending locked-field corrections before any other check.
 
 ```mermaid
 flowchart TB
@@ -786,7 +786,11 @@ This table shows which actions are valid in which phases. An action not listed f
 | `correct` | | | | **R** | | | | |
 | `not_correct` | | | | **R** | | | | |
 | `add_to_cellar` | | | | **R** | | | | |
-| `try_opus` | | | | **R** | | | | |
+| `try_opus` | | **R** | | **R** | | | | |
+| `verify` | | | | **R** | | | | |
+| `correct_field` | | **R** | | **R** | | | | |
+| `confirm_corrections` | | **R** | | **R** | | | | |
+| `cancel_request` | * | * | * | * | * | * | * | * |
 | `learn` | | | | **R** | | | | |
 | `remember` | | | | **R** | | | | |
 | `reidentify` | | | | * | | | | |
@@ -826,4 +830,4 @@ This table shows which actions are valid in which phases. An action not listed f
 - **R+F** = Requires both identification result and add wine flow
 - Empty = Not valid in this phase (validation middleware will skip with warning)
 
-**Note**: `submit_text` and `submit_image` are not phase-restricted by the validator -- they handle phase-specific behavior internally through the text input pipeline. `start_over` and `cancel` are conversation actions that bypass validation entirely.
+**Note**: `submit_text` and `submit_image` are not phase-restricted by the validator -- they handle phase-specific behavior internally through the text input pipeline. `start_over`, `cancel`, and `cancel_request` are conversation actions that bypass validation entirely.

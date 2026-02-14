@@ -1,6 +1,6 @@
 # Component Reference
 
-> **90+ Svelte components** organized into 8 categories, implementing a mobile-first wine collection UI with an AI-powered agent panel. All non-agent components are barrel-exported from `$lib/components`. Agent components are exported from `$lib/components/agent`.
+> **96 Svelte components** organized into 8 categories, implementing a mobile-first wine collection UI with an AI-powered agent panel. All non-agent components are barrel-exported from `$lib/components`. Agent components are exported from `$lib/components/agent`.
 
 ---
 
@@ -12,13 +12,13 @@ graph TD
         Header --> CollectionRow
         Header --> FilterBar
         Header --> HistoryFilterBar
+        Header --> SearchInput
         FilterBar --> FilterPill
         FilterBar --> FilterDropdown
         FilterBar --> CellarSortBar
         HistoryFilterBar --> FilterPill
         HistoryFilterBar --> FilterDropdown
         SideMenu
-        CollectionBar
         HistorySortBar
     end
 
@@ -67,13 +67,16 @@ graph TD
         ImageUploadZone
     end
 
-    subgraph Modals["Modals (7)"]
+    subgraph Modals["Modals (10)"]
         ModalContainer --> DrinkRateModal
         ModalContainer --> AddBottleModal
         ModalContainer --> ConfirmModal
+        ModalContainer --> DeleteConfirmModal
         ModalContainer --> SettingsModal
         ModalContainer --> ImageLightboxModal
         ModalContainer --> DuplicateWarningModal
+        ModalContainer --> CellarValueModal
+        CellarValueModal --> CellarValueChart
     end
 
     subgraph Edit["Edit (3)"]
@@ -118,7 +121,7 @@ SVG icon component. All icons are inline SVG paths within a single component.
 | `name` | `IconName` | required | Icon identifier |
 | `size` | `number` | `18` | Pixel width/height |
 
-**Available icons** (31): `sun`, `moon`, `grid`, `list`, `search`, `menu`, `chevron-down`, `chevron-left`, `chevron-right`, `plus`, `minus`, `edit`, `drink`, `wine-bottle`, `check`, `x`, `info`, `warning`, `close`, `calendar`, `arrow-up`, `arrow-down`, `history`, `settings`, `sparkle`, `bookmark`, `refresh`, `camera`, `gallery`
+**Available icons** (33): `sun`, `moon`, `grid`, `list`, `search`, `menu`, `chevron-down`, `chevron-left`, `chevron-right`, `plus`, `minus`, `edit`, `drink`, `wine-bottle`, `check`, `x`, `info`, `warning`, `close`, `calendar`, `arrow-up`, `arrow-down`, `history`, `settings`, `sparkle`, `bookmark`, `refresh`, `camera`, `gallery`, `trash`, `log-out`
 
 Note: The `grid` icon uses `fill` instead of `stroke`.
 
@@ -398,11 +401,25 @@ Displays page title, Cellar/All toggle, and stats (wine count, bottle count, cel
 | `unpricedCount` | `number` | `0` | Wines without prices |
 | `isLoading` | `boolean` | `false` | Show loading state |
 
-### CollectionBar
+### SearchInput
 
-Alternative collection display layout. Used internally by some pages.
+Expandable inline search input with 300ms debounce. Renders as a search icon button that expands to a text input.
 
-No exported props; reads from stores (`collectionName`, `cellarValue`, `viewMode`, `wines`).
+```svelte
+<SearchInput bind:value={query} bind:expanded={isExpanded} on:search={handleSearch} on:clear={handleClear} />
+```
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `value` | `string` | `''` | Search term (bound) |
+| `expanded` | `boolean` | `false` | Whether input is expanded |
+
+| Event | Detail | Description |
+|-------|--------|-------------|
+| `search` | `string` | Debounced search value |
+| `expand` | `void` | Input expanded |
+| `collapse` | `void` | Input collapsed |
+| `clear` | `void` | Search cleared |
 
 ### FilterBar
 
@@ -490,7 +507,7 @@ No props. Uses `historySortKey`, `historySortDir` stores.
 
 ### SideMenu
 
-Slide-out navigation drawer with backdrop overlay. Items: Cellar, All Wines, Add Wine, History, Settings.
+Slide-out navigation drawer with backdrop overlay. Items: Cellar, All Wines, Add Wine, History, Settings, Log Out.
 
 ```svelte
 <SideMenu open={$menuOpen} on:close={closeMenu} />
@@ -850,6 +867,26 @@ Shows warning during Add Wine wizard when similar wines/regions/producers exist.
 |------|------|---------|-------------|
 | `warning` | `DuplicateWarning` | required | Duplicate check result |
 
+### DeleteConfirmModal
+
+Confirmation dialog for soft delete with cascade impact preview. Fetches impact data on mount to show what will be affected (bottles, ratings, etc.).
+
+```svelte
+<!-- Opened via store -->
+modal.open('deleteConfirm', { entityType: 'wine', entityId: 123, entityName: 'Château Margaux 2015' });
+```
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `entityType` | `DeleteEntityType` | required | `'wine' \| 'bottle' \| 'producer' \| 'region'` |
+| `entityId` | `number` | required | ID of entity to delete |
+| `entityName` | `string` | required | Display name for confirmation |
+
+| Event | Detail | Description |
+|-------|--------|-------------|
+| `confirm` | `{ type, id, name }` | User confirmed deletion |
+| `cancel` | `void` | User cancelled |
+
 ### ImageLightboxModal
 
 Fullscreen image viewer with dark backdrop. Closes on backdrop click or Escape.
@@ -863,6 +900,31 @@ modal.openImageLightbox('/path/to/image.jpg', 'Wine name 2019');
 |------|------|---------|-------------|
 | `src` | `string` | required | Image URL |
 | `alt` | `string` | `'Wine image'` | Alt text |
+
+### CellarValueModal
+
+Self-fetching modal showing cellar value over time. Bottom-sheet on mobile, centered card on desktop. Fetches cellar value history from API on mount.
+
+```svelte
+<!-- Opened via store -->
+modal.open('cellarValue');
+```
+
+No props. Self-fetching. Renders `CellarValueChart` internally with time range controls (All, 1Y, 6M, 3M).
+
+### CellarValueChart
+
+Pure SVG chart component: Catmull-Rom spline line, gradient fill, axes, tooltip, and line-draw animation. Purely presentational.
+
+```svelte
+<CellarValueChart {data} {currencySymbol} {formatValue} />
+```
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `data` | `{ date, displayValue, bottleCount }[]` | required | Chart data points |
+| `currencySymbol` | `string` | required | Currency symbol for axis labels |
+| `formatValue` | `(v: number) => string` | required | Value formatter |
 
 ---
 
@@ -991,7 +1053,9 @@ AI Wine Assistant components organized into 6 subdirectories. These implement th
 | Layout | 10 | Yes |
 | Forms | 7 | Yes (via forms/index.ts) |
 | Wizard | 7 | Yes (via wizard/index.ts) |
-| Modals | 7 | Yes (via modals/index.ts) |
+| Modals | 10 | Yes (via modals/index.ts) |
 | Edit | 3 | Yes |
-| Agent | 46 | Via agent/index.ts and subdirectories |
-| **Total** | **95** | |
+| Agent | 44 | Via agent subdirectories |
+| **Total** | **96** | |
+
+Agent component breakdown: 9 top-level + 3 cards + 8 content + 5 conversation + 11 enrichment + 3 forms + 5 wine = 44

@@ -592,11 +592,13 @@ Skeleton loaders use the shimmer animation:
 
 ### 15.1 Overflow Prevention
 
-Required for iOS Safari horizontal scroll prevention:
+Required for iOS Safari horizontal scroll prevention. **Only on `body`, NOT `html`** -- putting `overflow-x: hidden` on both creates a dual scroll container that breaks mousewheel and touch scrolling in Chrome:
 ```css
-html, body {
+html {
+  max-width: 100%;  /* Secondary safety net -- no overflow-x: hidden here */
+}
+body {
   overflow-x: hidden;
-  max-width: 100vw;
 }
 ```
 

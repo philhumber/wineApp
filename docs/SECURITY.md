@@ -1,7 +1,7 @@
-# Security Architecture — Sprint 11
+# Security Architecture — Sprint 11+
 
-**Implemented**: 2026-02-07
-**Sprint**: Sprint 11 - Security (14 JIRA issues)
+**Implemented**: 2026-02-07 (Sprint 11), updated 2026-02-14 (Sprint 15 auth additions)
+**Sprint**: Sprint 11 - Security (14 JIRA issues) + Sprint 15 updates
 **Scope**: Full security hardening of PHP backend and Svelte frontend
 
 ---
@@ -34,34 +34,52 @@ All layers are enforced in `resources/php/securityHeaders.php`, which is include
 
 ---
 
-## 1. Authentication — WIN-203
+## 1. Authentication — WIN-203, WIN-254
 
 ### Mechanism
-API key authentication via `X-API-Key` HTTP header, validated in `resources/php/authMiddleware.php`.
+Dual authentication: API key (`X-API-Key` header) OR session cookie (`QVE_SESSION`), validated in `resources/php/authMiddleware.php`. API key is checked first (cheap — no session file I/O).
 
 ### How It Works
+
+**Path 1 — API Key (original, WIN-203):**
 - Server-side key defined as `API_AUTH_KEY` in `../wineapp-config/config.local.php` (outside repo and document root)
 - Frontend key stored in `qve/.env` as `PUBLIC_API_KEY` (gitignored), baked into JS bundle at build time via SvelteKit's `$env/static/public`
 - Comparison uses `hash_equals()` for timing-safe validation (prevents timing attacks)
+
+**Path 2 — Session Cookie (WIN-254):**
+- Password login via `auth/login.php` creates a `QVE_SESSION` cookie
+- Password verified via `password_verify()` against `APP_PASSWORD_HASH` (bcrypt) in config
+- Session: `HttpOnly`, `SameSite=Strict`, `Secure` (when HTTPS), 7-day expiry
+- `session_write_close()` called immediately after validation to prevent lock contention
+- Brute force protection: 5 attempts per IP, 15-minute lockout (file-based in temp dir)
 - On failure: returns generic `401 Unauthorized` JSON — does not reveal whether key was missing, wrong, or misconfigured
+- Frontend handles 401 by redirecting to `/qve/login` (static flag prevents multiple concurrent redirects)
 
 ### Scope
-All endpoints require authentication — read-only, mutation, upload, and AI/LLM endpoints.
+All endpoints require authentication — read-only, mutation, upload, and AI/LLM endpoints. Exceptions:
+- `healthcheck.php` — no auth (monitoring endpoint)
+- `auth/login.php`, `auth/checkAuth.php`, `auth/logout.php` — use their own `authCorsHeaders.php` (cannot include `securityHeaders.php` which calls `authenticate()`)
 
 ### Design Decisions
 - **No dev bypass**: Dev and production use the same mechanism for consistency
-- **Extensible layer**: `authenticate()` function is designed to be swapped for session/JWT auth when the app becomes multi-user and public-facing
+- **API key checked first**: Avoids session file I/O overhead for programmatic clients
 - **Key in JS bundle**: Acceptable because the frontend is served from the same LAN server. The key prevents unauthorized LAN devices from accessing the API, not browser-side attackers who already have the frontend
+- **Session regeneration**: `session_regenerate_id(true)` on login prevents session fixation
 
 ### Security Implications
-- The API key is visible in the browser's JS bundle. This is a known trade-off for a LAN-only single-user app. For the planned multi-user public-facing version, this should be replaced with proper user authentication (sessions or JWT)
+- The API key is visible in the browser's JS bundle. This is a known trade-off for a LAN-only single-user app
+- Session cookies provide proper auth for public-facing access (via Cloudflare Tunnel)
 - The key prevents: unauthorized LAN access, LLM credit abuse, data corruption from rogue clients
 
 ### Files
-- `resources/php/authMiddleware.php` — auth logic
+- `resources/php/authMiddleware.php` — dual auth logic (API key + session)
 - `resources/php/securityHeaders.php` — integration point (calls `authenticate()`)
-- `qve/src/lib/api/client.ts` — sends `X-API-Key` on all requests
-- `../wineapp-config/config.local.php` — key storage (server)
+- `resources/php/auth/login.php` — password login with brute force protection
+- `resources/php/auth/checkAuth.php` — session validity check
+- `resources/php/auth/logout.php` — session destruction
+- `resources/php/auth/authCorsHeaders.php` — CORS/security headers for auth endpoints
+- `qve/src/lib/api/client.ts` — sends `X-API-Key` on all requests, handles 401 redirect
+- `../wineapp-config/config.local.php` — key storage + `APP_PASSWORD_HASH` (server)
 - `qve/.env` — key storage (frontend, gitignored)
 
 ---
@@ -110,16 +128,22 @@ Strict origin allowlist with preflight handling in `resources/php/securityHeader
 ### Allowed Origins
 | Origin | Purpose |
 |--------|---------|
-| `http://10.0.0.16` | Production server |
+| `http://10.0.0.16` | Production server (direct IP) |
+| `http://qve-wine.com` | Production server (domain) |
 | `http://localhost:5173` | Vite dev server |
 | `http://127.0.0.1:5173` | Alternate localhost |
 | `http://10.x.x.x:5173` | LAN IPs for mobile dev (`--host`) |
 | `http://192.168.x.x:5173` | LAN IPs for mobile dev (`--host`) |
 
+Auth endpoints (`auth/authCorsHeaders.php`) additionally allow:
+| Origin | Purpose |
+|--------|---------|
+| `https://qve-wine.com` | Production via Cloudflare Tunnel |
+
 ### Headers Set
 - `Access-Control-Allow-Origin` — specific matched origin (not wildcard `*`)
 - `Access-Control-Allow-Methods` — `GET, POST, OPTIONS`
-- `Access-Control-Allow-Headers` — `Content-Type, X-Requested-With, X-API-Key`
+- `Access-Control-Allow-Headers` — `Content-Type, X-Requested-With, X-API-Key, X-Request-Id`
 - `Access-Control-Max-Age` — `86400` (24-hour preflight cache)
 - `Vary: Origin` — ensures caches don't serve wrong CORS response
 
@@ -379,11 +403,12 @@ The frontend will send `X-API-Key` and `X-Requested-With` headers. The old backe
 
 ## Future Considerations (Multi-User)
 
-When the app transitions to multi-user and public-facing:
+When the app transitions to multi-user:
 
-1. **Replace API key auth** with session-based or JWT authentication in `authMiddleware.php` — the `authenticate()` function was designed for this swap
+1. ~~**Replace API key auth**~~ — Done (WIN-254): Session-based auth now works alongside API key auth
 2. **Replace `getAgentUserId()`** in `_bootstrap.php` — extract userId from session/token instead of returning `1`
 3. **Add rate limiting** — per-user rate limits for LLM endpoints
-4. **Add HTTPS** — HSTS headers are already set, just need TLS certificate configuration
-5. **Review CORS origins** — update allowlist for production domain
+4. ~~**Add HTTPS**~~ — Done: Cloudflare Tunnel provides TLS termination. HSTS headers already set.
+5. ~~**Review CORS origins**~~ — Done: `qve-wine.com` and `https://qve-wine.com` added to allowlist
 6. **Add per-user authorization** — ensure users can only access their own wine data
+7. **Move brute force tracking to database** — current file-based approach (`sys_get_temp_dir()`) doesn't survive server restarts

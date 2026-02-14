@@ -1,6 +1,6 @@
 # Stores Reference
 
-> **24 Svelte stores** (17 core + 7 agent) managing all application state. Core stores use plain `writable`/`derived` stores with exported action functions. Agent stores follow the same pattern but are split into domain-specific modules. All stores are barrel-exported from `$lib/stores`.
+> **26 Svelte stores** (19 core + 7 agent) managing all application state. Core stores use plain `writable`/`derived` stores with exported action functions. Agent stores follow the same pattern but are split into domain-specific modules. All stores are barrel-exported from `$lib/stores`.
 
 ---
 
@@ -36,8 +36,13 @@ graph TD
         settings["settings<br/><small>collectionName, cellarValue</small>"]
     end
 
-    subgraph AgentStores["Agent Stores (Phase 4)"]
-        agent["agent<br/><small>legacy monolith</small>"]
+    subgraph SystemStores["System Stores"]
+        auth["auth<br/><small>login/session</small>"]
+        deleteStore["delete<br/><small>soft delete + undo</small>"]
+    end
+
+    subgraph AgentStores["Agent Stores (7)"]
+        agentPanel["agentPanel<br/><small>open/close</small>"]
         agentConv["agentConversation<br/><small>messages, phase</small>"]
         agentId["agentIdentification<br/><small>results, streaming</small>"]
         agentEnrich["agentEnrichment<br/><small>enrichment data</small>"]
@@ -70,9 +75,9 @@ All stores use individual named exports (not store objects with methods). Import
 ```typescript
 import {
   wines, winesLoading, winesError,           // Writable stores
-  totalBottles, wineCount, winesByCountry,   // Derived stores
+  totalBottles, wineCount,                   // Derived stores
   updateWineInList, incrementBottleCount,     // Action functions
-  type Wine                                   // Types (re-exported from api/types)
+  fetchWines, cancelFetchWines               // Fetch actions (WIN-206)
 } from '$lib/stores';
 ```
 
@@ -95,8 +100,6 @@ expandedWineIDs    // writable<Set<number>> - multi-card expansion tracking
 // Derived stores
 totalBottles       // derived - sum of all wine.bottleCount
 wineCount          // derived - $wines.length
-winesByCountry     // derived - Map<string, Wine[]>
-winesByType        // derived - Map<string, Wine[]>
 
 // Action functions
 toggleWineExpanded(id: number): void
@@ -108,7 +111,13 @@ removeWineFromList(id: number): void
 decrementBottleCount(id: number): void
 incrementBottleCount(id: number, count?: number): void
 scrollToWine(id: number): void  // Sets targetWineID, auto-clears after 2.5s
+
+// WIN-206: Debounced fetch with abort
+fetchWines(filterValues?: WineFilters, immediate?: boolean): void
+cancelFetchWines(): void
 ```
+
+`fetchWines()` debounces rapid calls (300ms), aborts in-flight requests, and guards against stale responses via a fetch counter.
 
 **Usage:**
 ```svelte
@@ -131,6 +140,8 @@ filters            // writable<WineFilters> - active filter values
 hasActiveFilters   // derived<boolean> - any non-bottleCount filter active
 activeFilterCount  // derived<number> - count of active filters
 activeFilterList   // derived<{ key, value }[]> - human-readable filter list
+hasSearchQuery     // derived<boolean> - search query is non-empty
+searchQuery        // derived<string> - current search query text
 
 // Action functions
 setFilter(key: keyof WineFilters, value: string | undefined): void
@@ -433,23 +444,28 @@ storageOptions     // Array of { value, label } for location dropdown
 
 ### history (`stores/history.ts`)
 
-Drink history state with client-side filtering and sorting.
+Drink history state with server-side pagination, filtering, and sorting (WIN-205).
 
 ```typescript
 // Writable stores
-drunkWines         // writable<DrunkWine[]>
-historyLoading     // writable<boolean>
-historyError       // writable<string | null>
-historySortKey     // writable<HistorySortKey> - default: 'drinkDate'
-historySortDir     // writable<HistorySortDir> - default: 'desc'
-historyFilters     // writable<HistoryFilters>
-expandedHistoryKey // writable<string | null> - "wineID-bottleID"
+drunkWines             // writable<DrunkWine[]> - current page from server
+historyLoading         // writable<boolean>
+historyError           // writable<string | null>
+historySortKey         // writable<HistorySortKey> - default: 'drinkDate'
+historySortDir         // writable<HistorySortDir> - default: 'desc'
+historyFilters         // writable<HistoryFilters>
+expandedHistoryKey     // writable<string | null> - "wineID-bottleID"
+
+// WIN-205: Server-side pagination
+historyPagination      // writable<PaginationMeta> - { page, limit, total, totalPages }
+historyFilterOptions   // writable<HistoryFilterOptions> - server-provided cascading options
+unfilteredDrunkWineCount // writable<number> - total before filtering (for empty state detection)
 
 // Derived stores
 hasHistoryFilters       // derived<boolean>
 activeHistoryFilterCount // derived<number>
-sortedDrunkWines        // derived<DrunkWine[]> - filtered + sorted
-drunkWineCount          // derived<number> - total count
+sortedDrunkWines        // derived<DrunkWine[]> - pass-through (server sorts)
+drunkWineCount          // derived<number> - uses unfilteredDrunkWineCount
 filteredDrunkWineCount  // derived<number> - count after filtering
 
 // Action functions
@@ -458,6 +474,10 @@ toggleHistorySortDir(): void
 setHistoryFilter(key: keyof HistoryFilters, value: string | undefined): void
 clearHistoryFilters(): void
 getDrunkWineKey(wine: DrunkWine): string  // Returns "wineID-bottleID"
+
+// WIN-205/206: Server-side fetch
+fetchHistory(): void           // Debounced, abort-aware server fetch
+cancelFetchHistory(): void     // Cancel in-flight request
 
 // Types
 type HistorySortKey = 'drinkDate' | 'rating' | 'overallRating' | 'valueRating' | 'wineName' | 'wineType' | 'country' | 'producer' | 'region' | 'year' | 'price' | 'buyAgain';
@@ -536,7 +556,7 @@ modalData          // derived<Record<string, unknown> | undefined>
 confirmOverlay     // derived<ConfirmModalData | null>
 
 // Types
-type ModalType = 'drink' | 'editRating' | 'addBottle' | 'edit' | 'confirm' | 'aiLoading' | 'settings' | 'imageLightbox' | null;
+type ModalType = 'drink' | 'editRating' | 'addBottle' | 'edit' | 'confirm' | 'aiLoading' | 'settings' | 'imageLightbox' | 'deleteConfirm' | 'cellarValue' | null;
 interface ModalState { type, data?, pushedHistory?, beforeCloseHook?, confirmOverlay? }
 interface ConfirmModalData { title, message, confirmLabel?, cancelLabel?, onConfirm, onCancel?, variant? }
 ```
@@ -570,28 +590,82 @@ Stores positions keyed by pathname in a private writable store.
 
 ---
 
+## System Stores
+
+### auth (`stores/auth.ts`)
+
+Authentication state for login/session management (WIN-254). Uses PHP session cookies.
+
+```typescript
+// Main store
+auth               // custom store with methods:
+  .initialize()    // Check auth status on app mount
+  .checkAuth()     // Re-check auth (e.g., after tab switch)
+  .login(password: string): Promise<boolean>
+  .logout(): Promise<void>
+
+// Derived stores
+isAuthenticated    // derived<boolean> - is user logged in
+isAuthChecking     // derived<boolean> - auth check in progress
+isAuthLoggingOut   // derived<boolean> - logout in progress
+authError          // derived<string | null> - error message
+```
+
+**Race condition protection**: Uses `fetchCounter` + `AbortController` pattern (same as `wines.ts`).
+
+### delete (`stores/delete.ts`)
+
+Soft delete with undo window (WIN-80). Uses requestAnimationFrame-based timers for smooth countdown.
+
+```typescript
+// Main store
+deleteStore        // object with methods:
+  .requestDelete(type, id, name, snapshot): string  // Start delete with undo window
+  .undoDelete(pendingId): void                      // Cancel pending delete
+  .pauseTimer(pendingId): void                      // Pause undo countdown (on hover)
+  .resumeTimer(pendingId): void                     // Resume countdown
+  .getElapsedPercent(pendingId): number              // Progress for UI (0-1)
+
+// Derived stores
+hasPendingDeletes  // derived<boolean> - any pending deletes
+pendingDeleteCount // derived<number> - count of pending deletes
+deleteLoading      // derived<boolean> - deletion API call in progress
+deleteError        // derived<string | null> - error message
+
+// Constants
+UNDO_DURATION_MS   // 5000ms (undo window duration)
+
+// Types
+type DeleteEntityType = 'wine' | 'bottle' | 'producer' | 'region';
+interface DeleteImpact { producers?, wines?, bottles?, ratings? }
+interface PendingDelete { id, entityType, entityId, entityName, snapshot, timerId, isPaused, elapsedMs }
+```
+
+**Deletion flow**: `requestDelete()` → optimistic UI removal → RAF timer counts down → `executeDelete()` calls API on expiry. `undoDelete()` restores from snapshot.
+
+---
+
 ## Agent Stores
 
-The agent system uses 7 stores split from a monolithic `agent.ts` during the Phase 4 rearchitecture. The legacy `agent.ts` still exports many symbols for backward compatibility, while the new stores (`agentConversation`, `agentIdentification`, `agentEnrichment`, `agentAddWine`, `agentPersistence`, `agentSettings`) contain the canonical implementations.
+The agent system uses 7 stores managing all agent state. The legacy monolithic `agent.ts` was replaced by `agentPanel.ts` during WIN-213.
 
 > For detailed agent store internals, see `docs/AGENT_ARCHITECTURE.md`.
 
-### agent (`stores/agent.ts`) -- Legacy
+### agentPanel (`stores/agentPanel.ts`)
 
-The original monolithic agent store. Still exports derived stores and types consumed by components. Key exports:
+Agent panel open/close state with localStorage persistence.
 
-| Export | Type | Purpose |
-|--------|------|---------|
-| `agent` | writable | Core agent state |
-| `agentPanelOpen` | derived | Panel visibility |
-| `agentLoading` | derived | Any loading in progress |
-| `agentIdentifying` | derived | Identification in progress |
-| `agentEnriching` | derived | Enrichment in progress |
-| `agentError` | derived | Current error |
-| `agentErrorRetryable` | derived | Error is retryable |
-| `agentErrorSupportRef` | derived | Support reference code |
-| `agentIsStreaming` | derived | Streaming in progress |
-| `agentStreamingFields` | derived | Current streaming field states |
+```typescript
+// Derived store
+agentPanelOpen     // derived<boolean> - panel visibility (read-only)
+
+// Action functions
+openPanel(): void
+closePanel(): void
+togglePanel(): void
+```
+
+Hydrates from localStorage on client via `loadPanelState()`.
 
 ### agentConversation (`stores/agentConversation.ts`)
 
@@ -758,5 +832,6 @@ onMount(async () => {
 | View/UI | 5 | theme, view, currency, toast, modal |
 | Features | 5 | addWine, drinkWine, editWine, addBottle, settings |
 | Navigation | 2 | menu, scrollPosition |
-| Agent | 7 | agent, agentConversation, agentIdentification, agentEnrichment, agentAddWine, agentPersistence, agentSettings |
-| **Total** | **24** | |
+| System | 2 | auth, delete |
+| Agent | 7 | agentPanel, agentConversation, agentIdentification, agentEnrichment, agentAddWine, agentPersistence, agentSettings |
+| **Total** | **26** | |
