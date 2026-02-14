@@ -1,4 +1,5 @@
 import type { HandleClientError } from '@sveltejs/kit';
+import { reportError } from '$lib/utils/errorReporter';
 
 /**
  * WIN-212/WIN-243: Global client-side error handling
@@ -18,6 +19,15 @@ export const handleError: HandleClientError = ({ error, event, status, message }
 		stack: err?.stack
 	});
 
+	// WIN-243: Report frontend errors
+	reportError({
+		message: err.message,
+		stack: err?.stack,
+		url: event.url?.pathname,
+		context: `sveltekit:${status}`,
+		supportRef: (err as any).supportRef || undefined
+	});
+
 	// Return user-facing error (no internal details leaked)
 	return {
 		message: status === 404
@@ -32,6 +42,14 @@ if (typeof window !== 'undefined') {
 		console.error('[Qvé Unhandled Rejection]', {
 			reason: event.reason,
 			stack: event.reason?.stack
+		});
+
+		// WIN-243: Report frontend errors
+		reportError({
+			message: String(event.reason),
+			stack: event.reason?.stack,
+			context: 'unhandled_rejection',
+			supportRef: event.reason?.supportRef || undefined
 		});
 	});
 }

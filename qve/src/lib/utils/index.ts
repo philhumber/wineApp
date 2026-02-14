@@ -16,3 +16,6 @@ export {
 	type ChipResponseType,
 	type ChipResponseDetectionResult
 } from './commandDetector';
+
+// Error Reporting
+export { reportError, type ErrorReport } from './errorReporter';

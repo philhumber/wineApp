@@ -10,6 +10,7 @@ import type { Middleware, ActionHandler } from './types';
 import type { AgentErrorInfo } from '../types';
 import type { AgentErrorType } from '$lib/api/types';
 import { AgentError } from '$lib/api/types';
+import { reportError } from '$lib/utils/errorReporter';
 import { getMessageByKey } from '../messages';
 import { MessageKey } from '../messageKeys';
 import { ChipKey, getChips } from '../services/chipRegistry';
@@ -133,6 +134,13 @@ export const withErrorHandling: Middleware = (handler: ActionHandler) => {
       await handler(action);
     } catch (error) {
       console.error(`[AgentAction] Error handling ${action.type}:`, error);
+
+      // WIN-243: Report agent errors (middleware catches and swallows — won't reach hooks.client.ts)
+      reportError({
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        context: `agent:${action.type}`
+      });
 
       const errorInfo = extractErrorInfo(error);
 

@@ -103,7 +103,7 @@ All items verified against `develop` branch on 2026-02-14:
 | A-I2. No focus trapping in modals | **Fixed** | All modals have `role="dialog"` or `role="alertdialog"`, `aria-modal="true"`, `aria-labelledby`. Confirmation modals correctly use `alertdialog` |
 | A-I3. agent-test route ships to prod | **Fixed** | Route deleted |
 | A-I4. Deploy script no branch check | **Fixed** | Requires `develop` branch, checks uncommitted changes, verifies sync with origin. `-Force` override available |
-| A-I5. No error tracking/monitoring | **Fixed** | WIN-212/243: `hooks.client.ts` + `healthcheck.php` (DB connectivity, PHP version, 200/503) |
+| A-I5. No error tracking/monitoring | **Fixed** | WIN-212/243: `hooks.client.ts` + `errorReporter.ts` (dedup, rate limit, keepalive) → `logError.php` → `error_log()`. 7 touch points: handleError, unhandledrejection, fetchJSON, 3 streaming methods, agent middleware. `healthcheck.php` for uptime (DB connectivity, 200/503) |
 | A-I6. Orphan CollectionBar.svelte | **Fixed** | Component deleted from codebase |
 | A-I7. Orphan `nul` file | **Fixed** | File deleted |
 
@@ -320,7 +320,7 @@ WIN-205: `getDrunkWines.php` implements server-side `LIMIT :limit OFFSET :offset
 **A-I2.** All 5 audited modals have proper `role`, `aria-modal="true"`, `aria-labelledby`
 **A-I3.** agent-test route deleted
 **A-I4.** Deploy script has branch check, uncommitted changes check, origin sync check
-**A-I5.** `hooks.client.ts` + `healthcheck.php` (DB connectivity, 200/503)
+**A-I5.** `errorReporter.ts` → `logError.php` → `error_log()` with `[Frontend Error]` prefix. 7 touch points: `hooks.client.ts` (handleError + unhandledrejection), `client.ts` (fetchJSON + 3 streaming methods), `errorHandler.ts` (agent middleware). Dedup (60s window), rate limit (10/min), AbortError filter, `keepalive` for navigation. `healthcheck.php` for uptime (DB connectivity, 200/503)
 **A-I6.** `CollectionBar.svelte` deleted
 **A-I7.** `nul` file deleted
 

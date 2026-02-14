@@ -49,6 +49,7 @@ import type {
   GetDrunkWinesResponse
 } from './types';
 import { AgentError } from './types';
+import { reportError } from '$lib/utils/errorReporter';
 import { PUBLIC_API_KEY } from '$env/static/public';
 import { goto } from '$app/navigation';
 import { base } from '$app/paths';
@@ -159,6 +160,13 @@ class WineApiClient {
         throw error;
       }
       console.error(`API Error (${endpoint}):`, error);
+      if (!AgentError.isAgentError(error)) {
+        reportError({
+          message: (error as Error).message,
+          stack: (error as Error).stack,
+          context: `api:${endpoint}`
+        });
+      }
       throw error;
     }
   }
@@ -944,6 +952,7 @@ class WineApiClient {
     requestId?: string | null,
     lockedFields?: Record<string, string | number>
   ): Promise<AgentIdentificationResultWithMeta> {
+    try {
     const url = `${this.baseURL}agent/identifyTextStream.php`;
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json', ...this.authHeaders };
@@ -1032,6 +1041,16 @@ class WineApiClient {
     }
 
     return finalResult;
+    } catch (e) {
+      if (!AgentError.isAgentError(e)) {
+        reportError({
+          message: e instanceof Error ? e.message : String(e),
+          stack: e instanceof Error ? e.stack : undefined,
+          context: 'api:agent/identifyTextStream'
+        });
+      }
+      throw e;
+    }
   }
 
   /**
@@ -1056,6 +1075,7 @@ class WineApiClient {
     requestId?: string | null,
     lockedFields?: Record<string, string | number>
   ): Promise<AgentIdentificationResultWithMeta> {
+    try {
     const url = `${this.baseURL}agent/identifyImageStream.php`;
 
     const body: Record<string, unknown> = { image: imageBase64, mimeType };
@@ -1137,6 +1157,16 @@ class WineApiClient {
     }
 
     return finalResult;
+    } catch (e) {
+      if (!AgentError.isAgentError(e)) {
+        reportError({
+          message: e instanceof Error ? e.message : String(e),
+          stack: e instanceof Error ? e.stack : undefined,
+          context: 'api:agent/identifyImageStream'
+        });
+      }
+      throw e;
+    }
   }
 
   // ─────────────────────────────────────────────────────────
@@ -1202,6 +1232,7 @@ class WineApiClient {
     signal?: AbortSignal,
     requestId?: string | null
   ): Promise<AgentEnrichmentResult> {
+    try {
     const url = `${this.baseURL}agent/agentEnrichStream.php`;
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json', ...this.authHeaders };
@@ -1292,6 +1323,16 @@ class WineApiClient {
     }
 
     return finalResult;
+    } catch (e) {
+      if (!AgentError.isAgentError(e)) {
+        reportError({
+          message: e instanceof Error ? e.message : String(e),
+          stack: e instanceof Error ? e.stack : undefined,
+          context: 'api:agent/agentEnrichStream'
+        });
+      }
+      throw e;
+    }
   }
 
   // ─────────────────────────────────────────────────────────

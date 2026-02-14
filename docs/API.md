@@ -875,6 +875,33 @@ GET /resources/php/healthcheck.php
 **HTTP Status**: 200 (ok) or 503 (degraded)
 **PHP**: `healthcheck.php` — Tests DB connectivity via `SELECT 1`.
 
+### logError
+
+Logs frontend errors to the PHP error log. Fire-and-forget — always returns success.
+
+```
+POST /resources/php/logError.php
+```
+
+**Body**:
+```json
+{
+  "message": "TypeError: Cannot read properties of null",
+  "stack": "at fetchJSON (client.ts:161)\n...",
+  "url": "/qve/history",
+  "context": "api:getWines",
+  "supportRef": "ERR-A1B2C3D4"
+}
+```
+
+All fields optional except `message`. Empty message is silently ignored.
+
+**Returns**: `{ success: true, message: "Error logged", data: null }`
+**HTTP Status**: Always 200
+**PHP**: `logError.php` — Truncates fields (message: 1000, stack: 5000, url: 500, context: 200, supportRef: 20), strips null bytes, logs via `error_log()` with `[Frontend Error]` prefix.
+
+**Client-side**: Called via `reportError()` from `errorReporter.ts` with dedup (60s window, message+url fingerprint), rate limiting (10/min), AbortError filtering, and `keepalive: true` for navigation survival. Not called directly — integrated into `hooks.client.ts`, `client.ts`, and `errorHandler.ts`.
+
 ---
 
 ## SSE Streaming Protocol
@@ -1122,6 +1149,7 @@ interface AgentEnrichmentResult {
 | `upload.php` | `api.uploadImage()` | Image upload/resize (800x800) |
 | `geminiAPI.php` | `api.getAI*Data()` | Gemini AI enrichment (region/producer/wine) |
 | `normalize.php` | N/A (agent internal) | Country/wineType normalization (uses InferenceEngine) |
+| `logError.php` | `reportError()` | Frontend error logging (fire-and-forget, dedup client-side) |
 | `healthcheck.php` | N/A | System health check (no auth required) |
 
 ### Auth Endpoints (`auth/`)

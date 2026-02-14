@@ -449,6 +449,7 @@ Endpoints in `resources/php/`:
 | `upload.php` | Image upload (800x800) |
 | `geminiAPI.php` | AI enrichment |
 | `checkDuplicate.php` | Duplicate/similar item detection (fuzzy matching) |
+| `logError.php` | Frontend error logging (fire-and-forget, `[Frontend Error]` prefix) |
 | `databaseConnection.php` | Database connection utility |
 | `normalize.php` | String normalization utilities |
 | `validators.php` | Input validation utilities |
