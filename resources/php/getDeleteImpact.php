@@ -186,7 +186,7 @@ try {
                            CONCAT(bottleSize, COALESCE(CONCAT(' - ', DATE_FORMAT(purchaseDate, '%Y')), ''))
                            ORDER BY purchaseDate DESC SEPARATOR '||'
                        ) as names
-                FROM bottles WHERE wineID = :id AND deleted = 0
+                FROM bottles WHERE wineID = :id AND deleted = 0 AND bottleDrunk = 0
             ");
             $stmt->execute([':id' => $id]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
