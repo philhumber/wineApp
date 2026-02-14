@@ -163,8 +163,8 @@ qve/src/lib/agent/
 ├── router.ts                 # Entry point — dispatchAction(), alias normalization, middleware
 ├── types.ts                  # AgentAction, AgentPhase, MessageCategory, all type definitions
 ├── stateMachine.ts           # Phase transition validation (PHASE_TRANSITIONS, ADD_WINE_STEP_TRANSITIONS)
-├── messages.ts               # getMessage(), getMessageByKey(), personality resolution chain
-├── messageKeys.ts            # MessageKey enum (125 keys across 10 categories)
+├── messages.ts               # getMessageByKey(), getMessageArrayByKey(), personality resolution chain
+├── messageKeys.ts            # MessageKey enum (132 keys across 11 categories)
 ├── personalities.ts          # Personality enum, MessageContext, PersonalityMessages types
 ├── requestLifecycle.ts       # AbortController, scroll lock, request ID for cancellation
 ├── actions.ts                # Action creator helpers
@@ -580,8 +580,12 @@ Messages use a personality-based resolution chain:
 
 Message variants can be:
 - **Static string**: Used directly
-- **String array**: Random selection for variation
+- **String array**: Random selection for variation (via `getMessageByKey`) or sequential cycling (via `getMessageArrayByKey`)
 - **Template function**: `(context: MessageContext) => string` for dynamic content
+
+Two access patterns:
+- `getMessageByKey(key, context?)` — Returns a single resolved string (picks random from arrays)
+- `getMessageArrayByKey(key)` — Returns the full array for sequential cycling (e.g., loading state messages)
 
 ---
 

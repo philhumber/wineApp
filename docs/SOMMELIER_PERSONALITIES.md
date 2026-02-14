@@ -9,7 +9,7 @@
 
 | Personality | Doc Name | Enum Value | Messages Implemented | Status |
 |-------------|----------|------------|---------------------|--------|
-| Quentin Verre-Epais | Sommelier | `Personality.SOMMELIER` | Yes (125 keys in `sommelier.ts`) | **Active default** |
+| Quentin Verre-Epais | Sommelier | `Personality.SOMMELIER` | Yes (132 keys in `sommelier.ts`) | **Active default** |
 | Nadia "Nadi" Rosato | Friendly | `Personality.CASUAL` | No (empty `{}`, falls back to neutral) | Planned |
 | *(no character yet)* | Concise | `Personality.CONCISE` | No (empty `{}`, falls back to neutral) | Planned |
 | *(no character yet)* | Enthusiast | `Personality.ENTHUSIAST` | No (empty `{}`, falls back to neutral) | Planned |
@@ -25,14 +25,27 @@
 ### How Message Resolution Works
 
 ```
-getMessageByKey(key, context)
+getMessageByKey(key, context?)
   1. Look up active personality's messages (e.g., sommelierMessages[key])
   2. If found: return (string | random from array | call template function)
   3. If not found: fall back to neutralMessages[key]
   4. If still not found: return error string
+
+getMessageArrayByKey(key)
+  Same lookup chain, but returns the full array instead of picking a random entry.
+  Used by components that cycle through messages sequentially (e.g., AgentLoadingState).
 ```
 
 When a personality has `{}` (empty registry), every message falls through to neutral. This means CASUAL, CONCISE, and ENTHUSIAST currently all sound identical (neutral tone).
+
+### Loading State Personalization
+
+Loading messages, typing indicator defaults, and escalation badges are personality-driven:
+- `LOADING_NORMAL` — Array of messages cycled during identification (e.g., "Examining the label..." vs "Analyzing wine...")
+- `LOADING_DEEP_SEARCH` — Array cycled during model escalation (e.g., "Consulting the archives..." vs "Consulting sommelier...")
+- `LOADING_DEEP_SEARCH_HINT` — Subtitle during deep search (e.g., "A deeper look is warranted..." vs "Taking a closer look...")
+- `LOADING_REFINING_BADGE` — Badge on wine card during escalation
+- `LOADING_DEFAULT` — Default typing indicator text (e.g., "Consulting my notes..." vs "Consulting the cellar...")
 
 ### Chip Label Personalization
 
@@ -127,6 +140,11 @@ These are actual messages from `sommelier.ts`:
 | `ENRICH_LOADING` | "Consulting my sources. One moment." (1 of 3 variants) |
 | `ERROR_TIMEOUT` | "I appear to be taking longer than is polite. Shall we try again?" |
 | `ERROR_RATE_LIMIT` | "It seems I need a moment to catch my breath. Even digital sommeliers have their limits." |
+| `ID_CORRECTION_ACKNOWLEDGED` | "Noted. Here's the corrected picture:" |
+| `ID_FIELD_CORRECTION_PROMPT` | "What should the {field} be?" |
+| `LOADING_NORMAL` | "Examining the label...", "Reading the fine print...", "Consulting my notes...", "Almost there..." |
+| `LOADING_DEEP_SEARCH` | "Consulting the archives...", "Cross-referencing vintages...", "Reaching out to colleagues..." (5 variants) |
+| `LOADING_DEFAULT` | "Consulting my notes..." |
 
 ---
 
@@ -270,19 +288,20 @@ To implement a new personality (e.g., CASUAL for Nadi):
 
 ### Message Categories Needing Variants
 
-Each personality needs message variants for these `MessageKey` groups (~80 keys total):
+Each personality needs message variants for these `MessageKey` groups (~90 keys total):
 
 | Category | Key Count | Notes |
 |----------|-----------|-------|
 | Greetings | 4 keys | Time-aware (morning/afternoon/evening/default), arrays of 3-5 variants |
-| Identification | 15+ keys | Mix of static strings and template functions with `MessageContext` |
+| Identification | 17+ keys | Mix of static strings and template functions with `MessageContext` |
 | Confirmation | 5 keys | Short responses, some with arrays for variation |
 | Add Wine Flow | 10+ keys | Template functions for dynamic wine names, bottle counts |
+| Loading States | 5 keys | Arrays for sequential cycling (`getMessageArrayByKey`), badge text, defaults |
 | Enrichment | 8+ keys | Loading states, cache handling, results |
 | Errors | 7 keys | Must remain clear despite personality voice |
 | Chip Labels | 30+ keys | Short labels, personality can customize (e.g., "That's Right" vs "Correct") |
 | Entity Matching | 9 keys | Template functions for entity types and search terms |
-| Conversation Flow | 3 keys | Transition messages |
+| Conversation Flow | 4 keys | Transition messages |
 | Bottle/Form | 4 keys | Form prompts |
 
 ### Triggering Backstory Easter Egg
