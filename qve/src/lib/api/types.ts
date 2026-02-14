@@ -401,6 +401,7 @@ export interface BottleSize {
 export interface CurrencyDataResponse {
   currencies: Currency[];
   bottleSizes: BottleSize[];
+  ratesLastUpdated?: string;
 }
 
 // ─────────────────────────────────────────────────────────

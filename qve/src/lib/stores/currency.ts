@@ -27,6 +27,7 @@ export type CurrencyCode =
 
 const STORAGE_KEY = 'qve-currency';
 const DEFAULT_CURRENCY: CurrencyCode = 'GBP';
+const RATE_STALE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // Fallback currencies if API fails
 const FALLBACK_CURRENCIES: Currency[] = [
@@ -54,6 +55,9 @@ export const availableBottleSizes = writable<BottleSize[]>(FALLBACK_BOTTLE_SIZES
 
 // Track initialization state
 const isInitialized = writable(false);
+
+// Track when rates were last fetched (ms timestamp)
+let lastFetchedAt = 0;
 
 // ─────────────────────────────────────────────────────────
 // SELECT OPTIONS (for form dropdowns)
@@ -84,6 +88,35 @@ export const currencySelectOptions = derived(availableCurrencies, ($currencies) 
 // ─────────────────────────────────────────────────────────
 // DISPLAY CURRENCY STORE
 // ─────────────────────────────────────────────────────────
+
+/**
+ * Fetch currencies from API and update stores.
+ * Shared by initialize() and refreshIfStale().
+ */
+async function fetchAndApplyRates(): Promise<void> {
+	const data = await api.getCurrencies();
+
+	if (data.currencies && data.currencies.length > 0) {
+		// Convert rateToEUR from string to number if needed
+		const currencies = data.currencies.map((c) => ({
+			...c,
+			rateToEUR: typeof c.rateToEUR === 'string' ? parseFloat(c.rateToEUR) : c.rateToEUR
+		}));
+		availableCurrencies.set(currencies);
+	}
+
+	if (data.bottleSizes && data.bottleSizes.length > 0) {
+		// Convert volumeLitres from string to number if needed
+		const sizes = data.bottleSizes.map((s) => ({
+			...s,
+			volumeLitres:
+				typeof s.volumeLitres === 'string' ? parseFloat(s.volumeLitres) : s.volumeLitres
+		}));
+		availableBottleSizes.set(sizes);
+	}
+
+	lastFetchedAt = Date.now();
+}
 
 function createCurrencyStore() {
 	/**
@@ -122,6 +155,20 @@ function createCurrencyStore() {
 
 	const { subscribe, set } = writable<CurrencyCode>(getInitialCurrency());
 
+	// Refresh rates on tab visibility change if stale (WIN-231)
+	if (browser) {
+		document.addEventListener('visibilitychange', () => {
+			if (document.visibilityState === 'visible' && get(isInitialized)) {
+				const elapsed = Date.now() - lastFetchedAt;
+				if (elapsed >= RATE_STALE_MS) {
+					fetchAndApplyRates().catch((err) =>
+						console.error('Failed to refresh currency rates:', err)
+					);
+				}
+			}
+		});
+	}
+
 	return {
 		subscribe,
 
@@ -143,27 +190,7 @@ function createCurrencyStore() {
 			if (get(isInitialized)) return;
 
 			try {
-				// Fetch currencies and bottle sizes from API
-				const data = await api.getCurrencies();
-
-				if (data.currencies && data.currencies.length > 0) {
-					// Convert rateToEUR from string to number if needed
-					const currencies = data.currencies.map((c) => ({
-						...c,
-						rateToEUR: typeof c.rateToEUR === 'string' ? parseFloat(c.rateToEUR) : c.rateToEUR
-					}));
-					availableCurrencies.set(currencies);
-				}
-
-				if (data.bottleSizes && data.bottleSizes.length > 0) {
-					// Convert volumeLitres from string to number if needed
-					const sizes = data.bottleSizes.map((s) => ({
-						...s,
-						volumeLitres:
-							typeof s.volumeLitres === 'string' ? parseFloat(s.volumeLitres) : s.volumeLitres
-					}));
-					availableBottleSizes.set(sizes);
-				}
+				await fetchAndApplyRates();
 
 				// Apply stored preference (or default)
 				const stored = getInitialCurrency();

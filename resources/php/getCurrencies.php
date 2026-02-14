@@ -24,6 +24,11 @@
 		$stmt = $pdo->query($currencySql);
 		$currencies = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+		// 4b. Get latest rate update timestamp for freshness checks
+		$lastUpdatedSql = "SELECT MAX(lastUpdated) as ratesLastUpdated FROM currencies WHERE isActive = 1";
+		$stmt = $pdo->query($lastUpdatedSql);
+		$ratesLastUpdated = $stmt->fetchColumn() ?: null;
+
 		// 5. Fetch active bottle sizes
 		$sizesSql = "SELECT
 						sizeCode,
@@ -41,7 +46,8 @@
 		$response['message'] = 'Currencies and bottle sizes retrieved successfully';
 		$response['data'] = [
 			'currencies' => $currencies,
-			'bottleSizes' => $bottleSizes
+			'bottleSizes' => $bottleSizes,
+			'ratesLastUpdated' => $ratesLastUpdated
 		];
 
 	} catch (Exception $e) {
