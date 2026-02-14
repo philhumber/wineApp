@@ -172,17 +172,24 @@ Shows a colored dot + numeric rating, or "Unrated" placeholder. Optionally shows
 
 ### BottleIndicators
 
-SVG bottle silhouettes grouped by size (small/standard/large). Falls back to text count in compact mode.
+SVG bottle silhouettes grouped by size (small/standard/large). Uses pre-aggregated size counts from `getWines.php`. Falls back to text count in compact mode.
 
 ```svelte
-<BottleIndicators bottles={wine.bottles} />
-<BottleIndicators count={3} compact />
+<BottleIndicators
+  count={wine.bottleCount}
+  standardCount={Number(wine.standardBottles || 0)}
+  smallCount={Number(wine.smallBottles || 0)}
+  largeCount={Number(wine.largeBottles || 0)}
+  compact={compact && !expanded}
+/>
 ```
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `bottles` | `Bottle[]` | `[]` | Bottle objects with `bottleSize` |
-| `count` | `number` | `0` | Fallback count if no bottles array |
+| `standardCount` | `number` | `0` | Standard (750ml) bottle count |
+| `smallCount` | `number` | `0` | Small (Piccolo/Quarter/Demi) bottle count |
+| `largeCount` | `number` | `0` | Large (Magnum+) bottle count |
+| `count` | `number` | `0` | Fallback total if no size breakdown |
 | `compact` | `boolean` | `false` | Show text count instead of SVGs |
 
 ### PriceScale
@@ -493,6 +500,8 @@ Slide-out navigation drawer with backdrop overlay. Items: Cellar, All Wines, Add
 |------|------|---------|-------------|
 | `open` | `boolean` | `false` | Whether menu is visible |
 
+**Two-phase close (WIN-276)**: Same pattern as ModalContainer — opacity fade (250ms) then DOM removal to prevent iOS repaint flash.
+
 ---
 
 ## Form Components (`forms/`)
@@ -750,6 +759,8 @@ Global modal renderer. Add once to `+layout.svelte`. Routes to the correct modal
 ```
 
 Renders: DrinkRateModal, AddBottleModal, ConfirmModal, SettingsModal, ImageLightboxModal, plus stacked ConfirmOverlay for dirty checks.
+
+**Two-phase close (WIN-276)**: Wrapper div fades to `opacity: 0` via CSS transition (250ms), THEN Svelte destroys the DOM. Prevents iOS mobile GPU repaint flash when fixed-position elements are removed. Wrapper uses `position: fixed; inset: 0; z-index: 1100; pointer-events: none` (children get `pointer-events: auto` when not closing).
 
 ### DrinkRateModal
 

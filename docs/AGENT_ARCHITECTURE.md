@@ -315,7 +315,7 @@ Navigation and session control.
 
 | Action | Description |
 |--------|-------------|
-| `start_over` | Reset all stores, add divider + greeting, set phase to `awaiting_input` |
+| `start_over` | Abort HTTP + `abortMessageQueue()` (generation counter discards pending messages, `clearAllNewFlags` completes typewriter, `isIntroScrollSuppressed` blocks old message scroll for 400ms), reset stores, add divider + greeting, set phase to `awaiting_input` |
 | `go_back` | Return to previous phase based on current phase |
 | `cancel` | Close agent panel via `agent.closePanel()` |
 | `retry` / `try_again` | Re-dispatch last tracked action (returns action to router for re-dispatch) |
