@@ -1,0 +1,59 @@
+name: CI & Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          cd qve
+          npm ci
+
+      - name: Type check
+        run: |
+          cd qve
+          npm run check
+
+      - name: Lint
+        run: |
+          cd qve
+          npm run lint
+
+      - name: Test
+        run: |
+          cd qve
+          npx vitest run
+
+      - name: Build
+        run: |
+          cd qve
+          npm run build
+
+  deploy:
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: self-hosted
+    steps:
+      - name: Deploy
+        run: bash ~/scripts/deploy.sh
+
+      - name: Verify deployment
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/qve/)
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "DEPLOY VERIFICATION FAILED: HTTP $HTTP_CODE"
+            exit 1
+          fi
+          echo "Deploy verified: HTTP $HTTP_CODE"
