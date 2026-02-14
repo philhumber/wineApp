@@ -214,7 +214,7 @@ function persistWithDegradation(state: Partial<PersistedState>): void {
   if (!storage) return;
 
   const existing = loadStateRaw() ?? createEmptyState();
-  let merged: PersistedState = {
+  const merged: PersistedState = {
     ...existing,
     ...state,
     version: CURRENT_VERSION,

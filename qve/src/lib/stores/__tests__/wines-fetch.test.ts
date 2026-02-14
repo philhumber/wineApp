@@ -98,7 +98,7 @@ describe('fetchWines (WIN-206)', () => {
 		});
 
 		it('should abort previous request when new one starts', async () => {
-			let abortedSignals: AbortSignal[] = [];
+			const abortedSignals: AbortSignal[] = [];
 			mockedApi.getWines.mockImplementation((_filters, signal) => {
 				if (signal) abortedSignals.push(signal);
 				return new Promise((resolve) => setTimeout(() => resolve([]), 1000));
@@ -141,7 +141,7 @@ describe('fetchWines (WIN-206)', () => {
 			const freshWines = [{ wineID: 2, wineName: 'Fresh' }];
 
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			let resolvers: Array<(value: any) => void> = [];
+			const resolvers: Array<(value: any) => void> = [];
 			mockedApi.getWines.mockImplementation(() => {
 				return new Promise((resolve) => {
 					resolvers.push(resolve);

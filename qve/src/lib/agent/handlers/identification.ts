@@ -1222,7 +1222,6 @@ async function handleTryOpus(messageId: string): Promise<void> {
       candidates: [],
     };
 
-    let result;
     const lockedFields = identification.getLockedFields();
 
     // Build escalation context for the LLM prompt
@@ -1254,7 +1253,7 @@ async function handleTryOpus(messageId: string): Promise<void> {
       throw new Error('No input available for Opus identification');
     }
 
-    result = await api.identifyWithOpus(
+    const result = await api.identifyWithOpus(
       inputText,
       inputType,
       priorResult,

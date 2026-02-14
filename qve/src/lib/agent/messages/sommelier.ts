@@ -73,7 +73,7 @@ export const sommelierMessages: PersonalityMessages = {
     'I\'m afraid this one eludes me. Could you tell me more? I\'d rather ask than guess.',
 
   [MessageKey.ID_LOW_CONFIDENCE]: (ctx: MessageContext) =>
-    `I have a suspicion this is ${wn(ctx.wineName || 'the wine you\'re looking for')}, though I\'d rather be certain than confident. Does this look right?`,
+    `I have a suspicion this is ${wn(ctx.wineName || "the wine you're looking for")}, though I'd rather be certain than confident. Does this look right?`,
 
   [MessageKey.ID_ESCALATING]:
     'Let me look more carefully. Some wines don\'t reveal themselves on the first glance.',
@@ -139,7 +139,7 @@ export const sommelierMessages: PersonalityMessages = {
 
   [MessageKey.ADD_DUPLICATE_FOUND]: (ctx: MessageContext) => {
     const s = ctx.bottleCount !== 1 ? 's' : '';
-    return `You\'ve been here before. ${wn(ctx.wineName || 'This wine')} is already in your cellar with ${ctx.bottleCount} bottle${s}. Shall I add another, or did you simply forget?`;
+    return `You've been here before. ${wn(ctx.wineName || 'This wine')} is already in your cellar with ${ctx.bottleCount} bottle${s}. Shall I add another, or did you simply forget?`;
   },
 
   [MessageKey.ADD_BOTTLE_PROMPT]:

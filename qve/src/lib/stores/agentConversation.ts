@@ -337,7 +337,7 @@ export function addMessages(
 
   store.update((state) => {
     // Disable all existing interactive messages (chips and errors) before adding new ones
-    let existingMessages = state.messages.map((msg) =>
+    const existingMessages = state.messages.map((msg) =>
       msg.category === 'chips' || msg.category === 'error'
         ? { ...msg, disabled: true }
         : msg
