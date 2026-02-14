@@ -123,14 +123,15 @@
   class="cellar-value-backdrop"
   on:click={handleBackdropClick}
   transition:fade={{ duration: 200 }}
+></div>
+
+<div
+  class="cellar-value-modal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="cellar-value-title"
+  transition:fly={{ y: isMobile ? 300 : 20, duration: 300 }}
 >
-  <div
-    class="cellar-value-modal"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="cellar-value-title"
-    transition:fly={{ y: isMobile ? 300 : 20, duration: 300 }}
-  >
     <!-- Close button -->
     <button
       bind:this={closeButton}
@@ -163,7 +164,7 @@
         <div class="hero-section">
           <span class="hero-label" id="cellar-value-title">OVERALL CELLAR VALUE</span>
           <span class="hero-value">{heroValue}</span>
-          <span class="hero-subtitle">{currentBottleCount} bottles in cellar</span>
+          <span class="hero-subtitle">{currentBottleCount} {currentBottleCount === 1 ? 'bottle' : 'bottles'} in cellar</span>
         </div>
 
         <!-- Section 2: Range selector -->
@@ -214,24 +215,16 @@
       </div>
     {/if}
   </div>
-</div>
 
 <style>
   /* ─── Backdrop ─── */
   .cellar-value-backdrop {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     background: rgba(45, 41, 38, 0.6);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-4);
   }
 
   :global([data-theme='dark']) .cellar-value-backdrop {
@@ -240,7 +233,10 @@
 
   /* ─── Modal card (desktop) ─── */
   .cellar-value-modal {
-    position: relative;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     background: var(--surface);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
@@ -253,12 +249,12 @@
 
   /* ─── Mobile: bottom sheet ─── */
   @media (max-width: 480px) {
-    .cellar-value-backdrop {
-      align-items: flex-end;
-      padding: 0;
-    }
-
     .cellar-value-modal {
+      top: auto;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      transform: none;
       width: 100%;
       max-width: none;
       border-radius: 12px 12px 0 0;

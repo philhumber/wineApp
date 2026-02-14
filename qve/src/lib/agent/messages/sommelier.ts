@@ -203,13 +203,13 @@ export const sommelierMessages: PersonalityMessages = {
   [MessageKey.CHIP_LEARN_MORE]: 'Tell Me More',
   [MessageKey.CHIP_REMEMBER]: 'Remember',
   [MessageKey.CHIP_CORRECT]: "That's Right",
-  [MessageKey.CHIP_NOT_CORRECT]: 'Not Quite',
+  [MessageKey.CHIP_NOT_CORRECT]: 'Not Correct',
   [MessageKey.CHIP_TRY_AGAIN]: 'Try Again',
   [MessageKey.CHIP_START_OVER]: 'Start Over',
   [MessageKey.CHIP_CANCEL]: 'Never Mind',
   [MessageKey.CHIP_YES]: 'Yes',
   [MessageKey.CHIP_NO]: 'No',
-  [MessageKey.CHIP_ADD_DETAILS]: 'Add Details',
+  [MessageKey.CHIP_ADD_DETAILS]: 'Add More Details',
   [MessageKey.CHIP_TRY_HARDER]: 'Look Closer',
   [MessageKey.CHIP_START_FRESH]: 'Start Fresh',
   [MessageKey.CHIP_PROVIDE_MORE]: 'I Can Help',
@@ -259,7 +259,7 @@ export const sommelierMessages: PersonalityMessages = {
     'Let me try to find a better match...',
 
   [MessageKey.ID_LOW_CONFIDENCE_COMPLETE]: (ctx: MessageContext) =>
-    `I've gathered the details for ${wn(ctx.wineName || 'this wine')}. Would you like me to try matching this wine in my database, or add it manually?`,
+    `I'm not very confident in this match for ${wn(ctx.wineName || 'this wine')}. I can search online again with these details for a better result, or you can add it as-is.`,
 
   [MessageKey.ID_PROMPT_PRODUCER]:
     'Who makes this wine? Enter the producer or winery name.',
@@ -275,6 +275,9 @@ export const sommelierMessages: PersonalityMessages = {
 
   [MessageKey.ID_PROVIDE_MORE_CONTEXT]:
     "Tell me what's different about this wine, and I'll try again. The producer, country, region, or grape variety would help.",
+
+  [MessageKey.ID_NOT_CORRECT_PROMPT]:
+    'What needs fixing? Tap a field to correct it, or provide more details.',
 
   [MessageKey.ID_INCOMPLETE_GRAPES_WITH_PRODUCER]: (ctx: MessageContext) =>
     `I found ${wn(ctx.producer || 'the producer')} and detected ${wn(ctx.grape || 'a grape')} as the grape variety. Should I use this as the wine name?`,
@@ -299,6 +302,9 @@ export const sommelierMessages: PersonalityMessages = {
 
   [MessageKey.CONV_NOTHING_TO_RETRY]:
     'Nothing to retry. What would you like to identify?',
+
+  [MessageKey.CONV_CANCEL_REQUEST]:
+    "No problem, I've stopped. What would you like to do?",
 
   // ===========================================
   // ADD WINE FLOW - Extended

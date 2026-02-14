@@ -60,7 +60,7 @@ function createAgentSettingsStore() {
         }
       }
     } catch (e) {
-      console.warn('[AgentSettings] Failed to parse stored settings:', e);
+      // Failed to parse stored settings - using defaults
     }
 
     return DEFAULT_SETTINGS;
@@ -75,7 +75,7 @@ function createAgentSettingsStore() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     } catch (e) {
-      console.warn('[AgentSettings] Failed to persist settings:', e);
+      // Failed to persist settings
     }
   }
 

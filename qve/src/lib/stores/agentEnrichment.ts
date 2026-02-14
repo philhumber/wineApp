@@ -249,17 +249,3 @@ export function getForWine(): EnrichmentWineInfo | null {
   return get(store).forWine;
 }
 
-// ===========================================
-// Debug
-// ===========================================
-
-if (typeof window !== 'undefined' && import.meta.env.DEV) {
-  store.subscribe((state) => {
-    console.debug('[AgentEnrichment]', {
-      isEnriching: state.isEnriching,
-      hasData: state.data !== null,
-      source: state.source,
-      forWine: state.forWine?.wineName,
-    });
-  });
-}

@@ -237,7 +237,7 @@ resources/php/
     ├── Identification/         #   10 service classes
     ├── Enrichment/             #   13 service classes
     ├── LLM/                    #   LLM client, adapters, circuit breaker
-    └── prompts/                #   LLM prompt templates
+    └── prompts/                #   Central prompt registry (prompts.php)
 ```
 
 ### 3.2 Cascading Filters

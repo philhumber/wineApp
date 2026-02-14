@@ -3,7 +3,7 @@
   import { fly } from 'svelte/transition';
   import MessageContent from './MessageContent.svelte';
   import type { AgentMessage, AgentAction, TextMessageData } from '$lib/agent/types';
-  import { agentMessages } from '$lib/stores/agentConversation';
+  import { agentMessages, isIntroScrollSuppressed } from '$lib/stores/agentConversation';
   import { isScrollLocked } from '$lib/agent/requestLifecycle';
 
   export let message: AgentMessage;
@@ -35,8 +35,9 @@
    * Scroll message into view after fly-in animation completes.
    */
   function handleIntroEnd() {
-    // Check scroll lock before scrolling (prevents chaos during enrichment streaming)
-    if (wrapperElement && role === 'agent' && !isDivider && !isScrollLocked()) {
+    // Check scroll lock and intro suppression before scrolling
+    // WIN-305: isIntroScrollSuppressed blocks old messages from scrolling during reset
+    if (wrapperElement && role === 'agent' && !isDivider && !isScrollLocked() && !isIntroScrollSuppressed()) {
       wrapperElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
   }

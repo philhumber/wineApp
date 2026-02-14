@@ -211,7 +211,6 @@ export const withValidation: Middleware = (handler: ActionHandler) => {
     const result = validateAction(action);
 
     if (!result.valid) {
-      console.warn(`[AgentAction] Validation failed for ${action.type}: ${result.reason}`);
       return; // Skip action
     }
 
@@ -256,7 +255,6 @@ export function createValidator(options: ValidatorOptions = {}): Middleware {
           case 'strict':
             throw new Error(`Validation failed: ${result.reason}`);
           case 'warn':
-            console.warn(`[AgentAction] Validation failed for ${action.type}: ${result.reason}`);
             return;
           case 'silent':
             return;

@@ -63,7 +63,6 @@ function normalizeAction(action: AgentAction): AgentAction {
   const normalizedType = ACTION_ALIASES[action.type] || action.type;
 
   if (normalizedType !== action.type) {
-    if (import.meta.env.DEV) console.debug(`[Router] Alias resolved: ${action.type} → ${normalizedType}`);
     return { ...action, type: normalizedType } as AgentAction;
   }
 
@@ -100,8 +99,6 @@ async function routeAction(action: AgentAction): Promise<void> {
   // Normalize aliases first
   action = normalizeAction(action);
 
-  if (import.meta.env.DEV) console.debug('[Router] Routing action:', action.type);
-
   // Safety net: Handle generic chip_tap (unwrap and re-route)
   if (action.type === 'chip_tap') {
     const payload = action.payload as {
@@ -109,7 +106,6 @@ async function routeAction(action: AgentAction): Promise<void> {
       messageId: string;
       data?: unknown;
     };
-    console.warn('[Router] Generic chip_tap used - should be specific action', payload);
 
     const unwrapped: AgentAction = {
       type: payload.action,
@@ -131,7 +127,6 @@ async function routeAction(action: AgentAction): Promise<void> {
 
     // If retry returned an action, re-dispatch it
     if (retryAction) {
-      if (import.meta.env.DEV) console.debug('[Router] Re-dispatching retry action:', retryAction.type);
       await routeAction(retryAction);
     }
     return;

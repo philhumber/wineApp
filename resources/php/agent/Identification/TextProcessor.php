@@ -12,13 +12,12 @@ namespace Agent\Identification;
 
 use Agent\LLM\LLMClient;
 
+require_once __DIR__ . '/../prompts/prompts.php';
+
 class TextProcessor
 {
     /** @var LLMClient LLM client */
     private LLMClient $llmClient;
-
-    /** @var string Prompt template */
-    private string $promptTemplate;
 
     /**
      * Create a new text processor
@@ -28,56 +27,6 @@ class TextProcessor
     public function __construct(LLMClient $llmClient)
     {
         $this->llmClient = $llmClient;
-        $this->loadPromptTemplate();
-    }
-
-    /**
-     * Load prompt template from file
-     *
-     * @return void
-     */
-    private function loadPromptTemplate(): void
-    {
-        $promptPath = __DIR__ . '/../prompts/text_identify.txt';
-        $this->promptTemplate = file_exists($promptPath)
-            ? file_get_contents($promptPath)
-            : $this->getDefaultPrompt();
-    }
-
-    /**
-     * Get default prompt template
-     *
-     * @return string Default prompt
-     */
-    private function getDefaultPrompt(): string
-    {
-        return <<<'PROMPT'
-You are a wine identification expert. Parse the following wine description and extract structured data.
-
-Input: {input}
-
-Extract the following fields (use null if not found or uncertain):
-- producer: The winery or producer name
-- wineName: The specific wine name (not the producer)
-- vintage: The year (4 digits)
-- region: Wine region or appellation
-- country: Country of origin
-- wineType: Red, White, Rosé, Sparkling, Dessert, or Fortified
-- grapes: Array of grape varieties
-- confidence: Your confidence in the overall identification (0-100)
-
-Respond ONLY with valid JSON in this exact format:
-{
-  "producer": "string or null",
-  "wineName": "string or null",
-  "vintage": "string or null",
-  "region": "string or null",
-  "country": "string or null",
-  "wineType": "string or null",
-  "grapes": ["array"] or null,
-  "confidence": number
-}
-PROMPT;
     }
 
     /**
@@ -90,13 +39,11 @@ PROMPT;
     public function process(string $text, array $options = []): array
     {
         // Allow using a more detailed prompt for escalation
-        $template = $options['detailed_prompt'] ?? false
-            ? $this->getDetailedPrompt()
-            : $this->promptTemplate;
+        $prompt = $options['detailed_prompt'] ?? false
+            ? \Prompts::textIdentifyDetailed($text)
+            : \Prompts::textIdentify($text);
 
         $promptType = $options['detailed_prompt'] ?? false ? 'DETAILED' : 'STANDARD';
-
-        $prompt = str_replace('{input}', $text, $template);
 
         // Debug: Log prompt construction
         error_log("╔══════════════════════════════════════════════════════════════════");
@@ -191,59 +138,6 @@ PROMPT;
             'cost' => $response->costUSD,
             'latencyMs' => $response->latencyMs,
         ];
-    }
-
-    /**
-     * Get detailed prompt for escalated identification
-     * More thorough instructions for difficult wines
-     *
-     * @return string Detailed prompt
-     */
-    private function getDetailedPrompt(): string
-    {
-        return <<<'PROMPT'
-You are a master sommelier with expertise in wine identification. Analyze the following wine description thoroughly.
-
-Input: {input}
-
-Use your extensive knowledge to identify this wine. Consider:
-- If the input is abbreviated, expand it (e.g., "Chx" = Château, "Dom" = Domaine)
-- If the region is implied, deduce it from the wine name or producer
-- For First Growth Bordeaux or prestigious estates, recognize them by name alone
-- For New World wines, consider typical regional grape varieties
-- For European wines, consider appellation rules to deduce grape varieties
-
-CRITICAL - Confidence Scoring Rules:
-- HIGH confidence (80-100): ONLY for wines you actually RECOGNIZE as real, existing wines
-- MEDIUM confidence (50-79): You recognize the producer but not the specific wine, or input is ambiguous
-- LOW confidence (0-49): The producer/wine is NOT a real wine you recognize
-
-Do NOT give high confidence just because you can fill in fields with plausible regional data.
-If the producer name doesn't match a real winery you know, confidence must be LOW (<50).
-The wine must actually EXIST for high confidence - pattern matching alone is not enough.
-
-Extract these fields (use null if the wine is not recognized):
-- producer: The full winery/producer name (only if it's a REAL producer you recognize)
-- wineName: The specific wine/cuvée name if different from producer
-- vintage: The year (4 digits)
-- region: The wine region or appellation (be specific - e.g., "Margaux" not just "Bordeaux")
-- country: Country of origin
-- wineType: Red, White, Rosé, Sparkling, Dessert, or Fortified
-- grapes: Array of likely grape varieties (can infer from region/style if not stated)
-- confidence: Your confidence score (0-100) that this is a REAL, IDENTIFIABLE wine
-
-Respond ONLY with valid JSON:
-{
-  "producer": "string or null",
-  "wineName": "string or null",
-  "vintage": "string or null",
-  "region": "string or null",
-  "country": "string or null",
-  "wineType": "string or null",
-  "grapes": ["array"] or null,
-  "confidence": number
-}
-PROMPT;
     }
 
     /**
@@ -414,14 +308,4 @@ PROMPT;
         return $countryMap[$lower] ?? ucwords(strtolower(trim($country)));
     }
 
-    /**
-     * Set custom prompt template
-     *
-     * @param string $template Prompt template
-     * @return void
-     */
-    public function setPromptTemplate(string $template): void
-    {
-        $this->promptTemplate = $template;
-    }
 }

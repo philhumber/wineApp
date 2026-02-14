@@ -4,82 +4,62 @@
    * Shows SVG bottle silhouettes grouped by size
    * Falls back to simple count in compact mode
    */
-  import type { Bottle } from '$lib/api/types';
 
-  export let bottles: Bottle[] = [];
+  // Size breakdown (from getWines.php aggregated counts)
+  export let standardCount: number = 0;
+  export let smallCount: number = 0;
+  export let largeCount: number = 0;
+  // Fallback: total count if no size breakdown available
   export let count: number = 0;
   export let compact: boolean = false;
 
-  // If no bottles array provided, use count
-  $: effectiveCount = bottles.length > 0 ? bottles.length : count;
+  // Build display array from size counts or fallback
+  $: hasSizeData = standardCount + smallCount + largeCount > 0;
+  $: effectiveCount = hasSizeData
+    ? standardCount + smallCount + largeCount
+    : count;
 
-  // Group bottles by size
+  // Create ordered array: large first, then standard, then small
   type BottleSize = 'small' | 'standard' | 'large';
+  $: displayBottles = hasSizeData
+    ? [
+        ...Array(largeCount).fill('large' as BottleSize),
+        ...Array(standardCount).fill('standard' as BottleSize),
+        ...Array(smallCount).fill('small' as BottleSize),
+      ]
+    : Array(count).fill('standard' as BottleSize);
 
-  interface BottleGroup {
-    size: BottleSize;
-    count: number;
-  }
+  // Tooltip text
+  $: tooltipParts = [
+    largeCount > 0 ? `${largeCount} large` : '',
+    standardCount > 0 ? `${standardCount} standard` : '',
+    smallCount > 0 ? `${smallCount} small` : '',
+  ].filter(Boolean);
 
-  function getBottleSize(sizeString: string): BottleSize {
-    const smallSizes = ['Piccolo', 'Quarter', 'Demi', '375ml', '187ml', '200ml'];
-    const largeSizes = ['Magnum', 'Jeroboam', 'Rehoboam', 'Methuselah', '1.5L', '3L', '4.5L', '6L'];
-
-    const upperSize = sizeString.toUpperCase();
-    if (smallSizes.some(s => upperSize.includes(s.toUpperCase()))) return 'small';
-    if (largeSizes.some(s => upperSize.includes(s.toUpperCase()))) return 'large';
-    return 'standard';
-  }
-
-  // Group bottles by size
-  $: bottleGroups = bottles.reduce<BottleGroup[]>((acc, bottle) => {
-    const size = getBottleSize(bottle.bottleSize || '750ml');
-    const existing = acc.find(g => g.size === size);
-    if (existing) {
-      existing.count++;
-    } else {
-      acc.push({ size, count: 1 });
-    }
-    return acc;
-  }, []);
-
-  // Sort by size (large first) and create individual bottle entries
-  $: sortedBottles = bottleGroups
-    .sort((a, b) => {
-      const order = { large: 0, standard: 1, small: 2 };
-      return order[a.size] - order[b.size];
-    })
-    .flatMap(group => Array(group.count).fill(group.size));
-
-  // If no bottles data, create standard bottles from count
-  $: displayBottles = sortedBottles.length > 0
-    ? sortedBottles
-    : Array(effectiveCount).fill('standard');
-
-  // Title text for tooltip
-  $: tooltipText = bottleGroups.length > 0
-    ? bottleGroups.map(g => `${g.count} ${g.size}`).join(', ')
+  $: tooltipText = hasSizeData && tooltipParts.length > 1
+    ? tooltipParts.join(', ')
     : `${effectiveCount} bottle${effectiveCount !== 1 ? 's' : ''}`;
 </script>
 
 {#if compact}
-  <!-- Compact view: just show count -->
   <span class="bottle-count">{effectiveCount}</span>
 {:else}
-  <!-- Full view: show bottle silhouettes -->
   <div class="bottle-indicators" title={tooltipText}>
     {#each displayBottles as size}
       {#if size === 'large'}
-        <svg class="bottle-icon large" viewBox="0 0 10 32">
-          <path d="M3 0h4v3c2 1 3 3 3 6v20c0 2-1 3-3 3H3c-2 0-3-1-3-3V9c0-3 1-5 3-6V0z"/>
+        <svg class="bottle-icon large" viewBox="0 0 14 36" aria-hidden="true">
+          <!-- Magnum: wider body, taller. Neck 17% -->
+          <path d="M4 0 h6 v2 h-1 v6 Q12 8 13 12 v20 Q13 36 12 36 H2 Q1 36 1 32 v-20 Q2 8 5 8 v-6 h-1 Z"/>
         </svg>
       {:else if size === 'standard'}
-        <svg class="bottle-icon standard" viewBox="0 0 8 24">
-          <path d="M2.5 0h3v2.5c1.5 0.8 2.5 2 2.5 4.5v14c0 1.5-1 3-2.5 3h-3c-1.5 0-2.5-1.5-2.5-3V7c0-2.5 1-3.7 2.5-4.5V0z"/>
+        <svg class="bottle-icon standard" viewBox="0 0 12 32" aria-hidden="true">
+          <!-- Standard Bordeaux: short neck, high shoulders, wide body. Neck 19% -->
+          <path d="M3.5 0 h5 v2 h-1 v6 Q10 8 11 12 v16 Q11 32 10 32 H2 Q1 32 1 28 v-16 Q2 8 4.5 8 v-6 h-1 Z"/>
         </svg>
       {:else}
-        <svg class="bottle-icon small" viewBox="0 0 6 16">
-          <path d="M2 0h2v1.5c1 0.5 2 1.5 2 3v9.5c0 1-0.5 2-1.5 2h-3c-1 0-1.5-1-1.5-2V4.5c0-1.5 1-2.5 2-3V0z"/>
+        <svg class="bottle-icon small" viewBox="0 0 10 24" aria-hidden="true">
+          <!-- Half bottle: shorter, same proportions. Neck 17% -->
+          <path d="M3 0 h4 v1.5 h-.5 v4 Q8 5.5 9 8.5 v11.5 Q9 24 8 24 H2 Q1 24 1 20 v-11.5 Q2 5.5 3.5 5.5 v-4 H3 Z"/>
         </svg>
       {/if}
     {/each}
@@ -90,12 +70,12 @@
   .bottle-indicators {
     display: flex;
     align-items: flex-end;
-    gap: 3px;
+    gap: 2px;
   }
 
   .bottle-icon {
     fill: var(--accent);
-    opacity: 0.7;
+    opacity: 0.75;
     transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out);
   }
 
@@ -105,18 +85,18 @@
   }
 
   .bottle-icon.large {
-    width: 9px;
-    height: 30px;
+    width: 12px;
+    height: 28px;
   }
 
   .bottle-icon.standard {
-    width: 7px;
+    width: 8px;
     height: 22px;
   }
 
   .bottle-icon.small {
-    width: 5px;
-    height: 14px;
+    width: 6px;
+    height: 15px;
   }
 
   /* Compact view count */

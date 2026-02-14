@@ -143,7 +143,7 @@ export const neutralMessages: PersonalityMessages = {
   [MessageKey.CHIP_CANCEL]: 'Cancel',
   [MessageKey.CHIP_YES]: 'Yes',
   [MessageKey.CHIP_NO]: 'No',
-  [MessageKey.CHIP_ADD_DETAILS]: 'Add Details',
+  [MessageKey.CHIP_ADD_DETAILS]: 'Add More Details',
   [MessageKey.CHIP_TRY_HARDER]: 'Try Harder',
   [MessageKey.CHIP_START_FRESH]: 'Start Fresh',
   [MessageKey.CHIP_PROVIDE_MORE]: 'Provide More',
@@ -193,7 +193,7 @@ export const neutralMessages: PersonalityMessages = {
     'Searching for a better match...',
 
   [MessageKey.ID_LOW_CONFIDENCE_COMPLETE]: (ctx: MessageContext) =>
-    `I've gathered the details for ${ctx.wineName || 'this wine'}. Would you like me to try matching it, or add manually?`,
+    `I'm not very confident in this match for ${ctx.wineName || 'this wine'}. I can try searching again with these details, or you can add it as-is.`,
 
   [MessageKey.ID_PROMPT_PRODUCER]:
     'Who makes this wine?',
@@ -209,6 +209,9 @@ export const neutralMessages: PersonalityMessages = {
 
   [MessageKey.ID_PROVIDE_MORE_CONTEXT]:
     "Tell me what's different, and I'll try again. Producer, country, region, or grape variety would help.",
+
+  [MessageKey.ID_NOT_CORRECT_PROMPT]:
+    'What needs fixing? Tap a field to correct it, or provide more details.',
 
   [MessageKey.ID_INCOMPLETE_GRAPES_WITH_PRODUCER]: (ctx: MessageContext) =>
     `I found ${ctx.producer || 'the producer'} and detected ${ctx.grape || 'a grape'} as the grape variety. Should I use this as the wine name?`,
@@ -233,6 +236,9 @@ export const neutralMessages: PersonalityMessages = {
 
   [MessageKey.CONV_NOTHING_TO_RETRY]:
     'Nothing to retry. What would you like to identify?',
+
+  [MessageKey.CONV_CANCEL_REQUEST]:
+    "Stopped. What would you like to do?",
 
   // ===========================================
   // ADD WINE FLOW - Extended

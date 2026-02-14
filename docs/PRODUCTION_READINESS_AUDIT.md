@@ -252,10 +252,10 @@ Most common query pattern has no covering index.
 4 correlated subqueries in getWines.php would benefit from a covering index.
 **Fix**: `CREATE INDEX idx_ratings_wine_scores ON ratings (wineID, overallRating, valueRating, buyAgain);`
 
-**P-W5. AgentPanel loaded unconditionally in root layout**
-`qve/src/routes/+layout.svelte:149-150`
+**P-W5. AgentPanel loaded unconditionally in root layout** ✅
+`qve/src/routes/+layout.svelte`
 466-line component + 1834-line store imported on every page even when agent is never opened.
-**Fix**: Lazy-load AgentPanel on first bubble click.
+**Fix**: Dynamic import preloaded after auth (not on first click — that caused a race where the panel could fail to appear).
 
 **P-W6. Image compression blocks main thread**
 `qve/src/lib/api/client.ts:1074-1153`

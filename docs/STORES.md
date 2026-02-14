@@ -607,6 +607,9 @@ Manages the chat message array, phase state machine, and message lifecycle.
 | `addMessage()`, `updateMessage()`, `disableMessage()` | Message CRUD |
 | `setPhase()` | Phase transitions (validated by state machine) |
 | `resetConversation()`, `fullReset()` | Cleanup |
+| `abortMessageQueue()` | WIN-305: Abort queued messages (generation counter), complete typewriter animations, suppress intro scroll |
+| `isIntroScrollSuppressed()` | WIN-305: Check if old messages' `handleIntroEnd` scroll should be blocked during reset |
+| `addMessageWithDelay()` | Queue message with delay for natural pacing (FIFO, generation-checked) |
 | `createMessage()`, `createTextMessage()`, `createChipsMessage()` | Message factories |
 
 ### agentIdentification (`stores/agentIdentification.ts`)

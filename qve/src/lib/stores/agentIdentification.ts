@@ -470,18 +470,3 @@ export function getConfidence(): number | null {
   return get(store).confidence;
 }
 
-// ===========================================
-// Debug
-// ===========================================
-
-if (typeof window !== 'undefined' && import.meta.env.DEV) {
-  store.subscribe((state) => {
-    console.debug('[AgentIdentification]', {
-      isIdentifying: state.isIdentifying,
-      hasResult: state.result !== null,
-      confidence: state.confidence,
-      streamingFieldCount: state.streamingFields.size,
-      hasAugmentation: state.augmentationContext !== null,
-    });
-  });
-}

@@ -12,11 +12,14 @@
   import { AgentBubble } from '$lib/components/agent';
   import '$lib/styles/index.css';
 
-  // WIN-236: Lazy-load AgentPanel on first bubble click
+  // Preload AgentPanel after auth so it's ready for instant open on first click.
+  // Previously lazy-loaded on first bubble click (WIN-236), but the async import
+  // created a race: user clicks bubble → import in flight → no panel visible →
+  // user clicks again (toggle off) → import resolves with panel closed → no greeting.
   let AgentPanelComponent: typeof import('$lib/components/agent/AgentPanel.svelte').default | null = null;
   let agentPanelLoadTriggered = false;
 
-  $: if ($agentPanelOpen && !agentPanelLoadTriggered) {
+  $: if ($isAuthenticated && !agentPanelLoadTriggered) {
     agentPanelLoadTriggered = true;
     import('$lib/components/agent/AgentPanel.svelte').then(mod => {
       AgentPanelComponent = mod.default;

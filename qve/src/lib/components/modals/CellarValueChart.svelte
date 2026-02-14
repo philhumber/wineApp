@@ -82,18 +82,14 @@
 
   function computeXLabels(pts: typeof data, xScale: (i: number) => number, cw: number): { x: number; label: string }[] {
     if (pts.length <= 1) return pts.map((p, i) => ({ x: xScale(i), label: formatDateShort(p.date) }));
+    if (pts.length === 2) return pts.map((p, i) => ({ x: xScale(i), label: formatDateShort(p.date) }));
 
-    const targetCount = cw < 400 ? 3 : 5;
-    const step = Math.max(1, Math.floor((pts.length - 1) / (targetCount - 1)));
+    const targetCount = Math.min(cw < 400 ? 3 : 5, pts.length);
     const labels: { x: number; label: string }[] = [];
 
-    for (let i = 0; i < pts.length; i += step) {
-      labels.push({ x: xScale(i), label: formatDateShort(pts[i].date) });
-    }
-    // Always include last
-    const lastIdx = pts.length - 1;
-    if (labels.length === 0 || labels[labels.length - 1].x !== xScale(lastIdx)) {
-      labels.push({ x: xScale(lastIdx), label: formatDateShort(pts[lastIdx].date) });
+    for (let i = 0; i < targetCount; i++) {
+      const idx = Math.round(i * (pts.length - 1) / (targetCount - 1));
+      labels.push({ x: xScale(idx), label: formatDateShort(pts[idx].date) });
     }
     return labels;
   }
@@ -320,7 +316,7 @@
       >
         <span class="tooltip-date">{formatDateFull(data[tooltipIdx].date)}</span>
         <span class="tooltip-value">{formatValue(data[tooltipIdx].displayValue)}</span>
-        <span class="tooltip-count">{data[tooltipIdx].bottleCount} bottles</span>
+        <span class="tooltip-count">{data[tooltipIdx].bottleCount} {data[tooltipIdx].bottleCount === 1 ? 'bottle' : 'bottles'}</span>
       </div>
     {/if}
   {/if}

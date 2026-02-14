@@ -291,6 +291,7 @@
     border-radius: 8px;
     border: 1px solid var(--divider-subtle);
     cursor: pointer;
+    overflow: hidden;
     transition:
       box-shadow 0.3s var(--ease-out),
       border-color 0.3s var(--ease-out),
@@ -405,9 +406,11 @@
   .wine-meta {
     display: flex;
     align-items: center;
-    gap: var(--space-4);
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
     margin-top: auto;
     padding-top: var(--space-3);
+    padding-bottom: var(--space-6);
   }
 
   .bottle-size {
@@ -667,6 +670,7 @@
 
   .history-card.compact .wine-meta {
     padding-top: var(--space-2);
+    padding-bottom: 0;
     gap: var(--space-2);
   }
 

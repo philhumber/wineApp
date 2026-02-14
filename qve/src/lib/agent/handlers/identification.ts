@@ -32,12 +32,15 @@ import {
   generateErrorChips,
   generateNotCorrectChips,
   generateCorrectionConfirmationChips,
+  generateNewSearchConfirmationChips,
+  generateBriefSearchChips,
   detectCommand,
   detectChipResponse,
   detectFieldInput,
   detectDirectValue,
   checkBriefInput,
 } from '../services';
+import { ChipKey, getChip } from '../services/chipRegistry';
 import { setLastAction, getLastAction } from '../middleware/retryTracker';
 import {
   handleStartOver,
@@ -176,8 +179,8 @@ function handleIdentificationResultFlow(
 
   conversation.addMessage(
     conversation.createChipsMessage([
-      { id: 'try_again', label: 'Try Again', action: 'provide_more' },
-      { id: 'start_over', label: 'Start Over', action: 'start_over' },
+      getChip(ChipKey.SEARCH_AGAIN),
+      getChip(ChipKey.START_OVER),
     ])
   );
 
@@ -671,10 +674,7 @@ async function handleTextSubmit(text: string): Promise<void> {
         conversation.createTextMessage(getMessageByKey(MessageKey.CONFIRM_NEW_SEARCH))
       );
       conversation.addMessage(
-        conversation.createChipsMessage([
-          { id: 'search_new', label: 'Search New', action: 'confirm_new_search' },
-          { id: 'keep_current', label: 'Keep Current', action: 'continue_current' },
-        ])
+        conversation.createChipsMessage(generateNewSearchConfirmationChips())
       );
       return;
     }
@@ -693,10 +693,7 @@ async function handleTextSubmit(text: string): Promise<void> {
       )
     );
     conversation.addMessage(
-      conversation.createChipsMessage([
-        { id: 'search_anyway', label: 'Search Anyway', action: 'confirm_brief_search' },
-        { id: 'add_more', label: "I'll Add More", action: 'add_more_detail' },
-      ])
+      conversation.createChipsMessage(generateBriefSearchChips())
     );
     return;
   }
@@ -920,7 +917,7 @@ function showFieldCorrectionChips(result: WineIdentificationResult | null): void
   const lockedFields = identification.getLockedFields();
   const { fieldChips, actionChips } = generateNotCorrectChips(result, lockedFields);
 
-  const promptText = 'What needs fixing? Tap a field to correct it, or add more details.';
+  const promptText = getMessageByKey(MessageKey.ID_NOT_CORRECT_PROMPT);
 
   // Use addMessages (batch) so field chips and action chips are added together
   // without disabling each other (addMessage disables all existing chips on each call)
@@ -1202,7 +1199,7 @@ function handleContinueAsIs(messageId: string): void {
     conversation.createChipsMessage(generateActionChips(false))
   );
 
-  conversation.setPhase('adding_wine');
+  conversation.setPhase('confirming');
 }
 
 // ===========================================

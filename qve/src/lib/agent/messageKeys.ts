@@ -64,6 +64,8 @@ export enum MessageKey {
   ID_PROMPT_DETAILS = 'identification.promptDetails',
   /** "Tell me what's different about this wine..." */
   ID_PROVIDE_MORE_CONTEXT = 'identification.provideMoreContext',
+  /** "What needs fixing? Tap a field to correct it..." */
+  ID_NOT_CORRECT_PROMPT = 'identification.notCorrectPrompt',
   /** Grape with producer: "I found {producer} and detected {grape}..." */
   ID_INCOMPLETE_GRAPES_WITH_PRODUCER = 'identification.incompleteGrapesWithProducer',
   /** Grape without producer: "I detected {grape} but couldn't identify producer..." */
@@ -88,6 +90,8 @@ export enum MessageKey {
   CONV_ACTION_PROMPT = 'conversation.actionPrompt',
   /** "Nothing to retry. What would you like to identify?" */
   CONV_NOTHING_TO_RETRY = 'conversation.nothingToRetry',
+  /** "I've stopped the search. What would you like to do?" */
+  CONV_CANCEL_REQUEST = 'conversation.cancelRequest',
 
   // ===========================================
   // ADD WINE FLOW

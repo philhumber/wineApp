@@ -239,7 +239,6 @@ function persistWithDegradation(state: Partial<PersistedState>): void {
   merged.addWineState = null;
   tryPersist(storage, merged);
 
-  console.warn('[AgentPersistence] Quota exceeded, degraded persistence applied');
 }
 
 function tryPersist(storage: Storage, state: PersistedState): boolean {

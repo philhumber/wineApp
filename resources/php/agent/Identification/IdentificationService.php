@@ -12,6 +12,8 @@ namespace Agent\Identification;
 
 use Agent\LLM\LLMClient;
 
+require_once __DIR__ . '/../prompts/prompts.php';
+
 class IdentificationService
 {
     /** @var InputClassifier Input classifier */
@@ -92,7 +94,7 @@ class IdentificationService
 
         // Add prior result context for escalation
         if ($priorResult) {
-            $options['prior_context'] = $this->buildPriorContext($priorResult, $lockedFields);
+            $options['prior_context'] = \Prompts::escalationContext($priorResult, $lockedFields);
         }
 
         return $this->textProcessor->process($input, $options);
@@ -117,57 +119,10 @@ class IdentificationService
 
         // Add prior result context for escalation
         if ($priorResult) {
-            $options['prior_context'] = $this->buildPriorContext($priorResult, $lockedFields, $escalationContext);
+            $options['prior_context'] = \Prompts::escalationContext($priorResult, $lockedFields, $escalationContext);
         }
 
         return $this->textProcessor->process($input, $options);
-    }
-
-    /**
-     * Build context string from prior identification result
-     *
-     * @param array $priorResult Previous identification result
-     * @param array $lockedFields User-locked fields to include in context
-     * @param array $escalationContext Optional escalation context (reason, originalUserText)
-     * @return string Context string for escalation
-     */
-    private function buildPriorContext(array $priorResult, array $lockedFields = [], array $escalationContext = []): string
-    {
-        $parsed = $priorResult['parsed'] ?? [];
-        $originalUserText = $escalationContext['originalUserText'] ?? null;
-        $reason = $escalationContext['reason'] ?? null;
-
-        $context = "ESCALATION CONTEXT:";
-
-        // Include the original user search text if available
-        if ($originalUserText) {
-            $context .= sprintf("\nThe user originally searched for: \"%s\"", $originalUserText);
-        }
-
-        // Describe what the previous model found
-        $context .= sprintf(
-            "\nA previous model identified this as: Producer=%s, Wine=%s, Region=%s (confidence: %d%%).",
-            $parsed['producer'] ?? 'unknown',
-            $parsed['wineName'] ?? 'unknown',
-            $parsed['region'] ?? 'unknown',
-            $priorResult['confidence'] ?? 0
-        );
-
-        // Explain why escalation happened
-        if ($reason === 'user_rejected') {
-            $context .= "\nThe user indicated this identification is NOT CORRECT and has requested premium re-analysis.";
-        } else {
-            $context .= "\nPlease analyze more carefully and look for details that might have been missed.";
-        }
-
-        if (!empty($lockedFields)) {
-            $context .= "\n\nUSER-CONFIRMED VALUES (use exactly as provided, you may normalize capitalization/accents):";
-            foreach ($lockedFields as $field => $value) {
-                $context .= "\n- {$field}: {$value}";
-            }
-        }
-
-        return $context;
     }
 
     // ─────────────────────────────────────────────────────
@@ -460,8 +415,8 @@ class IdentificationService
         $intent = $this->intentDetector->detect($text);
         $lockedFields = $input['lockedFields'] ?? [];
 
-        // Build prompt (reuse TextProcessor logic)
-        $prompt = $this->buildIdentificationPrompt($text);
+        // Build prompt
+        $prompt = \Prompts::textIdentifyStreaming($text);
 
         // Tier 1 only for streaming (per plan)
         $tierConfig = $this->config['model_tiers']['fast'] ?? [];
@@ -584,8 +539,8 @@ class IdentificationService
         $supplementaryText = $classification['supplementaryText'] ?? null;
         $lockedFields = $input['lockedFields'] ?? [];
 
-        // Build prompt (reuse VisionProcessor logic)
-        $prompt = $this->buildVisionPrompt($supplementaryText);
+        // Build prompt
+        $prompt = \Prompts::visionIdentifyStreaming($supplementaryText);
 
         // Tier 1 only for streaming
         $tierConfig = $this->config['model_tiers']['fast'] ?? [];
@@ -700,67 +655,6 @@ class IdentificationService
             ],
             'inferences_applied' => $result['inferences_applied'] ?? [],
         ];
-    }
-
-    /**
-     * Build identification prompt for text input (WIN-181)
-     *
-     * Replicates prompt from TextProcessor for streaming use.
-     *
-     * @param string $text Input text
-     * @return string Prompt for LLM
-     */
-    private function buildIdentificationPrompt(string $text): string
-    {
-        return <<<PROMPT
-Identify this wine. Return ONLY JSON.
-
-TEXT: {$text}
-
-Fields: producer (required), wineName (required), vintage (number|null), region, country, wineType ("Red"|"White"|"Rosé"|"Sparkling"|"Dessert"|"Fortified"), grapes (array), confidence (0-100).
-Null if unsure.
-PROMPT;
-    }
-
-    /**
-     * Build vision prompt for image input (WIN-181)
-     *
-     * @param string|null $supplementaryText Additional context from user
-     * @return string Prompt for LLM
-     */
-    private function buildVisionPrompt(?string $supplementaryText = null): string
-    {
-        $prompt = <<<'PROMPT'
-Read the text on this wine label. Extract ONLY what you can literally see written on the label. Return JSON.
-
-STEP 1 — READ: Look at the label and identify every piece of readable text (words, numbers, names).
-STEP 2 — EXTRACT: Fill in fields ONLY from text you identified in Step 1. If a field's value is not written on the label, set it to null.
-
-RULES:
-- producer: Only if you can READ the producer/winery name on the label. null if not visible.
-- wineName: Only if a distinct wine name (not the producer) is readable. null if not visible.
-- vintage: Only if a 4-digit year is visible on the label. null if not visible.
-- region: Only if an appellation or region name is printed on the label. null if not visible.
-- country: Only if a country name is printed on the label. null if not visible.
-- wineType: Only if the wine type is stated on the label (e.g., "Red Wine"). null if not stated.
-- grapes: Only if grape varieties are listed on the label. null if not listed.
-
-CRITICAL: Return null — NEVER guess. An incorrect value is far worse than null.
-If the label is artistic, decorative, or has minimal text, most fields should be null.
-Do not infer region from producer, do not infer grapes from region, do not infer country from language.
-
-Confidence: How much text could you actually read?
-- 80-100: All key fields are clearly readable on the label
-- 50-79: Some fields readable, others unclear or partially visible
-- 20-49: Very little readable text, only 1-2 fields extractable
-- 0-19: No readable text / not a wine label
-PROMPT;
-
-        if ($supplementaryText) {
-            $prompt .= "\n\nContext: {$supplementaryText}";
-        }
-
-        return $prompt;
     }
 
     /**

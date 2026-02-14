@@ -73,6 +73,7 @@
 
 		// Block navigation away from wizard if there's unsaved data
 		if (!allowNavigation && hasUnsavedData() && !$isSubmitting) {
+			const destination = to?.url?.pathname || `${base}/`;
 			cancel();
 			modal.confirm({
 				title: 'Leave page?',
@@ -84,7 +85,7 @@
 					modal.close();
 					addWineStore.reset();
 					allowNavigation = true;
-					history.back();
+					goto(destination);
 				},
 				onCancel: () => {
 					modal.close();

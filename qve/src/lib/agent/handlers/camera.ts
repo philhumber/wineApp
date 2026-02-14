@@ -30,7 +30,6 @@ type CameraActionType = 'take_photo' | 'choose_photo';
  * Disables the chip message. Camera opening handled by UI layer.
  */
 function handleTakePhoto(messageId: string): void {
-  if (import.meta.env.DEV) console.debug('[Camera] take_photo - delegating to UI');
   conversation.disableMessage(messageId);
   // Camera opening triggered by AgentPanel.svelte
 }
@@ -40,7 +39,6 @@ function handleTakePhoto(messageId: string): void {
  * Disables the chip message. Photo picker handled by UI layer.
  */
 function handleChoosePhoto(messageId: string): void {
-  if (import.meta.env.DEV) console.debug('[Camera] choose_photo - delegating to UI');
   conversation.disableMessage(messageId);
   // Photo picker triggered by AgentPanel.svelte
 }

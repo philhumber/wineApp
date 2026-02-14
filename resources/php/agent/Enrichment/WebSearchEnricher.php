@@ -14,6 +14,8 @@ use Agent\LLM\LLMClient;
 use Agent\LLM\LLMResponse;
 use Agent\LLM\LLMStreamingResponse;
 
+require_once __DIR__ . '/../prompts/prompts.php';
+
 class WebSearchEnricher
 {
     private LLMClient $llmClient;
@@ -27,7 +29,7 @@ class WebSearchEnricher
 
     public function enrich(string $producer, string $wineName, ?string $vintage): ?EnrichmentData
     {
-        $prompt = $this->buildPrompt($producer, $wineName, $vintage);
+        $prompt = \Prompts::enrichment($producer, $wineName, $vintage);
 
         // Use web_search option flag for Google Search grounding
         // Gemini 3 requires temperature=1.0, higher tokens for grounding output
@@ -67,7 +69,7 @@ class WebSearchEnricher
         callable $onField,
         ?callable $onTextDelta = null
     ): ?EnrichmentData {
-        $prompt = $this->buildStreamingPrompt($producer, $wineName, $vintage);
+        $prompt = \Prompts::enrichmentStreaming($producer, $wineName, $vintage);
 
         // Tested in AI Studio: streaming + googleSearch + responseSchema + thinking
         // works on gemini-3-flash-preview with MEDIUM thinking.
@@ -98,32 +100,6 @@ class WebSearchEnricher
         }
 
         return $this->parseStreamingResponse($response);
-    }
-
-    /**
-     * Build a slimmed prompt for streaming enrichment.
-     * Shorter than the file-based prompt for faster TTFB.
-     */
-    private function buildStreamingPrompt(string $producer, string $wineName, ?string $vintage): string
-    {
-        $v = $vintage ?? 'NV';
-        return <<<PROMPT
-Search for wine data: {$producer} {$wineName} {$v}
-
-Return JSON with:
-- grapeVarieties: [{grape, percentage}] from sources
-- appellation: AOC/AVA classification
-- alcoholContent: ABV as number
-- drinkWindow: {start, end, maturity} (maturity: young/ready/peak/declining)
-- criticScores: [{critic, score, year}] — WS, RP, Decanter, JS only, 100-point scale
-- productionMethod: notable methods (oak aging etc)
-- body/tannin/acidity/sweetness: style descriptors
-- overview: 3-4 sentences on character and reputation
-- tastingNotes: 3-4 sentences on aromas, palate, finish
-- pairingNotes: 3-4 sentences with specific food pairings
-
-Use null for unverified fields. Only include data from reputable sources.
-PROMPT;
     }
 
     /**
@@ -232,35 +208,6 @@ PROMPT;
             'cost' => $response->costUSD,
             'latencyMs' => $response->latencyMs,
         ];
-    }
-
-    private function buildPrompt(string $producer, string $wineName, ?string $vintage): string
-    {
-        $promptFile = __DIR__ . '/../prompts/enrichment_search.txt';
-
-        if (file_exists($promptFile)) {
-            $template = file_get_contents($promptFile);
-            return str_replace(
-                ['{producer}', '{wine}', '{vintage}'],
-                [$producer, $wineName, $vintage ?? 'NV'],
-                $template
-            );
-        }
-
-        // Fallback inline prompt if file not found
-        return "Search for detailed wine information about: {$producer} {$wineName} " . ($vintage ?? 'NV') . "
-
-Find and extract from reliable wine sources:
-1. Grape varieties with percentages
-2. Official appellation or AVA classification
-3. Alcohol content (ABV %)
-4. Recommended drink window (start year to end year)
-5. Critic scores from: Wine Spectator (WS), Robert Parker/Wine Advocate (RP), Decanter, James Suckling (JS)
-6. Production method notes (if notable)
-7. Style profile: body, tannin level, acidity, sweetness
-
-Return as JSON with keys: grapeVarieties, appellation, alcoholContent, drinkWindow, criticScores, productionMethod, body, tannin, acidity, sweetness.
-Use null for any field you cannot verify from sources.";
     }
 
     private function parseResponse(LLMResponse $response): ?EnrichmentData

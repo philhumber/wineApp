@@ -47,6 +47,9 @@
     if (currentFilters !== previousFilters) {
       previousFilters = currentFilters;
       fetchWines(filtersWithViewMode($filters));
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
   }
 
@@ -154,7 +157,8 @@
 <main class="page-container">
   <!-- Wine Grid Section -->
   <section class="wine-section">
-    {#if $winesLoading}
+    {#if $winesLoading && $wines.length === 0}
+      <!-- Only show loading state on initial load; view switches keep current grid visible -->
       <div class="loading-state">
         <p>Loading wines...</p>
       </div>
@@ -163,7 +167,7 @@
         <p>Error: {$winesError}</p>
         <button on:click={() => location.reload()}>Retry</button>
       </div>
-    {:else if $wines.length === 0}
+    {:else if !$winesLoading && $wines.length === 0}
       <div class="empty-state">
         {#if $hasActiveFilters}
           {#if $hasSearchQuery}

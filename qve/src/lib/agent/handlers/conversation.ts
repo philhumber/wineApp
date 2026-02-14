@@ -23,6 +23,7 @@ import {
   getLastAction,
   clearLastAction,
 } from '../middleware/retryTracker';
+import { ChipKey, getChip } from '../services/chipRegistry';
 
 // ===========================================
 // Handler Type
@@ -49,7 +50,8 @@ type ConversationActionType =
  * Keeps chat history with a divider, adds a fresh greeting.
  */
 export function handleStartOver(): void {
-  if (import.meta.env.DEV) console.debug('[Conversation] start_over');
+  // WIN-305: Abort any in-flight request (stops streaming/typewriter effects)
+  abortCurrentRequest();
 
   // Clear all stores
   identification.resetIdentification();
@@ -66,8 +68,6 @@ export function handleStartOver(): void {
  * Returns to the previous phase in the conversation.
  */
 export function handleGoBack(): void {
-  if (import.meta.env.DEV) console.debug('[Conversation] go_back');
-
   const currentPhase = conversation.getCurrentPhase();
 
   // Determine where to go back to based on current phase
@@ -95,7 +95,7 @@ export function handleGoBack(): void {
       conversation.addMessage(
         conversation.createChipsMessage([
           { id: 'add', label: 'Add to Cellar', action: 'add_to_cellar' },
-          { id: 'learn', label: 'Learn More', action: 'enrich_now' },
+          { id: 'learn', label: 'Learn More', action: 'learn' },
           { id: 'remember', label: 'Remember Later', action: 'remember' },
         ])
       );
@@ -123,7 +123,6 @@ export function handleGoBack(): void {
  * Closes the agent panel.
  */
 export function handleCancel(): void {
-  if (import.meta.env.DEV) console.debug('[Conversation] cancel');
   closePanel();
 }
 
@@ -132,8 +131,6 @@ export function handleCancel(): void {
  * Aborts in-flight LLM request and shows friendly message with chips.
  */
 export function handleCancelRequest(): void {
-  if (import.meta.env.DEV) console.debug('[Conversation] cancel_request');
-
   // WIN-227: Send server-side cancel token before aborting fetch
   const requestId = getRequestId();
   if (requestId) {
@@ -142,6 +139,9 @@ export function handleCancelRequest(): void {
 
   // WIN-187: Abort any in-flight HTTP request
   abortCurrentRequest();
+
+  // WIN-305: Abort queued messages and stop typewriter animations
+  conversation.abortMessageQueue();
 
   // Clear identification loading state
   identification.clearIdentifying();
@@ -161,13 +161,13 @@ export function handleCancelRequest(): void {
 
   // Add friendly cancellation message with action chips
   conversation.addMessage(
-    conversation.createTextMessage("No problem, I've stopped. What would you like to do?")
+    conversation.createTextMessage(getMessageByKey(MessageKey.CONV_CANCEL_REQUEST))
   );
 
   conversation.addMessage(
     conversation.createChipsMessage([
-      { id: 'try_again', label: 'Try Again', action: 'try_again' },
-      { id: 'start_over', label: 'Start Over', action: 'start_over' },
+      getChip(ChipKey.RETRY),
+      getChip(ChipKey.START_OVER),
     ])
   );
 }
@@ -177,8 +177,6 @@ export function handleCancelRequest(): void {
  * Clears identification and awaits fresh input.
  */
 export function handleNewInput(messageId?: string): void {
-  if (import.meta.env.DEV) console.debug('[Conversation] new_input');
-
   if (messageId) {
     conversation.disableMessage(messageId);
   }
@@ -192,8 +190,6 @@ export function handleNewInput(messageId?: string): void {
  * Alias for start_over.
  */
 export function handleStartFresh(messageId?: string): void {
-  if (import.meta.env.DEV) console.debug('[Conversation] start_fresh');
-
   if (messageId) {
     conversation.disableMessage(messageId);
   }
@@ -206,8 +202,6 @@ export function handleStartFresh(messageId?: string): void {
  * Error recovery variant - clears state and starts fresh.
  */
 export function handleStartOverError(messageId?: string): void {
-  if (import.meta.env.DEV) console.debug('[Conversation] start_over_error');
-
   if (messageId) {
     conversation.disableMessage(messageId);
   }
@@ -222,8 +216,6 @@ export function handleStartOverError(messageId?: string): void {
  * @returns The action to retry, or null if no action available
  */
 export function handleRetry(): AgentAction | null {
-  if (import.meta.env.DEV) console.debug('[Conversation] retry');
-
   const lastAction = getLastAction();
 
   if (!lastAction) {

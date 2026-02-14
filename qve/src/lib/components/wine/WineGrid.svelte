@@ -3,12 +3,20 @@
    * WineGrid component
    * Responsive container that manages wine card layout and expanded state
    */
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { viewDensity, expandedWineIDs, toggleWineExpanded, targetWineID } from '$lib/stores';
   import type { Wine } from '$lib/api/types';
   import WineCard from './WineCard.svelte';
 
   export let wines: Wine[] = [];
+
+  // Disable entry animation after initial load to prevent flicker on view switches.
+  // Cards fade in on first page load, then appear instantly on subsequent data changes.
+  let initialAnimationDone = false;
+  onMount(() => {
+    // Allow the stagger animation to complete: max delay (350ms) + duration (700ms) + buffer
+    setTimeout(() => { initialAnimationDone = true; }, 1100);
+  });
 
   const dispatch = createEventDispatcher<{
     drink: { wine: Wine };
@@ -48,6 +56,7 @@
   class="wine-grid"
   class:view-compact={$viewDensity === 'compact'}
   class:view-medium={$viewDensity === 'medium'}
+  class:no-entry-animation={initialAnimationDone}
 >
   {#each wines as wine, index (wine.wineID)}
     <WineCard
@@ -130,9 +139,14 @@
 
   /* ─────────────────────────────────────────────────────────
    * STAGGER ANIMATION
-   * Apply animation delay via CSS custom property
+   * Apply animation delay via CSS custom property.
+   * Disabled after initial load to prevent flicker on view switches.
    * ───────────────────────────────────────────────────────── */
   .wine-grid :global(.wine-card) {
     animation-delay: var(--animation-delay, 0s);
+  }
+
+  .wine-grid.no-entry-animation :global(.wine-card) {
+    animation: none;
   }
 </style>

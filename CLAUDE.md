@@ -16,6 +16,8 @@
 
 **UI edge cases**: When implementing UI/UX changes, enumerate ALL states and edge cases upfront before coding: single vs multiple items, empty states, user messages vs agent messages, mobile vs desktop.
 
+**Component visibility scoping**: When hiding a shared component on mobile (e.g., ViewToggle), NEVER add `display: none` inside the component itself — it hides it everywhere (including modals, settings). Instead, scope the hide to the parent context: `.parent-class :global(.component-class) { display: none }`.
+
 ---
 
 ## Quick Start
@@ -249,11 +251,16 @@ Mobile-first approach with fixed column counts:
 **Note**: Avoid `auto-fill, minmax()` on mobile - causes overflow when minimum exceeds available space.
 
 ### Overflow Prevention (base.css)
-Required for iOS Safari horizontal scroll prevention:
+Required for iOS Safari horizontal scroll prevention — **only on `body`, NOT `html`**:
 ```css
-html, body {
+/* IMPORTANT: Do NOT add overflow-x: hidden to html — it creates a dual
+   scroll container with body, which breaks mousewheel and touch scrolling
+   in Chrome (compositor can't determine the correct scroll target). */
+body {
   overflow-x: hidden;
-  max-width: 100vw;  /* Prevents fixed elements from extending viewport */
+}
+html {
+  max-width: 100%;  /* Secondary safety net for horizontal overflow */
 }
 ```
 Also add to fixed-position containers like `.header`:
@@ -285,6 +292,9 @@ function handleTouchEnd(e: TouchEvent) {
   // Handle tap...
 }
 ```
+
+### Sticky `:hover` on Mobile (WineCard.svelte)
+Mobile browsers apply sticky `:hover` after touch interactions. **Never use `:hover` to toggle `display` or `visibility` on mobile** — elements will stay visible after the tap ends. Use explicit state (e.g., `.expanded`) instead. In media queries targeting mobile, only use `:hover` for cosmetic effects (color, shadow) that won't break layout if they persist.
 
 ### FilterDropdown Portal Pattern (FilterDropdown.svelte)
 The dropdown uses a portal to escape the header's stacking context on iOS:
@@ -355,6 +365,10 @@ handleIdentificationResultFlow(wineResult, confidence);
 **Enrichment** uses a single-path approach — the enrichment handler creates one message card immediately (skeleton state) and updates it in-place as SSE fields arrive via `conversation.updateMessage()`. A 7-second delay keeps the typing/thinking message visible before the card appears for LLM responses (cache hits show the card immediately). Text fields (`overview`, `tastingNotes`, `pairingNotes`) stream token-by-token with a blinking cursor via `text_delta` SSE events, throttled at 100ms.
 
 See `PLAN.md` "Critical Lesson" section for full breakdown with broken vs working code examples.
+
+### Message Sequencing & Scroll (Gotcha)
+
+`clearAllNewFlags()` triggers a cascade: messages hidden behind `isPrecedingReady` gates (in MessageWrapper + ChipsMessage) become visible, fly in, and their `handleIntroEnd` calls `scrollIntoView` — fighting the intended scroll target. Fix: `isIntroScrollSuppressed()` flag in `agentConversation.ts` blocks old messages' intro scroll during resets (400ms window), while `AgentChatContainer`'s reactive `scrollToBottom` (which checks `isScrollLocked`, not intro suppression) still works for the new greeting.
 
 ### Gemini REST API Gotchas
 

@@ -311,7 +311,7 @@
   /* Dropdown container - uses fixed positioning to escape header overflow */
   .dropdown-container {
     position: fixed;
-    min-width: 220px;
+    min-width: 280px;
     max-width: 320px;
     background: var(--surface);
     border: 1px solid var(--divider);

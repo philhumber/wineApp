@@ -1,9 +1,11 @@
 <script lang="ts">
   /**
    * SideMenu component
-   * Slide-out navigation drawer with backdrop overlay
+   * Slide-out navigation drawer with backdrop overlay.
+   * Uses two-phase close to prevent mobile GPU repaint flash
+   * (same pattern as ModalContainer).
    */
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   import { base } from '$app/paths';
   import { page } from '$app/stores';
@@ -16,6 +18,38 @@
   const dispatch = createEventDispatcher<{
     close: void;
   }>();
+
+  // ─── Two-phase close (prevents mobile repaint flash) ───
+  let displayOpen = false;
+  let isClosing = false;
+  let closeTimeout: ReturnType<typeof setTimeout>;
+  let cleanupTimeout: ReturnType<typeof setTimeout>;
+  const FADE_MS = 250;
+  const CLEANUP_MS = 400;
+
+  $: {
+    if (open) {
+      clearTimeout(closeTimeout);
+      clearTimeout(cleanupTimeout);
+      displayOpen = true;
+      isClosing = false;
+    } else if (displayOpen && !isClosing) {
+      // Phase 1: fade wrapper to opacity 0
+      isClosing = true;
+      closeTimeout = setTimeout(() => {
+        // Phase 2: remove DOM elements (invisible behind wrapper)
+        displayOpen = false;
+        cleanupTimeout = setTimeout(() => {
+          isClosing = false;
+        }, CLEANUP_MS);
+      }, FADE_MS);
+    }
+  }
+
+  onDestroy(() => {
+    clearTimeout(closeTimeout);
+    clearTimeout(cleanupTimeout);
+  });
 
   function close() {
     dispatch('close');
@@ -73,107 +107,127 @@
 
 <svelte:window on:keydown={handleKeydown} />
 
-{#if open}
-  <!-- Backdrop overlay -->
-  <div
-    class="menu-backdrop"
-    on:click={handleBackdropClick}
-    on:keydown={handleKeydown}
-    role="button"
-    tabindex="-1"
-    aria-label="Close menu"
-    transition:fade={{ duration: 200 }}
-  ></div>
+<!-- Wrapper: fades to opacity 0 before DOM removal to prevent mobile repaint flash -->
+<div class="side-menu-wrapper" class:closing={isClosing}>
+  {#if displayOpen}
+    <!-- Backdrop overlay -->
+    <div
+      class="menu-backdrop"
+      on:click={handleBackdropClick}
+      on:keydown={handleKeydown}
+      role="button"
+      tabindex="-1"
+      aria-label="Close menu"
+      transition:fade={{ duration: 200 }}
+    ></div>
 
-  <!-- Slide-out drawer -->
-  <nav
-    class="side-menu"
-    transition:fly={{ x: -300, duration: 300 }}
-    aria-label="Main navigation"
-  >
-    <div class="menu-header">
-      <span class="menu-title">Qvé</span>
-      <button
-        class="close-btn"
-        on:click={close}
-        aria-label="Close menu"
-      >
-        <Icon name="close" size={20} />
-      </button>
-    </div>
-
-    <ul class="menu-items">
-      <li>
-        <a
-          href="{base}/"
-          class="menu-item"
-          class:active={isCellar}
-          on:click|preventDefault={() => navigateTo('/', 'ourWines')}
-        >
-          <Icon name="wine-bottle" size={20} />
-          <span>Cellar</span>
-        </a>
-      </li>
-      <li>
-        <a
-          href="{base}/"
-          class="menu-item"
-          class:active={isAllWines}
-          on:click|preventDefault={() => navigateTo('/', 'allWines')}
-        >
-          <Icon name="grid" size={20} />
-          <span>All Wines</span>
-        </a>
-      </li>
-      <li>
-        <a
-          href="{base}/history"
-          class="menu-item"
-          class:active={isHistory}
-          on:click|preventDefault={() => navigateTo('/history')}
-        >
-          <Icon name="history" size={20} />
-          <span>History</span>
-        </a>
-      </li>
-      <li>
-        <a
-          href="{base}/add"
-          class="menu-item"
-          class:active={isAdd}
-          on:click|preventDefault={() => navigateTo('/add')}
-        >
-          <Icon name="plus" size={20} />
-          <span>Add Wine</span>
-        </a>
-      </li>
-      <li>
+    <!-- Slide-out drawer -->
+    <nav
+      class="side-menu"
+      transition:fly={{ x: -300, duration: 300 }}
+      aria-label="Main navigation"
+    >
+      <div class="menu-header">
+        <span class="menu-title">Qvé</span>
         <button
-          class="menu-item"
-          on:click={openSettings}
+          class="close-btn"
+          on:click={close}
+          aria-label="Close menu"
         >
-          <Icon name="settings" size={20} />
-          <span>Settings</span>
+          <Icon name="close" size={20} />
         </button>
-      </li>
-      <li>
-        <button
-          class="menu-item menu-item-logout"
-          on:click={handleLogout}
-        >
-          <Icon name="log-out" size={20} />
-          <span>Sign Out</span>
-        </button>
-      </li>
-    </ul>
+      </div>
 
-    <div class="menu-footer">
-      <p class="menu-version">Wine Collection</p>
-    </div>
-  </nav>
-{/if}
+      <ul class="menu-items">
+        <li>
+          <a
+            href="{base}/"
+            class="menu-item"
+            class:active={isCellar}
+            on:click|preventDefault={() => navigateTo('/', 'ourWines')}
+          >
+            <Icon name="wine-bottle" size={20} />
+            <span>Cellar</span>
+          </a>
+        </li>
+        <li>
+          <a
+            href="{base}/"
+            class="menu-item"
+            class:active={isAllWines}
+            on:click|preventDefault={() => navigateTo('/', 'allWines')}
+          >
+            <Icon name="grid" size={20} />
+            <span>All Wines</span>
+          </a>
+        </li>
+        <li>
+          <a
+            href="{base}/history"
+            class="menu-item"
+            class:active={isHistory}
+            on:click|preventDefault={() => navigateTo('/history')}
+          >
+            <Icon name="history" size={20} />
+            <span>History</span>
+          </a>
+        </li>
+        <li>
+          <a
+            href="{base}/add"
+            class="menu-item"
+            class:active={isAdd}
+            on:click|preventDefault={() => navigateTo('/add')}
+          >
+            <Icon name="plus" size={20} />
+            <span>Add Wine</span>
+          </a>
+        </li>
+        <li>
+          <button
+            class="menu-item"
+            on:click={openSettings}
+          >
+            <Icon name="settings" size={20} />
+            <span>Settings</span>
+          </button>
+        </li>
+        <li>
+          <button
+            class="menu-item menu-item-logout"
+            on:click={handleLogout}
+          >
+            <Icon name="log-out" size={20} />
+            <span>Sign Out</span>
+          </button>
+        </li>
+      </ul>
+
+      <div class="menu-footer">
+        <p class="menu-version">Wine Collection</p>
+      </div>
+    </nav>
+  {/if}
+</div>
 
 <style>
+  /* Wrapper for two-phase close */
+  .side-menu-wrapper {
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    pointer-events: none;
+  }
+
+  .side-menu-wrapper:not(.closing) > :global(*) {
+    pointer-events: auto;
+  }
+
+  .side-menu-wrapper.closing {
+    opacity: 0;
+    transition: opacity 250ms ease-out;
+  }
+
   /* Backdrop overlay */
   .menu-backdrop {
     position: fixed;

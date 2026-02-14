@@ -127,7 +127,13 @@
     </p>
 
     <div class="wine-meta">
-      <BottleIndicators count={wine.bottleCount} compact={compact && !expanded} />
+      <BottleIndicators
+        count={wine.bottleCount}
+        standardCount={Number(wine.standardBottles || 0)}
+        smallCount={Number(wine.smallBottles || 0)}
+        largeCount={Number(wine.largeBottles || 0)}
+        compact={compact && !expanded}
+      />
       <PriceScale
         avgPricePerLiterEUR={wine.avgPricePerLiterEUR}
         typeAvgPricePerLiterEUR={wine.typeAvgPricePerLiterEUR}
@@ -156,6 +162,7 @@
       on:click={(e) => handleAction('drink', e)}
     >
       <Icon name="drink" size={14} />
+      <span class="btn-text">Drink</span>
     </button>
     <button
       class="action-btn"
@@ -163,6 +170,7 @@
       on:click={(e) => handleAction('add', e)}
     >
       <Icon name="plus" size={14} />
+      <span class="btn-text">Add</span>
     </button>
     <button
       class="action-btn"
@@ -170,6 +178,7 @@
       on:click={(e) => handleAction('edit', e)}
     >
       <Icon name="edit" size={14} />
+      <span class="btn-text">Edit</span>
     </button>
     <button
       class="action-btn action-btn-delete"
@@ -177,6 +186,7 @@
       on:click={(e) => handleAction('delete', e)}
     >
       <Icon name="trash" size={14} />
+      <span class="btn-text">Delete</span>
     </button>
   </div>
 
@@ -398,6 +408,7 @@
     gap: var(--space-5);
     margin-top: auto;
     padding-top: var(--space-4);
+    padding-bottom: var(--space-6);
   }
 
   /* ─────────────────────────────────────────────────────────
@@ -408,7 +419,7 @@
     bottom: var(--space-4);
     right: var(--space-4);
     display: flex;
-    gap: 2px;
+    gap: var(--space-1);
     opacity: 0;
     transform: translateY(6px);
     transition:
@@ -423,16 +434,18 @@
   }
 
   .action-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
+    padding: 4px 10px;
+    border-radius: 100px;
     border: 1px solid var(--divider);
-    background: transparent;
-    color: var(--text-tertiary);
+    background: var(--surface);
+    color: var(--text-secondary);
     cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: var(--space-1);
+    font-family: var(--font-sans);
+    font-size: 0.7rem;
+    font-weight: 500;
     transition:
       background 0.2s var(--ease-out),
       color 0.2s var(--ease-out),
@@ -441,10 +454,10 @@
   }
 
   .action-btn:hover {
-    background: var(--surface);
+    background: var(--bg-subtle);
     color: var(--text-primary);
     border-color: var(--accent);
-    transform: scale(1.05);
+    transform: scale(1.02);
   }
 
   .action-btn:focus-visible {
@@ -627,6 +640,7 @@
 
   .wine-card.compact .wine-meta {
     padding-top: var(--space-2);
+    padding-bottom: 0;
     gap: var(--space-3);
   }
 
@@ -688,6 +702,32 @@
 
     .expanded-grid {
       grid-template-columns: 1fr;
+    }
+
+    /* Mobile: actions flow in card layout instead of floating */
+    .wine-actions {
+      position: static;
+      display: none;
+      opacity: 1;
+      transform: none;
+      flex-wrap: wrap;
+      margin-top: var(--space-3);
+    }
+
+    .wine-card.expanded .wine-actions {
+      display: flex;
+    }
+
+    /* Allow meta items to wrap; tighten vertical spacing */
+    .wine-meta {
+      flex-wrap: wrap;
+      padding-bottom: 0;
+    }
+
+    /* Tighter expanded content spacing */
+    .wine-expanded {
+      margin-top: var(--space-2);
+      padding-top: var(--space-3);
     }
   }
 </style>

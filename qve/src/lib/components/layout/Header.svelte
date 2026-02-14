@@ -178,7 +178,7 @@
   /* Dark mode: solid background (backdrop-filter removed to fix iOS Safari
      stacking context bug that traps position:fixed dropdowns) */
   :global([data-theme="dark"]) .header {
-    background: rgba(12, 11, 10, 0.98);
+    background: rgb(12, 11, 10);
   }
 
   .header-inner {
@@ -326,9 +326,48 @@
     }
   }
 
+  /* Hide density toggle on mobile — accessible via Settings */
+  @media (max-width: 768px) {
+    .header-actions :global(.view-toggle) {
+      display: none;
+    }
+  }
+
   @media (max-width: 480px) {
+    .header-left {
+      gap: var(--space-2);
+    }
+
     .header-actions {
       gap: var(--space-1);
+    }
+
+    .logo {
+      font-size: 1.35rem;
+    }
+
+    .header-icon {
+      width: 34px;
+      height: 34px;
+    }
+  }
+
+  @media (max-width: 374px) {
+    .header-inner {
+      padding: var(--space-2) var(--space-3);
+    }
+
+    .header-left {
+      gap: var(--space-1);
+    }
+
+    .logo {
+      font-size: 1.2rem;
+    }
+
+    .header-icon {
+      width: 32px;
+      height: 32px;
     }
   }
 </style>

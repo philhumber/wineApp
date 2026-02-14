@@ -28,7 +28,8 @@
 		clearOrigin,
 		agentOrigin,
 		hasAnimatingMessages,
-		hasActiveChips
+		hasActiveChips,
+		TYPING_MESSAGE_ID
 	} from '$lib/stores/agentConversation';
 	import { streamingFields } from '$lib/stores/agentIdentification';
 	import { isEnriching } from '$lib/stores/agentEnrichment';
@@ -63,6 +64,11 @@
 	$: isOpen = $agentPanelOpen;
 	$: phase = $agentPhase;
 	$: isWineStreaming = $streamingFields.size > 0 && !$isEnriching;
+
+	// Hide typing indicator when streaming card is visible to prevent layout jump (WIN-289)
+	$: displayMessages = isWineStreaming
+		? $agentMessages.filter(m => m.id !== TYPING_MESSAGE_ID)
+		: $agentMessages;
 
 	// Track completion for navigation
 	let completionHandled = false;
@@ -283,10 +289,10 @@
 
 		<!-- Chat Area -->
 		<div class="chat-area">
-			<AgentChatContainer messages={$agentMessages} on:action={handleAction}>
+			<AgentChatContainer messages={displayMessages} on:action={handleAction}>
 			<svelte:fragment slot="messages" let:handleAction>
-				<!-- Message List (typing indicator is now a message in the list) -->
-				<MessageList messages={$agentMessages} on:action={handleAction} />
+				<!-- Message List (typing indicator hidden when streaming card is visible - WIN-289) -->
+				<MessageList messages={displayMessages} on:action={handleAction} />
 
 				<!-- Streaming Wine Card -->
 				{#if isWineStreaming}
@@ -345,20 +351,20 @@
 		overflow: hidden; /* Ensures header/content respect border-radius */
 	}
 
-	/* Mobile: bottom sheet */
+	/* Mobile: bottom sheet with inset */
 	@media (max-width: 640px) {
 		.agent-panel {
 			top: auto;
-			bottom: 0;
-			left: 0;
-			right: 0;
-			width: 100%;
+			bottom: 8px;
+			left: 8px;
+			right: 8px;
+			width: auto;
 			/* Use dvh for keyboard-aware height, vh as fallback */
 			height: 85vh;
 			height: 85dvh;
 			max-height: 85vh;
 			max-height: 85dvh;
-			border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+			border-radius: var(--radius-xl);
 		}
 	}
 
