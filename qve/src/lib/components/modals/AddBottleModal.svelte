@@ -20,6 +20,7 @@
   } from '$lib/stores';
   import Icon from '$lib/components/ui/Icon.svelte';
   import FormInput from '$lib/components/forms/FormInput.svelte';
+  import { focusTrap } from '$lib/actions/focusTrap';
 
   export let wineID: number;
   export let wineName: string;
@@ -95,7 +96,7 @@
 <!-- Main modal -->
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 <div class="modal-overlay" on:click={handleBackdropClick}>
-  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title" use:focusTrap>
     <!-- Header -->
     <div class="modal-header">
       <h2 id="modal-title" class="modal-title">Add Bottle</h2>

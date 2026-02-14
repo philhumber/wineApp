@@ -15,6 +15,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { api } from '$lib/api';
   import { Icon } from '$lib/components';
+  import { focusTrap } from '$lib/actions/focusTrap';
   import type { DeleteEntityType, DeleteImpactResponse, DeleteImpact } from '$lib/api/types';
 
   export let entityType: DeleteEntityType;
@@ -26,15 +27,11 @@
     cancel: void;
   }>();
 
-  let cancelButton: HTMLButtonElement;
   let loading = true;
   let error: string | null = null;
   let impact: DeleteImpact | null = null;
 
   onMount(async () => {
-    // Focus cancel button by default (safer option)
-    cancelButton?.focus();
-
     // Load impact preview
     try {
       const response = await api.getDeleteImpact(entityType, entityId);
@@ -116,7 +113,7 @@
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 <div class="modal-overlay" on:click={handleBackdropClick}>
-  <div class="modal-content" role="alertdialog" aria-modal="true" aria-labelledby="delete-title">
+  <div class="modal-content" role="alertdialog" aria-modal="true" aria-labelledby="delete-title" use:focusTrap={{ initialFocus: '.btn-secondary' }}>
     <div class="modal-body">
       <div class="delete-icon">
         <Icon name="x" size={24} />
@@ -160,7 +157,6 @@
       <button
         type="button"
         class="btn btn-secondary"
-        bind:this={cancelButton}
         on:click={handleCancel}
       >
         Cancel

@@ -14,8 +14,9 @@
   />
 -->
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher } from 'svelte';
   import { modal } from '$lib/stores';
+  import { focusTrap } from '$lib/actions/focusTrap';
 
   export let title: string = 'Are you sure?';
   export let message: string = '';
@@ -24,13 +25,6 @@
   export let variant: 'default' | 'danger' = 'default';
 
   const dispatch = createEventDispatcher<{ confirm: void; cancel: void }>();
-
-  let confirmButton: HTMLButtonElement;
-
-  onMount(() => {
-    // Focus the cancel button by default (safer option)
-    confirmButton?.focus();
-  });
 
   function handleConfirm() {
     dispatch('confirm');
@@ -57,7 +51,7 @@
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 <div class="modal-overlay" on:click={handleBackdropClick}>
-  <div class="modal-content" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+  <div class="modal-content" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" use:focusTrap={{ initialFocus: variant === 'danger' ? '.btn-secondary' : '.btn-primary' }}>
     <div class="modal-body">
       <h2 id="confirm-title" class="confirm-title">{title}</h2>
       {#if message}
@@ -73,7 +67,6 @@
         type="button"
         class="btn btn-primary"
         class:btn-danger={variant === 'danger'}
-        bind:this={confirmButton}
         on:click={handleConfirm}
       >
         {confirmLabel}

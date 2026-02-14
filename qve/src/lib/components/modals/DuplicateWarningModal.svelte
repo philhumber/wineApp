@@ -15,6 +15,7 @@
 	import type { DuplicateWarning } from '$lib/stores/addWine';
 	import type { DuplicateMatch } from '$lib/api/types';
 	import Icon from '../ui/Icon.svelte';
+	import { focusTrap } from '$lib/actions/focusTrap';
 
 	export let warning: DuplicateWarning;
 
@@ -83,7 +84,7 @@
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 <div class="modal-overlay" on:click={handleBackdropClick}>
-	<div class="modal-content" role="alertdialog" aria-modal="true" aria-labelledby="duplicate-title">
+	<div class="modal-content" role="alertdialog" aria-modal="true" aria-labelledby="duplicate-title" use:focusTrap>
 		<div class="modal-header">
 			<div class="warning-icon">
 				<Icon name="warning" size={24} />

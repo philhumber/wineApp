@@ -12,6 +12,7 @@
   import { currentCurrency, convertFromEUR } from '$lib/stores/currency';
   import type { Currency } from '$lib/api/types';
   import CellarValueChart from './CellarValueChart.svelte';
+  import { focusTrap } from '$lib/actions/focusTrap';
 
   const dispatch = createEventDispatcher<{ close: void }>();
 
@@ -22,7 +23,6 @@
   let currentValueEUR = 0;
   let currentBottleCount = 0;
   let selectedRange: 'All' | '1Y' | '6M' | '3M' = 'All';
-  let closeButton: HTMLButtonElement;
   let isMobile = false;
 
   // ─── Lifecycle ───
@@ -43,7 +43,6 @@
     } finally {
       loading = false;
     }
-    closeButton?.focus();
   });
 
   // ─── Keyboard ───
@@ -131,10 +130,10 @@
   aria-modal="true"
   aria-labelledby="cellar-value-title"
   transition:fly={{ y: isMobile ? 300 : 20, duration: 300 }}
+  use:focusTrap={{ initialFocus: '.close-btn' }}
 >
     <!-- Close button -->
     <button
-      bind:this={closeButton}
       class="close-btn"
       on:click={() => dispatch('close')}
       aria-label="Close"

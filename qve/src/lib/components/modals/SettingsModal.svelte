@@ -7,6 +7,7 @@
   import { fade, fly } from 'svelte/transition';
   import { Icon, ThemeToggle, ViewToggle, CurrencySelector } from '$lib/components';
   import { collectionName } from '$lib/stores/settings';
+  import { focusTrap } from '$lib/actions/focusTrap';
 
   const dispatch = createEventDispatcher<{
     close: void;
@@ -81,6 +82,7 @@
   aria-labelledby="settings-title"
   aria-modal="true"
   transition:fly={{ y: 20, duration: 300 }}
+  use:focusTrap
 >
   <div class="modal-header">
     <h2 id="settings-title" class="modal-title">Settings</h2>

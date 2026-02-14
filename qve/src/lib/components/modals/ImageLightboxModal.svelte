@@ -6,20 +6,14 @@
     modal.openImageLightbox('/path/to/image.jpg', 'Alt text')
 -->
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher } from 'svelte';
   import { Icon } from '$lib/components';
+  import { focusTrap } from '$lib/actions/focusTrap';
 
   export let src: string;
   export let alt: string = 'Wine image';
 
   const dispatch = createEventDispatcher<{ close: void }>();
-
-  let closeButton: HTMLButtonElement;
-
-  onMount(() => {
-    // Focus close button for keyboard accessibility
-    closeButton?.focus();
-  });
 
   function handleClose() {
     dispatch('close');
@@ -49,12 +43,12 @@
   aria-modal="true"
   aria-label="Image viewer"
   tabindex="-1"
+  use:focusTrap={{ initialFocus: '.lightbox-close' }}
 >
   <button
     type="button"
     class="lightbox-close"
     aria-label="Close image viewer"
-    bind:this={closeButton}
     on:click={handleClose}
   >
     <Icon name="close" size={24} />
