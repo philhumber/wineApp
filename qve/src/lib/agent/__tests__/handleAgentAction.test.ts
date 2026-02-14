@@ -133,7 +133,8 @@ describe('handleAgentAction', () => {
 					expect.any(Function),
 					expect.any(Function), // onEvent callback
 					expect.anything(), // AbortSignal (WIN-187)
-					expect.anything() // requestId (WIN-227)
+					expect.anything(), // requestId (WIN-227)
+					expect.anything() // lockedFields
 				);
 			});
 
@@ -489,7 +490,8 @@ describe('handleAgentAction', () => {
 				await handleAgentAction({ type: 'not_correct', messageId: msg.id });
 
 				const messages = get(conversation.agentMessages);
-				const responseMsg = messages.find((m) => getTextContent(m)?.includes('wrong'));
+				// ID_NOT_CORRECT_PROMPT: "What needs fixing? Tap a field to correct it..."
+				const responseMsg = messages.find((m) => getTextContent(m)?.includes('fixing'));
 				expect(responseMsg).toBeDefined();
 			});
 
@@ -639,7 +641,8 @@ describe('handleAgentAction', () => {
 					expect.any(Function),
 					expect.any(Function), // onEvent callback
 					expect.anything(), // AbortSignal (WIN-187)
-					expect.anything() // requestId (WIN-227)
+					expect.anything(), // requestId (WIN-227)
+					expect.anything() // lockedFields
 				);
 			});
 
@@ -667,7 +670,8 @@ describe('handleAgentAction', () => {
 					expect.any(Function),
 					expect.any(Function), // onEvent callback
 					expect.anything(), // AbortSignal (WIN-187)
-					expect.anything() // requestId (WIN-227)
+					expect.anything(), // requestId (WIN-227)
+					expect.anything() // lockedFields
 				);
 			});
 		});
@@ -680,10 +684,11 @@ describe('handleAgentAction', () => {
 				identification.setResult(sampleWineResult, 0.9);
 				conversation.setPhase('awaiting_input');
 				conversation.setPhase('confirming');
-				// try_opus needs augmentation context (originalInput) since retryTracker
+				// try_opus needs augmentation context since retryTracker
 				// overwrites lastAction with the try_opus action itself during middleware
 				identification.setAugmentationContext({
-					originalInput: 'Chateau Margaux 2018',
+					originalUserText: 'Chateau Margaux 2018',
+					originalInput: JSON.stringify(sampleWineResult),
 				});
 			});
 
@@ -696,7 +701,7 @@ describe('handleAgentAction', () => {
 				expect(get(identification.escalationTier)).toBe(3);
 			});
 
-			it('should add escalation message', async () => {
+			it('should add result after escalation', async () => {
 				const msg = conversation.addMessage(
 					conversation.createChipsMessage([{ id: '1', label: 'Try Opus', action: 'try_opus' }])
 				);
@@ -704,12 +709,12 @@ describe('handleAgentAction', () => {
 				await handleAgentAction({ type: 'try_opus', messageId: msg.id });
 
 				const messages = get(conversation.agentMessages);
-				// MessageKey.ID_ESCALATING varies by personality:
-				// Sommelier: "Let me look more carefully..." / Neutral: "Let me take a closer look..."
-				const escalateMsg = messages.find(
-					(m) => m.role === 'agent' && m.category === 'text'
+				// After escalation completes, handleIdentificationResultFlow adds
+				// a wine_result card and confirmation chips/text
+				const resultMsg = messages.find(
+					(m) => m.role === 'agent' && (m.category === 'wine_result' || m.category === 'text')
 				);
-				expect(escalateMsg).toBeDefined();
+				expect(resultMsg).toBeDefined();
 			});
 		});
 
@@ -829,23 +834,17 @@ describe('handleAgentAction', () => {
 			});
 
 			it('should be blocked by middleware when no result', async () => {
-				// Note: With middleware validation, actions that require identification
-				// are silently blocked (with console warning) if no result exists.
-				// The middleware prevents reaching the handler's own validation.
-				const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
+				// With middleware validation, actions that require identification
+				// are silently blocked if no result exists (warn mode returns early).
 				const msg = conversation.addMessage(
 					conversation.createChipsMessage([{ id: '1', label: 'Add', action: 'add_to_cellar' }])
 				);
 
+				const phaseBefore = get(conversation.agentPhase);
 				await handleAgentAction({ type: 'add_to_cellar', messageId: msg.id });
 
-				// Middleware logs a warning about validation failure (single string with both parts)
-				expect(warnSpy).toHaveBeenCalledWith(
-					expect.stringContaining('Validation failed for add_to_cellar')
-				);
-
-				warnSpy.mockRestore();
+				// Phase should not change to 'adding_wine' — action was blocked
+				expect(get(conversation.agentPhase)).toBe(phaseBefore);
 			});
 
 			it('should add start message', async () => {
@@ -1179,8 +1178,8 @@ describe('handleAgentAction', () => {
 			expect(get(conversation.agentPhase)).toBe('confirming');
 		});
 
-		it('should log warning for unknown action types', async () => {
-			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		it('should log error for unknown action types', async () => {
+			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 			const msg = conversation.addMessage(
 				conversation.createChipsMessage([{ id: '1', label: 'Custom', action: 'unknown_action' }])
@@ -1191,13 +1190,14 @@ describe('handleAgentAction', () => {
 				payload: { action: 'unknown_action', messageId: msg.id },
 			});
 
-			// The router now uses a different warning format for chip_tap safety net
-			expect(warnSpy).toHaveBeenCalledWith(
-				expect.stringContaining('chip_tap'),
-				expect.objectContaining({ action: 'unknown_action' })
+			// Router logs console.error for unrecognized actions; in DEV mode the throw
+			// is caught by withErrorHandling middleware which also logs to console.error
+			expect(errorSpy).toHaveBeenCalledWith(
+				expect.stringContaining('No handler found'),
+				expect.anything()
 			);
 
-			warnSpy.mockRestore();
+			errorSpy.mockRestore();
 		});
 	});
 

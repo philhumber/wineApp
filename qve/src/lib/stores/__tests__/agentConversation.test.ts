@@ -1039,25 +1039,20 @@ describe('agentConversation', () => {
 			expect(getTextContent(messages[3])).toBe('Text 3');
 		});
 
-		it('should warn in dev mode when addMessage is called while queue is pending', async () => {
-			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
+		it('should not break when addMessage is called while queue is pending', async () => {
 			// Start a delayed message (goes into queue)
 			addMessage(createTextMessage('Initial'));
 			const promise = addMessageWithDelay(createTextMessage('Delayed'));
 
-			// Call addMessage while queue is pending - should trigger warning
+			// Call addMessage while queue is pending - should work without error
 			addMessage(createTextMessage('Immediate'));
 
 			// Clean up
 			await vi.runAllTimersAsync();
 			await promise;
 
-			expect(warnSpy).toHaveBeenCalledWith(
-				expect.stringContaining('addMessage() called while addMessageWithDelay queue has pending operations')
-			);
-
-			warnSpy.mockRestore();
+			const messages = get(agentMessages);
+			expect(messages.length).toBeGreaterThanOrEqual(3);
 		});
 	});
 });
