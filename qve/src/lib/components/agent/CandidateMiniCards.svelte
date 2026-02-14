@@ -60,7 +60,7 @@
 				class="mini-card"
 				role="option"
 				aria-selected="false"
-				on:touchstart={handleTouchStart}
+				on:touchstart|passive={handleTouchStart}
 				on:touchend={(e) => handleTouchEnd(e, candidate)}
 				on:click={() => handleClick(candidate)}
 			>

@@ -98,8 +98,6 @@
 		role="dialog"
 		aria-modal="true"
 		aria-label="AI is generating content"
-		on:wheel|preventDefault
-		on:touchmove|preventDefault
 	>
 		<div class="ai-overlay-content">
 			<div class="ai-spinner" aria-hidden="true"></div>

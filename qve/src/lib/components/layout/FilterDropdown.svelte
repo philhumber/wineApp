@@ -199,7 +199,7 @@
   class="dropdown-backdrop"
   class:backdrop-ready={backdropReady}
   bind:this={backdropElement}
-  on:touchstart={handleBackdropTouchStart}
+  on:touchstart|passive={handleBackdropTouchStart}
   on:touchend={handleBackdropTouchEnd}
   on:click={handleBackdropClick}
   on:keydown={handleKeydown}

@@ -79,7 +79,7 @@
   class:expanded
   {disabled}
   on:click={handleClick}
-  on:touchstart={handleTouchStart}
+  on:touchstart|passive={handleTouchStart}
   on:touchend={handleTouchEnd}
   on:keydown={handleKeydown}
   aria-pressed={active}
