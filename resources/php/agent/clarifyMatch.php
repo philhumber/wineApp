@@ -10,6 +10,7 @@
 
 require_once __DIR__ . '/_bootstrap.php';
 require_once __DIR__ . '/LLM/LLMClient.php';
+require_once __DIR__ . '/prompts/prompts.php';
 
 agentRequireMethod('POST');
 $body = agentGetJsonBody();
@@ -56,15 +57,7 @@ try {
     $vintage = $identified['vintage'] ?? 'NV';
     $region = $identified['region'] ?? 'Unknown Region';
 
-    $prompt = "You are an expert sommelier helping a wine collector.
-
-The user is trying to add: {$producer} - {$wineName} ({$vintage})
-Region: {$region}
-
-I found these existing {$body['type']} entries in their collection:
-" . implode("\n", $optionsList) . "
-
-Task: In 1-2 sentences, explain which option best matches what they're adding, or if they should create a new entry. Be concise and complete your thought.";
+    $prompt = Prompts::clarifyMatch($producer, $wineName, $vintage, $region, $body['type'], implode("\n", $optionsList));
 
     $result = $client->complete('clarify_match', $prompt, ['max_tokens' => 1500]);
 

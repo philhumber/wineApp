@@ -12,6 +12,8 @@ namespace Agent\Identification;
 
 use Agent\LLM\LLMClient;
 
+require_once __DIR__ . '/../prompts/prompts.php';
+
 class VisionProcessor
 {
     /** @var LLMClient LLM client */
@@ -19,9 +21,6 @@ class VisionProcessor
 
     /** @var ImageQualityAssessor Quality assessor */
     private ImageQualityAssessor $qualityAssessor;
-
-    /** @var string Prompt template */
-    private string $promptTemplate;
 
     /**
      * Create a new vision processor
@@ -32,60 +31,6 @@ class VisionProcessor
     {
         $this->llmClient = $llmClient;
         $this->qualityAssessor = new ImageQualityAssessor();
-        $this->loadPromptTemplate();
-    }
-
-    /**
-     * Load prompt template from file
-     *
-     * @return void
-     */
-    private function loadPromptTemplate(): void
-    {
-        $promptPath = __DIR__ . '/../prompts/vision_identify.txt';
-        $this->promptTemplate = file_exists($promptPath)
-            ? file_get_contents($promptPath)
-            : $this->getDefaultPrompt();
-    }
-
-    /**
-     * Get default prompt template
-     *
-     * @return string Default prompt
-     */
-    private function getDefaultPrompt(): string
-    {
-        return <<<'PROMPT'
-You are a wine label identification expert. Analyze this wine label image and extract structured data.
-
-Extract these fields (use null if not found or uncertain):
-- producer: The winery or producer name (only if you can clearly read it)
-- wineName: The specific wine name (not the producer)
-- vintage: The year (4 digits)
-- region: Wine region or appellation
-- country: Country of origin
-- wineType: Red, White, Rosé, Sparkling, Dessert, or Fortified
-- grapes: Array of grape varieties
-
-CRITICAL - Confidence Scoring:
-- HIGH confidence (80-100): Text is clearly readable AND you recognize this as a real wine
-- MEDIUM confidence (50-79): Text is partially readable or you're unsure if the wine exists
-- LOW confidence (0-49): Text is unclear, or the label doesn't match a wine you recognize
-
-Base confidence on BOTH readability AND whether this is a real wine you know.
-
-Respond ONLY with valid JSON:
-{
-  "producer": "string or null",
-  "wineName": "string or null",
-  "vintage": "string or null",
-  "region": "string or null",
-  "country": "string or null",
-  "wineType": "string or null",
-  "grapes": ["array"] or null,
-  "confidence": number
-}
-PROMPT;
     }
 
     /**
@@ -120,8 +65,8 @@ PROMPT;
 
         // Allow using a more detailed prompt for escalation
         $prompt = $options['detailed_prompt'] ?? false
-            ? $this->getDetailedPrompt()
-            : $this->promptTemplate;
+            ? \Prompts::visionIdentifyDetailed()
+            : \Prompts::visionIdentify();
 
         $promptType = $options['detailed_prompt'] ?? false ? 'DETAILED' : 'STANDARD';
 
@@ -233,39 +178,6 @@ PROMPT;
             'latencyMs' => $response->latencyMs,
             'quality' => $quality,
         ];
-    }
-
-    /**
-     * Get detailed prompt for escalated identification
-     * More thorough instructions for difficult wine labels
-     *
-     * @return string Detailed prompt
-     */
-    private function getDetailedPrompt(): string
-    {
-        return <<<'PROMPT'
-Identify the wine from this label image. Use web search to verify your identification.
-
-Analysis steps:
-- Read all visible text carefully, including small or stylized fonts
-- Look for appellation markers (AOC, DOCG, etc.), alcohol %, awards
-- Search for the producer and wine name to verify they exist
-- Only fill fields with data you can READ on the label or VERIFY via search
-
-CRITICAL RULES:
-- Do NOT guess or infer producer, region, or country from visual style alone
-- Do NOT fill fields with plausible-sounding data you cannot verify
-- Use null for any field you cannot read on the label or confirm via search
-- grapes: Only include if stated on label or confirmed via search for this specific wine
-
-Confidence guide:
-- 80-100: Text clearly readable AND verified as a real wine via search
-- 50-79: Partially readable OR search results are inconclusive
-- 0-39: Cannot read label text OR search finds no matching wine
-
-Fields: producer, wineName, vintage (number|null), region, country, wineType ("Red"|"White"|"Rosé"|"Sparkling"|"Dessert"|"Fortified"), grapes (array), confidence (0-100).
-Null if unsure.
-PROMPT;
     }
 
     /**
@@ -434,17 +346,6 @@ PROMPT;
 
         $lower = strtolower(trim($country));
         return $countryMap[$lower] ?? ucwords(strtolower(trim($country)));
-    }
-
-    /**
-     * Set custom prompt template
-     *
-     * @param string $template Prompt template
-     * @return void
-     */
-    public function setPromptTemplate(string $template): void
-    {
-        $this->promptTemplate = $template;
     }
 
     /**
