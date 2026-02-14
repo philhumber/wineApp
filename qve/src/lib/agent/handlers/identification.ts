@@ -40,7 +40,7 @@ import {
   detectDirectValue,
   checkBriefInput,
 } from '../services';
-import { ChipKey, getChip } from '../services/chipRegistry';
+import { ChipKey, getChip, getChips } from '../services/chipRegistry';
 import { setLastAction, getLastAction } from '../middleware/retryTracker';
 import {
   handleStartOver,
@@ -232,10 +232,7 @@ function handleMissingFieldProvided(
       );
 
       conversation.addMessage(
-        conversation.createChipsMessage([
-          { id: 'reidentify', label: 'Try to Match', action: 'reidentify', variant: 'primary' },
-          { id: 'continue_as_is', label: 'Add Manually', action: 'continue_as_is' },
-        ])
+        conversation.createChipsMessage(getChips(ChipKey.REIDENTIFY, ChipKey.CONTINUE_AS_IS))
       );
 
       conversation.setPhase('confirming');
@@ -570,7 +567,7 @@ async function handleTextSubmit(text: string): Promise<void> {
     // Show updated card with correction applied + confirmation chips including "Look Closer"
     const wineName = [updatedResult.producer, updatedResult.wineName].filter(Boolean).join(' ');
     conversation.addMessages([
-      conversation.createTextMessage('Got it. Here\'s the updated result:'),
+      conversation.createTextMessage(getMessageByKey(MessageKey.ID_CORRECTION_ACKNOWLEDGED)),
       { category: 'wine_result', role: 'agent', data: { category: 'wine_result', result: updatedResult, confidence } },
       conversation.createTextMessage(getMessageByKey(MessageKey.ID_FOUND, { wineName })),
       conversation.createChipsMessage(generateCorrectionConfirmationChips()),
@@ -849,10 +846,7 @@ async function handleCorrect(messageId: string): Promise<void> {
       );
 
       conversation.addMessage(
-        conversation.createChipsMessage([
-          { id: 'reidentify', label: 'Try to Match', action: 'reidentify', variant: 'primary' },
-          { id: 'continue_as_is', label: 'Add Manually', action: 'continue_as_is' },
-        ])
+        conversation.createChipsMessage(getChips(ChipKey.REIDENTIFY, ChipKey.CONTINUE_AS_IS))
       );
 
       conversation.setPhase('confirming');
@@ -948,7 +942,7 @@ function handleCorrectField(messageId: string, payload: { field: string }): void
   };
   const label = fieldLabels[payload.field] || 'value';
   conversation.addMessage(
-    conversation.createTextMessage(`Enter the correct ${label}:`)
+    conversation.createTextMessage(getMessageByKey(MessageKey.ID_FIELD_CORRECTION_PROMPT, { text: label }))
   );
 }
 

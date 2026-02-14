@@ -7,10 +7,12 @@
 	 */
 	import { createEventDispatcher } from 'svelte';
 	import { fade } from 'svelte/transition';
+	import { getMessageByKey } from '$lib/agent/messages';
+	import { MessageKey } from '$lib/agent/messageKeys';
 
 	const dispatch = createEventDispatcher<{ cancel: void }>();
 
-	export let text: string = 'Consulting the cellar...';
+	export let text: string = getMessageByKey(MessageKey.LOADING_DEFAULT);
 	export let showCancel: boolean = false;
 </script>
 

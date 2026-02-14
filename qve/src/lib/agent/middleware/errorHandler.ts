@@ -12,6 +12,7 @@ import type { AgentErrorType } from '$lib/api/types';
 import { AgentError } from '$lib/api/types';
 import { getMessageByKey } from '../messages';
 import { MessageKey } from '../messageKeys';
+import { ChipKey, getChips } from '../services/chipRegistry';
 import * as conversation from '$lib/stores/agentConversation';
 import * as identification from '$lib/stores/agentIdentification';
 
@@ -109,10 +110,7 @@ export function showErrorInConversation(
   // Add retry chips if error is retryable and chips requested
   if (showRetryChips && errorInfo.retryable) {
     conversation.addMessage(
-      conversation.createChipsMessage([
-        { id: 'retry', label: 'Try Again', action: 'retry' },
-        { id: 'start_over', label: 'Start Over', action: 'start_over' },
-      ])
+      conversation.createChipsMessage(getChips(ChipKey.RETRY, ChipKey.START_OVER))
     );
   }
 }

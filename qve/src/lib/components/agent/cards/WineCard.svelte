@@ -6,6 +6,8 @@
 	 */
 	import { streamingFields as identificationStreamingFields, isEscalating } from '$lib/stores/agentIdentification';
 	import type { AgentParsedWine } from '$lib/api/types';
+	import { getMessageByKey } from '$lib/agent/messages';
+	import { MessageKey } from '$lib/agent/messageKeys';
 	import DataCard from './DataCard.svelte';
 	import WineNameSection from '../wine/WineNameSection.svelte';
 	import WineProducerSection from '../wine/WineProducerSection.svelte';
@@ -70,7 +72,7 @@
 
 	// Refining badge: shown when background escalation is in progress
 	$: header = $isEscalating
-		? { title: '', badge: 'Refining...', badgeStreaming: true }
+		? { title: '', badge: getMessageByKey(MessageKey.LOADING_REFINING_BADGE), badgeStreaming: true }
 		: null;
 </script>
 

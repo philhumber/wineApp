@@ -219,6 +219,33 @@ export const neutralMessages: PersonalityMessages = {
   [MessageKey.ID_INCOMPLETE_GRAPES_NO_PRODUCER]: (ctx: MessageContext) =>
     `I detected ${ctx.grape || 'a grape'} as the grape variety but couldn't identify the producer. Should I use the grape as the wine name?`,
 
+  [MessageKey.ID_CORRECTION_ACKNOWLEDGED]: "Got it. Here's the updated result:",
+
+  [MessageKey.ID_FIELD_CORRECTION_PROMPT]: (ctx: MessageContext) =>
+    `Enter the correct ${ctx.text || 'value'}:`,
+
+  // ===========================================
+  // LOADING STATES
+  // ===========================================
+  [MessageKey.LOADING_NORMAL]: [
+    'Analyzing wine...',
+    'Reading the label...',
+    'Consulting the cellar...',
+    'Almost there...',
+  ],
+
+  [MessageKey.LOADING_DEEP_SEARCH]: [
+    'Consulting sommelier...',
+    'Cross-referencing vintages...',
+    'Searching wine archives...',
+    'Deep analysis in progress...',
+    'Examining fine details...',
+  ],
+
+  [MessageKey.LOADING_DEEP_SEARCH_HINT]: 'Taking a closer look...',
+  [MessageKey.LOADING_REFINING_BADGE]: 'Refining...',
+  [MessageKey.LOADING_DEFAULT]: 'Consulting the cellar...',
+
   // ===========================================
   // CONFIRMATION - Extended
   // ===========================================

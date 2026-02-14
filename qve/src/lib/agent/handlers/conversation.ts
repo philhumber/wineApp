@@ -23,7 +23,7 @@ import {
   getLastAction,
   clearLastAction,
 } from '../middleware/retryTracker';
-import { ChipKey, getChip } from '../services/chipRegistry';
+import { ChipKey, getChip, getChips } from '../services/chipRegistry';
 
 // ===========================================
 // Handler Type
@@ -79,10 +79,7 @@ export function handleGoBack(): void {
         conversation.createTextMessage(getMessageByKey(MessageKey.CONV_AWAITING_INPUT))
       );
       conversation.addMessage(
-        conversation.createChipsMessage([
-          { id: 'take_photo', label: 'Take Photo', action: 'take_photo' },
-          { id: 'choose_photo', label: 'Choose Photo', action: 'choose_photo' },
-        ])
+        conversation.createChipsMessage(getChips(ChipKey.TAKE_PHOTO, ChipKey.CHOOSE_PHOTO))
       );
       break;
 
@@ -93,11 +90,7 @@ export function handleGoBack(): void {
         conversation.createTextMessage(getMessageByKey(MessageKey.CONV_ACTION_PROMPT))
       );
       conversation.addMessage(
-        conversation.createChipsMessage([
-          { id: 'add', label: 'Add to Cellar', action: 'add_to_cellar' },
-          { id: 'learn', label: 'Learn More', action: 'learn' },
-          { id: 'remember', label: 'Remember Later', action: 'remember' },
-        ])
+        conversation.createChipsMessage(getChips(ChipKey.ADD_TO_CELLAR, ChipKey.LEARN_MORE, ChipKey.REMEMBER))
       );
       break;
 

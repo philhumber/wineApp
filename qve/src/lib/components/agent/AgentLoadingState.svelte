@@ -7,24 +7,15 @@
 	 * the backend is working harder (model escalation)
 	 */
 	import { onMount, onDestroy } from 'svelte';
+	import { getMessageArrayByKey, getMessageByKey } from '$lib/agent/messages';
+	import { MessageKey } from '$lib/agent/messageKeys';
 
 	/** Delay before switching to deep search messages (ms) */
 	export let deepSearchDelay: number = 2500;
 
-	const normalMessages = [
-		'Analyzing wine...',
-		'Reading the label...',
-		'Consulting the cellar...',
-		'Almost there...'
-	];
-
-	const deepSearchMessages = [
-		'Consulting sommelier...',
-		'Cross-referencing vintages...',
-		'Searching wine archives...',
-		'Deep analysis in progress...',
-		'Examining fine details...'
-	];
+	const normalMessages = getMessageArrayByKey(MessageKey.LOADING_NORMAL);
+	const deepSearchMessages = getMessageArrayByKey(MessageKey.LOADING_DEEP_SEARCH);
+	const deepSearchHintText = getMessageByKey(MessageKey.LOADING_DEEP_SEARCH_HINT);
 
 	let currentIndex = 0;
 	let isDeepSearch = false;
@@ -90,7 +81,7 @@
 	</div>
 
 	{#if isDeepSearch}
-		<p class="deep-search-hint">Taking a closer look...</p>
+		<p class="deep-search-hint">{deepSearchHintText}</p>
 	{/if}
 </div>
 

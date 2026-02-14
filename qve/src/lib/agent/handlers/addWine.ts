@@ -538,13 +538,16 @@ async function handleAddToCellar(messageId: string): Promise<void> {
 
       const wineName = result.wineName || result.producer || 'Unknown';
       const producer = result.producer || '';
-      const displayName = producer && result.wineName
-        ? `${wn(result.wineName)} by ${wn(producer)}`
-        : wn(wineName);
+      const compositeWineName = producer && result.wineName
+        ? `${result.wineName} by ${producer}`
+        : wineName;
 
       conversation.addMessage(
         conversation.createTextMessage(
-          `I found ${displayName} already in your cellar with ${duplicateResult.existingBottles} bottle${duplicateResult.existingBottles > 1 ? 's' : ''}.`
+          getMessageByKey(MessageKey.ADD_DUPLICATE_FOUND, {
+            wineName: compositeWineName,
+            bottleCount: duplicateResult.existingBottles,
+          })
         )
       );
 

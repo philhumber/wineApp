@@ -112,6 +112,45 @@ export function getMessageByKey(key: MessageKey, context?: MessageContext): stri
   return resolveVariant(variant, key, context);
 }
 
+/**
+ * Get a message array by key (for cycling/sequential display).
+ *
+ * Unlike getMessageByKey (which picks a random entry from arrays),
+ * this returns the full array for components that cycle through messages
+ * sequentially (e.g., loading states).
+ *
+ * Falls back to neutral if the personality doesn't define the key.
+ * Non-array variants are wrapped in a single-element array.
+ */
+export function getMessageArrayByKey(key: MessageKey): string[] {
+  const personality = getPersonality();
+  const messages = getPersonalityMessages(personality);
+  let variant = messages[key];
+
+  if (variant === undefined) {
+    variant = neutralMessages[key];
+  }
+
+  if (variant === undefined) {
+    return [];
+  }
+
+  if (Array.isArray(variant)) {
+    return [...variant] as string[];
+  }
+
+  if (typeof variant === 'string') {
+    return [variant];
+  }
+
+  // Template function — call with empty context
+  if (typeof variant === 'function') {
+    return [(variant as MessageTemplate)({})];
+  }
+
+  return [];
+}
+
 // ===========================================
 // Time-based Helpers
 // ===========================================

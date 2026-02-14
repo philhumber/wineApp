@@ -70,6 +70,10 @@ export enum MessageKey {
   ID_INCOMPLETE_GRAPES_WITH_PRODUCER = 'identification.incompleteGrapesWithProducer',
   /** Grape without producer: "I detected {grape} but couldn't identify producer..." */
   ID_INCOMPLETE_GRAPES_NO_PRODUCER = 'identification.incompleteGrapesNoProducer',
+  /** "Got it. Here's the updated result:" — after field correction */
+  ID_CORRECTION_ACKNOWLEDGED = 'identification.correctionAcknowledged',
+  /** "Enter the correct {text}:" — prompt for field correction input */
+  ID_FIELD_CORRECTION_PROMPT = 'identification.fieldCorrectionPrompt',
 
   // ===========================================
   // CONFIRMATION
@@ -180,6 +184,20 @@ export enum MessageKey {
   ERROR_IMAGE_UNCLEAR = 'errors.imageUnclear',
   ERROR_NETWORK = 'errors.network',
   ERROR_NO_RESULT = 'errors.noResult',
+
+  // ===========================================
+  // LOADING STATES
+  // ===========================================
+  /** Array of normal loading messages for cycling display */
+  LOADING_NORMAL = 'loading.normal',
+  /** Array of deep search loading messages for cycling display */
+  LOADING_DEEP_SEARCH = 'loading.deepSearch',
+  /** "Taking a closer look..." — hint shown during deep search */
+  LOADING_DEEP_SEARCH_HINT = 'loading.deepSearchHint',
+  /** "Refining..." — badge shown during escalation */
+  LOADING_REFINING_BADGE = 'loading.refiningBadge',
+  /** Default typing indicator text */
+  LOADING_DEFAULT = 'loading.default',
 
   // ===========================================
   // CHIP LABELS

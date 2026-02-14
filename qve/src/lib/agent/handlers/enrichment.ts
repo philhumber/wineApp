@@ -28,6 +28,7 @@ import {
   generateEnrichmentErrorChips,
   generateCacheMatchChips,
 } from '../services';
+import { ChipKey, getChip } from '../services/chipRegistry';
 import { createAbortController, wasCancelled, lockScroll, unlockScroll, getRequestId } from '../requestLifecycle';
 
 // ===========================================
@@ -462,9 +463,7 @@ async function handleRemember(messageId: string): Promise<void> {
   );
 
   conversation.addMessage(
-    conversation.createChipsMessage([
-      { id: 'identify_another', label: 'Identify Another', action: 'start_over' },
-    ])
+    conversation.createChipsMessage([getChip(ChipKey.IDENTIFY_ANOTHER)])
   );
 
   conversation.setPhase('complete');
