@@ -26,7 +26,7 @@
  */
 $allowedOrigins = [
     'http://10.0.0.16',          // Production server (direct IP)
-    'http://qve-wine.com',       // Production server (domain)
+    'https://qvewine.com',       // Production via Cloudflare
     'http://localhost:5173',      // Vite dev server
     'http://127.0.0.1:5173',     // Vite dev server (alternate)
 ];

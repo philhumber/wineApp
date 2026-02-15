@@ -24,8 +24,7 @@ if (basename($_SERVER['PHP_SELF'] ?? '') === basename(__FILE__)) {
 
 $allowedOrigins = [
     'http://10.0.0.16',          // Production server (direct IP)
-    'http://qve-wine.com',       // Production server (domain)
-    'https://qve-wine.com',      // Production via Cloudflare Tunnel
+    'https://qvewine.com',       // Production via Cloudflare
     'http://localhost:5173',      // Vite dev server
     'http://127.0.0.1:5173',     // Vite dev server (alternate)
 ];
@@ -94,8 +93,7 @@ function validateCsrf(): void
     if ($origin !== '') {
         $allowedOrigins = [
             'http://10.0.0.16',
-            'http://qve-wine.com',
-            'https://qve-wine.com',
+            'https://qvewine.com',
             'http://localhost:5173',
             'http://127.0.0.1:5173',
         ];
